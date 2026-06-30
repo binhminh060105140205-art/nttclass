@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NttClass - Quản lý Học sinh & Học phí Cá nhân</title>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Outfit -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Login Page -->
+    <section id="loginPage" class="login-screen">
+        <div class="login-card">
+            <div class="login-brand">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                </div>
+                <div>
+                    <h1>NttClass Admin</h1>
+                    <p>Đăng nhập để truy cập hệ thống quản lý học sinh và lịch dạy.</p>
+                </div>
+            </div>
+
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="loginUsername">Tên đăng nhập</label>
+                    <input type="text" id="loginUsername" class="form-control" placeholder="admin" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Mật khẩu</label>
+                    <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Đăng nhập</button>
+                <div class="login-help">
+                    <span>Tài khoản thử:</span>
+                    <strong>admin/admin123</strong>, <strong>teacher/teacher123</strong> hoặc <strong>tro_giang/ta123</strong> (trợ giảng)
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar hidden">
+        <div class="logo-container">
+            <div class="logo-icon">
+                <i class="fa-solid fa-graduation-cap"></i>
+            </div>
+            <span class="logo-text">NttClass</span>
+        </div>
+
+        <!-- User Info Panel -->
+        <div class="user-box">
+            <div class="user-avatar">
+                <i class="fa-solid fa-user-tie"></i>
+            </div>
+            <div class="user-info">
+                <div id="sidebarUserName">Chưa đăng nhập</div>
+                <div id="sidebarUserRole">Vui lòng đăng nhập</div>
+            </div>
+        </div>
+
+        <!-- Navigation Menu -->
+        <nav class="sidebar-menu">
+            <a href="#" class="menu-item active" data-target="view-dashboard" id="nav-dashboard">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Tổng quan</span>
+            </a>
+            <a href="#" class="menu-item" data-target="view-logs" id="nav-logs">
+                <i class="fa-solid fa-book-open-reader"></i>
+                <span>Nhật ký học tập</span>
+            </a>
+            <a href="#" class="menu-item" data-target="view-scheduler" id="nav-scheduler">
+                <i class="fa-solid fa-calendar-check"></i>
+                <span>Lịch dạy & Chấm công</span>
+            </a>
+            <a href="#" class="menu-item" data-target="view-tuition" id="nav-tuition">
+                <i class="fa-solid fa-wallet"></i>
+                <span>Báo cáo học phí</span>
+            </a>
+            <a href="#" class="menu-item" data-target="view-students" id="nav-students">
+                <i class="fa-solid fa-user-group"></i>
+                <span>Hồ sơ học sinh</span>
+            </a>
+            <a href="#" class="menu-item" data-target="view-users" id="nav-users">
+                <i class="fa-solid fa-users"></i>
+                <span>Quản lý tài khoản</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <p>NttClass v1.0</p>
+            <p style="font-size: 10px; margin-top: 4px;">Giao diện xanh dương tối giản</p>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content hidden">
+        <!-- Top Header Bar -->
+        <header class="top-header">
+            <div class="header-title-box">
+                <h1 id="view-title">Tổng quan hệ thống</h1>
+                <p id="view-subtitle">Chào mừng cô giáo quay trở lại dạy học hôm nay!</p>
+            </div>
+            <div class="header-actions">
+                <!-- Role Badge Indicator -->
+                <div id="roleBadge" class="role-badge role-badge-admin">👑 Admin</div>
+                
+                <!-- Student picker when applicable -->
+                <div class="student-context-picker" id="studentContextPicker">
+                    <span>Đang chọn:</span>
+                    <select id="globalStudentPicker" class="student-select">
+                        <!-- Filled dynamically -->
+                    </select>
+                </div>
+
+                <button class="btn btn-secondary btn-sm" id="logoutBtn" style="padding: 8px 16px; border-radius: 20px; display:none;">
+                    <i class="fa-solid fa-right-from-bracket"></i> Đăng xuất
+                </button>
+
+                <button class="btn btn-primary btn-sm" id="quickScheduleBtn" style="padding: 8px 16px; border-radius: 20px;">
+                    <i class="fa-solid fa-plus"></i> Ghi buổi học
+                </button>
+            </div>
+        </header>
+
+        <!-- SECTION 1: DASHBOARD -->
+        <section id="view-dashboard" class="view-section active-view">
+            <!-- Stats Dashboard Grid -->
+            <div class="stats-grid">
+                <div class="glass-card stat-card">
+                    <div class="stat-icon blue">
+                        <i class="fa-solid fa-user-graduate"></i>
+                    </div>
+                    <div class="stat-value" id="stat-total-students">0</div>
+                    <div class="stat-label">Học sinh đang theo học</div>
+                </div>
+                <div class="glass-card stat-card">
+                    <div class="stat-icon purple">
+                        <i class="fa-solid fa-calendar-days"></i>
+                    </div>
+                    <div class="stat-value" id="stat-total-sessions">0</div>
+                    <div class="stat-label">Tổng số buổi dạy</div>
+                </div>
+                <div class="glass-card stat-card">
+                    <div class="stat-icon teal">
+                        <i class="fa-solid fa-clock"></i>
+                    </div>
+                    <div class="stat-value" id="stat-total-hours">0h</div>
+                    <div class="stat-label">Tổng thời gian tích lũy</div>
+                </div>
+                <div class="glass-card stat-card">
+                    <div class="stat-icon amber">
+                        <i class="fa-solid fa-money-bill-wave"></i>
+                    </div>
+                    <div class="stat-value" id="stat-unpaid-tuition">0đ</div>
+                    <div class="stat-label">Học phí chưa thanh toán</div>
+                </div>
+            </div>
+
+            <!-- Dashboard Content -->
+            <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr; gap: 20px;">
+                <div class="glass-card" style="padding: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="color: var(--primary); font-weight: 700; display: flex; align-items: center; gap: 10px; margin-bottom: 0;">
+                            <i class="fa-regular fa-calendar-check"></i> Ca Dạy & Buổi Học Hôm Nay
+                        </h3>
+                        <button class="btn btn-primary btn-sm" onclick="app.switchView('view-scheduler')">
+                            <i class="fa-solid fa-calendar-plus"></i> Xem toàn bộ lịch dạy
+                        </button>
+                    </div>
+                    <div id="today-sessions-container">
+                        <!-- Filled dynamically -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: STUDENT LOGS -->
+        <section id="view-logs" class="view-section">
+            <div class="glass-card" style="padding: 20px;">
+                <div class="evaluation-header" style="margin-bottom: 15px;">
+                    <div>
+                        <h2 style="color: var(--primary); font-weight: 700; display: inline-flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-book-bookmark"></i> Nhật Ký Học Tập Học Sinh
+                        </h2>
+                        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+                            Theo dõi chi tiết tiến trình bài tập, ý thức học tập và nhận xét qua từng buổi học.
+                        </p>
+                    </div>
+                    <div class="role-restricted admin-tutor" style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary btn-sm" id="btnExportLog">
+                            <i class="fa-solid fa-file-excel"></i> Xuất Báo Cáo
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Customized Table matching the layout "Quỳnh Anh Toán 8" in Image 1 -->
+                <div class="student-log-header">
+                    <div>
+                        <span class="student-log-title" id="logStudentNameHeader">QUỲNH ANH TOÁN 8</span>
+                        <span style="margin: 0 8px; opacity: 0.7;">|</span>
+                        <span class="student-log-subtitle" id="logStudentYearHeader">(2026-2027)</span>
+                    </div>
+                    <div>
+                        <span class="badge badge-rieng" id="logBadgeIndicator"><i class="fa-solid fa-user"></i> Học riêng 1 vs 1</span>
+                    </div>
+                </div>
+                
+                <div class="table-wrapper">
+                    <table class="custom-table" id="studentLogsTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">STT</th>
+                                <th style="width: 140px;">NGÀY</th>
+                                <th>NỘI DUNG BUỔI HỌC</th>
+                                <th style="width: 160px;">BÀI TẬP VỀ NHÀ</th>
+                                <th style="width: 150px;">Ý THỨC HỌC TẬP</th>
+                                <th>NHẬN XÉT CỦA GIÁO VIÊN</th>
+                                <th style="width: 120px;">GHI CHÚ</th>
+                                <th style="width: 80px;" class="role-restricted admin-tutor">THAO TÁC</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentLogsTableBody">
+                            <!-- Filled dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: SESSION SCHEDULER & LOGGER -->
+        <section id="view-scheduler" class="view-section">
+            
+            <!-- Logger Form Component (Matching Ghi buổi học in Image 2) -->
+            <div class="glass-card" style="padding: 24px;" id="logger-form-card">
+                <h3 style="color: var(--primary); margin-bottom: 20px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                    <i class="fa-solid fa-file-signature"></i> Ghi Buổi Học Mới
+                </h3>
+                
+
+                <form id="sessionLoggerForm" class="grid-form">
+                    <!-- Session Type (1-on-1 vs Group) -->
+                    <div class="form-group">
+                        <label for="sessionType">Loại buổi học <span style="color:red;">*</span></label>
+                        <select id="sessionType" class="form-control" required>
+                            <option value="riêng">🌸 Học riêng (1 vs 1)</option>
+                            <option value="chung">👥 Học chung (Dạy nhóm)</option>
+                        </select>
+                    </div>
+
+                    <!-- Students selection grid -->
+                    <div class="form-group form-group-half">
+                        <label>Chọn học sinh tham gia <span style="color:red;">*</span></label>
+                        <div class="student-check-grid" id="studentsCheckboxGrid">
+                            <!-- Filled dynamically with checkboxes -->
+                        </div>
+                    </div>
+
+                    <!-- Date picker -->
+                    <div class="form-group">
+                        <label for="sessionDate">Ngày học <span style="color:red;">*</span></label>
+                        <input type="date" id="sessionDate" class="form-control" required>
+                    </div>
+
+                    <!-- Start time -->
+                    <div class="form-group">
+                        <label for="sessionStartTime">Giờ bắt đầu <span style="color:red;">*</span></label>
+                        <input type="time" id="sessionStartTime" class="form-control" value="16:00" required>
+                    </div>
+
+                    <!-- End time -->
+                    <div class="form-group">
+                        <label for="sessionEndTime">Giờ kết thúc <span style="color:red;">*</span></label>
+                        <input type="time" id="sessionEndTime" class="form-control" value="18:00" required>
+                    </div>
+
+                    <!-- Calculated Hours -->
+                    <div class="form-group">
+                        <label for="sessionHours">Số giờ học</label>
+                        <input type="number" id="sessionHours" class="form-control" step="0.1" value="2.0" placeholder="Tự động tính...">
+                    </div>
+
+                    <!-- Unit price -->
+                    <div class="form-group">
+                        <label for="sessionPrice">Đơn giá buổi học (VNĐ)</label>
+                        <input type="number" id="sessionPrice" class="form-control" step="1000" value="250000" placeholder="Ví dụ: 250000">
+                    </div>
+
+                    <div class="form-group">
+                        <!-- Just spacing -->
+                    </div>
+
+                    <!-- Note / Course contents -->
+                    <div class="form-group form-group-full">
+                        <label for="sessionContent">Nội dung học / ghi chú buổi học</label>
+                        <textarea id="sessionContent" class="form-control" placeholder="Ví dụ: Ôn tam giác, luyện bài tập đại số, chữa đề...&#10;BTVN: Phiếu 8.1" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group form-group-full" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
+                        <button type="button" class="btn btn-secondary" id="resetLoggerFormBtn">
+                            <i class="fa-solid fa-rotate-left"></i> Xóa form
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-check"></i> Lưu buổi học
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- List of classes & attendance (Image 4 format or Image 3 table format) -->
+            <div class="glass-card" style="padding: 24px;">
+                <h3 style="color: var(--primary); margin-bottom: 15px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                    <i class="fa-solid fa-calendar-days"></i> Danh Sách Ca Dạy Đã Lên Lịch
+                </h3>
+                
+                <div class="tab-buttons">
+                    <button class="tab-btn active" data-tab="tab-list">Danh sách chi tiết (Hình 3)</button>
+                    <button class="tab-btn" data-tab="tab-weekly">Chấm công tuần (Hình 4)</button>
+                </div>
+
+                <!-- Sub-tab 1: List View with Filters (Image 3 format) -->
+                <div id="tab-list" class="tab-content" style="display: block;">
+                    <!-- Filter bar (Image 3 format) -->
+                    <div class="filter-bar" style="margin-bottom: 20px;">
+                        <div class="filter-group">
+                            <label for="filterStartDate">Lọc từ ngày</label>
+                            <input type="date" id="filterStartDate" class="form-control" style="padding: 8px 12px; font-size: 13px;">
+                        </div>
+                        <div class="filter-group">
+                            <label for="filterEndDate">Đến ngày</label>
+                            <input type="date" id="filterEndDate" class="form-control" style="padding: 8px 12px; font-size: 13px;">
+                        </div>
+                        <div class="filter-group">
+                            <label>&nbsp;</label>
+                            <button class="btn btn-secondary btn-sm" id="clearFiltersBtn" style="padding: 8px 16px;">Bỏ lọc</button>
+                        </div>
+                    </div>
+
+                    <!-- mini statistics banner inside filters (Image 3 format) -->
+                    <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
+                        <div class="glass-card" style="padding: 12px; text-align: center; border-radius: 12px;">
+                            <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Tổng buổi</div>
+                            <div style="font-size: 18px; font-weight: 700; color: var(--primary);" id="summary-total-sessions">0</div>
+                        </div>
+                        <div class="glass-card" style="padding: 12px; text-align: center; border-radius: 12px;">
+                            <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Tổng giờ</div>
+                            <div style="font-size: 18px; font-weight: 700; color: var(--primary);" id="summary-total-hours">0</div>
+                        </div>
+                        <div class="glass-card" style="padding: 12px; text-align: center; border-radius: 12px;">
+                            <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Học riêng/chung</div>
+                            <div style="font-size: 18px; font-weight: 700; color: var(--primary);" id="summary-ratio">0/0</div>
+                        </div>
+                        <div class="glass-card" style="padding: 12px; text-align: center; border-radius: 12px;" id="admin-summary-money-card">
+                            <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Tổng tiền</div>
+                            <div style="font-size: 18px; font-weight: 700; color: var(--primary);" id="summary-total-money">0đ</div>
+                        </div>
+                    </div>
+
+                    <!-- Session list content container -->
+                    <div class="sessions-list-wrapper" id="sessionsListContainer">
+                        <!-- Filled dynamically -->
+                    </div>
+                </div>
+
+                <!-- Sub-tab 2: Weekly Attendance Tracker Grid (Image 4 format) -->
+                <div id="tab-weekly" class="tab-content" style="display: none;">
+                    <div class="table-wrapper" style="border-radius: 16px;">
+                        <table class="custom-table" style="min-width: 900px;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 180px;">THỜI GIAN</th>
+                                    <th>CA DẠY / HỌC SINH THAM GIA</th>
+                                    <th style="width: 150px;" class="role-restricted admin-only">HỌC PHÍ</th>
+                                    <th style="width: 100px;">DỰ DẠY (H)</th>
+                                    <th style="width: 100px;">THỰC DẠY (H)</th>
+                                    <th style="width: 130px;">TÌNH TRẠNG</th>
+                                    <th>GHI CHÚ / NỘI DUNG</th>
+                                </tr>
+                            </thead>
+                            <tbody id="weeklyAttendanceTableBody">
+                                <!-- Filled dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SECTION 4: TUITION & PAYMENTS -->
+        <section id="view-tuition" class="view-section">
+            <div class="glass-card" style="padding: 24px;">
+                <div class="evaluation-header" style="margin-bottom: 20px;">
+                    <div>
+                        <h2 style="color: var(--primary); font-weight: 700;"><i class="fa-solid fa-money-check-dollar"></i> Thống Kê Học Phí</h2>
+                        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+                            Theo dõi tổng học phí, trạng thái đã thanh toán hoặc còn nợ của học sinh.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid-form" style="margin-bottom: 25px;">
+                    <div class="glass-card stat-card" style="padding: 20px;">
+                        <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Học phí Đã Thu</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #16a34a; margin-top: 5px;" id="tuition-paid-sum">0đ</div>
+                    </div>
+                    <div class="glass-card stat-card" style="padding: 20px;">
+                        <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Học phí Chưa Thu</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #dc2626; margin-top: 5px;" id="tuition-unpaid-sum">0đ</div>
+                    </div>
+                    <div class="glass-card stat-card" style="padding: 20px;">
+                        <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Tổng cộng học phí</div>
+                        <div style="font-size: 24px; font-weight: 700; color: var(--primary); margin-top: 5px;" id="tuition-total-sum">0đ</div>
+                    </div>
+                </div>
+
+                <div class="table-wrapper" style="border-radius: 16px;">
+                    <table class="custom-table" id="tuitionOverviewTable">
+                        <thead>
+                            <tr>
+                                <th>Học sinh</th>
+                                <th>Lớp/Môn</th>
+                                <th style="text-align: center;">Số buổi đã học</th>
+                                <th style="text-align: center;">Số giờ tích lũy</th>
+                                <th style="text-align: right;" class="role-restricted admin-only">Tổng học phí phát sinh</th>
+                                <th style="text-align: right;" class="role-restricted admin-only">Đã thanh toán</th>
+                                <th style="text-align: right;" class="role-restricted admin-only">Còn nợ</th>
+                                <th style="text-align: center;">Trạng thái</th>
+                                <th style="text-align: center; width: 150px;" class="role-restricted admin-only">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tuitionOverviewTableBody">
+                            <!-- Filled dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 5: STUDENT PROFILE MANAGEMENT -->
+        <section id="view-students" class="view-section">
+            <div class="glass-card" style="padding: 24px;">
+                <div class="evaluation-header" style="margin-bottom: 20px;">
+                    <div>
+                        <h2 style="color: var(--primary); font-weight: 700;"><i class="fa-solid fa-users-gear"></i> Hồ Sơ & Thông Tin Học Sinh</h2>
+                        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+                            Quản lý danh mục học sinh cá nhân, thiết lập mức học phí cơ bản của từng em.
+                        </p>
+                    </div>
+                    <button class="btn btn-primary" id="addNewStudentBtn">
+                        <i class="fa-solid fa-user-plus"></i> Thêm Học Sinh Mới
+                    </button>
+                </div>
+
+                <div class="evaluation-header" style="margin-bottom: 16px; gap: 10px; flex-wrap: wrap;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <label for="studentGradeFilter" style="font-size:13px; font-weight:600; color: var(--text-muted);">
+                            <i class="fa-solid fa-filter"></i> Lọc theo lớp:
+                        </label>
+                        <select id="studentGradeFilter" class="form-select" style="width:auto; min-width:160px;">
+                            <option value="">Tất cả các lớp</option>
+                            <option value="6">Lớp 6</option>
+                            <option value="7">Lớp 7</option>
+                            <option value="8">Lớp 8</option>
+                            <option value="9">Lớp 9</option>
+                            <option value="10">Lớp 10</option>
+                            <option value="11">Lớp 11</option>
+                            <option value="12">Lớp 12</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-wrapper" style="border-radius: 16px;">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px; text-align: center;">ID</th>
+                                <th>Họ và Tên</th>
+                                <th>Lớp học</th>
+                                <th>Môn học</th>
+                                <th class="role-restricted admin-only" style="text-align: right;">Học phí cơ bản / buổi</th>
+                                <th style="text-align: center; width: 180px;">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentsTableBody">
+                            <!-- Filled dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 6: USER MANAGEMENT -->
+        <section id="view-users" class="view-section">
+            <div class="glass-card" style="padding: 24px;">
+                <div class="evaluation-header" style="margin-bottom: 20px; justify-content: space-between; align-items: center; display:flex; gap: 14px;">
+                    <div>
+                        <h2 style="color: var(--primary); font-weight: 700;"><i class="fa-solid fa-user-lock"></i> Quản lý tài khoản</h2>
+                        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Admin chỉ quản lý tài khoản (tạo, sửa, xóa, khóa/mở khóa, gán vai trò). Admin không có quyền truy cập dữ liệu dạy học.</p>
+                    </div>
+                    <button class="btn btn-primary" id="addNewUserBtn">
+                        <i class="fa-solid fa-user-plus"></i> Thêm tài khoản
+                    </button>
+                </div>
+                <div class="table-wrapper" style="border-radius: 16px;">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 90px; text-align: center;">Mã</th>
+                                <th>Họ và tên</th>
+                                <th>Tên đăng nhập</th>
+                                <th>Vai trò</th>
+                                <th>Trợ giảng của</th>
+                                <th style="text-align: center; width: 180px;">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL 1: ADD NEW STUDENT -->
+    <div class="modal-backdrop" id="addStudentModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="modal-title">Thêm Học Sinh Mới</h3>
+                <button class="modal-close" onclick="app.closeModal('addStudentModal')">&times;</button>
+            </div>
+            <form id="addStudentForm">
+                <div class="modal-body">
+                    <div class="grid-form">
+                        <div class="form-group form-group-half">
+                            <label for="studentName">Họ và Tên học sinh <span style="color:red;">*</span></label>
+                            <input type="text" id="studentName" class="form-control" placeholder="Ví dụ: Quỳnh Anh" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="studentClass">Lớp <span style="color:red;">*</span></label>
+                            <input type="text" id="studentClass" class="form-control" placeholder="Ví dụ: Lớp 8" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="studentSubject">Môn học <span style="color:red;">*</span></label>
+                            <input type="text" id="studentSubject" class="form-control" placeholder="Ví dụ: Toán" required>
+                        </div>
+                        <div class="form-group form-group-half">
+                            <label for="studentBasePrice">Đơn giá học phí/buổi (VNĐ) <span style="color:red;">*</span></label>
+                            <input type="number" id="studentBasePrice" class="form-control" value="250000" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="app.closeModal('addStudentModal')">Hủy bỏ</button>
+                    <button type="submit" class="btn btn-primary">Thêm học sinh</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: UPDATE STUDY LOG DETAIL (Homework, Attitude, Comments) -->
+    <div class="modal-backdrop" id="updateLogModal">
+        <div class="modal-container" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="updateLogTitle">Cập Nhật Nhận Xét Buổi Học</h3>
+                <button class="modal-close" onclick="app.closeModal('updateLogModal')">&times;</button>
+            </div>
+            <form id="updateLogForm">
+                <input type="hidden" id="updateLogSessionId">
+                <input type="hidden" id="updateLogStudentId">
+                <div class="modal-body" style="display: flex; flex-direction: column; gap: 15px;">
+                    
+                    <div style="background: var(--primary-soft); border: 1px solid var(--primary-light); border-radius: 12px; padding: 12px;">
+                        <span style="font-weight:600; color: var(--primary);" id="updateLogStudentMeta">Học sinh: Quỳnh Anh</span>
+                        <div style="font-size:12px; color: var(--text-muted); margin-top: 4px;" id="updateLogSessionMeta">Buổi ngày 23/05/2026</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="updateHomework">Bài tập về nhà</label>
+                        <select id="updateHomework" class="form-control">
+                            <option value="Hoàn thành">✅ Hoàn thành</option>
+                            <option value="Chưa hoàn thành">❌ Chưa hoàn thành</option>
+                            <option value="Chưa làm">⚠️ Chưa làm / Chưa nộp</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="updateAttitude">Ý thức học tập</label>
+                        <input type="text" id="updateAttitude" class="form-control" placeholder="Ví dụ: Tập trung, tốt, chưa chăm...">
+                    </div>
+
+                    <div class="form-group" id="generalCommentGroup">
+                        <label for="updateGeneralComment">Nhận xét chung buổi học (Tự động cập nhật cho các học sinh học chung)</label>
+                        <textarea id="updateGeneralComment" class="form-control" placeholder="Viết nhận xét chung của buổi học..." rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="updateIndividualComment">Nhận xét riêng từng học sinh</label>
+                        <textarea id="updateIndividualComment" class="form-control" placeholder="Nhận xét riêng cho học sinh này..." rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="updateNote">Ghi chú</label>
+                        <input type="text" id="updateNote" class="form-control" placeholder="Ghi chú thêm...">
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="app.closeModal('updateLogModal')">Hủy bỏ</button>
+                    <button type="submit" class="btn btn-primary">Cập nhật</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: EDIT SESSION (Admin only) -->
+    <div class="modal-backdrop" id="editSessionModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="modal-title">Sửa Lịch Buổi Học</h3>
+                <button class="modal-close" onclick="app.closeModal('editSessionModal')">&times;</button>
+            </div>
+            <form id="editSessionForm">
+                <input type="hidden" id="editSessionId">
+                <div class="modal-body">
+                    <div class="grid-form">
+                        <div class="form-group">
+                            <label for="editSessionType">Loại buổi học <span style="color:red;">*</span></label>
+                            <select id="editSessionType" class="form-control" required>
+                                <option value="riêng">🌸 Học riêng (1 vs 1)</option>
+                                <option value="chung">👥 Học chung (Dạy nhóm)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group form-group-half">
+                            <label>Học sinh tham gia <span style="color:red;">*</span></label>
+                            <div class="student-check-grid" id="editStudentsCheckboxGrid">
+                                <!-- Filled dynamically -->
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editSessionDate">Ngày học <span style="color:red;">*</span></label>
+                            <input type="date" id="editSessionDate" class="form-control" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editSessionStartTime">Giờ bắt đầu <span style="color:red;">*</span></label>
+                            <input type="time" id="editSessionStartTime" class="form-control" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editSessionEndTime">Giờ kết thúc <span style="color:red;">*</span></label>
+                            <input type="time" id="editSessionEndTime" class="form-control" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editSessionHours">Số giờ học</label>
+                            <input type="number" id="editSessionHours" class="form-control" step="0.1">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editSessionPrice">Đơn giá buổi học (VNĐ)</label>
+                            <input type="number" id="editSessionPrice" class="form-control" step="1000">
+                        </div>
+
+                        <div class="form-group"></div>
+
+                        <div class="form-group form-group-full">
+                            <label for="editSessionContent">Nội dung học / ghi chú buổi học</label>
+                            <textarea id="editSessionContent" class="form-control" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="app.closeModal('editSessionModal')">Hủy bỏ</button>
+                    <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 4: ADD / EDIT USER ACCOUNT (Admin only) -->
+    <div class="modal-backdrop" id="userModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="modal-title" id="userModalTitle">Thêm Tài Khoản Mới</h3>
+                <button class="modal-close" onclick="app.closeModal('userModal')">&times;</button>
+            </div>
+            <form id="addUserForm">
+                <input type="hidden" id="editUserId">
+                <div class="modal-body">
+                    <div class="grid-form">
+                        <div class="form-group form-group-half">
+                            <label for="userName">Họ và tên <span style="color:red;">*</span></label>
+                            <input type="text" id="userName" class="form-control" placeholder="Ví dụ: Nguyễn Văn A" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="userUsername">Tên đăng nhập <span style="color:red;">*</span></label>
+                            <input type="text" id="userUsername" class="form-control" placeholder="username" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="userRole">Vai trò <span style="color:red;">*</span></label>
+                            <select id="userRole" class="form-control" required onchange="app.onUserRoleChange()">
+                                <option value="admin">Quản trị viên (Admin)</option>
+                                <option value="teacher">Giáo viên (Teacher)</option>
+                                <option value="assistant">Trợ giảng (Teaching Assistant)</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="userAssignedTeacherGroup" style="display:none;">
+                            <label for="userAssignedTeacher">Trợ giảng cho giáo viên <span style="color:red;">*</span></label>
+                            <select id="userAssignedTeacher" class="form-control">
+                                <!-- Filled dynamically with role=teacher accounts -->
+                            </select>
+                        </div>
+                        <div class="form-group form-group-half">
+                            <label for="userPassword">Mật khẩu</label>
+                            <input type="password" id="userPassword" class="form-control" placeholder="Bắt buộc khi tạo mới">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="app.closeModal('userModal')">Hủy bỏ</button>
+                    <button type="submit" class="btn btn-primary">Lưu tài khoản</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toastNotification" class="notification">
+        <span id="toastIcon"><i class="fa-solid fa-circle-check"></i></span>
+        <span id="toastMessage">Thông báo thành công!</span>
+    </div>
+
+    <!-- Script execution -->
+    <script src="app.js"></script>
+</body>
+</html>
