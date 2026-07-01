@@ -36,7 +36,7 @@
                 <button type="submit" class="btn btn-primary btn-block">Đăng nhập</button>
                 <div class="login-help">
                     <span>Tài khoản thử:</span>
-                    <strong>admin/admin123</strong>, <strong>teacher/teacher123</strong> hoặc <strong>tro_giang/ta123</strong> (trợ giảng)
+                    <strong>admin</strong>, <strong>teacher</strong> hoặc <strong>tro_giang</strong> (trợ giảng)
                 </div>
             </form>
         </div>
@@ -107,7 +107,27 @@
             <div class="header-actions">
                 <!-- Role Badge Indicator -->
                 <div id="roleBadge" class="role-badge role-badge-admin">👑 Admin</div>
-                
+
+                <!-- Month filter (áp dụng cho Tổng quan / Nhật ký / Lịch dạy / Học phí) -->
+                <div class="student-context-picker" id="monthFilterPicker">
+                    <span><i class="fa-solid fa-calendar-week"></i> Tháng:</span>
+                    <select id="globalMonthFilter" class="student-select">
+                        <option value="">Tất cả</option>
+                        <option value="1">Tháng 1</option>
+                        <option value="2">Tháng 2</option>
+                        <option value="3">Tháng 3</option>
+                        <option value="4">Tháng 4</option>
+                        <option value="5">Tháng 5</option>
+                        <option value="6">Tháng 6</option>
+                        <option value="7">Tháng 7</option>
+                        <option value="8">Tháng 8</option>
+                        <option value="9">Tháng 9</option>
+                        <option value="10">Tháng 10</option>
+                        <option value="11">Tháng 11</option>
+                        <option value="12">Tháng 12</option>
+                    </select>
+                </div>
+
                 <!-- Student picker when applicable -->
                 <div class="student-context-picker" id="studentContextPicker">
                     <span>Đang chọn:</span>
@@ -285,12 +305,13 @@
 
                     <!-- Unit price -->
                     <div class="form-group">
-                        <label for="sessionPrice">Đơn giá buổi học (VNĐ)</label>
+                        <label for="sessionPrice" id="sessionPriceLabel">Đơn giá buổi học (VNĐ/học sinh)</label>
                         <input type="number" id="sessionPrice" class="form-control" step="1000" value="250000" placeholder="Ví dụ: 250000">
                     </div>
 
                     <div class="form-group">
-                        <!-- Just spacing -->
+                        <label>Tổng thu buổi học</label>
+                        <div id="sessionTotalPriceDisplay" class="form-control" style="background:var(--primary-soft); border:none; font-weight:700; color:var(--primary); display:flex; align-items:center;">0 ₫</div>
                     </div>
 
                     <!-- Note / Course contents -->
@@ -525,14 +546,15 @@
 
     </main>
 
-    <!-- MODAL 1: ADD NEW STUDENT -->
+    <!-- MODAL 1: ADD / EDIT STUDENT (dùng chung 1 modal, editStudentId rỗng = thêm mới) -->
     <div class="modal-backdrop" id="addStudentModal">
         <div class="modal-container">
             <div class="modal-header">
-                <h3 class="modal-title">Thêm Học Sinh Mới</h3>
+                <h3 class="modal-title" id="studentModalTitle">Thêm Học Sinh Mới</h3>
                 <button class="modal-close" onclick="app.closeModal('addStudentModal')">&times;</button>
             </div>
             <form id="addStudentForm">
+                <input type="hidden" id="editStudentId" value="">
                 <div class="modal-body">
                     <div class="grid-form">
                         <div class="form-group form-group-half">
@@ -540,8 +562,16 @@
                             <input type="text" id="studentName" class="form-control" placeholder="Ví dụ: Quỳnh Anh" required>
                         </div>
                         <div class="form-group">
-                            <label for="studentClass">Lớp <span style="color:red;">*</span></label>
-                            <input type="text" id="studentClass" class="form-control" placeholder="Ví dụ: Lớp 8" required>
+                            <label for="studentGrade">Khối lớp <span style="color:red;">*</span></label>
+                            <select id="studentGrade" class="form-control" required>
+                                <option value="6">Lớp 6</option>
+                                <option value="7">Lớp 7</option>
+                                <option value="8" selected>Lớp 8</option>
+                                <option value="9">Lớp 9</option>
+                                <option value="10">Lớp 10</option>
+                                <option value="11">Lớp 11</option>
+                                <option value="12">Lớp 12</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label for="studentSubject">Môn học <span style="color:red;">*</span></label>
@@ -549,13 +579,13 @@
                         </div>
                         <div class="form-group form-group-half">
                             <label for="studentBasePrice">Đơn giá học phí/buổi (VNĐ) <span style="color:red;">*</span></label>
-                            <input type="number" id="studentBasePrice" class="form-control" value="250000" required>
+                            <input type="number" id="studentBasePrice" class="form-control" value="250000" step="1000" required>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="app.closeModal('addStudentModal')">Hủy bỏ</button>
-                    <button type="submit" class="btn btn-primary">Thêm học sinh</button>
+                    <button type="submit" class="btn btn-primary" id="saveStudentBtn">Thêm học sinh</button>
                 </div>
             </form>
         </div>
@@ -663,11 +693,14 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="editSessionPrice">Đơn giá buổi học (VNĐ)</label>
+                            <label for="editSessionPrice" id="editSessionPriceLabel">Đơn giá buổi học (VNĐ/học sinh)</label>
                             <input type="number" id="editSessionPrice" class="form-control" step="1000">
                         </div>
 
-                        <div class="form-group"></div>
+                        <div class="form-group">
+                            <label>Tổng thu buổi học</label>
+                            <div id="editSessionTotalPriceDisplay" class="form-control" style="background:var(--primary-soft); border:none; font-weight:700; color:var(--primary); display:flex; align-items:center;">0 ₫</div>
+                        </div>
 
                         <div class="form-group form-group-full">
                             <label for="editSessionContent">Nội dung học / ghi chú buổi học</label>

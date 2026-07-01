@@ -1,5 +1,12 @@
 /**
- * server.js — NttClass Backend (FIXED v4 — Role refactor)
+ * server.js — NttClass Backend (FIXED v5 — PostgreSQL/Aiven)
+ * =========================================
+ * Đã chuyển từ Microsoft SQL Server (mssql) sang PostgreSQL (Aiven, gói Free)
+ * để deploy online được (Render không hỗ trợ kết nối tới SQL Server chạy
+ * local trên máy bạn — MSI\MINH). Toàn bộ các câu query bên dưới GIỮ NGUYÊN
+ * cú pháp "@tenBien" và ".input(...)" như cũ; một shim nhỏ ở phần
+ * DATABASE CONNECTION sẽ tự động dịch sang PostgreSQL, nên bạn không cần
+ * sửa tay từng route.
  * =========================================
  * Phân quyền (đã chuẩn hóa lại theo yêu cầu):
  *  - admin     : CHỈ quản lý tài khoản người dùng (api/users — tạo/sửa/xóa/
@@ -21,13 +28,12 @@
  * sinh viên quy mô nhỏ — ưu tiên đơn giản, dễ hiểu hơn là bảo mật doanh nghiệp.
  */
 
-// Lưu ý: Không dùng gói "dotenv" vì project không có file .env và để tránh
-// phụ thuộc thêm package chưa được cài đặt (gây lỗi MODULE_NOT_FOUND khi
-// chạy server). Cấu hình DB lấy trực tiếp từ biến môi trường hệ thống nếu
-// có, nếu không sẽ dùng giá trị mặc định bên dưới.
+// Đọc file .env khi chạy ở máy local (trên Render, biến môi trường được Render
+// cấu hình sẵn trong dashboard nên dòng này không ảnh hưởng gì).
+require('dotenv').config();
 
 const express = require('express');
-const sql     = require('mssql');
+const { Pool } = require('pg');
 const cors    = require('cors');
 const path    = require('path');
 
@@ -55,28 +61,100 @@ app.get('/', (req, res) => {
 });
 
 // ==========================================
-// DATABASE CONNECTION (credentials từ .env)
+// DATABASE CONNECTION (PostgreSQL — Aiven, credentials từ .env)
 // ==========================================
-const dbConfig = {
-    user:     process.env.DB_USER     || 'sa',
-    password: process.env.DB_PASSWORD || '123',
-    server:   process.env.DB_SERVER   || 'MSI\\MINH',
-    database: process.env.DB_NAME     || 'PinkyClassDB',
-    options: {
-        encrypt:                 false,
-        trustServerCertificate:  true,
+// DATABASE_URL có dạng: postgres://user:password@host:port/db?sslmode=require
+if (!process.env.DATABASE_URL) {
+    console.error('❌ Thiếu biến môi trường DATABASE_URL. Hãy tạo file .env (chạy local) hoặc khai báo trong Render (khi deploy).');
+    process.exit(1);
+}
+
+const pgPool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false } // bắt buộc với Aiven (dùng sslmode=require)
+});
+
+// Bảng ánh xạ tên cột (PostgreSQL trả về chữ thường) -> đúng chữ hoa/thường
+// như code bên dưới đang dùng (Id, TeacherId, SessionDate...), để KHÔNG phải
+// sửa lại hàng trăm chỗ đang truy cập row.TeacherId, user.Password, v.v.
+const COLUMN_CASE_MAP = {
+    id: 'Id', username: 'Username', password: 'Password', name: 'Name',
+    role: 'Role', active: 'Active', assignedteacherid: 'AssignedTeacherId',
+    assignedteachername: 'AssignedTeacherName', teacherid: 'TeacherId',
+    class: 'Class', gradelevel: 'GradeLevel', subject: 'Subject', baseprice: 'BasePrice',
+    sessiondate: 'SessionDate', starttime: 'StartTime', endtime: 'EndTime',
+    sessiontype: 'SessionType', price: 'Price', duration: 'Duration',
+    content: 'Content', generalcomment: 'GeneralComment', completed: 'Completed',
+    sessionid: 'SessionId', studentid: 'StudentId', homework: 'Homework',
+    attitude: 'Attitude', individualcomment: 'IndividualComment', note: 'Note'
+};
+
+function restoreColumnCase(rows) {
+    return rows.map(row => {
+        const fixed = {};
+        for (const key in row) {
+            fixed[COLUMN_CASE_MAP[key] || key] = row[key];
+        }
+        return fixed;
+    });
+}
+
+// Shim nhỏ: mô phỏng lại đúng API .input(name, type, value).query('... @name ...')
+// của thư viện "mssql" cũ, nhưng chạy trên PostgreSQL thật sự bên dưới.
+// => Toàn bộ các route ở dưới file KHÔNG cần sửa lại cú pháp query.
+const sql = {
+    // Các "type" chỉ là nhãn giữ chỗ, PostgreSQL không cần khai báo kiểu ở đây.
+    VarChar: 'VarChar', NVarChar: 'NVarChar', Int: 'Int', Bit: 'Bit', Date: 'Date',
+    Decimal: () => 'Decimal',
+
+    Request: class {
+        constructor(clientLike) {
+            // clientLike có thể là: pgPool (query thường) hoặc PgTransaction (đang trong transaction)
+            this.client = (clientLike && clientLike.client) ? clientLike.client : pgPool;
+            this.params = {};
+        }
+        input(name, typeOrValue, maybeValue) {
+            this.params[name] = (maybeValue !== undefined) ? maybeValue : typeOrValue;
+            return this;
+        }
+        async query(text) {
+            const values = [];
+            const seen = {};
+            let converted = text.replace(/@(\w+)/g, (match, name) => {
+                if (seen[name] !== undefined) return `$${seen[name]}`;
+                values.push(this.params[name]);
+                seen[name] = values.length;
+                return `$${values.length}`;
+            });
+            const result = await this.client.query(converted, values);
+            return { recordset: restoreColumnCase(result.rows) };
+        }
+    },
+
+    Transaction: class {
+        constructor() { this.client = null; }
+        async begin() {
+            this.client = await pgPool.connect();
+            await this.client.query('BEGIN');
+        }
+        async commit() {
+            await this.client.query('COMMIT');
+            this.client.release();
+        }
+        async rollback() {
+            try { await this.client.query('ROLLBACK'); } finally { this.client.release(); }
+        }
     }
 };
 
-let poolPromise = new sql.ConnectionPool(dbConfig)
-    .connect()
-    .then(pool => {
-        console.log('✅ Đã kết nối thành công với Microsoft SQL Server!');
-        return pool;
+let poolPromise = pgPool.query('SELECT 1')
+    .then(() => {
+        console.log('✅ Đã kết nối thành công với PostgreSQL (Aiven)!');
+        return { request: () => new sql.Request(pgPool) };
     })
     .catch(err => {
-        console.error('❌ Lỗi kết nối SQL Server:', err.message);
-        console.log('👉 Kiểm tra DB_USER, DB_PASSWORD, DB_SERVER trong file .env');
+        console.error('❌ Lỗi kết nối PostgreSQL:', err.message);
+        console.log('👉 Kiểm tra biến DATABASE_URL trong file .env (hoặc trên Render)');
         process.exit(1); // Dừng server nếu không kết nối được DB
     });
 
@@ -160,8 +238,8 @@ app.post('/api/login', async (req, res) => {
             .input('username', sql.NVarChar, username.trim())
             .query(`SELECT u.Id, u.Username, u.Password, u.Name, u.Role, u.Active, u.AssignedTeacherId,
                            t.Name AS AssignedTeacherName
-                    FROM dbo.Users u
-                    LEFT JOIN dbo.Users t ON t.Id = u.AssignedTeacherId
+                    FROM Users u
+                    LEFT JOIN Users t ON t.Id = u.AssignedTeacherId
                     WHERE u.Username = @username`);
 
         if (result.recordset.length === 0) {
@@ -211,7 +289,7 @@ app.get('/api/users', requireRole('admin'), async (req, res) => {
     try {
         const pool   = await poolPromise;
         const result = await pool.request()
-            .query('SELECT Id, Username, Name, Role, Active, AssignedTeacherId FROM dbo.Users ORDER BY Name');
+            .query('SELECT Id, Username, Name, Role, Active, AssignedTeacherId FROM Users ORDER BY Name');
         res.json(result.recordset);
     } catch (err) {
         console.error('[GET /api/users]', err);
@@ -238,7 +316,7 @@ app.post('/api/users', requireRole('admin'), async (req, res) => {
         // Kiểm tra username đã tồn tại chưa
         const existing = await pool.request()
             .input('username', sql.NVarChar, username.trim())
-            .query('SELECT Id FROM dbo.Users WHERE Username = @username');
+            .query('SELECT Id FROM Users WHERE Username = @username');
         if (existing.recordset.length > 0) {
             return res.status(409).json({ error: 'Tên đăng nhập đã tồn tại.' });
         }
@@ -247,7 +325,7 @@ app.post('/api/users', requireRole('admin'), async (req, res) => {
         if (role === 'assistant') {
             const teacherCheck = await pool.request()
                 .input('tid', sql.VarChar, assignedTeacherId)
-                .query(`SELECT Id FROM dbo.Users WHERE Id = @tid AND Role = 'teacher'`);
+                .query(`SELECT Id FROM Users WHERE Id = @tid AND Role = 'teacher'`);
             if (teacherCheck.recordset.length === 0) {
                 return res.status(400).json({ error: 'assignedTeacherId không hợp lệ — phải là tài khoản có vai trò giáo viên (teacher).' });
             }
@@ -262,7 +340,7 @@ app.post('/api/users', requireRole('admin'), async (req, res) => {
             .input('name',     sql.NVarChar, name.trim())
             .input('role',     sql.NVarChar, role)
             .input('assignedTeacherId', sql.VarChar, role === 'assistant' ? assignedTeacherId : null)
-            .query(`INSERT INTO dbo.Users (Id, Username, Password, Name, Role, Active, AssignedTeacherId)
+            .query(`INSERT INTO Users (Id, Username, Password, Name, Role, Active, AssignedTeacherId)
                     VALUES (@id, @username, @password, @name, @role, 1, @assignedTeacherId)`);
 
         res.status(201).json({ message: 'Tạo tài khoản thành công.', id: newId });
@@ -290,7 +368,7 @@ app.put('/api/users/:id', requireRole('admin'), async (req, res) => {
         if (role === 'assistant' && assignedTeacherId) {
             const teacherCheck = await pool.request()
                 .input('tid', sql.VarChar, assignedTeacherId)
-                .query(`SELECT Id FROM dbo.Users WHERE Id = @tid AND Role = 'teacher'`);
+                .query(`SELECT Id FROM Users WHERE Id = @tid AND Role = 'teacher'`);
             if (teacherCheck.recordset.length === 0) {
                 return res.status(400).json({ error: 'assignedTeacherId không hợp lệ — phải là tài khoản có vai trò giáo viên (teacher).' });
             }
@@ -316,7 +394,7 @@ app.put('/api/users/:id', requireRole('admin'), async (req, res) => {
 
         if (sets.length === 0) return res.status(400).json({ error: 'Không có trường nào để cập nhật.' });
 
-        await request.query(`UPDATE dbo.Users SET ${sets.join(', ')} WHERE Id = @id`);
+        await request.query(`UPDATE Users SET ${sets.join(', ')} WHERE Id = @id`);
         res.json({ message: 'Cập nhật tài khoản thành công.' });
     } catch (err) {
         console.error('[PUT /api/users/:id]', err);
@@ -331,7 +409,7 @@ app.delete('/api/users/:id', requireRole('admin'), async (req, res) => {
         const pool = await poolPromise;
         await pool.request()
             .input('id', sql.VarChar, id)
-            .query('DELETE FROM dbo.Users WHERE Id = @id');
+            .query('DELETE FROM Users WHERE Id = @id');
         res.json({ message: 'Đã xóa tài khoản.' });
     } catch (err) {
         console.error('[DELETE /api/users/:id]', err);
@@ -345,21 +423,21 @@ app.delete('/api/users/:id', requireRole('admin'), async (req, res) => {
 
 app.get('/api/students', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     try {
-        const { grade } = req.query; // ví dụ ?grade=8 -> lọc Class chứa 'Lớp 8'
+        const { grade } = req.query; // ví dụ ?grade=8 -> lọc theo khối lớp 8
         console.log('[GET /api/students] teacherId =', req.effectiveTeacherId, 'grade =', grade || '(tất cả)');
 
         const pool    = await poolPromise;
         const request = pool.request().input('teacherId', sql.VarChar, req.effectiveTeacherId);
 
-        let query = 'SELECT * FROM dbo.Students WHERE TeacherId = @teacherId';
+        let query = 'SELECT * FROM Students WHERE TeacherId = @teacherId';
         if (grade) {
-            // Class được lưu dạng "Lớp 8", "Lớp 12"... -> match đúng số lớp, tránh
-            // "Lớp 1" khớp nhầm "Lớp 10/11/12"
+            // Ưu tiên lọc theo cột GradeLevel (số nguyên, chính xác tuyệt đối).
+            // Với các dòng dữ liệu cũ chưa có GradeLevel, fallback về so khớp chuỗi Class.
+            request.input('grade', sql.Int, parseInt(grade));
             request.input('gradeLike', sql.NVarChar, `%Lớp ${grade}%`);
-            query += " AND (Class = N'Lớp ' + @grade OR Class LIKE @gradeLike)";
-            request.input('grade', sql.NVarChar, String(grade));
+            query += " AND (GradeLevel = @grade OR (GradeLevel IS NULL AND Class LIKE @gradeLike))";
         }
-        query += ' ORDER BY Name';
+        query += ' ORDER BY GradeLevel NULLS LAST, Name';
 
         const result = await request.query(query);
         console.log('[GET /api/students] trả về', result.recordset.length, 'học sinh');
@@ -371,7 +449,7 @@ app.get('/api/students', requireRole('teacher', 'assistant'), requireTeacherCont
 });
 
 app.post('/api/students', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
-    const { id, name, class: sClass, subject, basePrice } = req.body || {};
+    const { id, name, class: sClass, subject, basePrice, gradeLevel } = req.body || {};
     console.log('[POST /api/students] body nhận được:', req.body);
     if (!id || !name || !sClass || !subject) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
@@ -380,13 +458,14 @@ app.post('/api/students', requireRole('teacher', 'assistant'), requireTeacherCon
     try {
         const pool = await poolPromise;
         await pool.request()
-            .input('id',        sql.VarChar,  id)
-            .input('name',      sql.NVarChar, name)
-            .input('class',     sql.NVarChar, sClass)
-            .input('subject',   sql.NVarChar, subject)
-            .input('basePrice', sql.Int,      parseInt(basePrice) || 250000)
-            .input('teacherId', sql.VarChar,  req.effectiveTeacherId)
-            .query('INSERT INTO dbo.Students (Id, Name, Class, Subject, BasePrice, TeacherId) VALUES (@id, @name, @class, @subject, @basePrice, @teacherId)');
+            .input('id',         sql.VarChar,  id)
+            .input('name',       sql.NVarChar, name)
+            .input('class',      sql.NVarChar, sClass)
+            .input('gradeLevel', sql.Int,      gradeLevel ? parseInt(gradeLevel) : null)
+            .input('subject',    sql.NVarChar, subject)
+            .input('basePrice',  sql.Int,      parseInt(basePrice) || 250000)
+            .input('teacherId',  sql.VarChar,  req.effectiveTeacherId)
+            .query('INSERT INTO Students (Id, Name, Class, GradeLevel, Subject, BasePrice, TeacherId) VALUES (@id, @name, @class, @gradeLevel, @subject, @basePrice, @teacherId)');
 
         res.status(201).json({ message: 'Đã thêm học sinh mới thành công.' });
     } catch (err) {
@@ -398,7 +477,7 @@ app.post('/api/students', requireRole('teacher', 'assistant'), requireTeacherCon
 // PUT cập nhật học sinh — FIX: thay vì delete+post hack ở frontend
 app.put('/api/students/:id', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     const { id } = req.params;
-    const { name, class: sClass, subject, basePrice } = req.body || {};
+    const { name, class: sClass, subject, basePrice, gradeLevel } = req.body || {};
     if (!name || !sClass || !subject) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
     }
@@ -409,7 +488,7 @@ app.put('/api/students/:id', requireRole('teacher', 'assistant'), requireTeacher
         // Đảm bảo học sinh thuộc đúng giáo viên hiệu lực của người gọi (chặn truy cập chéo)
         const owner = await pool.request()
             .input('id', sql.VarChar, id)
-            .query('SELECT TeacherId FROM dbo.Students WHERE Id = @id');
+            .query('SELECT TeacherId FROM Students WHERE Id = @id');
         if (owner.recordset.length === 0) {
             return res.status(404).json({ error: 'Không tìm thấy học sinh.' });
         }
@@ -418,13 +497,14 @@ app.put('/api/students/:id', requireRole('teacher', 'assistant'), requireTeacher
         }
 
         await pool.request()
-            .input('id',        sql.VarChar,  id)
-            .input('name',      sql.NVarChar, name)
-            .input('class',     sql.NVarChar, sClass)
-            .input('subject',   sql.NVarChar, subject)
-            .input('basePrice', sql.Int,      parseInt(basePrice) || 250000)
-            .query(`UPDATE dbo.Students
-                    SET Name = @name, Class = @class, Subject = @subject, BasePrice = @basePrice
+            .input('id',         sql.VarChar,  id)
+            .input('name',       sql.NVarChar, name)
+            .input('class',      sql.NVarChar, sClass)
+            .input('gradeLevel', sql.Int,      gradeLevel ? parseInt(gradeLevel) : null)
+            .input('subject',    sql.NVarChar, subject)
+            .input('basePrice',  sql.Int,      parseInt(basePrice) || 250000)
+            .query(`UPDATE Students
+                    SET Name = @name, Class = @class, GradeLevel = @gradeLevel, Subject = @subject, BasePrice = @basePrice
                     WHERE Id = @id`);
 
         res.json({ message: 'Đã cập nhật thông tin học sinh.' });
@@ -440,7 +520,7 @@ app.delete('/api/students/:id', requireRole('teacher'), requireTeacherContext, a
         const pool = await poolPromise;
         const owner = await pool.request()
             .input('id', sql.VarChar, id)
-            .query('SELECT TeacherId FROM dbo.Students WHERE Id = @id');
+            .query('SELECT TeacherId FROM Students WHERE Id = @id');
         if (owner.recordset.length === 0) {
             return res.status(404).json({ error: 'Không tìm thấy học sinh.' });
         }
@@ -449,7 +529,7 @@ app.delete('/api/students/:id', requireRole('teacher'), requireTeacherContext, a
         }
         await pool.request()
             .input('id', sql.VarChar, id)
-            .query('DELETE FROM dbo.Students WHERE Id = @id');
+            .query('DELETE FROM Students WHERE Id = @id');
         res.json({ message: 'Đã xóa học sinh thành công.' });
     } catch (err) {
         console.error('[DELETE /api/students/:id]', err);
@@ -471,8 +551,8 @@ app.get('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCont
                 s.Id, s.SessionDate, s.StartTime, s.EndTime, s.SessionType,
                 s.Price, s.Duration, s.Content, s.GeneralComment, s.Completed,
                 sd.StudentId, sd.Homework, sd.Attitude, sd.IndividualComment, sd.Note
-            FROM dbo.Sessions s
-            LEFT JOIN dbo.SessionDetails sd ON s.Id = sd.SessionId
+            FROM Sessions s
+            LEFT JOIN SessionDetails sd ON s.Id = sd.SessionId
             WHERE s.TeacherId = @teacherId
             ORDER BY s.SessionDate DESC
         `);
@@ -535,7 +615,7 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
         // Chặn việc ghi buổi học cho học sinh không thuộc giáo viên hiệu lực của người gọi
         const ownershipCheck = await pool.request()
             .input('teacherId', sql.VarChar, req.effectiveTeacherId)
-            .query('SELECT Id FROM dbo.Students WHERE TeacherId = @teacherId');
+            .query('SELECT Id FROM Students WHERE TeacherId = @teacherId');
         const ownedIds = new Set(ownershipCheck.recordset.map(r => r.Id));
         if (studentIds.some(sid => !ownedIds.has(sid))) {
             return res.status(403).json({ error: 'Một hoặc nhiều học sinh không thuộc quyền quản lý của bạn.' });
@@ -556,7 +636,7 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
             .input('content',        sql.NVarChar,      content        || '')
             .input('generalComment', sql.NVarChar,      generalComment || '')
             .input('completed',      sql.Bit,           completed ? 1 : 0)
-            .query(`INSERT INTO dbo.Sessions (Id, SessionDate, StartTime, EndTime, SessionType, Price, Duration, Content, GeneralComment, Completed, TeacherId)
+            .query(`INSERT INTO Sessions (Id, SessionDate, StartTime, EndTime, SessionType, Price, Duration, Content, GeneralComment, Completed, TeacherId)
                     VALUES (@id, @date, @startTime, @endTime, @type, @price, @duration, @content, @generalComment, @completed, @teacherId)`);
 
         for (const stId of studentIds) {
@@ -568,7 +648,7 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
                 .input('attitude',         sql.NVarChar, detail.attitude         || 'Tốt')
                 .input('individualComment',sql.NVarChar, detail.individualComment|| '')
                 .input('note',             sql.NVarChar, detail.note             || '')
-                .query(`INSERT INTO dbo.SessionDetails (SessionId, StudentId, Homework, Attitude, IndividualComment, Note)
+                .query(`INSERT INTO SessionDetails (SessionId, StudentId, Homework, Attitude, IndividualComment, Note)
                         VALUES (@sessionId, @studentId, @homework, @attitude, @individualComment, @note)`);
         }
 
@@ -596,7 +676,7 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
 
         const owner = await pool.request()
             .input('id', sql.VarChar, id)
-            .query('SELECT TeacherId FROM dbo.Sessions WHERE Id = @id');
+            .query('SELECT TeacherId FROM Sessions WHERE Id = @id');
         if (owner.recordset.length === 0) {
             return res.status(404).json({ error: 'Không tìm thấy buổi học.' });
         }
@@ -618,7 +698,7 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
             .input('content',        sql.NVarChar,      content        || '')
             .input('generalComment', sql.NVarChar,      generalComment || '')
             .input('completed',      sql.Bit,           completed ? 1 : 0)
-            .query(`UPDATE dbo.Sessions
+            .query(`UPDATE Sessions
                     SET SessionDate = @date, StartTime = @startTime, EndTime = @endTime,
                         SessionType = @type, Price = @price, Duration = @duration,
                         Content = @content, GeneralComment = @generalComment, Completed = @completed
@@ -626,7 +706,7 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
 
         await new sql.Request(transaction)
             .input('sessionId', sql.VarChar, id)
-            .query('DELETE FROM dbo.SessionDetails WHERE SessionId = @sessionId');
+            .query('DELETE FROM SessionDetails WHERE SessionId = @sessionId');
 
         for (const stId of studentIds) {
             const detail = (studentDetails && studentDetails[stId]) || { homework: 'Chưa làm', attitude: 'Tốt', individualComment: '', note: '' };
@@ -637,7 +717,7 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
                 .input('attitude',         sql.NVarChar, detail.attitude          || 'Tốt')
                 .input('individualComment',sql.NVarChar, detail.individualComment || '')
                 .input('note',             sql.NVarChar, detail.note              || '')
-                .query(`INSERT INTO dbo.SessionDetails (SessionId, StudentId, Homework, Attitude, IndividualComment, Note)
+                .query(`INSERT INTO SessionDetails (SessionId, StudentId, Homework, Attitude, IndividualComment, Note)
                         VALUES (@sessionId, @studentId, @homework, @attitude, @individualComment, @note)`);
         }
 
@@ -656,7 +736,7 @@ app.delete('/api/sessions/:id', requireRole('teacher'), requireTeacherContext, a
         const pool = await poolPromise;
         const owner = await pool.request()
             .input('id', sql.VarChar, id)
-            .query('SELECT TeacherId FROM dbo.Sessions WHERE Id = @id');
+            .query('SELECT TeacherId FROM Sessions WHERE Id = @id');
         if (owner.recordset.length === 0) {
             return res.status(404).json({ error: 'Không tìm thấy buổi học.' });
         }
@@ -665,7 +745,7 @@ app.delete('/api/sessions/:id', requireRole('teacher'), requireTeacherContext, a
         }
         await pool.request()
             .input('id', sql.VarChar, id)
-            .query('DELETE FROM dbo.Sessions WHERE Id = @id');
+            .query('DELETE FROM Sessions WHERE Id = @id');
         res.json({ message: 'Đã xóa buổi học thành công!' });
     } catch (err) {
         console.error('[DELETE /api/sessions/:id]', err);
@@ -691,7 +771,7 @@ app.put('/api/session-details/:sessionId/:studentId', requireRole('teacher', 'as
 
         const owner = await pool.request()
             .input('id', sql.VarChar, sessionId)
-            .query('SELECT TeacherId FROM dbo.Sessions WHERE Id = @id');
+            .query('SELECT TeacherId FROM Sessions WHERE Id = @id');
         if (owner.recordset.length === 0) {
             return res.status(404).json({ error: 'Không tìm thấy buổi học.' });
         }
@@ -709,7 +789,7 @@ app.put('/api/session-details/:sessionId/:studentId', requireRole('teacher', 'as
             .input('attitude',         sql.NVarChar, attitude         || 'Tốt')
             .input('individualComment',sql.NVarChar, individualComment|| '')
             .input('note',             sql.NVarChar, note             || '')
-            .query(`UPDATE dbo.SessionDetails
+            .query(`UPDATE SessionDetails
                     SET Homework = @homework, Attitude = @attitude,
                         IndividualComment = @individualComment, Note = @note
                     WHERE SessionId = @sessionId AND StudentId = @studentId`);
@@ -718,7 +798,7 @@ app.put('/api/session-details/:sessionId/:studentId', requireRole('teacher', 'as
             await new sql.Request(transaction)
                 .input('sessionId',     sql.VarChar,  sessionId)
                 .input('generalComment',sql.NVarChar, generalComment)
-                .query(`UPDATE dbo.Sessions SET GeneralComment = @generalComment WHERE Id = @sessionId`);
+                .query(`UPDATE Sessions SET GeneralComment = @generalComment WHERE Id = @sessionId`);
         }
 
         await transaction.commit();
@@ -737,7 +817,7 @@ app.put('/api/students/:studentId/pay-all', requireRole('teacher'), requireTeach
         const pool = await poolPromise;
         const owner = await pool.request()
             .input('id', sql.VarChar, studentId)
-            .query('SELECT TeacherId FROM dbo.Students WHERE Id = @id');
+            .query('SELECT TeacherId FROM Students WHERE Id = @id');
         if (owner.recordset.length === 0) {
             return res.status(404).json({ error: 'Không tìm thấy học sinh.' });
         }
@@ -746,9 +826,9 @@ app.put('/api/students/:studentId/pay-all', requireRole('teacher'), requireTeach
         }
         await pool.request()
             .input('studentId', sql.VarChar, studentId)
-            .query(`UPDATE dbo.Sessions
+            .query(`UPDATE Sessions
                     SET Completed = 1
-                    WHERE Id IN (SELECT SessionId FROM dbo.SessionDetails WHERE StudentId = @studentId)
+                    WHERE Id IN (SELECT SessionId FROM SessionDetails WHERE StudentId = @studentId)
                       AND Completed = 0`);
         res.json({ message: 'Đã cập nhật trạng thái thanh toán học phí thành công!' });
     } catch (err) {

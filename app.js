@@ -1,6 +1,14 @@
 // PinkyClass Student Management System
 // JavaScript logic with localStorage and role-based views
 
+// Địa chỉ gốc của Backend API. Để trống ('') vì file này được chính server.js
+// (Express) phục vụ tĩnh (static) cùng một nguồn (same-origin) — cả lúc chạy
+// local (http://localhost:3000) lẫn sau khi deploy lên Render (một Web
+// Service duy nhất chứa cả frontend + backend). Nếu sau này bạn tách frontend
+// ra deploy riêng (ví dụ Vercel), chỉ cần đổi dòng này thành domain Render,
+// ví dụ: 'https://nttclass-backend.onrender.com'.
+const API_BASE_URL = '';
+
 const MOCK_STUDENTS = [];
 const MOCK_SESSIONS = [];
 
@@ -12,6 +20,7 @@ class PinkyClassApp {
         this.currentUser = null;
         this.currentRole = null; // admin or teacher
         this.currentStudentId = null; // Active student filter
+        this.currentMonthFilter = ''; // '' = tất cả các tháng, '1'..'12' = lọc theo tháng
 
         this.init();
     }
@@ -67,14 +76,36 @@ class PinkyClassApp {
     // từ API thành đúng cấu trúc app cần — thiếu bước này là nguyên nhân khiến
     // giao diện hiển thị "undefined" ở khắp nơi dù DB đã có dữ liệu.
     normalizeStudent(s) {
+        // GradeLevel là cột mới (số nguyên 6-12). Với dữ liệu cũ chưa có cột này,
+        // suy ra tạm từ chuỗi Class (ví dụ "Lớp 8" -> 8) để không vỡ giao diện.
+        let grade = s.GradeLevel;
+        if (grade === undefined || grade === null || grade === '') {
+            const m = String(s.Class || '').match(/\d+/);
+            grade = m ? parseInt(m[0]) : null;
+        } else {
+            grade = parseInt(grade);
+        }
         return {
             id: s.Id,
             name: s.Name,
             class: s.Class,
+            gradeLevel: grade,
             subject: s.Subject,
             basePrice: s.BasePrice,
             teacherId: s.TeacherId
         };
+    }
+
+    // Trả về danh sách buổi học đã áp dụng bộ lọc "Tháng" toàn cục (dùng chung
+    // cho Tổng quan / Nhật ký / Lịch dạy / Học phí để đồng bộ số liệu).
+    filterByMonth(sessions) {
+        if (!this.currentMonthFilter) return sessions;
+        const month = parseInt(this.currentMonthFilter);
+        return (sessions || []).filter(s => {
+            if (!s.date) return false;
+            const parts = String(s.date).split('-'); // yyyy-mm-dd
+            return parts.length >= 2 && parseInt(parts[1]) === month;
+        });
     }
 
     // API /api/sessions trả về 1 dòng cho MỖI (buổi học, học sinh) do LEFT JOIN
@@ -115,7 +146,7 @@ class PinkyClassApp {
 
     async loadData() {
         try {
-            const resStud = await this.authFetch('http://localhost:3000/api/students');
+            const resStud = await this.authFetch(`${API_BASE_URL}/api/students`);
             if (!resStud.ok) {
                 const errBody = await resStud.json().catch(() => ({}));
                 throw new Error(`GET /api/students -> ${resStud.status}: ${errBody.error || 'API error'}`);
@@ -124,7 +155,7 @@ class PinkyClassApp {
             console.log('[loadData] /api/students trả về', rawStudents.length, 'học sinh');
             this.students = rawStudents.map(s => this.normalizeStudent(s));
 
-            const resSess = await this.authFetch('http://localhost:3000/api/sessions');
+            const resSess = await this.authFetch(`${API_BASE_URL}/api/sessions`);
             if (!resSess.ok) {
                 const errBody = await resSess.json().catch(() => ({}));
                 throw new Error(`GET /api/sessions -> ${resSess.status}: ${errBody.error || 'API error'}`);
@@ -168,6 +199,15 @@ class PinkyClassApp {
         const gradeFilterEl = document.getElementById('studentGradeFilter');
         if (gradeFilterEl) {
             gradeFilterEl.addEventListener('change', () => this.renderStudentList());
+        }
+
+        // Lọc toàn hệ thống theo tháng (Tổng quan / Nhật ký / Lịch dạy / Học phí)
+        const monthFilterEl = document.getElementById('globalMonthFilter');
+        if (monthFilterEl) {
+            monthFilterEl.addEventListener('change', (e) => {
+                this.currentMonthFilter = e.target.value;
+                this.updateAllViews();
+            });
         }
 
         // Sidebar navigation
@@ -303,21 +343,18 @@ class PinkyClassApp {
 
         // Student Manager Add Student Button
         document.getElementById('addNewStudentBtn').addEventListener('click', () => {
-            this.openModal('addStudentModal');
+            this.openAddStudentModal();
         });
 
-        // Session Type selection changes unit prices or selections
-        document.getElementById('sessionType').addEventListener('change', (e) => {
-            const isGroup = e.target.value === 'chung';
-            const priceInput = document.getElementById('sessionPrice');
-            if (isGroup) {
-                // Average group price or base
-                priceInput.value = 250000;
-            } else {
-                // If single student selected, set their base price
-                this.updateFormPriceFromSelectedStudent();
-            }
+        // Session Type selection (riêng/chung) thay đổi cách chọn học sinh + cách tính giá
+        document.getElementById('sessionType').addEventListener('change', () => {
+            this.applySessionTypeRules('session');
         });
+        document.getElementById('editSessionType').addEventListener('change', () => {
+            this.applySessionTypeRules('editSession');
+        });
+        document.getElementById('sessionPrice').addEventListener('input', () => this.updateSessionPricing('session'));
+        document.getElementById('editSessionPrice').addEventListener('input', () => this.updateSessionPricing('editSession'));
 
         // User Management (Admin only)
         document.getElementById('addNewUserBtn').addEventListener('click', () => {
@@ -327,6 +364,10 @@ class PinkyClassApp {
             e.preventDefault();
             this.handleSaveUser();
         });
+
+        // Khởi tạo đúng nhãn/giá theo loại buổi học mặc định khi tải trang
+        this.applySessionTypeRules('session');
+        this.applySessionTypeRules('editSession');
     }
 
     showLoginPage() {
@@ -376,7 +417,7 @@ class PinkyClassApp {
         }
 
         try {
-            const res = await fetch('http://127.0.0.1:3000/api/login', {
+            const res = await fetch(`${API_BASE_URL}/api/login`, {
                 method: 'POST',
                 mode: 'cors',
                 headers: { 'Content-Type': 'application/json' },
@@ -502,6 +543,10 @@ class PinkyClassApp {
     }
 
     renderStudentSelectionGrid(containerId) {
+        const prefix = containerId === 'studentsCheckboxGrid' ? 'session' : 'editSession';
+        const typeSelectId = prefix === 'session' ? 'sessionType' : 'editSessionType';
+        const isPrivate = document.getElementById(typeSelectId).value !== 'chung';
+
         const grid = document.getElementById(containerId);
         grid.innerHTML = '';
         this.students.forEach(st => {
@@ -518,11 +563,14 @@ class PinkyClassApp {
                 checkbox.checked = true;
             }
 
-            // Click listener to update default price
+            // Học riêng (private) => chỉ được chọn đúng 1 học sinh: hành xử như radio.
             checkbox.addEventListener('change', () => {
-                if (containerId === 'studentsCheckboxGrid') {
-                    this.updateFormPriceFromSelectedStudent();
+                if (isPrivate && checkbox.checked) {
+                    grid.querySelectorAll('input[type="checkbox"]').forEach(other => {
+                        if (other !== checkbox) other.checked = false;
+                    });
                 }
+                this.updateSessionPricing(prefix);
             });
 
             const span = document.createElement('span');
@@ -532,20 +580,62 @@ class PinkyClassApp {
             label.appendChild(span);
             grid.appendChild(label);
         });
+
+        this.updateSessionPricing(prefix);
     }
 
-    updateFormPriceFromSelectedStudent() {
-        const type = document.getElementById('sessionType').value;
-        if (type === 'rieng') {
-            const checkedBoxes = document.querySelectorAll('input[name="sessionStudents"]:checked');
-            if (checkedBoxes.length === 1) {
-                const studentId = checkedBoxes[0].value;
-                const student = this.students.find(s => s.id === studentId);
-                if (student) {
-                    document.getElementById('sessionPrice').value = student.basePrice;
-                }
+    // Áp dụng quy tắc "Học riêng chỉ 1 học sinh / Học chung nhiều học sinh" khi
+    // đổi loại buổi học, và cập nhật lại nhãn + đơn giá tương ứng.
+    applySessionTypeRules(prefix) {
+        const typeSelectId = prefix === 'session' ? 'sessionType' : 'editSessionType';
+        const gridId = prefix === 'session' ? 'studentsCheckboxGrid' : 'editStudentsCheckboxGrid';
+        const priceLabelId = prefix === 'session' ? 'sessionPriceLabel' : 'editSessionPriceLabel';
+        const isGroup = document.getElementById(typeSelectId).value === 'chung';
+
+        const priceLabel = document.getElementById(priceLabelId);
+        if (priceLabel) {
+            priceLabel.innerText = isGroup ? 'Đơn giá buổi học (VNĐ/học sinh)' : 'Học phí buổi học (VNĐ)';
+        }
+
+        if (!isGroup) {
+            // Chuyển sang "riêng": nếu đang chọn nhiều hơn 1 học sinh thì chỉ giữ lại học sinh đầu tiên.
+            const checked = document.querySelectorAll(`#${gridId} input[type="checkbox"]:checked`);
+            checked.forEach((cb, idx) => { if (idx > 0) cb.checked = false; });
+        }
+
+        this.updateSessionPricing(prefix);
+    }
+
+    // Tính "Tổng thu buổi học": học riêng = đơn giá nhập; học chung = đơn giá/học sinh x số học sinh.
+    updateSessionPricing(prefix) {
+        const typeSelectId = prefix === 'session' ? 'sessionType' : 'editSessionType';
+        const gridName = prefix === 'session' ? 'sessionStudents' : 'editSessionStudents';
+        const priceInputId = prefix === 'session' ? 'sessionPrice' : 'editSessionPrice';
+        const totalDisplayId = prefix === 'session' ? 'sessionTotalPriceDisplay' : 'editSessionTotalPriceDisplay';
+
+        const typeEl = document.getElementById(typeSelectId);
+        const priceEl = document.getElementById(priceInputId);
+        const totalEl = document.getElementById(totalDisplayId);
+        if (!typeEl || !priceEl || !totalEl) return;
+
+        const isGroup = typeEl.value === 'chung';
+        const checkedCount = document.querySelectorAll(`input[name="${gridName}"]:checked`).length;
+        const unitPrice = parseInt(priceEl.value) || 0;
+
+        // Học riêng, tự động điền học phí cơ bản của học sinh khi chỉ chọn 1 em
+        // (không ghi đè nếu người dùng đã tự sửa số vượt quá học phí cơ bản, nhưng
+        // để đơn giản và tránh nhầm lẫn, ta luôn gợi ý bằng học phí cơ bản khi vừa chọn).
+        if (!isGroup && checkedCount === 1) {
+            const cb = document.querySelector(`input[name="${gridName}"]:checked`);
+            const student = this.students.find(s => s.id === cb.value);
+            if (student && (!priceEl.dataset.userEdited || priceEl.value == priceEl.dataset.lastAuto)) {
+                priceEl.value = student.basePrice;
+                priceEl.dataset.lastAuto = student.basePrice;
             }
         }
+
+        const total = isGroup ? unitPrice * Math.max(checkedCount, 0) : (parseInt(priceEl.value) || 0);
+        totalEl.innerText = this.formatVND(total);
     }
 
     switchView(viewId) {
@@ -687,6 +777,8 @@ class PinkyClassApp {
     renderDashboard() {
         // Set stats cards counts
         document.getElementById('stat-total-students').innerText = this.students.length;
+
+        const monthSessions = this.filterByMonth(this.sessions);
         
         let totalSessions = 0;
         let totalHours = 0;
@@ -694,7 +786,7 @@ class PinkyClassApp {
 
         if (this.currentRole === 'student') {
             // Only count for current student
-            const studentSessions = this.sessions.filter(sess => sess.studentIds.includes(this.currentStudentId));
+            const studentSessions = monthSessions.filter(sess => sess.studentIds.includes(this.currentStudentId));
             totalSessions = studentSessions.length;
             totalHours = studentSessions.reduce((acc, curr) => acc + parseFloat(curr.duration), 0);
             
@@ -708,11 +800,11 @@ class PinkyClassApp {
             });
         } else {
             // Teacher & Assistant see all stats
-            totalSessions = this.sessions.length;
-            totalHours = this.sessions.reduce((acc, curr) => acc + parseFloat(curr.duration), 0);
+            totalSessions = monthSessions.length;
+            totalHours = monthSessions.reduce((acc, curr) => acc + parseFloat(curr.duration), 0);
             
             // Sum all unpaid sessions
-            this.sessions.forEach(sess => {
+            monthSessions.forEach(sess => {
                 if (!sess.completed) {
                     unpaidTuition += sess.price;
                 }
@@ -774,7 +866,7 @@ class PinkyClassApp {
         document.getElementById('logStudentNameHeader').innerText = `${studentName} ${studentSubject} ${studentClass}`.toUpperCase();
         
         // Find all sessions involving this student, sorted chronologically
-        const studentSessions = this.sessions
+        const studentSessions = this.filterByMonth(this.sessions)
             .filter(sess => sess.studentIds.includes(studentId))
             .sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -913,8 +1005,8 @@ class PinkyClassApp {
         const filterStart = document.getElementById('filterStartDate').value;
         const filterEnd = document.getElementById('filterEndDate').value;
 
-        // Filter sessions list
-        let filtered = [...this.sessions];
+        // Filter sessions list (áp dụng bộ lọc Tháng toàn cục trước)
+        let filtered = this.filterByMonth(this.sessions);
         
         // If student role, only show theirs
         if (this.currentRole === 'student') {
@@ -1042,8 +1134,8 @@ class PinkyClassApp {
         const tbody = document.getElementById('weeklyAttendanceTableBody');
         tbody.innerHTML = '';
 
-        // Sort all sessions by date chronological
-        let sorted = [...this.sessions].sort((a, b) => new Date(a.date) - new Date(b.date));
+        // Sort all sessions by date chronological (đã áp dụng bộ lọc Tháng toàn cục)
+        let sorted = this.filterByMonth(this.sessions).sort((a, b) => new Date(a.date) - new Date(b.date));
 
         if (this.currentRole === 'student') {
             sorted = sorted.filter(s => s.studentIds.includes(this.currentStudentId));
@@ -1151,7 +1243,7 @@ class PinkyClassApp {
                     sessionObj.completed = isChecked;
                     
                     try {
-                        const res = await this.authFetch(`http://localhost:3000/api/sessions/${sId}`, {
+                        const res = await this.authFetch(`${API_BASE_URL}/api/sessions/${sId}`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(sessionObj)
@@ -1184,7 +1276,7 @@ class PinkyClassApp {
         }
 
         studentsList.forEach(st => {
-            const studentSessions = this.sessions.filter(sess => sess.studentIds.includes(st.id));
+            const studentSessions = this.filterByMonth(this.sessions).filter(sess => sess.studentIds.includes(st.id));
             
             const totalSessionsCount = studentSessions.length;
             const totalHours = studentSessions.reduce((acc, curr) => acc + parseFloat(curr.duration), 0);
@@ -1258,44 +1350,38 @@ class PinkyClassApp {
         const filterEl = document.getElementById('studentGradeFilter');
         const gradeFilter = filterEl ? filterEl.value : '';
 
-        // Trích số lớp từ chuỗi "Lớp 8" -> "8" để lọc/group
-        const extractGrade = (cls) => {
-            const m = String(cls || '').match(/\d+/);
-            return m ? m[0] : '';
-        };
-
         let list = this.students;
         if (gradeFilter) {
-            list = list.filter(st => extractGrade(st.class) === gradeFilter);
+            list = list.filter(st => st.gradeLevel === parseInt(gradeFilter));
         }
 
         if (list.length === 0) {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="6" style="text-align: center; padding: 30px; color: var(--text-muted);">
-                        Chưa có học sinh nào${gradeFilter ? ' trong lớp này' : ''}. Bấm nút phía trên để thêm mới!
+                        Chưa có học sinh nào${gradeFilter ? ' trong khối lớp này' : ''}. Bấm nút phía trên để thêm mới!
                     </td>
                 </tr>
             `;
             return;
         }
 
-        // Nhóm theo lớp (Lớp 6 -> Lớp 12, lớp nào không khớp số đưa xuống cuối)
+        // Nhóm theo khối lớp (6 -> 12, khối chưa xác định đưa xuống cuối)
         const sorted = [...list].sort((a, b) => {
-            const ga = parseInt(extractGrade(a.class)) || 999;
-            const gb = parseInt(extractGrade(b.class)) || 999;
+            const ga = a.gradeLevel || 999;
+            const gb = b.gradeLevel || 999;
             if (ga !== gb) return ga - gb;
             return (a.name || '').localeCompare(b.name || '', 'vi');
         });
 
-        let lastClass = null;
+        let lastGrade = null;
         sorted.forEach((st, idx) => {
-            if (st.class !== lastClass) {
-                lastClass = st.class;
+            if (st.gradeLevel !== lastGrade) {
+                lastGrade = st.gradeLevel;
                 const groupRow = document.createElement('tr');
                 groupRow.innerHTML = `
                     <td colspan="6" style="background:var(--primary-soft); color:var(--primary); font-weight:700; padding:8px 14px; font-size:13px;">
-                        <i class="fa-solid fa-people-group"></i> ${st.class}
+                        <i class="fa-solid fa-people-group"></i> ${st.gradeLevel ? 'Lớp ' + st.gradeLevel : 'Chưa xác định khối lớp'}
                     </td>`;
                 tbody.appendChild(groupRow);
             }
@@ -1304,7 +1390,7 @@ class PinkyClassApp {
 
             const actionsHTML = `
                 <div style="display:flex; justify-content:center; gap:8px;">
-                    <button class="btn btn-secondary btn-sm" onclick="app.editStudentPrompt('${st.id}')">
+                    <button class="btn btn-secondary btn-sm" onclick="app.openEditStudentModal('${st.id}')">
                         <i class="fa-solid fa-user-pen"></i> Sửa
                     </button>
                     <button class="btn btn-danger btn-sm" onclick="app.deleteStudent('${st.id}')">
@@ -1328,90 +1414,82 @@ class PinkyClassApp {
 
     // --- FORM & DATA HANDLERS ---
 
-    // 1. Add Student
-    async handleAddStudent() {
-        const name = document.getElementById('studentName').value.trim();
-        const sClass = document.getElementById('studentClass').value.trim();
-        const subject = document.getElementById('studentSubject').value.trim();
-        const basePrice = parseInt(document.getElementById('studentBasePrice').value) || 250000;
-
-        if (name && sClass && subject) {
-            const newStudent = {
-                id: "hs_" + Date.now(),
-                name,
-                class: sClass,
-                subject,
-                basePrice
-            };
-
-            try {
-                const res = await this.authFetch('http://localhost:3000/api/students', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(newStudent)
-                });
-                if (!res.ok) throw new Error("Server error");
-                await this.loadData();
-            } catch (err) {
-                console.warn("API lỗi, cập nhật offline: ", err.message);
-                this.students.push(newStudent);
-                await this.saveData();
-            }
-
-            this.populateStudentPickers();
-            document.getElementById('addStudentForm').reset();
-            this.closeModal('addStudentModal');
-            this.showToast(`Đã thêm học sinh ${name} thành công!`, "success");
-        }
+    // Mở modal ở chế độ "Thêm mới"
+    openAddStudentModal() {
+        document.getElementById('addStudentForm').reset();
+        document.getElementById('editStudentId').value = '';
+        document.getElementById('studentModalTitle').innerText = 'Thêm Học Sinh Mới';
+        document.getElementById('saveStudentBtn').innerText = 'Thêm học sinh';
+        document.getElementById('studentGrade').value = '8';
+        document.getElementById('studentBasePrice').value = 250000;
+        this.openModal('addStudentModal');
     }
 
-    // Edit student base price and names
-    async editStudentPrompt(id) {
+    // Mở modal ở chế độ "Chỉnh sửa", điền sẵn dữ liệu học sinh hiện tại
+    openEditStudentModal(id) {
         if (this.currentRole !== 'teacher') {
             this.showToast("Chỉ Giáo viên mới có quyền chỉnh sửa học sinh!", "error");
             return;
         }
-
         const student = this.students.find(s => s.id === id);
-        if (student) {
-            const newName = prompt("Nhập tên mới:", student.name);
-            if (newName === null) return; // cancel
-            const newClass = prompt("Nhập lớp mới:", student.class);
-            if (newClass === null) return;
-            const newSubject = prompt("Nhập môn học mới:", student.subject);
-            if (newSubject === null) return;
-            const newPriceStr = prompt("Nhập học phí cơ bản mới (VNĐ):", student.basePrice);
-            if (newPriceStr === null) return;
-            const newPrice = parseInt(newPriceStr) || student.basePrice;
+        if (!student) return;
 
-            const updated = {
-                id: student.id,
-                name: newName.trim() || student.name,
-                class: newClass.trim() || student.class,
-                subject: newSubject.trim() || student.subject,
-                basePrice: newPrice
-            };
+        document.getElementById('editStudentId').value = student.id;
+        document.getElementById('studentModalTitle').innerText = 'Chỉnh Sửa Học Sinh';
+        document.getElementById('saveStudentBtn').innerText = 'Lưu thay đổi';
+        document.getElementById('studentName').value = student.name;
+        document.getElementById('studentGrade').value = student.gradeLevel || 8;
+        document.getElementById('studentSubject').value = student.subject;
+        document.getElementById('studentBasePrice').value = student.basePrice;
+        this.openModal('addStudentModal');
+    }
 
-            try {
-                const res = await this.authFetch(`http://localhost:3000/api/students/${id}`, {
+    // 1. Thêm / Sửa học sinh (dùng chung 1 form — editStudentId rỗng nghĩa là thêm mới)
+    async handleAddStudent() {
+        const editId = document.getElementById('editStudentId').value;
+        const name = document.getElementById('studentName').value.trim();
+        const gradeLevel = parseInt(document.getElementById('studentGrade').value);
+        const sClass = `Lớp ${gradeLevel}`;
+        const subject = document.getElementById('studentSubject').value.trim();
+        const basePrice = parseInt(document.getElementById('studentBasePrice').value) || 250000;
+
+        if (!name || !gradeLevel || !subject) return;
+
+        const payload = { name, class: sClass, gradeLevel, subject, basePrice };
+
+        try {
+            if (editId) {
+                const res = await this.authFetch(`${API_BASE_URL}/api/students/${editId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updated)
+                    body: JSON.stringify(payload)
                 });
                 if (!res.ok) throw new Error("Server error");
-                await this.loadData();
-            } catch (err) {
-                console.warn("API lỗi, cập nhật offline: ", err.message);
-                student.name = updated.name;
-                student.class = updated.class;
-                student.subject = updated.subject;
-                student.basePrice = updated.basePrice;
-                await this.saveData();
+            } else {
+                payload.id = "hs_" + Date.now();
+                const res = await this.authFetch(`${API_BASE_URL}/api/students`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error("Server error");
             }
-
-            this.populateStudentPickers();
-            this.showToast("Cập nhật thông tin học sinh thành công!", "success");
+            await this.loadData();
+        } catch (err) {
+            console.warn("API lỗi, cập nhật offline: ", err.message);
+            if (editId) {
+                const student = this.students.find(s => s.id === editId);
+                if (student) Object.assign(student, payload);
+            } else {
+                this.students.push({ ...payload, id: payload.id || ("hs_" + Date.now()) });
+            }
+            await this.saveData();
         }
+
+        this.populateStudentPickers();
+        document.getElementById('addStudentForm').reset();
+        this.closeModal('addStudentModal');
+        this.showToast(editId ? "Cập nhật thông tin học sinh thành công!" : `Đã thêm học sinh ${name} thành công!`, "success");
     }
 
     async deleteStudent(id) {
@@ -1422,7 +1500,7 @@ class PinkyClassApp {
 
         if (confirm("Bạn có chắc chắn muốn xóa học sinh này? Tất cả các ca học và nhật ký liên quan sẽ bị xóa!")) {
             try {
-                const res = await this.authFetch(`http://localhost:3000/api/students/${id}`, { method: 'DELETE' });
+                const res = await this.authFetch(`${API_BASE_URL}/api/students/${id}`, { method: 'DELETE' });
                 if (!res.ok) throw new Error("Server error");
                 await this.loadData();
             } catch (err) {
@@ -1450,7 +1528,7 @@ class PinkyClassApp {
         const startTime = document.getElementById('sessionStartTime').value;
         const endTime = document.getElementById('sessionEndTime').value;
         const duration = parseFloat(document.getElementById('sessionHours').value) || 2.0;
-        const price = parseInt(document.getElementById('sessionPrice').value) || 250000;
+        const unitPrice = parseInt(document.getElementById('sessionPrice').value) || 250000;
         const content = document.getElementById('sessionContent').value.trim();
 
         // Get selected students
@@ -1459,9 +1537,16 @@ class PinkyClassApp {
             this.showToast("Vui lòng chọn ít nhất một học sinh tham gia!", "error");
             return;
         }
+        if (type === 'riêng' && checkedBoxes.length > 1) {
+            this.showToast("Học riêng (1 vs 1) chỉ được chọn đúng 1 học sinh!", "error");
+            return;
+        }
 
         const studentIds = [];
         checkedBoxes.forEach(cb => studentIds.push(cb.value));
+
+        // Học chung: tổng thu = đơn giá/học sinh x số học sinh. Học riêng: giữ nguyên đơn giá.
+        const price = type === 'chung' ? unitPrice * studentIds.length : unitPrice;
 
         // Create studentDetails map
         const studentDetails = {};
@@ -1490,7 +1575,7 @@ class PinkyClassApp {
         };
 
         try {
-            const res = await this.authFetch('http://localhost:3000/api/sessions', {
+            const res = await this.authFetch(`${API_BASE_URL}/api/sessions`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newSession)
@@ -1523,10 +1608,13 @@ class PinkyClassApp {
         document.getElementById('editSessionStartTime').value = sess.startTime;
         document.getElementById('editSessionEndTime').value = sess.endTime;
         document.getElementById('editSessionHours').value = sess.duration;
-        document.getElementById('editSessionPrice').value = sess.price;
+        // sess.price được lưu là TỔNG thu của buổi học; với học chung cần chia lại
+        // ra đơn giá/học sinh để hiển thị đúng ý nghĩa trong ô nhập liệu.
+        const count = Math.max(sess.studentIds.length, 1);
+        document.getElementById('editSessionPrice').value = sess.type === 'chung' ? Math.round(sess.price / count) : sess.price;
         document.getElementById('editSessionContent').value = sess.content || '';
 
-        // Check checkboxes
+        // Dựng lại danh sách checkbox học sinh, đánh dấu các em đang tham gia
         const grid = document.getElementById('editStudentsCheckboxGrid');
         grid.innerHTML = '';
         this.students.forEach(st => {
@@ -1542,6 +1630,16 @@ class PinkyClassApp {
                 checkbox.checked = true;
             }
 
+            checkbox.addEventListener('change', () => {
+                const isPrivate = document.getElementById('editSessionType').value !== 'chung';
+                if (isPrivate && checkbox.checked) {
+                    grid.querySelectorAll('input[type="checkbox"]').forEach(other => {
+                        if (other !== checkbox) other.checked = false;
+                    });
+                }
+                this.updateSessionPricing('editSession');
+            });
+
             const span = document.createElement('span');
             span.innerText = `${st.name} - ${st.class}`;
             
@@ -1550,6 +1648,7 @@ class PinkyClassApp {
             grid.appendChild(label);
         });
 
+        this.applySessionTypeRules('editSession');
         this.openModal('editSessionModal');
     }
 
@@ -1563,7 +1662,7 @@ class PinkyClassApp {
         const startTime = document.getElementById('editSessionStartTime').value;
         const endTime = document.getElementById('editSessionEndTime').value;
         const duration = parseFloat(document.getElementById('editSessionHours').value) || 2.0;
-        const price = parseInt(document.getElementById('editSessionPrice').value) || 250000;
+        const unitPrice = parseInt(document.getElementById('editSessionPrice').value) || 250000;
         const content = document.getElementById('editSessionContent').value.trim();
 
         const checkedBoxes = document.querySelectorAll('input[name="editSessionStudents"]:checked');
@@ -1571,9 +1670,15 @@ class PinkyClassApp {
             this.showToast("Vui lòng chọn ít nhất một học sinh tham gia!", "error");
             return;
         }
+        if (type === 'riêng' && checkedBoxes.length > 1) {
+            this.showToast("Học riêng (1 vs 1) chỉ được chọn đúng 1 học sinh!", "error");
+            return;
+        }
 
         const studentIds = [];
         checkedBoxes.forEach(cb => studentIds.push(cb.value));
+
+        const price = type === 'chung' ? unitPrice * studentIds.length : unitPrice;
 
         // Sync studentDetails map (preserve existing if student already in class)
         const newStudentDetails = {};
@@ -1604,7 +1709,7 @@ class PinkyClassApp {
         };
 
         try {
-            const res = await this.authFetch(`http://localhost:3000/api/sessions/${id}`, {
+            const res = await this.authFetch(`${API_BASE_URL}/api/sessions/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedSession)
@@ -1637,7 +1742,7 @@ class PinkyClassApp {
 
         if (confirm("Bạn có chắc muốn xóa ca dạy này khỏi lịch học?")) {
             try {
-                const res = await this.authFetch(`http://localhost:3000/api/sessions/${id}`, { method: 'DELETE' });
+                const res = await this.authFetch(`${API_BASE_URL}/api/sessions/${id}`, { method: 'DELETE' });
                 if (!res.ok) throw new Error("Server error");
                 await this.loadData();
             } catch (err) {
@@ -1704,7 +1809,7 @@ class PinkyClassApp {
         }
 
         try {
-            const res = await this.authFetch(`http://localhost:3000/api/session-details/${sessionId}/${studentId}`, {
+            const res = await this.authFetch(`${API_BASE_URL}/api/session-details/${sessionId}/${studentId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ homework, attitude, individualComment, note, generalComment })
@@ -1745,7 +1850,7 @@ class PinkyClassApp {
 
         if (confirm(`Xác nhận đã thu tiền học phí cho tất cả ${studentSessions.length} buổi chưa thanh toán của học sinh ${this.getStudentName(studentId)}?`)) {
             try {
-                const res = await this.authFetch(`http://localhost:3000/api/students/${studentId}/pay-all`, { method: 'PUT' });
+                const res = await this.authFetch(`${API_BASE_URL}/api/students/${studentId}/pay-all`, { method: 'PUT' });
                 if (!res.ok) throw new Error("Server error");
                 await this.loadData();
             } catch (err) {
@@ -1843,7 +1948,7 @@ class PinkyClassApp {
         if (!tbody) return;
 
         try {
-            const res = await this.authFetch('http://localhost:3000/api/users');
+            const res = await this.authFetch(`${API_BASE_URL}/api/users`);
             if (!res.ok) throw new Error('Server error');
             this.users = await res.json();
         } catch (err) {
@@ -1941,7 +2046,7 @@ class PinkyClassApp {
                 // Edit existing user
                 const payload = { name, role, assignedTeacherId };
                 if (password) payload.password = password;
-                const res = await this.authFetch(`http://localhost:3000/api/users/${id}`, {
+                const res = await this.authFetch(`${API_BASE_URL}/api/users/${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -1957,7 +2062,7 @@ class PinkyClassApp {
                     this.showToast('Vui lòng nhập mật khẩu cho tài khoản mới.', 'error');
                     return;
                 }
-                const res = await this.authFetch('http://localhost:3000/api/users', {
+                const res = await this.authFetch(`${API_BASE_URL}/api/users`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password, name, role, assignedTeacherId })
@@ -1978,7 +2083,7 @@ class PinkyClassApp {
 
     async toggleUserActive(id, makeActive) {
         try {
-            const res = await this.authFetch(`http://localhost:3000/api/users/${id}`, {
+            const res = await this.authFetch(`${API_BASE_URL}/api/users/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ active: makeActive })
@@ -1999,7 +2104,7 @@ class PinkyClassApp {
         if (!confirm('Bạn có chắc chắn muốn xóa tài khoản này?')) return;
 
         try {
-            const res = await this.authFetch(`http://localhost:3000/api/users/${id}`, { method: 'DELETE' });
+            const res = await this.authFetch(`${API_BASE_URL}/api/users/${id}`, { method: 'DELETE' });
             if (!res.ok) throw new Error('Server error');
             this.showToast('Đã xóa tài khoản.', 'success');
             await this.renderUsersTable();
