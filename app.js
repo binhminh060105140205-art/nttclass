@@ -175,6 +175,18 @@ class PinkyClassApp {
             this.sessions = rawSessions;
 
             this.populateStudentPickers();
+            // QUAN TRỌNG: trước đây loadData() chỉ cập nhật dữ liệu trong bộ nhớ
+            // (this.students/this.sessions) mà KHÔNG vẽ lại giao diện. Vì các thao
+            // tác thêm/sửa/xoá học sinh, buổi học... đều gọi loadData() sau khi API
+            // thành công, hậu quả là dữ liệu mới đã có nhưng màn hình vẫn hiện dữ
+            // liệu cũ cho tới khi người dùng F5 (F5 chạy lại toàn bộ init() bao gồm
+            // cả bước vẽ giao diện). Fix: gọi luôn updateAllViews() ở đây để mọi nơi
+            // dùng loadData() đều tự động cập nhật UI ngay lập tức. Chỉ gọi khi đã
+            // đăng nhập (this.currentUser tồn tại) vì lúc mới mở trang (chưa đăng
+            // nhập) chưa cần vẽ các bảng/biểu đồ của trang chính.
+            if (this.currentUser) {
+                this.updateAllViews();
+            }
         } catch (err) {
             console.error("Lỗi khi kết nối API Server:", err.message);
             // Fallback to localStorage if server is offline
@@ -185,6 +197,9 @@ class PinkyClassApp {
             this.students = JSON.parse(localStorage.getItem('pinky_students')) || [];
             this.sessions = JSON.parse(localStorage.getItem('pinky_sessions')) || [];
             this.populateStudentPickers();
+            if (this.currentUser) {
+                this.updateAllViews();
+            }
         }
     }
 
@@ -545,8 +560,6 @@ class PinkyClassApp {
     renderStudentSelectionGrid(containerId) {
         const prefix = containerId === 'studentsCheckboxGrid' ? 'session' : 'editSession';
         const typeSelectId = prefix === 'session' ? 'sessionType' : 'editSessionType';
-        const isPrivate = document.getElementById(typeSelectId).value !== 'chung';
-
         const grid = document.getElementById(containerId);
         grid.innerHTML = '';
         this.students.forEach(st => {
@@ -564,8 +577,14 @@ class PinkyClassApp {
             }
 
             // Học riêng (private) => chỉ được chọn đúng 1 học sinh: hành xử như radio.
+            // QUAN TRỌNG: đọc lại giá trị "riêng/chung" MỚI NHẤT ngay trong lúc bấm,
+            // thay vì dùng biến isPrivate đã "chốt cứng" từ lúc vẽ checkbox lần đầu.
+            // Trước đây dùng isPrivate (đọc 1 lần khi render) khiến việc đổi loại
+            // buổi học từ "riêng" sang "chung" KHÔNG cập nhật hành vi checkbox,
+            // nên vẫn bị ép chỉ chọn 1 học sinh dù đã chọn "Học chung".
             checkbox.addEventListener('change', () => {
-                if (isPrivate && checkbox.checked) {
+                const isPrivateNow = document.getElementById(typeSelectId).value !== 'chung';
+                if (isPrivateNow && checkbox.checked) {
                     grid.querySelectorAll('input[type="checkbox"]').forEach(other => {
                         if (other !== checkbox) other.checked = false;
                     });
