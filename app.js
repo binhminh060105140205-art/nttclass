@@ -19,8 +19,9 @@ class PinkyClassApp {
         this.users = [];
         this.currentUser = null;
         this.currentRole = null; // admin or teacher
-        this.currentStudentId = null; // Active student filter
+        this.currentStudentId = null; // Active student filter (chỉ dùng ở trang Nhật ký học tập)
         this.currentMonthFilter = ''; // '' = tất cả các tháng, '1'..'12' = lọc theo tháng
+        this.currentWeekStart = this.getMonday(new Date()); // Thứ 2 đầu tuần đang xem ở Lịch dạy & Chấm công
 
         this.init();
     }
@@ -126,6 +127,7 @@ class PinkyClassApp {
                     content: row.Content,
                     generalComment: row.GeneralComment,
                     completed: !!row.Completed,
+                    paid: !!row.Paid,
                     studentIds: [],
                     studentDetails: {}
                 });
@@ -256,16 +258,38 @@ class PinkyClassApp {
             this.showToast("Đã chuyển sang học sinh: " + this.getStudentName(this.currentStudentId), "success");
         });
 
-        // Scheduler Sub-tabs (List vs Weekly)
-        document.querySelectorAll('[data-tab]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const tabId = btn.getAttribute('data-tab');
-                document.querySelectorAll('[data-tab]').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                
-                document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
-                document.getElementById(tabId).style.display = 'block';
-            });
+        // Weekly calendar navigation (Lịch dạy & Chấm công)
+        document.getElementById('prevWeekBtn').addEventListener('click', () => {
+            const d = new Date(this.currentWeekStart);
+            d.setDate(d.getDate() - 7);
+            this.currentWeekStart = d;
+            this.renderWeeklyCalendar();
+        });
+        document.getElementById('nextWeekBtn').addEventListener('click', () => {
+            const d = new Date(this.currentWeekStart);
+            d.setDate(d.getDate() + 7);
+            this.currentWeekStart = d;
+            this.renderWeeklyCalendar();
+        });
+        document.getElementById('todayWeekBtn').addEventListener('click', () => {
+            this.currentWeekStart = this.getMonday(new Date());
+            this.renderWeeklyCalendar();
+        });
+
+        // Quick entry modal (nhập nhanh nội dung buổi học từ lịch tuần)
+        document.getElementById('quickSessionEntryForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.saveQuickSessionEntry();
+        });
+        document.getElementById('quickEntryEditFullBtn').addEventListener('click', () => {
+            const sessionId = document.getElementById('quickEntrySessionId').value;
+            this.closeModal('quickSessionEntryModal');
+            this.openEditSessionModal(sessionId);
+        });
+        document.getElementById('quickEntryDeleteBtn').addEventListener('click', () => {
+            const sessionId = document.getElementById('quickEntrySessionId').value;
+            this.closeModal('quickSessionEntryModal');
+            this.deleteSession(sessionId);
         });
 
         // Auto calculate hours based on times
@@ -322,15 +346,6 @@ class PinkyClassApp {
             this.switchView('view-scheduler');
             // Scroll to the logger form
             document.getElementById('logger-form-card').scrollIntoView({ behavior: 'smooth' });
-        });
-
-        // Date filters for list view
-        document.getElementById('filterStartDate').addEventListener('change', () => this.renderSessionListTab());
-        document.getElementById('filterEndDate').addEventListener('change', () => this.renderSessionListTab());
-        document.getElementById('clearFiltersBtn').addEventListener('click', () => {
-            document.getElementById('filterStartDate').value = '';
-            document.getElementById('filterEndDate').value = '';
-            this.renderSessionListTab();
         });
 
         // Export Log Action
@@ -491,7 +506,6 @@ class PinkyClassApp {
         const navStudents = document.getElementById('nav-students');
         const navUsers = document.getElementById('nav-users');
         const quickScheduleBtn = document.getElementById('quickScheduleBtn');
-        const picker = document.getElementById('studentContextPicker');
 
         if (role === 'admin') {
             // Admin: chỉ được quản lý tài khoản người dùng, không truy cập
@@ -503,7 +517,6 @@ class PinkyClassApp {
             navStudents.style.display = 'none';
             navUsers.style.display = 'flex';
             quickScheduleBtn.style.display = 'none';
-            picker.style.display = 'none';
         } else if (role === 'assistant') {
             navDashboard.style.display = 'flex';
             navLogs.style.display = 'flex';
@@ -512,7 +525,6 @@ class PinkyClassApp {
             navStudents.style.display = 'flex'; // TA can view classes/students of their assigned teacher
             navUsers.style.display = 'none';
             quickScheduleBtn.style.display = 'flex';
-            picker.style.display = 'flex';
         } else {
             // teacher: toàn quyền với các chức năng dạy học
             navDashboard.style.display = 'flex';
@@ -522,7 +534,6 @@ class PinkyClassApp {
             navStudents.style.display = 'flex';
             navUsers.style.display = 'none';
             quickScheduleBtn.style.display = 'flex';
-            picker.style.display = 'flex';
         }
 
         // Trigger UI updates
@@ -707,8 +718,7 @@ class PinkyClassApp {
     updateAllViews() {
         this.renderDashboard();
         this.renderStudentLogs();
-        this.renderSessionListTab();
-        this.renderWeeklyAttendanceGrid();
+        this.renderWeeklyCalendar();
         this.renderTuitionOverview();
         this.renderStudentList();
         if (this.currentRole === 'admin') {
@@ -809,9 +819,10 @@ class PinkyClassApp {
             totalSessions = studentSessions.length;
             totalHours = studentSessions.reduce((acc, curr) => acc + parseFloat(curr.duration), 0);
             
-            // Sum unpaid tuition for this student
+            // Sum unpaid tuition for this student (dựa trên trạng thái Paid,
+            // TÁCH BIỆT hoàn toàn với trạng thái "đã dạy/chưa dạy")
             studentSessions.forEach(sess => {
-                if (!sess.completed) {
+                if (!sess.paid) {
                     // Price divided by number of participants if it's a shared session, or full price
                     const partCount = sess.studentIds.length;
                     unpaidTuition += sess.price / partCount;
@@ -822,9 +833,9 @@ class PinkyClassApp {
             totalSessions = monthSessions.length;
             totalHours = monthSessions.reduce((acc, curr) => acc + parseFloat(curr.duration), 0);
             
-            // Sum all unpaid sessions
+            // Sum all unpaid sessions (dựa trên Paid, không dùng Completed nữa)
             monthSessions.forEach(sess => {
-                if (!sess.completed) {
+                if (!sess.paid) {
                     unpaidTuition += sess.price;
                 }
             });
@@ -1016,269 +1027,201 @@ class PinkyClassApp {
         });
     }
 
-    // --- VIEW 3: SCHEDULER & SESSION LIST (Image 2 and 3) ---
-    renderSessionListTab() {
-        const container = document.getElementById('sessionsListContainer');
-        container.innerHTML = '';
+    // --- VIEW 3: WEEKLY CALENDAR (Lịch dạy & Chấm công) ---
+    // Thay thế hoàn toàn "Danh sách chi tiết" (list) + "Chấm công tuần" (bảng)
+    // cũ bằng MỘT lịch xem theo tuần duy nhất (giống Google Calendar / ảnh mẫu),
+    // để dễ quan sát ca dạy theo ngày/giờ hơn.
+    renderWeeklyCalendar() {
+        const headerRow = document.getElementById('weekCalendarHeaderRow');
+        const body = document.getElementById('weekCalendarBody');
+        if (!headerRow || !body) return;
 
-        const filterStart = document.getElementById('filterStartDate').value;
-        const filterEnd = document.getElementById('filterEndDate').value;
+        const HOUR_START = 6;   // 06:00
+        const HOUR_END = 22;    // 22:00
+        const HOUR_HEIGHT = 52; // px, phải khớp với .week-hour-label height trong CSS
 
-        // Filter sessions list (áp dụng bộ lọc Tháng toàn cục trước)
-        let filtered = this.filterByMonth(this.sessions);
-        
-        // If student role, only show theirs
+        const weekStart = this.currentWeekStart; // Thứ 2
+        const dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+        const days = [];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(weekStart);
+            d.setDate(d.getDate() + i);
+            days.push(d);
+        }
+
+        // Nhãn khoảng tuần đang xem, ví dụ: "01/07 - 07/07/2026"
+        const rangeLabel = document.getElementById('weekRangeLabel');
+        if (rangeLabel) {
+            const first = days[0], last = days[6];
+            const fmt = (d) => `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+            rangeLabel.innerText = `${fmt(first)} - ${fmt(last)}/${last.getFullYear()}`;
+        }
+
+        // Lọc buổi học nằm trong tuần đang xem (bỏ qua bộ lọc Tháng toàn cục vì
+        // lịch tuần đã tự xác định phạm vi thời gian riêng của nó)
+        const todayStr = this.toISODateOnly(new Date());
+        const weekDateStrs = days.map(d => this.toISODateOnly(d));
+        let weekSessions = this.sessions.filter(s => weekDateStrs.includes(s.date));
+
         if (this.currentRole === 'student') {
-            filtered = filtered.filter(s => s.studentIds.includes(this.currentStudentId));
+            weekSessions = weekSessions.filter(s => s.studentIds.includes(this.currentStudentId));
         }
 
-        if (filterStart) {
-            filtered = filtered.filter(s => s.date >= filterStart);
-        }
-        if (filterEnd) {
-            filtered = filtered.filter(s => s.date <= filterEnd);
-        }
-
-        // Sort desc
-        filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        // Calculate filtered summary stats
-        const totalCount = filtered.length;
-        const totalHrs = filtered.reduce((a, b) => a + parseFloat(b.duration), 0);
-        const privateCount = filtered.filter(s => s.type === 'riêng').length;
-        const groupCount = filtered.filter(s => s.type === 'chung').length;
-        
-        // Sum total money (if student role: sum their portion; else sum absolute total)
+        // ----- Thẻ thống kê tổng quan (tính theo tuần đang xem) -----
+        const totalCount = weekSessions.length;
+        const totalHrs = weekSessions.reduce((a, b) => a + parseFloat(b.duration || 0), 0);
+        const privateCount = weekSessions.filter(s => s.type === 'riêng').length;
+        const groupCount = weekSessions.filter(s => s.type === 'chung').length;
         let totalMoney = 0;
-        filtered.forEach(s => {
-            if (this.currentRole === 'student') {
-                totalMoney += s.price / s.studentIds.length;
-            } else {
-                totalMoney += s.price;
-            }
+        weekSessions.forEach(s => {
+            totalMoney += this.currentRole === 'student' ? (s.price / s.studentIds.length) : s.price;
         });
+        const elSessions = document.getElementById('summary-total-sessions');
+        const elHours = document.getElementById('summary-total-hours');
+        const elRatio = document.getElementById('summary-ratio');
+        const elMoney = document.getElementById('summary-total-money');
+        if (elSessions) elSessions.innerText = totalCount;
+        if (elHours) elHours.innerText = totalHrs.toFixed(1);
+        if (elRatio) elRatio.innerText = `${privateCount}/${groupCount}`;
+        if (elMoney) elMoney.innerText = this.formatVND(totalMoney);
 
-        document.getElementById('summary-total-sessions').innerText = totalCount;
-        document.getElementById('summary-total-hours').innerText = totalHrs.toFixed(1);
-        document.getElementById('summary-ratio').innerText = `${privateCount}/${groupCount}`;
-        document.getElementById('summary-total-money').innerText = this.formatVND(totalMoney);
-
-        if (filtered.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fa-solid fa-calendar-day"></i>
-                    <h3>Không tìm thấy buổi học nào</h3>
-                    <p>Hãy điều chỉnh khoảng thời gian lọc hoặc thêm ca dạy mới.</p>
+        // ----- Header row: 7 cột ngày -----
+        headerRow.innerHTML = '<div></div>' + days.map((d, i) => {
+            const isToday = this.toISODateOnly(d) === todayStr;
+            return `
+                <div class="week-day-header ${isToday ? 'is-today' : ''}">
+                    <span class="day-name">${dayLabels[i]}</span>
+                    <span class="day-date">${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}</span>
                 </div>
             `;
-            return;
+        }).join('');
+
+        // ----- Body: nhãn giờ bên trái + 7 cột ngày chứa các block ca dạy -----
+        const hourCount = HOUR_END - HOUR_START;
+        let hourLabelsHTML = '';
+        for (let h = HOUR_START; h < HOUR_END; h++) {
+            hourLabelsHTML += `<div class="week-hour-label">${h}:00</div>`;
         }
 
-        filtered.forEach(sess => {
-            const card = document.createElement('div');
-            card.className = 'session-item';
+        let dayColumnsHTML = '';
+        days.forEach((d, i) => {
+            const dateStr = this.toISODateOnly(d);
+            const daySessions = weekSessions.filter(s => s.date === dateStr);
 
-            const badgeClass = sess.type === 'riêng' ? 'badge-rieng' : 'badge-chung';
-            const studentNames = sess.studentIds.map(id => this.getStudentName(id)).join(', ');
-            
-            // Format details of students inside card
-            let studentsTagsHTML = '';
-            sess.studentIds.forEach(id => {
-                studentsTagsHTML += `<span class="student-tag">${this.getStudentName(id)}</span>`;
-            });
+            let blocksHTML = '';
+            daySessions.forEach(sess => {
+                const [sh, sm] = (sess.startTime || '00:00').split(':').map(Number);
+                const [eh, em] = (sess.endTime || '00:00').split(':').map(Number);
+                const startMin = Math.max(0, (sh - HOUR_START) * 60 + sm);
+                let endMin = (eh - HOUR_START) * 60 + em;
+                if (endMin <= startMin) endMin = startMin + 60; // fallback an toàn
+                const top = (startMin / 60) * HOUR_HEIGHT;
+                const height = Math.max(24, ((endMin - startMin) / 60) * HOUR_HEIGHT - 2);
 
-            // Date format components
-            const d = new Date(sess.date);
-            const days = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
-            const dayName = days[d.getDay()];
-            const formattedDateStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+                const names = sess.studentIds.map(id => this.getStudentName(id)).join(', ');
+                const typeClass = sess.type === 'chung' ? 'type-chung' : 'type-rieng';
+                const unpaidClass = !sess.paid ? 'is-unpaid' : '';
 
-            let actionsHTML = '';
-            if (this.currentRole === 'teacher') {
-                actionsHTML = `
-                    <div class="session-actions">
-                        <button class="btn btn-secondary btn-sm" onclick="app.openEditSessionModal('${sess.id}')">
-                            <i class="fa-solid fa-pencil"></i> Sửa
-                        </button>
-                        <button class="btn btn-danger btn-sm" onclick="app.deleteSession('${sess.id}')">
-                            <i class="fa-solid fa-trash-can"></i> Xóa
-                        </button>
+                blocksHTML += `
+                    <div class="week-event-block ${typeClass} ${unpaidClass}"
+                         style="top:${top}px; height:${height}px;"
+                         onclick="app.openSessionQuickEntry('${sess.id}')"
+                         title="${names}">
+                        <span class="evt-time">${sess.startTime}–${sess.endTime}</span>
+                        <span class="evt-title">${names}</span>
                     </div>
                 `;
-            } else if (this.currentRole === 'assistant') {
-                // Tutor can edit but not delete
-                actionsHTML = `
-                    <div class="session-actions">
-                        <button class="btn btn-secondary btn-sm" onclick="app.openEditSessionModal('${sess.id}')">
-                            <i class="fa-solid fa-pencil"></i> Sửa
-                        </button>
-                    </div>
-                `;
-            }
-
-            const priceDisplay = this.currentRole === 'student' 
-                ? `<span style="font-weight:700; color:var(--primary);">${this.formatVND(sess.price / sess.studentIds.length)}</span> <span style="font-size:11px; color:var(--text-muted);">(Học chung chia đều)</span>`
-                : `<span style="font-weight:700; color:var(--primary);">${this.formatVND(sess.price)}</span>`;
-
-            card.innerHTML = `
-                <div class="session-info">
-                    <div class="session-date-box">
-                        <span class="day">${formattedDateStr}</span>
-                        <span class="year">${dayName}</span>
-                    </div>
-                    <div class="session-details">
-                        <div class="session-time-row">
-                            <span><i class="fa-regular fa-clock" style="color:var(--primary);"></i> ${sess.startTime} – ${sess.endTime} (${sess.duration} giờ)</span>
-                            <span class="badge ${badgeClass}">Học ${sess.type}</span>
-                            <span style="color:var(--text-muted); font-size:12px;">|</span>
-                            <span class="role-restricted admin-only" style="font-weight:600;">Đơn giá: ${priceDisplay}</span>
-                        </div>
-                        <div class="session-students">
-                            ${studentsTagsHTML}
-                        </div>
-                        <div style="font-size:13px; color:var(--text-main); margin-top: 4px; border-left:2px solid var(--primary); padding-left:8px; white-space: pre-line;">
-                            ${sess.content || 'Không có ghi chú nội dung'}
-                        </div>
-                    </div>
-                </div>
-                ${actionsHTML}
-            `;
-
-            container.appendChild(card);
-        });
-    }
-
-    // --- VIEW 3 SUB-TAB 2: WEEKLY ATTENDANCE GRID (Image 4 replica) ---
-    renderWeeklyAttendanceGrid() {
-        const tbody = document.getElementById('weeklyAttendanceTableBody');
-        tbody.innerHTML = '';
-
-        // Sort all sessions by date chronological (đã áp dụng bộ lọc Tháng toàn cục)
-        let sorted = this.filterByMonth(this.sessions).sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        if (this.currentRole === 'student') {
-            sorted = sorted.filter(s => s.studentIds.includes(this.currentStudentId));
-        }
-
-        if (sorted.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="7" style="text-align: center; padding: 30px; color: var(--text-muted);">
-                        Chưa có ca dạy nào được lên lịch.
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-
-        // Helper to group dates by custom week definitions
-        // For simple demo, we will calculate week numbers based on date ranges
-        // Let's create actual week labels e.g. "Tuần 1", "Tuần 2" depending on date.
-        // We'll sort by month, and calculate weeks inside that month.
-        let currentWeekKey = "";
-        let weekCounter = 1;
-
-        // Group by month
-        sorted.forEach((sess, index) => {
-            const d = new Date(sess.date);
-            // Calculate a simple week string like: "Tuần 2 (Tháng 6)"
-            // Week is determined by which block of 7 days in the month it falls: 1-7 (Week 1), 8-14 (Week 2), etc.
-            const dateNum = d.getDate();
-            const monthNum = d.getMonth() + 1;
-            const weekNum = Math.ceil(dateNum / 7);
-            const weekKey = `Tuần ${weekNum} (Tháng ${monthNum})`;
-
-            const tr = document.createElement('tr');
-            
-            // Checkbox for completed status
-            const completedCheckbox = `
-                <input type="checkbox" class="weekly-status-checkbox" data-session="${sess.id}" ${sess.completed ? 'checked' : ''} ${this.currentRole === 'student' ? 'disabled' : ''} style="width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer;">
-            `;
-
-            // Dropdown tags representation of ca dạy
-            let caDayTags = '';
-            sess.studentIds.forEach(id => {
-                const sName = this.getStudentName(id);
-                const sClass = this.getStudentClass(id);
-                // Custom color background tags
-                caDayTags += `<span class="badge" style="background:#e0f2fe; color:#0369a1; border-color:#bae6fd; font-size:11px; margin-right:4px; margin-bottom:4px;">${sName.toUpperCase()} ${sClass.toUpperCase()}</span>`;
             });
 
-            // Weekly headers: merge row span or just render grouped headers
-            let weekHeaderHTML = '';
-            if (weekKey !== currentWeekKey) {
-                currentWeekKey = weekKey;
-                weekHeaderHTML = `<span style="font-weight: 700; color: var(--primary); display:block; margin-bottom: 5px;">${weekKey}</span>`;
-            }
-
-            const formattedDate = this.formatDateVN(sess.date);
-
-            const isGroup = sess.type === 'chung';
-            const priceVal = this.currentRole === 'student' ? (sess.price / sess.studentIds.length) : sess.price;
-
-            tr.innerHTML = `
-                <td>
-                    ${weekHeaderHTML}
-                    <span style="font-size:12px; color:var(--text-muted);">${formattedDate}</span>
-                </td>
-                <td>
-                    <div style="display:flex; flex-wrap:wrap; align-items:center;">
-                        ${caDayTags}
-                        <span class="badge ${isGroup ? 'badge-chung' : 'badge-rieng'}" style="font-size:9px; padding: 1px 6px;">Học ${sess.type}</span>
-                    </div>
-                </td>
-                <td class="role-restricted admin-only" style="font-weight:700; text-align:right;">
-                    ${this.formatVND(priceVal)}
-                </td>
-                <td style="text-align:center; font-weight:500;">2.0</td>
-                <td style="text-align:center; font-weight:700; color:var(--primary);">${sess.duration}</td>
-                <td style="text-align:center;">
-                    <div style="display:flex; justify-content:center; align-items:center; gap: 8px;">
-                        ${completedCheckbox}
-                        <span style="font-size:11px; font-weight:600; color: ${sess.completed ? '#16a34a' : '#dc2626'}">
-                            ${sess.completed ? 'Đã dạy' : 'Chưa dạy'}
-                        </span>
-                    </div>
-                </td>
-                <td>
-                    <div style="font-size:12.5px; color:var(--text-main); font-style:italic;">
-                        ${sess.content ? sess.content.replace(/\n/g, ' / ') : 'Trống'}
-                    </div>
-                </td>
-            `;
-
-            tbody.appendChild(tr);
+            dayColumnsHTML += `<div class="week-day-column" style="height:${hourCount * HOUR_HEIGHT}px;">${blocksHTML}</div>`;
         });
 
-        // Register checkbox update events
-        document.querySelectorAll('.weekly-status-checkbox').forEach(cb => {
-            cb.addEventListener('change', async (e) => {
-                const sId = cb.getAttribute('data-session');
-                const isChecked = e.target.checked;
-                
-                const sessionObj = this.sessions.find(x => x.id === sId);
-                if (sessionObj) {
-                    const oldStatus = sessionObj.completed;
-                    sessionObj.completed = isChecked;
-                    
-                    try {
-                        const res = await this.authFetch(`${API_BASE_URL}/api/sessions/${sId}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(sessionObj)
-                        });
-                        if (!res.ok) throw new Error("Server error");
-                        await this.loadData();
-                    } catch (err) {
-                        console.warn("API lỗi, lưu offline: ", err.message);
-                        sessionObj.completed = isChecked;
-                        await this.saveData();
-                    }
-                    this.showToast(`Đã cập nhật trạng thái buổi học: ${isChecked ? 'Đã dạy' : 'Chưa dạy'}`, "success");
-                }
-            });
-        });
+        body.innerHTML = `<div>${hourLabelsHTML}</div>` + dayColumnsHTML;
     }
+
+    // Mở bảng nhập nhanh (giống Nhật ký học tập) khi click vào 1 ca dạy trên lịch tuần
+    openSessionQuickEntry(sessionId) {
+        const sess = this.sessions.find(s => s.id === sessionId);
+        if (!sess) return;
+
+        document.getElementById('quickEntrySessionId').value = sess.id;
+        document.getElementById('quickEntryTimeMeta').innerText = `${sess.startTime} - ${sess.endTime} (${sess.duration} giờ) — Học ${sess.type}`;
+        document.getElementById('quickEntryDateMeta').innerText = this.formatDateVN(sess.date);
+        document.getElementById('quickEntryCompleted').checked = !!sess.completed;
+
+        const tagsWrap = document.getElementById('quickEntryStudentTags');
+        tagsWrap.innerHTML = sess.studentIds.map(id => `<span class="student-tag">${this.getStudentName(id)}</span>`).join('');
+
+        // Nếu buổi học chung có nhiều học sinh, lấy dữ liệu của em đầu tiên (nếu
+        // có) làm giá trị khởi tạo cho bảng nhập chung — vì sau khi lưu, TOÀN BỘ
+        // các em trong ca sẽ được ghi cùng một nội dung.
+        const firstStudentId = sess.studentIds[0];
+        const detail = (firstStudentId && sess.studentDetails[firstStudentId]) || { homework: '', attitude: '', individualComment: '', note: '' };
+
+        document.getElementById('quickEntryContent').value = sess.content || '';
+        document.getElementById('quickEntryHomework').value = detail.homework === 'Chưa làm' ? '' : (detail.homework || '');
+        document.getElementById('quickEntryAttitude').value = detail.attitude === 'Tốt' ? '' : (detail.attitude || '');
+        document.getElementById('quickEntryComment').value = sess.generalComment || detail.individualComment || '';
+        document.getElementById('quickEntryNote').value = detail.note || '';
+
+        this.openModal('quickSessionEntryModal');
+    }
+
+    // Lưu bảng nhập nhanh: áp dụng CHUNG cho tất cả học sinh trong ca (nếu học
+    // chung) rồi đồng bộ luôn về trang Nhật ký học tập (studentDetails dùng
+    // chung nguồn dữ liệu với renderStudentLogs()).
+    async saveQuickSessionEntry() {
+        const id = document.getElementById('quickEntrySessionId').value;
+        const sess = this.sessions.find(s => s.id === id);
+        if (!sess) return;
+
+        const content = document.getElementById('quickEntryContent').value.trim();
+        const homework = document.getElementById('quickEntryHomework').value.trim() || 'Chưa làm';
+        const attitude = document.getElementById('quickEntryAttitude').value.trim() || 'Tốt';
+        const comment = document.getElementById('quickEntryComment').value.trim();
+        const note = document.getElementById('quickEntryNote').value.trim();
+        const completed = document.getElementById('quickEntryCompleted').checked;
+
+        const newStudentDetails = {};
+        sess.studentIds.forEach(stId => {
+            newStudentDetails[stId] = {
+                homework,
+                attitude,
+                individualComment: comment,
+                note
+            };
+        });
+
+        const updatedSession = {
+            ...sess,
+            content,
+            generalComment: comment,
+            completed,
+            studentDetails: newStudentDetails
+        };
+
+        try {
+            const res = await this.authFetch(`${API_BASE_URL}/api/sessions/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedSession)
+            });
+            if (!res.ok) throw new Error("Server error");
+            await this.loadData();
+        } catch (err) {
+            console.warn("API lỗi, lưu offline: ", err.message);
+            sess.content = content;
+            sess.generalComment = comment;
+            sess.completed = completed;
+            sess.studentDetails = newStudentDetails;
+            await this.saveData();
+        }
+
+        this.closeModal('quickSessionEntryModal');
+        this.updateAllViews();
+        this.showToast("Đã lưu nội dung buổi học và đồng bộ sang Nhật ký học tập!", "success");
+    }
+
 
     // --- VIEW 4: TUITION & PAYMENTS OVERVIEW ---
     renderTuitionOverview() {
@@ -1309,7 +1252,9 @@ class PinkyClassApp {
                 // If it's a shared session, split price equally among participants
                 const sessionPricePortion = sess.price / sess.studentIds.length;
                 totalTuitionEarned += sessionPricePortion;
-                if (sess.completed) {
+                // Dùng field Paid riêng biệt (KHÔNG dùng Completed nữa) — buổi học
+                // mới lên lịch mặc định Paid = false (chưa thanh toán).
+                if (sess.paid) {
                     paidTuition += sessionPricePortion;
                 } else {
                     unpaidTuition += sessionPricePortion;
@@ -1320,22 +1265,17 @@ class PinkyClassApp {
             unpaidSum += unpaidTuition;
 
             const tr = document.createElement('tr');
-            
-            // Payment status pill
-            let statusBadge = '';
-            if (unpaidTuition === 0 && totalSessionsCount > 0) {
-                statusBadge = '<span class="payment-status-badge payment-status-paid">Đã thanh toán</span>';
-            } else if (unpaidTuition > 0) {
-                statusBadge = `<span class="payment-status-badge payment-status-unpaid">Nợ ${this.formatVND(unpaidTuition)}</span>`;
-            } else {
-                statusBadge = '<span class="payment-status-badge" style="background:#f1f5f9; color:#64748b;">Chưa học</span>';
-            }
 
-            // Action triggers payment modal or direct toggle
-            const actionBtn = `
-                <button class="btn btn-secondary btn-sm" onclick="app.toggleStudentAllTuitionPaid('${st.id}')">
-                    <i class="fa-solid fa-circle-check"></i> Thu học phí
-                </button>
+            // Trạng thái học phí: dropdown đơn giản 2 lựa chọn (Đã thanh toán /
+            // Chưa thanh toán) áp dụng cho TẤT CẢ buổi học của học sinh này.
+            const isFullyPaid = totalSessionsCount > 0 && unpaidTuition === 0;
+            const statusSelect = `
+                <select class="tuition-status-select ${isFullyPaid ? 'status-paid' : 'status-unpaid'}"
+                        data-student="${st.id}"
+                        ${totalSessionsCount === 0 || this.currentRole === 'student' ? 'disabled' : ''}>
+                    <option value="unpaid" ${!isFullyPaid ? 'selected' : ''}>Chưa thanh toán</option>
+                    <option value="paid" ${isFullyPaid ? 'selected' : ''}>Đã thanh toán</option>
+                </select>
             `;
 
             tr.innerHTML = `
@@ -1348,8 +1288,7 @@ class PinkyClassApp {
                 <td class="role-restricted admin-only" style="text-align:right; color:#16a34a; font-weight:600;">${this.formatVND(paidTuition)}</td>
                 <td class="role-restricted admin-only" style="text-align:right; color:#dc2626; font-weight:600;">${this.formatVND(unpaidTuition)}</td>
                 
-                <td style="text-align:center;">${statusBadge}</td>
-                <td class="role-restricted admin-only" style="text-align:center;">${actionBtn}</td>
+                <td style="text-align:center;">${statusSelect}</td>
             `;
 
             tbody.appendChild(tr);
@@ -1359,6 +1298,15 @@ class PinkyClassApp {
         document.getElementById('tuition-paid-sum').innerText = this.formatVND(paidSum);
         document.getElementById('tuition-unpaid-sum').innerText = this.formatVND(unpaidSum);
         document.getElementById('tuition-total-sum').innerText = this.formatVND(paidSum + unpaidSum);
+
+        // Hook up 2-state tuition toggle change events
+        document.querySelectorAll('.tuition-status-select').forEach(sel => {
+            sel.addEventListener('change', (e) => {
+                const studentId = sel.getAttribute('data-student');
+                const paid = e.target.value === 'paid';
+                this.setStudentPaidStatus(studentId, paid);
+            });
+        });
     }
 
     // --- VIEW 5: STUDENT MANAGEMENT ---
@@ -1589,7 +1537,8 @@ class PinkyClassApp {
             price,
             content,
             generalComment: content ? `Cả lớp học: ${content.split('\n')[0]}` : "",
-            completed: true, // Default to completed once logged
+            completed: true, // Mặc định coi như "đã dạy" khi ghi nhận (trạng thái chấm công)
+            paid: false,     // QUAN TRỌNG: học phí LUÔN mặc định "chưa thanh toán" khi mới lên lịch
             studentDetails
         };
 
@@ -1853,34 +1802,33 @@ class PinkyClassApp {
         this.showToast("Cập nhật nhận xét học sinh thành công!", "success");
     }
 
-    // Toggle Payment state (Collect tuition)
-    async toggleStudentAllTuitionPaid(studentId) {
+    // Chuyển trạng thái học phí (Đã thanh toán <-> Chưa thanh toán) cho TẤT CẢ
+    // buổi học của 1 học sinh. Hoàn toàn tách biệt với trạng thái "đã dạy" —
+    // dùng field Paid riêng, không còn dùng chung với Completed nữa.
+    async setStudentPaidStatus(studentId, paid) {
         if (this.currentRole !== 'teacher') {
-            this.showToast("Chỉ Giáo viên mới có quyền thu học phí!", "error");
+            this.showToast("Chỉ Giáo viên mới có quyền cập nhật học phí!", "error");
+            this.renderTuitionOverview();
             return;
         }
 
-        const studentSessions = this.sessions.filter(sess => sess.studentIds.includes(studentId) && !sess.completed);
-        
-        if (studentSessions.length === 0) {
-            this.showToast("Học sinh này đã hoàn thành tất cả học phí!", "success");
-            return;
-        }
+        const studentSessions = this.sessions.filter(sess => sess.studentIds.includes(studentId));
+        if (studentSessions.length === 0) return;
 
-        if (confirm(`Xác nhận đã thu tiền học phí cho tất cả ${studentSessions.length} buổi chưa thanh toán của học sinh ${this.getStudentName(studentId)}?`)) {
-            try {
-                const res = await this.authFetch(`${API_BASE_URL}/api/students/${studentId}/pay-all`, { method: 'PUT' });
-                if (!res.ok) throw new Error("Server error");
-                await this.loadData();
-            } catch (err) {
-                console.warn("API lỗi, cập nhật offline: ", err.message);
-                studentSessions.forEach(sess => {
-                    sess.completed = true;
-                });
-                await this.saveData();
-            }
-            this.showToast("Đã thanh toán học phí thành công!", "success");
+        try {
+            const res = await this.authFetch(`${API_BASE_URL}/api/students/${studentId}/set-paid`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ paid })
+            });
+            if (!res.ok) throw new Error("Server error");
+            await this.loadData();
+        } catch (err) {
+            console.warn("API lỗi, cập nhật offline: ", err.message);
+            studentSessions.forEach(sess => { sess.paid = paid; });
+            await this.saveData();
         }
+        this.showToast(paid ? "Đã đánh dấu học phí: Đã thanh toán" : "Đã đánh dấu học phí: Chưa thanh toán", "success");
     }
 
     // Export log to CSV
@@ -2149,6 +2097,23 @@ class PinkyClassApp {
         const day = d.getDate().toString().padStart(2, '0');
         const month = (d.getMonth() + 1).toString().padStart(2, '0');
         return `${dayName} - ${day}/${month}`;
+    }
+
+    // Trả về Date của Thứ 2 (Monday) thuộc tuần chứa ngày `d`
+    getMonday(d) {
+        const date = new Date(d);
+        date.setHours(0, 0, 0, 0);
+        const day = date.getDay(); // 0 = CN, 1 = T2, ...
+        const diff = (day === 0 ? -6 : 1 - day); // đưa về Thứ 2
+        date.setDate(date.getDate() + diff);
+        return date;
+    }
+
+    toISODateOnly(d) {
+        const y = d.getFullYear();
+        const m = (d.getMonth() + 1).toString().padStart(2, '0');
+        const day = d.getDate().toString().padStart(2, '0');
+        return `${y}-${m}-${day}`;
     }
 
     // Toast Alert Helper

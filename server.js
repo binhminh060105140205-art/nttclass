@@ -85,6 +85,7 @@ const COLUMN_CASE_MAP = {
     sessiondate: 'SessionDate', starttime: 'StartTime', endtime: 'EndTime',
     sessiontype: 'SessionType', price: 'Price', duration: 'Duration',
     content: 'Content', generalcomment: 'GeneralComment', completed: 'Completed',
+    paid: 'Paid',
     sessionid: 'SessionId', studentid: 'StudentId', homework: 'Homework',
     attitude: 'Attitude', individualcomment: 'IndividualComment', note: 'Note'
 };
@@ -549,7 +550,7 @@ app.get('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCont
             .query(`
             SELECT
                 s.Id, s.SessionDate, s.StartTime, s.EndTime, s.SessionType,
-                s.Price, s.Duration, s.Content, s.GeneralComment, s.Completed,
+                s.Price, s.Duration, s.Content, s.GeneralComment, s.Completed, s.Paid,
                 sd.StudentId, sd.Homework, sd.Attitude, sd.IndividualComment, sd.Note
             FROM Sessions s
             LEFT JOIN SessionDetails sd ON s.Id = sd.SessionId
@@ -576,6 +577,7 @@ app.get('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCont
                     content:        row.Content        || '',
                     generalComment: row.GeneralComment || '',
                     completed:      row.Completed === true || row.Completed === 1,
+                    paid:           row.Paid === true || row.Paid === 1,
                     studentDetails: {}
                 };
             }
@@ -601,7 +603,7 @@ app.get('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCont
 });
 
 app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
-    const { id, date, startTime, endTime, type, studentIds, duration, price, content, generalComment, completed, studentDetails } = req.body || {};
+    const { id, date, startTime, endTime, type, studentIds, duration, price, content, generalComment, completed, paid, studentDetails } = req.body || {};
     console.log('[POST /api/sessions] body nhận được:', JSON.stringify(req.body));
 
     if (!id || !date || !startTime || !endTime || !type || !Array.isArray(studentIds) || studentIds.length === 0) {
@@ -636,8 +638,12 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
             .input('content',        sql.NVarChar,      content        || '')
             .input('generalComment', sql.NVarChar,      generalComment || '')
             .input('completed',      sql.Bit,           completed ? 1 : 0)
-            .query(`INSERT INTO Sessions (Id, SessionDate, StartTime, EndTime, SessionType, Price, Duration, Content, GeneralComment, Completed, TeacherId)
-                    VALUES (@id, @date, @startTime, @endTime, @type, @price, @duration, @content, @generalComment, @completed, @teacherId)`);
+            // Học phí LUÔN mặc định "chưa thanh toán" khi tạo buổi học mới, tách
+            // biệt hoàn toàn với trạng thái "đã dạy/chưa dạy" (Completed). Giáo
+            // viên phải tự bấm chuyển trạng thái ở Báo cáo học phí.
+            .input('paid',           sql.Bit,           paid ? 1 : 0)
+            .query(`INSERT INTO Sessions (Id, SessionDate, StartTime, EndTime, SessionType, Price, Duration, Content, GeneralComment, Completed, Paid, TeacherId)
+                    VALUES (@id, @date, @startTime, @endTime, @type, @price, @duration, @content, @generalComment, @completed, @paid, @teacherId)`);
 
         for (const stId of studentIds) {
             const detail = (studentDetails && studentDetails[stId]) || { homework: 'Chưa làm', attitude: 'Tốt', individualComment: '', note: '' };
@@ -664,7 +670,7 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
 
 app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     const { id } = req.params;
-    const { date, startTime, endTime, type, studentIds, duration, price, content, generalComment, completed, studentDetails } = req.body || {};
+    const { date, startTime, endTime, type, studentIds, duration, price, content, generalComment, completed, paid, studentDetails } = req.body || {};
 
     if (!date || !startTime || !endTime || !type || !Array.isArray(studentIds) || studentIds.length === 0) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
@@ -698,10 +704,12 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
             .input('content',        sql.NVarChar,      content        || '')
             .input('generalComment', sql.NVarChar,      generalComment || '')
             .input('completed',      sql.Bit,           completed ? 1 : 0)
+            .input('paid',           sql.Bit,           paid ? 1 : 0)
             .query(`UPDATE Sessions
                     SET SessionDate = @date, StartTime = @startTime, EndTime = @endTime,
                         SessionType = @type, Price = @price, Duration = @duration,
-                        Content = @content, GeneralComment = @generalComment, Completed = @completed
+                        Content = @content, GeneralComment = @generalComment, Completed = @completed,
+                        Paid = @paid
                     WHERE Id = @id`);
 
         await new sql.Request(transaction)
@@ -811,8 +819,13 @@ app.put('/api/session-details/:sessionId/:studentId', requireRole('teacher', 'as
 });
 
 // Thu học phí hàng loạt (chỉ admin + teacher)
-app.put('/api/students/:studentId/pay-all', requireRole('teacher'), requireTeacherContext, async (req, res) => {
+// Chuyển trạng thái học phí (Đã thanh toán <-> Chưa thanh toán) cho TẤT CẢ các
+// buổi học của một học sinh. Cột Paid hoàn toàn tách biệt với Completed (trạng
+// thái "đã dạy/chưa dạy"), để tránh lỗi tự động coi buổi học mới lên lịch là
+// đã đóng tiền.
+app.put('/api/students/:studentId/set-paid', requireRole('teacher'), requireTeacherContext, async (req, res) => {
     const { studentId } = req.params;
+    const { paid } = req.body || {};
     try {
         const pool = await poolPromise;
         const owner = await pool.request()
@@ -826,13 +839,13 @@ app.put('/api/students/:studentId/pay-all', requireRole('teacher'), requireTeach
         }
         await pool.request()
             .input('studentId', sql.VarChar, studentId)
+            .input('paid',      sql.Bit,     paid ? 1 : 0)
             .query(`UPDATE Sessions
-                    SET Completed = 1
-                    WHERE Id IN (SELECT SessionId FROM SessionDetails WHERE StudentId = @studentId)
-                      AND Completed = 0`);
-        res.json({ message: 'Đã cập nhật trạng thái thanh toán học phí thành công!' });
+                    SET Paid = @paid
+                    WHERE Id IN (SELECT SessionId FROM SessionDetails WHERE StudentId = @studentId)`);
+        res.json({ message: paid ? 'Đã đánh dấu đã thanh toán!' : 'Đã đánh dấu chưa thanh toán!' });
     } catch (err) {
-        console.error('[PUT /api/students/:studentId/pay-all]', err);
+        console.error('[PUT /api/students/:studentId/set-paid]', err);
         res.status(500).json({ error: err.message });
     }
 });
