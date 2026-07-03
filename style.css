@@ -1377,6 +1377,57 @@ textarea.form-control {
     border-color: #fecaca;
 }
 
+/* Per-student quick-entry cards inside quickSessionEntryModal */
+.qe-student-card {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 14px;
+    background: #f8fafc;
+}
+
+.qe-student-card .qe-student-name {
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.qe-student-card .qe-field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.qe-student-card .qe-field-grid > .full-span {
+    grid-column: 1 / -1;
+}
+
+.qe-student-card label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 4px;
+}
+
+.qe-student-card input,
+.qe-student-card textarea {
+    width: 100%;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+}
+
+.qe-student-card input:focus,
+.qe-student-card textarea:focus {
+    border-color: var(--primary);
+}
+
 /* Responsive styles */
 @media (max-width: 1024px) {
     .sidebar {

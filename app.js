@@ -1139,7 +1139,9 @@ class PinkyClassApp {
         body.innerHTML = `<div>${hourLabelsHTML}</div>` + dayColumnsHTML;
     }
 
-    // Mở bảng nhập nhanh (giống Nhật ký học tập) khi click vào 1 ca dạy trên lịch tuần
+    // Mở bảng nhập nhanh khi click vào 1 ca dạy trên lịch tuần. Nếu ca đó có
+    // nhiều học sinh (học chung), hiện MỘT THẺ RIÊNG cho từng em để chấm/nhận
+    // xét độc lập — không gộp chung nội dung của các em lại với nhau.
     openSessionQuickEntry(sessionId) {
         const sess = this.sessions.find(s => s.id === sessionId);
         if (!sess) return;
@@ -1148,54 +1150,97 @@ class PinkyClassApp {
         document.getElementById('quickEntryTimeMeta').innerText = `${sess.startTime} - ${sess.endTime} (${sess.duration} giờ) — Học ${sess.type}`;
         document.getElementById('quickEntryDateMeta').innerText = this.formatDateVN(sess.date);
         document.getElementById('quickEntryCompleted').checked = !!sess.completed;
-
-        const tagsWrap = document.getElementById('quickEntryStudentTags');
-        tagsWrap.innerHTML = sess.studentIds.map(id => `<span class="student-tag">${this.getStudentName(id)}</span>`).join('');
-
-        // Nếu buổi học chung có nhiều học sinh, lấy dữ liệu của em đầu tiên (nếu
-        // có) làm giá trị khởi tạo cho bảng nhập chung — vì sau khi lưu, TOÀN BỘ
-        // các em trong ca sẽ được ghi cùng một nội dung.
-        const firstStudentId = sess.studentIds[0];
-        const detail = (firstStudentId && sess.studentDetails[firstStudentId]) || { homework: '', attitude: '', individualComment: '', note: '' };
-
         document.getElementById('quickEntryContent').value = sess.content || '';
-        document.getElementById('quickEntryHomework').value = detail.homework === 'Chưa làm' ? '' : (detail.homework || '');
-        document.getElementById('quickEntryAttitude').value = detail.attitude === 'Tốt' ? '' : (detail.attitude || '');
-        document.getElementById('quickEntryComment').value = sess.generalComment || detail.individualComment || '';
-        document.getElementById('quickEntryNote').value = detail.note || '';
+
+        // "Nhận xét chung cho cả lớp" chỉ có ý nghĩa với buổi học CHUNG (nhiều
+        // học sinh); buổi học riêng thì ẩn đi vì chỉ có 1 em.
+        const generalGroup = document.getElementById('quickEntryGeneralCommentGroup');
+        if (sess.type === 'chung') {
+            generalGroup.style.display = 'block';
+            document.getElementById('quickEntryGeneralComment').value = sess.generalComment || '';
+        } else {
+            generalGroup.style.display = 'none';
+            document.getElementById('quickEntryGeneralComment').value = '';
+        }
+
+        // Sinh 1 thẻ nhập liệu RIÊNG cho từng học sinh trong ca, dữ liệu khởi
+        // tạo lấy từ studentDetails hiện có của đúng em đó (nếu có).
+        const listWrap = document.getElementById('quickEntryStudentsList');
+        listWrap.innerHTML = sess.studentIds.map(stId => {
+            const detail = sess.studentDetails[stId] || { homework: '', attitude: '', individualComment: '', note: '' };
+            const name = this.getStudentName(stId);
+            const homework = detail.homework === 'Chưa làm' ? '' : (detail.homework || '');
+            const attitude = detail.attitude === 'Tốt' ? '' : (detail.attitude || '');
+            return `
+                <div class="qe-student-card" data-student-id="${stId}">
+                    <div class="qe-student-name"><i class="fa-solid fa-user"></i> ${name}</div>
+                    <div class="qe-field-grid">
+                        <div>
+                            <label>Bài tập về nhà (BTVN)</label>
+                            <input type="text" class="qe-homework" placeholder="Nhập tự do..." value="${this.escapeHtmlAttr(homework)}">
+                        </div>
+                        <div>
+                            <label>Ý thức học tập</label>
+                            <input type="text" class="qe-attitude" placeholder="Nhập tự do..." value="${this.escapeHtmlAttr(attitude)}">
+                        </div>
+                        <div class="full-span">
+                            <label>Nhận xét riêng cho ${name}</label>
+                            <textarea class="qe-comment" rows="2" placeholder="Nhận xét riêng...">${detail.individualComment || ''}</textarea>
+                        </div>
+                        <div class="full-span">
+                            <label>Ghi chú (Minitest,...)</label>
+                            <input type="text" class="qe-note" placeholder="Ghi chú thêm..." value="${this.escapeHtmlAttr(detail.note || '')}">
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
 
         this.openModal('quickSessionEntryModal');
     }
 
-    // Lưu bảng nhập nhanh: áp dụng CHUNG cho tất cả học sinh trong ca (nếu học
-    // chung) rồi đồng bộ luôn về trang Nhật ký học tập (studentDetails dùng
-    // chung nguồn dữ liệu với renderStudentLogs()).
+    // Escape giá trị chèn vào thuộc tính value="" để tránh vỡ HTML khi nội
+    // dung có chứa dấu ngoặc kép
+    escapeHtmlAttr(str) {
+        return String(str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    }
+
+    // Lưu bảng nhập nhanh: MỖI học sinh được lưu nhận xét RIÊNG của mình (đọc
+    // trực tiếp từ thẻ tương ứng), rồi đồng bộ luôn về trang Nhật ký học tập
+    // (studentDetails dùng chung nguồn dữ liệu với renderStudentLogs()).
     async saveQuickSessionEntry() {
         const id = document.getElementById('quickEntrySessionId').value;
         const sess = this.sessions.find(s => s.id === id);
         if (!sess) return;
 
         const content = document.getElementById('quickEntryContent').value.trim();
-        const homework = document.getElementById('quickEntryHomework').value.trim() || 'Chưa làm';
-        const attitude = document.getElementById('quickEntryAttitude').value.trim() || 'Tốt';
-        const comment = document.getElementById('quickEntryComment').value.trim();
-        const note = document.getElementById('quickEntryNote').value.trim();
         const completed = document.getElementById('quickEntryCompleted').checked;
+        const generalComment = sess.type === 'chung'
+            ? document.getElementById('quickEntryGeneralComment').value.trim()
+            : '';
 
         const newStudentDetails = {};
-        sess.studentIds.forEach(stId => {
-            newStudentDetails[stId] = {
-                homework,
-                attitude,
-                individualComment: comment,
-                note
-            };
+        document.querySelectorAll('#quickEntryStudentsList .qe-student-card').forEach(card => {
+            const stId = card.getAttribute('data-student-id');
+            const homework = card.querySelector('.qe-homework').value.trim() || 'Chưa làm';
+            const attitude = card.querySelector('.qe-attitude').value.trim() || 'Tốt';
+            const individualComment = card.querySelector('.qe-comment').value.trim();
+            const note = card.querySelector('.qe-note').value.trim();
+            newStudentDetails[stId] = { homework, attitude, individualComment, note };
         });
+
+        // Với buổi học riêng (chỉ 1 học sinh), generalComment mirror luôn theo
+        // nhận xét riêng của em đó (giữ đúng quy ước sẵn có trong toàn hệ thống).
+        let finalGeneralComment = generalComment;
+        if (sess.type !== 'chung') {
+            const onlyStudentId = sess.studentIds[0];
+            finalGeneralComment = (newStudentDetails[onlyStudentId] && newStudentDetails[onlyStudentId].individualComment) || '';
+        }
 
         const updatedSession = {
             ...sess,
             content,
-            generalComment: comment,
+            generalComment: finalGeneralComment,
             completed,
             studentDetails: newStudentDetails
         };
@@ -1211,7 +1256,7 @@ class PinkyClassApp {
         } catch (err) {
             console.warn("API lỗi, lưu offline: ", err.message);
             sess.content = content;
-            sess.generalComment = comment;
+            sess.generalComment = finalGeneralComment;
             sess.completed = completed;
             sess.studentDetails = newStudentDetails;
             await this.saveData();
@@ -1219,7 +1264,7 @@ class PinkyClassApp {
 
         this.closeModal('quickSessionEntryModal');
         this.updateAllViews();
-        this.showToast("Đã lưu nội dung buổi học và đồng bộ sang Nhật ký học tập!", "success");
+        this.showToast("Đã lưu nhận xét riêng cho từng học sinh và đồng bộ sang Nhật ký học tập!", "success");
     }
 
 

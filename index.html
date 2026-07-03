@@ -614,19 +614,18 @@
 
     <!-- MODAL: QUICK ENTRY FROM WEEKLY CALENDAR (Image 2 layout) -->
     <div class="modal-backdrop" id="quickSessionEntryModal">
-        <div class="modal-container" style="max-width: 620px;">
+        <div class="modal-container" style="max-width: 700px;">
             <div class="modal-header">
                 <h3 class="modal-title"><i class="fa-solid fa-bolt"></i> Nhập Nhanh Nội Dung Buổi Học</h3>
                 <button class="modal-close" onclick="app.closeModal('quickSessionEntryModal')">&times;</button>
             </div>
             <form id="quickSessionEntryForm">
                 <input type="hidden" id="quickEntrySessionId">
-                <div class="modal-body" style="display: flex; flex-direction: column; gap: 15px;">
+                <div class="modal-body" style="display: flex; flex-direction: column; gap: 15px; max-height: 70vh; overflow-y: auto;">
 
                     <div style="background: var(--primary-soft); border: 1px solid var(--primary-light); border-radius: 12px; padding: 12px;">
                         <div style="font-weight:700; color: var(--primary);" id="quickEntryTimeMeta">16:00 - 18:00</div>
                         <div style="font-size:12px; color: var(--text-muted); margin-top: 4px;" id="quickEntryDateMeta">Thứ 5, 02/07/2026</div>
-                        <div style="margin-top: 8px; display:flex; flex-wrap:wrap; gap:6px;" id="quickEntryStudentTags"></div>
                     </div>
 
                     <div class="form-group">
@@ -637,32 +636,25 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="quickEntryContent">Nội dung buổi học</label>
+                        <label for="quickEntryContent">Nội dung buổi học (chung cho cả buổi)</label>
                         <textarea id="quickEntryContent" class="form-control" placeholder="Ví dụ: Ôn tam giác, luyện đề..." rows="2"></textarea>
                     </div>
 
-                    <div class="form-group">
-                        <label for="quickEntryHomework">Bài tập về nhà (BTVN)</label>
-                        <input type="text" id="quickEntryHomework" class="form-control" placeholder="Nhập tự do, ví dụ: Phiếu 8.1, chép phạt...">
+                    <div class="form-group" id="quickEntryGeneralCommentGroup" style="display:none;">
+                        <label for="quickEntryGeneralComment">Nhận xét chung cho cả lớp (buổi học chung)</label>
+                        <textarea id="quickEntryGeneralComment" class="form-control" placeholder="Đánh giá chung cho cả nhóm..." rows="2"></textarea>
                     </div>
 
-                    <div class="form-group">
-                        <label for="quickEntryAttitude">Ý thức học tập</label>
-                        <input type="text" id="quickEntryAttitude" class="form-control" placeholder="Nhập tự do, ví dụ: Tập trung, chưa chăm...">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="quickEntryComment">Nhận xét</label>
-                        <textarea id="quickEntryComment" class="form-control" placeholder="Nhận xét chung cho cả buổi học..." rows="3"></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="quickEntryNote">Ghi chú (Minitest,...)</label>
-                        <input type="text" id="quickEntryNote" class="form-control" placeholder="Ghi chú thêm...">
+                    <div>
+                        <label style="font-weight:700; display:block; margin-bottom:8px;">
+                            <i class="fa-solid fa-users"></i> Chấm riêng cho từng học sinh
+                        </label>
+                        <!-- Filled dynamically: 1 card per student với BTVN / Ý thức / Nhận xét / Ghi chú RIÊNG -->
+                        <div id="quickEntryStudentsList" style="display:flex; flex-direction:column; gap:14px;"></div>
                     </div>
 
                     <p style="font-size:12px; color: var(--text-muted); margin: 0;">
-                        <i class="fa-solid fa-circle-info"></i> Nếu buổi học có nhiều học sinh (học chung), nội dung nhập ở đây sẽ được lưu chung cho tất cả các em và đồng bộ sang trang Nhật ký học tập.
+                        <i class="fa-solid fa-circle-info"></i> Nhận xét của từng học sinh được lưu riêng và sẽ đồng bộ sang đúng hồ sơ của em đó trong trang Nhật ký học tập.
                     </p>
                 </div>
                 <div class="modal-footer" style="justify-content: space-between;">
