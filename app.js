@@ -20,8 +20,7 @@ class PinkyClassApp {
         this.currentUser = null;
         this.currentRole = null; // admin or teacher
         this.currentStudentId = null; // Active student filter (chỉ dùng ở trang Nhật ký học tập)
-        this.currentMonthFilter = ''; // '' = tất cả các tháng, '1'..'12' = lọc theo tháng
-        this.currentYearFilter = new Date().getFullYear(); // luôn có 1 năm cụ thể đi kèm bộ lọc tháng, tránh gộp nhầm dữ liệu khác năm
+        this.currentMonthFilter = ''; // '' = tất cả, hoặc dạng "yyyy-m" (VD "2026-7") ứng với 1 mục trong dropdown "Kỳ"
         this.currentWeekStart = this.getMonday(new Date()); // Thứ 2 đầu tuần đang xem ở Lịch dạy & Chấm công
 
         this.init();
@@ -100,34 +99,54 @@ class PinkyClassApp {
 
     // Trả về danh sách buổi học đã áp dụng bộ lọc "Tháng" toàn cục (dùng chung
     // cho Tổng quan / Nhật ký / Lịch dạy / Học phí để đồng bộ số liệu).
-    // Sinh lại danh sách năm cho bộ lọc dựa trên dữ liệu buổi học thực tế +
-    // năm hiện tại, để không bao giờ thiếu năm cũ/mới. Giữ nguyên năm đang
-    // được chọn (this.currentYearFilter) nếu vẫn còn trong danh sách.
-    populateYearFilterOptions() {
-        const yearFilterEl = document.getElementById('globalYearFilter');
-        if (!yearFilterEl) return;
-        const nowYear = new Date().getFullYear();
-        const yearsInData = new Set(
-            (this.sessions || [])
-                .map(s => parseInt(String(s.date).slice(0, 4)))
-                .filter(y => !isNaN(y))
-        );
-        yearsInData.add(nowYear);
-        yearsInData.add(this.currentYearFilter);
-        const years = Array.from(yearsInData).sort((a, b) => b - a);
-        yearFilterEl.innerHTML = years.map(y => `<option value="${y}">Năm ${y}</option>`).join('');
-        yearFilterEl.value = String(this.currentYearFilter);
+    // Sinh danh sách các "Tháng/Năm" thực sự có buổi học (dựa trên dữ liệu
+    // thật, không cố định cứng 12 tháng) để đưa vào 1 dropdown "Kỳ" duy nhất
+    // — thay cho việc phải chọn 2 ô Tháng + Năm riêng biệt (rườm rà). Giá trị
+    // mỗi lựa chọn dạng "yyyy-m" (VD "2026-7"), luôn có năm đi kèm nên không
+    // còn gộp nhầm dữ liệu cùng tháng khác năm như trước đây.
+    populateMonthFilterOptions() {
+        const selectEl = document.getElementById('globalMonthFilter');
+        if (!selectEl) return;
+
+        const monthNames = ['', 'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+
+        const keysSet = new Set();
+        (this.sessions || []).forEach(s => {
+            const parts = String(s.date).split('-'); // yyyy-mm-dd
+            if (parts.length >= 2) {
+                const y = parseInt(parts[0]), m = parseInt(parts[1]);
+                if (y && m) keysSet.add(`${y}-${m}`);
+            }
+        });
+        // Luôn đảm bảo có tháng hiện tại trong danh sách, kể cả khi chưa có buổi học nào
+        const now = new Date();
+        keysSet.add(`${now.getFullYear()}-${now.getMonth() + 1}`);
+        // Giữ lại lựa chọn đang chọn hiện tại (nếu có) để không bị mất khi danh sách sinh lại
+        if (this.currentMonthFilter) keysSet.add(this.currentMonthFilter);
+
+        const keys = Array.from(keysSet).sort((a, b) => {
+            const [ay, am] = a.split('-').map(Number);
+            const [by, bm] = b.split('-').map(Number);
+            return by - ay || bm - am; // mới nhất lên đầu
+        });
+
+        selectEl.innerHTML = '<option value="">Tất cả</option>' + keys.map(k => {
+            const [y, m] = k.split('-').map(Number);
+            return `<option value="${k}">${monthNames[m]}/${y}</option>`;
+        }).join('');
+        selectEl.value = this.currentMonthFilter || '';
     }
 
-    // Lọc buổi học theo THÁNG + NĂM đang chọn ở bộ lọc toàn hệ thống.
-    // QUAN TRỌNG: trước đây chỉ so khớp số tháng, KHÔNG so năm — khiến buổi
-    // học tháng 5/2025 và tháng 5/2026 (hoặc bất kỳ năm nào khác) bị gộp
-    // chung làm 1, gây sai tổng học phí/báo cáo/phiếu xuất khi hệ thống dùng
-    // qua nhiều năm học. Nay bắt buộc so khớp CẢ tháng lẫn năm.
+    // Lọc buổi học theo đúng "Tháng/Năm" đang chọn ở bộ lọc "Kỳ" (dropdown gộp
+    // chung, value dạng "yyyy-m"). Trước đây từng chỉ so khớp số tháng, KHÔNG
+    // so năm — khiến buổi học tháng 5/2025 và tháng 5/2026 (hoặc bất kỳ năm
+    // nào khác) bị gộp chung làm 1, gây sai tổng học phí/báo cáo/phiếu xuất
+    // khi hệ thống dùng qua nhiều năm học. Nay bắt buộc so khớp CẢ tháng lẫn năm.
     filterByMonth(sessions) {
         if (!this.currentMonthFilter) return sessions;
-        const month = parseInt(this.currentMonthFilter);
-        const year = parseInt(this.currentYearFilter) || new Date().getFullYear();
+        const [yearStr, monthStr] = this.currentMonthFilter.split('-');
+        const year = parseInt(yearStr);
+        const month = parseInt(monthStr);
         return (sessions || []).filter(s => {
             if (!s.date) return false;
             const parts = String(s.date).split('-'); // yyyy-mm-dd
@@ -202,7 +221,7 @@ class PinkyClassApp {
             // thẳng dữ liệu server trả về, không re-normalize.
             this.sessions = rawSessions;
             this.computeSessionPaidFlags();
-            this.populateYearFilterOptions();
+            this.populateMonthFilterOptions();
 
             this.populateStudentPickers();
             // QUAN TRỌNG: trước đây loadData() chỉ cập nhật dữ liệu trong bộ nhớ
@@ -260,24 +279,12 @@ class PinkyClassApp {
             gradeFilterEl.addEventListener('change', () => this.renderStudentList());
         }
 
-        // Lọc toàn hệ thống theo tháng (Tổng quan / Nhật ký / Lịch dạy / Học phí)
+        // Lọc toàn hệ thống theo kỳ (Tổng quan / Nhật ký / Lịch dạy / Học phí).
+        // Giá trị dropdown dạng "yyyy-m" (VD "2026-7") hoặc "" = tất cả.
         const monthFilterEl = document.getElementById('globalMonthFilter');
         if (monthFilterEl) {
             monthFilterEl.addEventListener('change', (e) => {
                 this.currentMonthFilter = e.target.value;
-                this.updateAllViews();
-            });
-        }
-
-        // Bộ lọc NĂM đi kèm bộ lọc tháng — bắt buộc phải có để tránh gộp nhầm
-        // dữ liệu cùng tháng nhưng khác năm (VD: Tháng 5/2025 và Tháng 5/2026
-        // trước đây bị coi là một, gây sai tổng học phí/báo cáo). Danh sách
-        // năm được sinh lại mỗi khi dữ liệu tải xong (xem populateYearFilterOptions()
-        // gọi trong loadData()), ở đây chỉ gắn sự kiện đổi năm.
-        const yearFilterEl = document.getElementById('globalYearFilter');
-        if (yearFilterEl) {
-            yearFilterEl.addEventListener('change', (e) => {
-                this.currentYearFilter = parseInt(e.target.value);
                 this.updateAllViews();
             });
         }
@@ -492,6 +499,8 @@ class PinkyClassApp {
         document.getElementById('sidebarUserRole').innerText = user.role === 'assistant' && user.assignedTeacherName
             ? `${roleLabel} (của ${user.assignedTeacherName})`
             : roleLabel;
+        const avatarEl = document.getElementById('sidebarUserAvatar');
+        if (avatarEl) avatarEl.innerText = (user.name || '?').trim().charAt(0).toUpperCase();
         this.showAppPage();
         this.switchRole(user.role);
         this.switchView(user.role === 'admin' ? 'view-users' : 'view-dashboard');
@@ -1603,7 +1612,7 @@ class PinkyClassApp {
     .total-card .value { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size:29px; font-weight:700; color:#be185d; }
     .chip { display:inline-block; background:#fce7f3; color:#be185d; font-weight:800; font-size:13px; padding:5px 12px; border-radius:20px; margin:3px 4px 0 0; }
     .section-title { font-family:'Nunito',sans-serif; font-weight:800; color:#be185d; margin: 20px 0 8px; font-size:14.5px; letter-spacing:0.2px; }
-    .note-block { border-left: 3px solid #be185d; background:#fdf2f8; padding: 10px 14px; border-radius: 10px; margin-bottom: 10px; font-size: 13.5px; line-height:1.65; }
+    .note-block { border: 1.5px solid #f3d2e4; background:#fdf2f8; padding: 12px 16px; border-radius: 14px; margin-bottom: 10px; font-size: 13.5px; line-height:1.65; }
     .two-col { display:grid; grid-template-columns:1fr 1fr; gap: 20px 24px; }
     .fee-note-item { font-size:13.5px; padding: 4px 0; }
     .footer-note { margin-top:20px; font-size:12.5px; color:#9d6b83; border-top:1px dashed #f3d2e4; padding-top:14px; display:flex; justify-content:space-between; align-items:center; gap: 10px; font-weight:600; }

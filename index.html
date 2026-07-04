@@ -48,6 +48,7 @@
 
         <!-- User Info Panel -->
         <div class="user-box">
+            <div class="user-avatar-badge" id="sidebarUserAvatar">?</div>
             <div class="user-info">
                 <div id="sidebarUserName">Chưa đăng nhập</div>
                 <div id="sidebarUserRole">Vui lòng đăng nhập</div>
@@ -87,25 +88,15 @@
                 <!-- Role Badge Indicator -->
                 <div id="roleBadge" class="role-badge role-badge-admin"> Admin</div>
 
-                <!-- Month filter (áp dụng cho Tổng quan / Nhật ký / Lịch dạy / Học phí) -->
+                <!-- Bộ lọc kỳ học (áp dụng cho Tổng quan / Nhật ký / Lịch dạy / Học phí).
+                     Gộp chung tháng+năm trong 1 dropdown duy nhất (value dạng
+                     "yyyy-m"), danh sách được sinh tự động từ dữ liệu buổi học
+                     thực tế — không cần 2 ô chọn riêng (tháng/năm) nữa. -->
                 <div class="student-context-picker" id="monthFilterPicker">
-                    <span>Tháng:</span>
+                    <span>Kỳ:</span>
                     <select id="globalMonthFilter" class="student-select">
                         <option value="">Tất cả</option>
-                        <option value="1">Tháng 1</option>
-                        <option value="2">Tháng 2</option>
-                        <option value="3">Tháng 3</option>
-                        <option value="4">Tháng 4</option>
-                        <option value="5">Tháng 5</option>
-                        <option value="6">Tháng 6</option>
-                        <option value="7">Tháng 7</option>
-                        <option value="8">Tháng 8</option>
-                        <option value="9">Tháng 9</option>
-                        <option value="10">Tháng 10</option>
-                        <option value="11">Tháng 11</option>
-                        <option value="12">Tháng 12</option>
                     </select>
-                    <select id="globalYearFilter" class="student-select"></select>
                 </div>
 
                 <button class="btn btn-secondary btn-sm" id="logoutBtn" style="padding: 8px 16px; border-radius: 20px; display:none;">

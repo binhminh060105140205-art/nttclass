@@ -182,6 +182,21 @@ let poolPromise = pgPool.query('SELECT 1')
             console.error('Lỗi khi tự động thêm cột SessionName:', migErr.message);
         }
 
+        // PHƯƠNG ÁN A (tối ưu tốc độ trang Lịch dạy & Chấm công): tự động đảm
+        // bảo các index tăng tốc truy vấn luôn tồn tại — chỉ tăng tốc, không
+        // đổi dữ liệu, an toàn để chạy lại nhiều lần (IF NOT EXISTS).
+        try {
+            await pgPool.query('CREATE INDEX IF NOT EXISTS idx_sessions_date ON Sessions (SessionDate)');
+            await pgPool.query('CREATE INDEX IF NOT EXISTS idx_sessions_teacher ON Sessions (TeacherId)');
+            await pgPool.query('CREATE INDEX IF NOT EXISTS idx_sessions_teacher_date ON Sessions (TeacherId, SessionDate)');
+            await pgPool.query('CREATE INDEX IF NOT EXISTS idx_sessiondetails_session ON SessionDetails (SessionId)');
+            await pgPool.query('CREATE INDEX IF NOT EXISTS idx_sessiondetails_student ON SessionDetails (StudentId)');
+            await pgPool.query('CREATE INDEX IF NOT EXISTS idx_students_teacher ON Students (TeacherId)');
+            console.log('Đã kiểm tra/đảm bảo các index tối ưu tốc độ tồn tại.');
+        } catch (migErr) {
+            console.error('Lỗi khi tự động tạo index:', migErr.message);
+        }
+
         return { request: () => new sql.Request(pgPool) };
     })
     .catch(err => {

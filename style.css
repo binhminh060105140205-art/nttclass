@@ -207,6 +207,62 @@ body {
     letter-spacing: -0.5px;
 }
 
+/* User Info Panel (tên + vai trò người đang đăng nhập) */
+.user-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    margin: 4px 0 22px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(224, 239, 255, 0.7));
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+}
+
+.user-avatar-badge {
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--accent-strong));
+    color: #fff;
+    font-weight: 700;
+    font-size: 17px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.user-info {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+#sidebarUserName {
+    font-weight: 700;
+    font-size: 14.5px;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#sidebarUserRole {
+    display: inline-block;
+    width: fit-content;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--accent-strong);
+    background: var(--primary-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 9px;
+    border-radius: 8px;
+}
+
 /* Role Switcher in Sidebar */
 .role-box {
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 238, 242, 0.8));
