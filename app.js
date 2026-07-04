@@ -1625,9 +1625,9 @@ class PinkyClassApp {
     .tag { display:inline-block; font-family:'Nunito',sans-serif; font-size:12px; font-weight:800; color: #be185d; background:#fce7f3; padding:5px 14px; border-radius:20px; letter-spacing:0.2px; }
     h1 { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size: 27px; font-weight:700; text-align:center; color:#be185d; margin: 16px 0 4px; letter-spacing: 0.3px; }
     .subtitle { text-align:center; color:#9d6b83; font-size:13.5px; margin-bottom: 24px; font-weight:600; }
-    .row { display:flex; gap:16px; margin-bottom: 20px; align-items: stretch; }
-    .row > .card { flex: 1; }
-    .card { border:1.5px solid #f3d2e4; border-radius:18px; padding:18px 20px; margin-bottom: 20px; }
+    .row { display:flex; gap:16px; margin-bottom: 18px; align-items: stretch; }
+    .row > .card { flex: 1; margin-bottom: 0; }
+    .card { border:1.5px solid #f3d2e4; border-radius:18px; padding:18px 20px; margin-bottom: 18px; }
     .card .label { font-size:11px; color:#9d6b83; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; }
     .card .value { font-family:'Nunito',sans-serif; font-size:16.5px; font-weight:800; margin-top:2px; color:#3f0d24; }
     .divider-dashed { border-top: 1px dashed #f3d2e4; margin: 14px 0 12px; }
