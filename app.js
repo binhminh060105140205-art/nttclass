@@ -1200,17 +1200,6 @@ class PinkyClassApp {
         document.getElementById('quickEntryCompleted').checked = !!sess.completed;
         document.getElementById('quickEntryContent').value = sess.content || '';
 
-        // "Nhận xét chung cho cả lớp" chỉ có ý nghĩa với buổi học CHUNG (nhiều
-        // học sinh); buổi học riêng thì ẩn đi vì chỉ có 1 em.
-        const generalGroup = document.getElementById('quickEntryGeneralCommentGroup');
-        if (sess.type === 'chung') {
-            generalGroup.style.display = 'block';
-            document.getElementById('quickEntryGeneralComment').value = sess.generalComment || '';
-        } else {
-            generalGroup.style.display = 'none';
-            document.getElementById('quickEntryGeneralComment').value = '';
-        }
-
         // Sinh 1 thẻ nhập liệu RIÊNG cho từng học sinh trong ca, dữ liệu khởi
         // tạo lấy từ studentDetails hiện có của đúng em đó (nếu có).
         const listWrap = document.getElementById('quickEntryStudentsList');
@@ -1278,9 +1267,6 @@ class PinkyClassApp {
         const content = document.getElementById('quickEntryContent').value.trim();
         const sessionName = document.getElementById('quickEntrySessionName').value.trim();
         const completed = document.getElementById('quickEntryCompleted').checked;
-        const generalComment = sess.type === 'chung'
-            ? document.getElementById('quickEntryGeneralComment').value.trim()
-            : '';
 
         const newStudentDetails = {};
         document.querySelectorAll('#quickEntryStudentsList .qe-student-card').forEach(card => {
@@ -1292,9 +1278,13 @@ class PinkyClassApp {
             newStudentDetails[stId] = { homework, attitude, individualComment, note };
         });
 
-        // Với buổi học riêng (chỉ 1 học sinh), generalComment mirror luôn theo
-        // nhận xét riêng của em đó (giữ đúng quy ước sẵn có trong toàn hệ thống).
-        let finalGeneralComment = generalComment;
+        // Đã bỏ ô "Nhận xét chung cho cả lớp" khỏi form nhập nhanh (chỉ còn
+        // nhận xét RIÊNG cho từng học sinh). Với buổi học riêng (1 học sinh),
+        // generalComment vẫn mirror theo nhận xét riêng của em đó để tương
+        // thích với những chỗ khác trong hệ thống còn đọc field này (VD xuất
+        // CSV) — với buổi học chung, giữ nguyên giá trị generalComment cũ
+        // (không có nơi nào chỉnh sửa nó nữa qua form nhập nhanh).
+        let finalGeneralComment = sess.generalComment || '';
         if (sess.type !== 'chung') {
             const onlyStudentId = sess.studentIds[0];
             finalGeneralComment = (newStudentDetails[onlyStudentId] && newStudentDetails[onlyStudentId].individualComment) || '';
