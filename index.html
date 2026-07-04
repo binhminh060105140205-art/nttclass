@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NttClass - Quản lý Học sinh & Học phí Cá nhân</title>
-    <!-- FontAwesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts Comfortaa -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,9 +16,6 @@
     <section id="loginPage" class="login-screen">
         <div class="login-card">
             <div class="login-brand">
-                <div class="logo-icon">
-                    <i class="fa-solid fa-graduation-cap"></i>
-                </div>
                 <div>
                     <h1>NttClass Admin</h1>
                     <p>Đăng nhập để truy cập hệ thống quản lý học sinh và lịch dạy.</p>
@@ -48,17 +43,11 @@
     <!-- Sidebar Navigation -->
     <aside class="sidebar hidden">
         <div class="logo-container">
-            <div class="logo-icon">
-                <i class="fa-solid fa-graduation-cap"></i>
-            </div>
             <span class="logo-text">NttClass</span>
         </div>
 
         <!-- User Info Panel -->
         <div class="user-box">
-            <div class="user-avatar">
-                <i class="fa-solid fa-user-tie"></i>
-            </div>
             <div class="user-info">
                 <div id="sidebarUserName">Chưa đăng nhập</div>
                 <div id="sidebarUserRole">Vui lòng đăng nhập</div>
@@ -67,29 +56,17 @@
 
         <!-- Navigation Menu -->
         <nav class="sidebar-menu">
-            <a href="#" class="menu-item active" data-target="view-dashboard" id="nav-dashboard">
-                <i class="fa-solid fa-chart-pie"></i>
-                <span>Tổng quan</span>
+            <a href="#" class="menu-item active" data-target="view-dashboard" id="nav-dashboard"> <span>Tổng quan</span>
             </a>
-            <a href="#" class="menu-item" data-target="view-logs" id="nav-logs">
-                <i class="fa-solid fa-book-open-reader"></i>
-                <span>Nhật ký học tập</span>
+            <a href="#" class="menu-item" data-target="view-logs" id="nav-logs"> <span>Nhật ký học tập</span>
             </a>
-            <a href="#" class="menu-item" data-target="view-scheduler" id="nav-scheduler">
-                <i class="fa-solid fa-calendar-check"></i>
-                <span>Lịch dạy & Chấm công</span>
+            <a href="#" class="menu-item" data-target="view-scheduler" id="nav-scheduler"> <span>Lịch dạy & Chấm công</span>
             </a>
-            <a href="#" class="menu-item" data-target="view-tuition" id="nav-tuition">
-                <i class="fa-solid fa-wallet"></i>
-                <span>Báo cáo học phí</span>
+            <a href="#" class="menu-item" data-target="view-tuition" id="nav-tuition"> <span>Báo cáo học phí</span>
             </a>
-            <a href="#" class="menu-item" data-target="view-students" id="nav-students">
-                <i class="fa-solid fa-user-group"></i>
-                <span>Hồ sơ học sinh</span>
+            <a href="#" class="menu-item" data-target="view-students" id="nav-students"> <span>Hồ sơ học sinh</span>
             </a>
-            <a href="#" class="menu-item" data-target="view-users" id="nav-users">
-                <i class="fa-solid fa-users"></i>
-                <span>Quản lý tài khoản</span>
+            <a href="#" class="menu-item" data-target="view-users" id="nav-users"> <span>Quản lý tài khoản</span>
             </a>
         </nav>
 
@@ -108,11 +85,11 @@
             </div>
             <div class="header-actions">
                 <!-- Role Badge Indicator -->
-                <div id="roleBadge" class="role-badge role-badge-admin">👑 Admin</div>
+                <div id="roleBadge" class="role-badge role-badge-admin"> Admin</div>
 
                 <!-- Month filter (áp dụng cho Tổng quan / Nhật ký / Lịch dạy / Học phí) -->
                 <div class="student-context-picker" id="monthFilterPicker">
-                    <span><i class="fa-solid fa-calendar-week"></i> Tháng:</span>
+                    <span> Tháng:</span>
                     <select id="globalMonthFilter" class="student-select">
                         <option value="">Tất cả</option>
                         <option value="1">Tháng 1</option>
@@ -131,11 +108,7 @@
                 </div>
 
                 <button class="btn btn-secondary btn-sm" id="logoutBtn" style="padding: 8px 16px; border-radius: 20px; display:none;">
-                    <i class="fa-solid fa-right-from-bracket"></i> Đăng xuất
-                </button>
-
-                <button class="btn btn-primary btn-sm" id="quickScheduleBtn" style="padding: 8px 16px; border-radius: 20px;">
-                    <i class="fa-solid fa-plus"></i> Ghi buổi học
+                    Đăng xuất
                 </button>
             </div>
         </header>
@@ -145,30 +118,18 @@
             <!-- Stats Dashboard Grid -->
             <div class="stats-grid">
                 <div class="glass-card stat-card">
-                    <div class="stat-icon blue">
-                        <i class="fa-solid fa-user-graduate"></i>
-                    </div>
                     <div class="stat-value" id="stat-total-students">0</div>
                     <div class="stat-label">Học sinh đang theo học</div>
                 </div>
                 <div class="glass-card stat-card">
-                    <div class="stat-icon purple">
-                        <i class="fa-solid fa-calendar-days"></i>
-                    </div>
                     <div class="stat-value" id="stat-total-sessions">0</div>
                     <div class="stat-label">Tổng số buổi dạy</div>
                 </div>
                 <div class="glass-card stat-card">
-                    <div class="stat-icon teal">
-                        <i class="fa-solid fa-clock"></i>
-                    </div>
                     <div class="stat-value" id="stat-total-hours">0h</div>
                     <div class="stat-label">Tổng thời gian tích lũy</div>
                 </div>
                 <div class="glass-card stat-card">
-                    <div class="stat-icon amber">
-                        <i class="fa-solid fa-money-bill-wave"></i>
-                    </div>
                     <div class="stat-value" id="stat-unpaid-tuition">0đ</div>
                     <div class="stat-label">Học phí chưa thanh toán</div>
                 </div>
@@ -178,11 +139,9 @@
             <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr; gap: 20px;">
                 <div class="glass-card" style="padding: 24px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 style="color: var(--primary); font-weight: 700; display: flex; align-items: center; gap: 10px; margin-bottom: 0;">
-                            <i class="fa-regular fa-calendar-check"></i> Ca Dạy & Buổi Học Hôm Nay
+                        <h3 style="color: var(--primary); font-weight: 700; display: flex; align-items: center; gap: 10px; margin-bottom: 0;"> Ca Dạy & Buổi Học Hôm Nay
                         </h3>
-                        <button class="btn btn-primary btn-sm" onclick="app.switchView('view-scheduler')">
-                            <i class="fa-solid fa-calendar-plus"></i> Xem toàn bộ lịch dạy
+                        <button class="btn btn-primary btn-sm" onclick="app.switchView('view-scheduler')"> Xem toàn bộ lịch dạy
                         </button>
                     </div>
                     <div id="today-sessions-container">
@@ -197,8 +156,7 @@
             <div class="glass-card" style="padding: 20px;">
                 <div class="evaluation-header" style="margin-bottom: 15px;">
                     <div>
-                        <h2 style="color: var(--primary); font-weight: 700; display: inline-flex; align-items: center; gap: 8px;">
-                            <i class="fa-solid fa-book-bookmark"></i> Nhật Ký Học Tập Học Sinh
+                        <h2 style="color: var(--primary); font-weight: 700; display: inline-flex; align-items: center; gap: 8px;"> Nhật Ký Học Tập Học Sinh
                         </h2>
                         <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
                             Theo dõi chi tiết tiến trình bài tập, ý thức học tập và nhận xét qua từng buổi học.
@@ -213,8 +171,7 @@
                             </select>
                         </div>
                         <div class="role-restricted admin-tutor" style="display: flex; gap: 8px;">
-                            <button class="btn btn-secondary btn-sm" id="btnExportLog">
-                                <i class="fa-solid fa-file-excel"></i> Xuất Báo Cáo
+                            <button class="btn btn-secondary btn-sm" id="btnExportLog"> Xuất Báo Cáo
                             </button>
                         </div>
                     </div>
@@ -228,7 +185,7 @@
                         <span class="student-log-subtitle" id="logStudentYearHeader">(2026-2027)</span>
                     </div>
                     <div>
-                        <span class="badge badge-rieng" id="logBadgeIndicator"><i class="fa-solid fa-user"></i> Học riêng 1 vs 1</span>
+                        <span class="badge badge-rieng" id="logBadgeIndicator"> Học riêng 1 vs 1</span>
                     </div>
                 </div>
                 
@@ -237,12 +194,12 @@
                         <thead>
                             <tr>
                                 <th style="width: 80px;">STT</th>
-                                <th style="width: 140px;">NGÀY</th>
-                                <th>NỘI DUNG BUỔI HỌC</th>
-                                <th style="width: 160px;">BÀI TẬP VỀ NHÀ</th>
-                                <th style="width: 150px;">Ý THỨC HỌC TẬP</th>
+                                <th style="width: 80px;">NGÀY</th>
+                                <th class="col-content">NỘI DUNG BUỔI HỌC</th>
+                                <th style="width: 120px;">BÀI TẬP VỀ NHÀ</th>
+                                <th style="width: 100px;">Ý THỨC</th>
                                 <th>NHẬN XÉT CỦA GIÁO VIÊN</th>
-                                <th style="width: 120px;">GHI CHÚ</th>
+                                <th style="width: 100px;">GHI CHÚ</th>
                                 <th style="width: 80px;" class="role-restricted admin-tutor">THAO TÁC</th>
                             </tr>
                         </thead>
@@ -259,8 +216,7 @@
             
             <!-- Logger Form Component (Matching Ghi buổi học in Image 2) -->
             <div class="glass-card" style="padding: 24px;" id="logger-form-card">
-                <h3 style="color: var(--primary); margin-bottom: 20px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                    <i class="fa-solid fa-file-signature"></i> Ghi Buổi Học Mới
+                <h3 style="color: var(--primary); margin-bottom: 20px; font-weight: 700; display: flex; align-items: center; gap: 10px;"> Ghi Buổi Học Mới
                 </h3>
                 
 
@@ -269,8 +225,8 @@
                     <div class="form-group">
                         <label for="sessionType">Loại buổi học <span style="color:red;">*</span></label>
                         <select id="sessionType" class="form-control" required>
-                            <option value="riêng">🌸 Học riêng (1 vs 1)</option>
-                            <option value="chung">👥 Học chung (Dạy nhóm)</option>
+                            <option value="riêng">Học riêng (1 vs 1)</option>
+                            <option value="chung">Học chung (Dạy nhóm)</option>
                         </select>
                     </div>
 
@@ -280,6 +236,12 @@
                         <div class="student-check-grid" id="studentsCheckboxGrid">
                             <!-- Filled dynamically with checkboxes -->
                         </div>
+                    </div>
+
+                    <!-- Tên ca học -->
+                    <div class="form-group">
+                        <label for="sessionName">Tên ca học</label>
+                        <input type="text" id="sessionName" class="form-control" placeholder="Ví dụ: Ca sáng, Ôn thi giữa kỳ...">
                     </div>
 
                     <!-- Date picker -->
@@ -324,11 +286,9 @@
                     </div>
 
                     <div class="form-group form-group-full" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
-                        <button type="button" class="btn btn-secondary" id="resetLoggerFormBtn">
-                            <i class="fa-solid fa-rotate-left"></i> Xóa form
+                        <button type="button" class="btn btn-secondary" id="resetLoggerFormBtn">Xóa form
                         </button>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fa-solid fa-check"></i> Lưu buổi học
+                        <button type="submit" class="btn btn-primary"> Lưu buổi học
                         </button>
                     </div>
                 </form>
@@ -337,14 +297,13 @@
             <!-- Weekly calendar view of scheduled sessions (Image 4 format) -->
             <div class="glass-card" style="padding: 24px;">
                 <div class="evaluation-header" style="margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                    <h3 style="color: var(--primary); font-weight: 700; display: flex; align-items: center; gap: 10px; margin: 0;">
-                        <i class="fa-solid fa-calendar-days"></i> Lịch Dạy Theo Tuần
+                    <h3 style="color: var(--primary); font-weight: 700; display: flex; align-items: center; gap: 10px; margin: 0;"> Lịch Dạy Theo Tuần
                     </h3>
                     <div class="week-nav-controls">
-                        <button class="btn btn-secondary btn-sm" id="prevWeekBtn"><i class="fa-solid fa-chevron-left"></i></button>
+                        <button class="btn btn-secondary btn-sm" id="prevWeekBtn">Tuần trước</button>
                         <button class="btn btn-secondary btn-sm" id="todayWeekBtn">Tuần này</button>
                         <span id="weekRangeLabel" class="week-range-label">--</span>
-                        <button class="btn btn-secondary btn-sm" id="nextWeekBtn"><i class="fa-solid fa-chevron-right"></i></button>
+                        <button class="btn btn-secondary btn-sm" id="nextWeekBtn">Tuần sau</button>
                     </div>
                 </div>
 
@@ -383,7 +342,7 @@
             <div class="glass-card" style="padding: 24px;">
                 <div class="evaluation-header" style="margin-bottom: 20px;">
                     <div>
-                        <h2 style="color: var(--primary); font-weight: 700;"><i class="fa-solid fa-money-check-dollar"></i> Thống Kê Học Phí</h2>
+                        <h2 style="color: var(--primary); font-weight: 700;"> Thống Kê Học Phí</h2>
                         <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
                             Theo dõi tổng học phí, trạng thái đã thanh toán hoặc còn nợ của học sinh.
                         </p>
@@ -417,6 +376,7 @@
                                 <th style="text-align: right;" class="role-restricted admin-only">Đã thanh toán</th>
                                 <th style="text-align: right;" class="role-restricted admin-only">Còn nợ</th>
                                 <th style="text-align: center; width: 170px;">Trạng thái</th>
+                                <th class="role-restricted admin-only" style="text-align: center; width: 130px;">Xuất phiếu</th>
                             </tr>
                         </thead>
                         <tbody id="tuitionOverviewTableBody">
@@ -432,20 +392,18 @@
             <div class="glass-card" style="padding: 24px;">
                 <div class="evaluation-header" style="margin-bottom: 20px;">
                     <div>
-                        <h2 style="color: var(--primary); font-weight: 700;"><i class="fa-solid fa-users-gear"></i> Hồ Sơ & Thông Tin Học Sinh</h2>
+                        <h2 style="color: var(--primary); font-weight: 700;"> Hồ Sơ & Thông Tin Học Sinh</h2>
                         <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
                             Quản lý danh mục học sinh cá nhân, thiết lập mức học phí cơ bản của từng em.
                         </p>
                     </div>
-                    <button class="btn btn-primary" id="addNewStudentBtn">
-                        <i class="fa-solid fa-user-plus"></i> Thêm Học Sinh Mới
+                    <button class="btn btn-primary" id="addNewStudentBtn"> Thêm Học Sinh Mới
                     </button>
                 </div>
 
                 <div class="evaluation-header" style="margin-bottom: 16px; gap: 10px; flex-wrap: wrap;">
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <label for="studentGradeFilter" style="font-size:13px; font-weight:600; color: var(--text-muted);">
-                            <i class="fa-solid fa-filter"></i> Lọc theo lớp:
+                        <label for="studentGradeFilter" style="font-size:13px; font-weight:600; color: var(--text-muted);"> Lọc theo lớp:
                         </label>
                         <select id="studentGradeFilter" class="form-select" style="width:auto; min-width:160px;">
                             <option value="">Tất cả các lớp</option>
@@ -485,11 +443,10 @@
             <div class="glass-card" style="padding: 24px;">
                 <div class="evaluation-header" style="margin-bottom: 20px; justify-content: space-between; align-items: center; display:flex; gap: 14px;">
                     <div>
-                        <h2 style="color: var(--primary); font-weight: 700;"><i class="fa-solid fa-user-lock"></i> Quản lý tài khoản</h2>
+                        <h2 style="color: var(--primary); font-weight: 700;"> Quản lý tài khoản</h2>
                         <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Admin chỉ quản lý tài khoản (tạo, sửa, xóa, khóa/mở khóa, gán vai trò). Admin không có quyền truy cập dữ liệu dạy học.</p>
                     </div>
-                    <button class="btn btn-primary" id="addNewUserBtn">
-                        <i class="fa-solid fa-user-plus"></i> Thêm tài khoản
+                    <button class="btn btn-primary" id="addNewUserBtn"> Thêm tài khoản
                     </button>
                 </div>
                 <div class="table-wrapper" style="border-radius: 16px;">
@@ -577,9 +534,9 @@
                     <div class="form-group">
                         <label for="updateHomework">Bài tập về nhà</label>
                         <select id="updateHomework" class="form-control">
-                            <option value="Hoàn thành">✅ Hoàn thành</option>
-                            <option value="Chưa hoàn thành">❌ Chưa hoàn thành</option>
-                            <option value="Chưa làm">⚠️ Chưa làm / Chưa nộp</option>
+                            <option value="Chưa làm">Không hoàn thành</option>
+                            <option value="Chưa hoàn thành">Chưa hoàn thành</option>
+                            <option value="Hoàn thành">Hoàn thành</option>
                         </select>
                     </div>
 
@@ -612,11 +569,90 @@
         </div>
     </div>
 
+    <!-- MODAL: XUẤT PHIẾU HỌC PHÍ (tự động điền sẵn từ nút "Xuất phiếu" ở bảng Học phí) -->
+    <div class="modal-backdrop" id="invoiceModal">
+        <div class="modal-container" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Tạo Phiếu Học Phí</h3>
+                <button class="modal-close" onclick="app.closeModal('invoiceModal')">&times;</button>
+            </div>
+            <form id="invoiceForm">
+                <input type="hidden" id="invoiceStudentId">
+                <div class="modal-body" style="display: flex; flex-direction: column; gap: 15px; max-height: 72vh; overflow-y: auto;">
+
+                    <!-- Thông tin học sinh + học phí: tự động điền, chỉ xem -->
+                    <div style="background: var(--primary-soft); border: 1px solid var(--primary-light); border-radius: 12px; padding: 14px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px;">
+                        <div><span style="font-size:12px; color: var(--text-muted);">Học sinh</span><br><strong id="invoiceStudentName">-</strong></div>
+                        <div><span style="font-size:12px; color: var(--text-muted);">Lớp / Môn</span><br><strong id="invoiceStudentClass">-</strong></div>
+                        <div><span style="font-size:12px; color: var(--text-muted);">Tổng học phí</span><br><strong id="invoiceTotalFee">0đ</strong></div>
+                        <div><span style="font-size:12px; color: var(--text-muted);">Đã thanh toán</span><br><strong style="color:#16a34a;" id="invoicePaidFee">0đ</strong></div>
+                        <div><span style="font-size:12px; color: var(--text-muted);">Còn nợ</span><br><strong style="color:#dc2626;" id="invoiceUnpaidFee">0đ</strong></div>
+                        <div><span style="font-size:12px; color: var(--text-muted);">Số buổi học</span><br><strong id="invoiceSessionCount">0</strong></div>
+                        <div><span style="font-size:12px; color: var(--text-muted);">Số giờ tích lũy</span><br><strong id="invoiceTotalHours">0</strong></div>
+                    </div>
+
+                    <div class="grid-form">
+                        <div class="form-group">
+                            <label for="invoiceFromDate">Từ ngày</label>
+                            <input type="date" id="invoiceFromDate" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="invoiceToDate">Đến ngày</label>
+                            <input type="date" id="invoiceToDate" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="invoiceTitle">Tiêu đề kỳ học</label>
+                        <input type="text" id="invoiceTitle" class="form-control" placeholder="Ví dụ: HỌC PHÍ THÁNG 5+6/2026">
+                    </div>
+
+                    <div class="grid-form">
+                        <div class="form-group">
+                            <label for="invoiceOverview">Nhận xét tổng quan</label>
+                            <textarea id="invoiceOverview" class="form-control" rows="3" placeholder="Nhận xét tổng quan quá trình học..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="invoiceAlgebra">Nhận xét Đại số</label>
+                            <textarea id="invoiceAlgebra" class="form-control" rows="3" placeholder="Nhận xét phần Đại số..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="grid-form">
+                        <div class="form-group">
+                            <label for="invoiceGeometry">Nhận xét Hình học</label>
+                            <textarea id="invoiceGeometry" class="form-control" rows="3" placeholder="Nhận xét phần Hình học..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="invoiceRoadmap">Lộ trình sắp tới</label>
+                            <textarea id="invoiceRoadmap" class="form-control" rows="3" placeholder="Kế hoạch học tập sắp tới..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="invoiceSchedule">Lịch học hiển thị trên phiếu</label>
+                        <textarea id="invoiceSchedule" class="form-control" rows="2" placeholder="Ví dụ: 16h-18h thứ 4, chủ nhật: học riêng phần hình học."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="invoiceNote">Ghi chú cuối phiếu</label>
+                        <textarea id="invoiceNote" class="form-control" rows="2" placeholder="Ghi chú thêm cho phụ huynh...">Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.</textarea>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="app.closeModal('invoiceModal')">Hủy bỏ</button>
+                    <button type="submit" class="btn btn-primary">Xuất phiếu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- MODAL: QUICK ENTRY FROM WEEKLY CALENDAR (Image 2 layout) -->
     <div class="modal-backdrop" id="quickSessionEntryModal">
         <div class="modal-container" style="max-width: 700px;">
             <div class="modal-header">
-                <h3 class="modal-title"><i class="fa-solid fa-bolt"></i> Nhập Nhanh Nội Dung Buổi Học</h3>
+                <h3 class="modal-title"> Nhập Nhanh Nội Dung Buổi Học</h3>
                 <button class="modal-close" onclick="app.closeModal('quickSessionEntryModal')">&times;</button>
             </div>
             <form id="quickSessionEntryForm">
@@ -626,6 +662,11 @@
                     <div style="background: var(--primary-soft); border: 1px solid var(--primary-light); border-radius: 12px; padding: 12px;">
                         <div style="font-weight:700; color: var(--primary);" id="quickEntryTimeMeta">16:00 - 18:00</div>
                         <div style="font-size:12px; color: var(--text-muted); margin-top: 4px;" id="quickEntryDateMeta">Thứ 5, 02/07/2026</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="quickEntrySessionName">Tên ca học</label>
+                        <input type="text" id="quickEntrySessionName" class="form-control" placeholder="Ví dụ: Ca sáng, Ôn thi giữa kỳ...">
                     </div>
 
                     <div class="form-group">
@@ -646,23 +687,21 @@
                     </div>
 
                     <div>
-                        <label style="font-weight:700; display:block; margin-bottom:8px;">
-                            <i class="fa-solid fa-users"></i> Chấm riêng cho từng học sinh
+                        <label style="font-weight:700; display:block; margin-bottom:8px;"> Chấm riêng cho từng học sinh
                         </label>
                         <!-- Filled dynamically: 1 card per student với BTVN / Ý thức / Nhận xét / Ghi chú RIÊNG -->
                         <div id="quickEntryStudentsList" style="display:flex; flex-direction:column; gap:14px;"></div>
                     </div>
 
-                    <p style="font-size:12px; color: var(--text-muted); margin: 0;">
-                        <i class="fa-solid fa-circle-info"></i> Nhận xét của từng học sinh được lưu riêng và sẽ đồng bộ sang đúng hồ sơ của em đó trong trang Nhật ký học tập.
+                    <p style="font-size:12px; color: var(--text-muted); margin: 0;"> Nhận xét của từng học sinh được lưu riêng và sẽ đồng bộ sang đúng hồ sơ của em đó trong trang Nhật ký học tập.
                     </p>
                 </div>
                 <div class="modal-footer" style="justify-content: space-between;">
                     <div style="display:flex; gap:8px;">
-                        <button type="button" class="btn btn-secondary btn-sm" id="quickEntryEditFullBtn"><i class="fa-solid fa-pencil"></i> Sửa chi tiết</button>
-                        <button type="button" class="btn btn-danger btn-sm" id="quickEntryDeleteBtn"><i class="fa-solid fa-trash-can"></i> Xóa ca</button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="quickEntryEditFullBtn"> Sửa chi tiết</button>
+                        <button type="button" class="btn btn-danger btn-sm" id="quickEntryDeleteBtn"> Xóa ca</button>
                     </div>
-                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Lưu</button>
+                    <button type="submit" class="btn btn-primary"> Lưu</button>
                 </div>
             </form>
         </div>
@@ -682,8 +721,8 @@
                         <div class="form-group">
                             <label for="editSessionType">Loại buổi học <span style="color:red;">*</span></label>
                             <select id="editSessionType" class="form-control" required>
-                                <option value="riêng">🌸 Học riêng (1 vs 1)</option>
-                                <option value="chung">👥 Học chung (Dạy nhóm)</option>
+                                <option value="riêng">Học riêng (1 vs 1)</option>
+                                <option value="chung">Học chung (Dạy nhóm)</option>
                             </select>
                         </div>
                         
@@ -692,6 +731,11 @@
                             <div class="student-check-grid" id="editStudentsCheckboxGrid">
                                 <!-- Filled dynamically -->
                             </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editSessionName">Tên ca học</label>
+                            <input type="text" id="editSessionName" class="form-control" placeholder="Ví dụ: Ca sáng, Ôn thi giữa kỳ...">
                         </div>
 
                         <div class="form-group">
@@ -787,7 +831,7 @@
 
     <!-- Notification Toast -->
     <div id="toastNotification" class="notification">
-        <span id="toastIcon"><i class="fa-solid fa-circle-check"></i></span>
+        <span id="toastIcon"> </span>
         <span id="toastMessage">Thông báo thành công!</span>
     </div>
 

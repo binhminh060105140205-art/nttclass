@@ -617,41 +617,58 @@ body {
     vertical-align: middle;
 }
 
-/* Homework select pills */
-.homework-select {
-    padding: 6px 12px;
+/* Homework status badge (chỉ hiển thị, không thể bấm sửa ở bảng Nhật ký) */
+.homework-badge {
+    display: inline-block;
+    padding: 6px 14px;
     border-radius: 20px;
     font-size: 12px;
     font-weight: 600;
     border: 1px solid transparent;
-    cursor: pointer;
-    outline: none;
-    appearance: none;
-    -webkit-appearance: none;
     text-align: center;
-    width: 140px;
-    transition: var(--transition-fast);
 }
 
-.homework-select.done {
+.homework-badge.done {
     background-color: var(--hw-done-bg);
     color: var(--hw-done-text);
     border-color: var(--hw-done-border);
 }
 
-.homework-select.not-done {
+.homework-badge.not-done {
     background-color: var(--hw-not-done-bg);
     color: var(--hw-not-done-text);
     border-color: var(--hw-not-done-border);
 }
 
-.homework-select.pending {
+.homework-badge.pending {
     background-color: var(--hw-pending-bg);
     color: var(--hw-pending-text);
     border-color: var(--hw-pending-border);
 }
 
 /* Content & Remarks details format */
+.col-content {
+    min-width: 280px;
+}
+
+.session-name-tag {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--primary);
+    background: var(--primary-soft);
+    padding: 2px 10px;
+    border-radius: 10px;
+    margin-bottom: 6px;
+}
+
+.session-content-text {
+    font-size: 15.5px;
+    line-height: 1.6;
+    white-space: pre-line;
+    color: var(--text-main);
+}
+
 .bullet-list {
     list-style: none;
     padding-left: 0;

@@ -175,6 +175,7 @@ class PinkyClassApp {
             // hiển thị "Chưa có buổi học nào" và học phí luôn bằng 0đ. Fix: dùng
             // thẳng dữ liệu server trả về, không re-normalize.
             this.sessions = rawSessions;
+            this.computeSessionPaidFlags();
 
             this.populateStudentPickers();
             // QUAN TRỌNG: trước đây loadData() chỉ cập nhật dữ liệu trong bộ nhớ
@@ -206,9 +207,23 @@ class PinkyClassApp {
     }
 
     async saveData() {
+        this.computeSessionPaidFlags();
         localStorage.setItem('pinky_students', JSON.stringify(this.students));
         localStorage.setItem('pinky_sessions', JSON.stringify(this.sessions));
         this.updateAllViews();
+    }
+
+    // Từ trạng thái Paid RIÊNG của từng học sinh (sess.studentDetails[id].paid,
+    // nguồn dữ liệu chính thức), tính thêm 1 cờ tổng hợp sess.paid = true CHỈ
+    // KHI tất cả học sinh trong buổi đó đã đóng tiền. Cờ tổng hợp này chỉ dùng
+    // để hiển thị nhanh (ví dụ: tô màu buổi học trên lịch tuần), KHÔNG được
+    // dùng để tính toán học phí — mọi phép tính học phí phải đọc trực tiếp
+    // sess.studentDetails[studentId].paid của từng em.
+    computeSessionPaidFlags() {
+        (this.sessions || []).forEach(sess => {
+            const ids = sess.studentIds || [];
+            sess.paid = ids.length > 0 && ids.every(sid => sess.studentDetails && sess.studentDetails[sid] && sess.studentDetails[sid].paid);
+        });
     }
 
     registerEvents() {
@@ -341,13 +356,6 @@ class PinkyClassApp {
             this.renderStudentSelectionGrid('studentsCheckboxGrid');
         });
 
-        // Quick add session floating button
-        document.getElementById('quickScheduleBtn').addEventListener('click', () => {
-            this.switchView('view-scheduler');
-            // Scroll to the logger form
-            document.getElementById('logger-form-card').scrollIntoView({ behavior: 'smooth' });
-        });
-
         // Export Log Action
         document.getElementById('btnExportLog').addEventListener('click', () => {
             this.exportStudentLogToCSV();
@@ -369,6 +377,12 @@ class PinkyClassApp {
         document.getElementById('editSessionForm').addEventListener('submit', (e) => {
             e.preventDefault();
             this.handleEditSession();
+        });
+
+        // Form Submit: Xuất phiếu học phí
+        document.getElementById('invoiceForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.exportInvoice();
         });
 
         // Student Manager Add Student Button
@@ -485,16 +499,16 @@ class PinkyClassApp {
         const badge = document.getElementById('roleBadge');
         badge.className = 'role-badge';
         if (role === 'admin') {
-            badge.innerText = '🔑 Quản trị viên';
+            badge.innerText = 'Quản trị viên';
             badge.classList.add('role-badge-admin');
         } else if (role === 'teacher') {
-            badge.innerText = '👑 Giáo viên';
+            badge.innerText = 'Giáo viên';
             badge.classList.add('role-badge-teacher');
         } else if (role === 'assistant') {
-            badge.innerText = '📝 Trợ giảng';
+            badge.innerText = 'Trợ giảng';
             badge.classList.add('role-badge-assistant');
         } else {
-            badge.innerText = '🎒 Học sinh';
+            badge.innerText = 'Học sinh';
             badge.classList.add('role-badge-student');
         }
 
@@ -505,7 +519,6 @@ class PinkyClassApp {
         const navScheduler = document.getElementById('nav-scheduler');
         const navStudents = document.getElementById('nav-students');
         const navUsers = document.getElementById('nav-users');
-        const quickScheduleBtn = document.getElementById('quickScheduleBtn');
 
         if (role === 'admin') {
             // Admin: chỉ được quản lý tài khoản người dùng, không truy cập
@@ -516,7 +529,6 @@ class PinkyClassApp {
             navScheduler.style.display = 'none';
             navStudents.style.display = 'none';
             navUsers.style.display = 'flex';
-            quickScheduleBtn.style.display = 'none';
         } else if (role === 'assistant') {
             navDashboard.style.display = 'flex';
             navLogs.style.display = 'flex';
@@ -524,7 +536,6 @@ class PinkyClassApp {
             navScheduler.style.display = 'flex';
             navStudents.style.display = 'flex'; // TA can view classes/students of their assigned teacher
             navUsers.style.display = 'none';
-            quickScheduleBtn.style.display = 'flex';
         } else {
             // teacher: toàn quyền với các chức năng dạy học
             navDashboard.style.display = 'flex';
@@ -533,7 +544,6 @@ class PinkyClassApp {
             navScheduler.style.display = 'flex';
             navStudents.style.display = 'flex';
             navUsers.style.display = 'none';
-            quickScheduleBtn.style.display = 'flex';
         }
 
         // Trigger UI updates
@@ -819,10 +829,13 @@ class PinkyClassApp {
             totalSessions = studentSessions.length;
             totalHours = studentSessions.reduce((acc, curr) => acc + parseFloat(curr.duration), 0);
             
-            // Sum unpaid tuition for this student (dựa trên trạng thái Paid,
-            // TÁCH BIỆT hoàn toàn với trạng thái "đã dạy/chưa dạy")
+            // Sum unpaid tuition for this student (dựa trên trạng thái Paid
+            // RIÊNG của chính học sinh này trong từng buổi, TÁCH BIỆT hoàn toàn
+            // với trạng thái "đã dạy/chưa dạy" VÀ với trạng thái đóng tiền của
+            // các bạn học chung buổi khác)
             studentSessions.forEach(sess => {
-                if (!sess.paid) {
+                const detail = sess.studentDetails && sess.studentDetails[this.currentStudentId];
+                if (!detail || !detail.paid) {
                     // Price divided by number of participants if it's a shared session, or full price
                     const partCount = sess.studentIds.length;
                     unpaidTuition += sess.price / partCount;
@@ -832,12 +845,20 @@ class PinkyClassApp {
             // Teacher & Assistant see all stats
             totalSessions = monthSessions.length;
             totalHours = monthSessions.reduce((acc, curr) => acc + parseFloat(curr.duration), 0);
-            
-            // Sum all unpaid sessions (dựa trên Paid, không dùng Completed nữa)
+
+            // Cộng dồn phần học phí CHƯA đóng của TỪNG học sinh trong từng buổi
+            // (dựa trên Paid riêng của mỗi em, không dùng Completed, không dùng
+            // cờ tổng hợp cấp buổi) — để buổi học chung chỉ tính đúng phần của
+            // (các) học sinh thực sự chưa đóng, không tính cả buổi.
             monthSessions.forEach(sess => {
-                if (!sess.paid) {
-                    unpaidTuition += sess.price;
-                }
+                const partCount = sess.studentIds.length || 1;
+                const portion = sess.price / partCount;
+                sess.studentIds.forEach(sid => {
+                    const detail = sess.studentDetails && sess.studentDetails[sid];
+                    if (!detail || !detail.paid) {
+                        unpaidTuition += portion;
+                    }
+                });
             });
         }
 
@@ -853,9 +874,7 @@ class PinkyClassApp {
 
         if (todaySessions.length === 0) {
             container.innerHTML = `
-                <div style="padding: 15px; text-align: center; color: var(--text-muted); font-size: 13.5px;">
-                    <i class="fa-solid fa-calendar-xmark" style="font-size: 24px; color: var(--accent); margin-bottom: 8px; display: block;"></i>
-                    Không có ca dạy nào được xếp hôm nay (${this.formatDateVN(todayStr)}).
+                <div style="padding: 15px; text-align: center; color: var(--text-muted); font-size: 13.5px;"> Không có ca dạy nào được xếp hôm nay (${this.formatDateVN(todayStr)}).
                 </div>
             `;
         } else {
@@ -875,7 +894,7 @@ class PinkyClassApp {
                         <span style="font-weight: 600; font-size: 13px; color: var(--primary);">${sess.startTime} - ${sess.endTime}</span>
                         <span class="badge ${badgeClass}" style="font-size: 10px; padding: 2px 8px;">Học ${sess.type}</span>
                     </div>
-                    <div style="font-size:14px; font-weight:700; color:var(--text-main);">${names}</div>
+                    <div style="font-size:14px; font-weight:700; color:var(--text-main);">${sess.sessionName ? this.escapeHtml(sess.sessionName) + ' — ' : ''}${names}</div>
                     <div style="font-size:12px; color:var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px;">
                         ${sess.content ? sess.content.replace(/\n/g, ' | ') : 'Chưa có nội dung'}
                     </div>
@@ -906,16 +925,16 @@ class PinkyClassApp {
         const indicator = document.getElementById('logBadgeIndicator');
         if (privateCount > groupCount) {
             indicator.className = 'badge badge-rieng';
-            indicator.innerHTML = `<i class="fa-solid fa-user"></i> Chủ yếu học riêng (${privateCount}b)`;
+            indicator.innerHTML = ` Chủ yếu học riêng (${privateCount}b)`;
         } else if (groupCount > privateCount) {
             indicator.className = 'badge badge-chung';
-            indicator.innerHTML = `<i class="fa-solid fa-user-group"></i> Chủ yếu học chung (${groupCount}b)`;
+            indicator.innerHTML = ` Chủ yếu học chung (${groupCount}b)`;
         } else {
             indicator.className = 'badge';
             indicator.style.background = '#f1f5f9';
             indicator.style.color = '#334155';
             indicator.style.borderColor = '#cbd5e1';
-            indicator.innerHTML = `<i class="fa-solid fa-chart-simple"></i> Cân bằng chung/riêng`;
+            indicator.innerHTML = ` Cân bằng chung/riêng`;
         }
 
         const tbody = document.getElementById('studentLogsTableBody');
@@ -934,63 +953,32 @@ class PinkyClassApp {
 
         studentSessions.forEach((sess, idx) => {
             const tr = document.createElement('tr');
-            
-            // Homework select badge style setup
+
             const detail = sess.studentDetails[studentId] || { homework: 'Chưa làm', attitude: 'Tốt', individualComment: '', note: '' };
-            
+
+            // BÀI TẬP VỀ NHÀ: chỉ HIỂN THỊ (badge tĩnh), không cho sửa trực
+            // tiếp ở bảng này nữa — giá trị luôn lấy từ dữ liệu chấm công đã
+            // nhập ở Lịch dạy & Chấm công (quick entry) hoặc modal "Đánh giá".
             let hwClass = 'pending';
             if (detail.homework === 'Hoàn thành') hwClass = 'done';
             if (detail.homework === 'Chưa hoàn thành') hwClass = 'not-done';
-
-            const homeworkDropdown = `
-                <select class="homework-select ${hwClass}" data-session="${sess.id}" data-student="${studentId}" ${this.currentRole === 'student' ? 'disabled' : ''}>
-                    <option value="Hoàn thành" ${detail.homework === 'Hoàn thành' ? 'selected' : ''}>✅ Hoàn thành</option>
-                    <option value="Chưa hoàn thành" ${detail.homework === 'Chưa hoàn thành' ? 'selected' : ''}>❌ Không hoàn thành</option>
-                    <option value="Chưa làm" ${detail.homework === 'Chưa làm' ? 'selected' : ''}>⚠️ Chưa làm / Chưa nộp</option>
-                </select>
-            `;
+            const homeworkBadge = `<span class="homework-badge ${hwClass}">${this.getHomeworkLabel(detail.homework)}</span>`;
 
             // Session Date display formatted like 'Thứ 7 - 23/05'
-            const dateObj = new Date(sess.date);
             const dateStr = this.formatDateVN(sess.date);
 
-            // Nội dung format lines
-            const contentLines = sess.content ? sess.content.split('\n') : [];
-            let contentHTML = '<ul class="bullet-list">';
-            contentLines.forEach(line => {
-                if (line.trim().startsWith('BTVN:')) {
-                    contentHTML += `<li class="subtask">${line}</li>`;
-                } else if (line.trim()) {
-                    contentHTML += `<li>${line}</li>`;
-                }
-            });
-            contentHTML += '</ul>';
+            // NỘI DUNG BUỔI HỌC: hiển thị text thuần, không bullet point.
+            const contentText = (sess.content || '').trim();
+            const sessionNamePrefix = sess.sessionName ? `<div class="session-name-tag">${this.escapeHtml(sess.sessionName)}</div>` : '';
+            const contentHTML = `${sessionNamePrefix}<div class="session-content-text">${contentText ? this.nl2brText(contentText) : '<span style="color:var(--text-muted);">Chưa có nội dung.</span>'}</div>`;
 
-            // Nhận xét column (Image 1 layout)
-            // Displays group remarks if group session, then individual remarks
-            let commentHTML = '';
-            if (sess.type === 'chung' && sess.generalComment) {
-                commentHTML += `
-                    <div class="comment-block">
-                        <div class="comment-header"><span>Nhận xét chung ca</span> <span class="badge badge-chung" style="font-size:8px; padding:1px 4px;">Chung</span></div>
-                        <div class="comment-text" style="color: #6d28d9; font-weight: 500;">${sess.generalComment}</div>
-                    </div>
-                    <div class="comment-divider"></div>
-                `;
-            }
-
-            commentHTML += `
-                <div class="comment-block">
-                    <div class="comment-header"><span>Nhận xét riêng</span></div>
-                    <div class="comment-text">${detail.individualComment || sess.generalComment || 'Chưa nhận xét.'}</div>
-                </div>
-            `;
+            // NHẬN XÉT CỦA GIÁO VIÊN: gộp thành 1 trường duy nhất, chỉ lấy
+            // nhận xét RIÊNG của học sinh này từ chấm công (individualComment).
+            const commentHTML = `<div class="comment-text">${detail.individualComment ? this.nl2brText(detail.individualComment) : 'Chưa nhận xét.'}</div>`;
 
             // Actions for edit
             const actionsHTML = `
-                <button class="btn btn-secondary btn-sm" onclick="app.openUpdateLogModal('${sess.id}', '${studentId}')">
-                    <i class="fa-solid fa-pen-to-square"></i> Đánh giá
-                </button>
+                <button class="btn btn-secondary btn-sm" onclick="app.openUpdateLogModal('${sess.id}', '${studentId}')">Đánh giá</button>
             `;
 
             tr.innerHTML = `
@@ -999,8 +987,8 @@ class PinkyClassApp {
                     <span class="session-time-val">${sess.startTime} - ${sess.endTime}</span>
                 </td>
                 <td class="session-date-cell">${dateStr}</td>
-                <td>${contentHTML}</td>
-                <td style="text-align:center;">${homeworkDropdown}</td>
+                <td class="col-content">${contentHTML}</td>
+                <td style="text-align:center;">${homeworkBadge}</td>
                 <td><strong>${detail.attitude || 'Tập trung'}</strong></td>
                 <td>${commentHTML}</td>
                 <td><span style="font-size:13px; color:var(--text-muted);">${detail.note || '-'}</span></td>
@@ -1009,22 +997,19 @@ class PinkyClassApp {
 
             tbody.appendChild(tr);
         });
+    }
 
-        // Hook up immediate select change listeners
-        document.querySelectorAll('.homework-select').forEach(sel => {
-            sel.addEventListener('change', (e) => {
-                const sId = sel.getAttribute('data-session');
-                const studId = sel.getAttribute('data-student');
-                const val = e.target.value;
-                
-                const sessionObj = this.sessions.find(x => x.id === sId);
-                if (sessionObj && sessionObj.studentDetails[studId]) {
-                    sessionObj.studentDetails[studId].homework = val;
-                    this.saveData();
-                    this.showToast(`Đã cập nhật bài tập của ${this.getStudentName(studId)}: ${val}`, "success");
-                }
-            });
-        });
+    // Chuyển giá trị lưu trong DB (giữ nguyên để tương thích ngược) thành
+    // nhãn hiển thị đúng 3 lựa chọn cố định theo yêu cầu UI mới.
+    getHomeworkLabel(value) {
+        if (value === 'Hoàn thành') return 'Hoàn thành';
+        if (value === 'Chưa hoàn thành') return 'Chưa hoàn thành';
+        return 'Không hoàn thành'; // giá trị cũ 'Chưa làm' hoặc rỗng
+    }
+
+    // Escape + giữ xuống dòng khi hiển thị text thuần (không bullet)
+    nl2brText(text) {
+        return this.escapeHtml(text).replace(/\n/g, '<br>');
     }
 
     // --- VIEW 3: WEEKLY CALENDAR (Lịch dạy & Chấm công) ---
@@ -1121,14 +1106,16 @@ class PinkyClassApp {
                 const names = sess.studentIds.map(id => this.getStudentName(id)).join(', ');
                 const typeClass = sess.type === 'chung' ? 'type-chung' : 'type-rieng';
                 const unpaidClass = !sess.paid ? 'is-unpaid' : '';
+                const evtTitle = sess.sessionName ? sess.sessionName : names;
+                const evtTooltip = sess.sessionName ? `${sess.sessionName} — ${names}` : names;
 
                 blocksHTML += `
                     <div class="week-event-block ${typeClass} ${unpaidClass}"
                          style="top:${top}px; height:${height}px;"
                          onclick="app.openSessionQuickEntry('${sess.id}')"
-                         title="${names}">
+                         title="${this.escapeHtmlAttr(evtTooltip)}">
                         <span class="evt-time">${sess.startTime}–${sess.endTime}</span>
-                        <span class="evt-title">${names}</span>
+                        <span class="evt-title">${this.escapeHtml(evtTitle)}</span>
                     </div>
                 `;
             });
@@ -1149,6 +1136,7 @@ class PinkyClassApp {
         document.getElementById('quickEntrySessionId').value = sess.id;
         document.getElementById('quickEntryTimeMeta').innerText = `${sess.startTime} - ${sess.endTime} (${sess.duration} giờ) — Học ${sess.type}`;
         document.getElementById('quickEntryDateMeta').innerText = this.formatDateVN(sess.date);
+        document.getElementById('quickEntrySessionName').value = sess.sessionName || '';
         document.getElementById('quickEntryCompleted').checked = !!sess.completed;
         document.getElementById('quickEntryContent').value = sess.content || '';
 
@@ -1167,24 +1155,28 @@ class PinkyClassApp {
         // tạo lấy từ studentDetails hiện có của đúng em đó (nếu có).
         const listWrap = document.getElementById('quickEntryStudentsList');
         listWrap.innerHTML = sess.studentIds.map(stId => {
-            const detail = sess.studentDetails[stId] || { homework: '', attitude: '', individualComment: '', note: '' };
+            const detail = sess.studentDetails[stId] || { homework: 'Chưa làm', attitude: '', individualComment: '', note: '' };
             const name = this.getStudentName(stId);
-            const homework = detail.homework === 'Chưa làm' ? '' : (detail.homework || '');
+            const homeworkVal = detail.homework || 'Chưa làm';
             const attitude = detail.attitude === 'Tốt' ? '' : (detail.attitude || '');
             return `
                 <div class="qe-student-card" data-student-id="${stId}">
-                    <div class="qe-student-name"><i class="fa-solid fa-user"></i> ${name}</div>
+                    <div class="qe-student-name">${this.escapeHtml(name)}</div>
                     <div class="qe-field-grid">
                         <div>
                             <label>Bài tập về nhà (BTVN)</label>
-                            <input type="text" class="qe-homework" placeholder="Nhập tự do..." value="${this.escapeHtmlAttr(homework)}">
+                            <select class="qe-homework">
+                                <option value="Chưa làm" ${homeworkVal === 'Chưa làm' ? 'selected' : ''}>Không hoàn thành</option>
+                                <option value="Chưa hoàn thành" ${homeworkVal === 'Chưa hoàn thành' ? 'selected' : ''}>Chưa hoàn thành</option>
+                                <option value="Hoàn thành" ${homeworkVal === 'Hoàn thành' ? 'selected' : ''}>Hoàn thành</option>
+                            </select>
                         </div>
                         <div>
                             <label>Ý thức học tập</label>
                             <input type="text" class="qe-attitude" placeholder="Nhập tự do..." value="${this.escapeHtmlAttr(attitude)}">
                         </div>
                         <div class="full-span">
-                            <label>Nhận xét riêng cho ${name}</label>
+                            <label>Nhận xét riêng cho ${this.escapeHtml(name)}</label>
                             <textarea class="qe-comment" rows="2" placeholder="Nhận xét riêng...">${detail.individualComment || ''}</textarea>
                         </div>
                         <div class="full-span">
@@ -1205,6 +1197,16 @@ class PinkyClassApp {
         return String(str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
     }
 
+    // Escape đầy đủ khi chèn text thuần vào NỘI DUNG thẻ HTML (khác với
+    // escapeHtmlAttr chỉ dùng cho value="..."), tránh vỡ layout hoặc lộ HTML
+    // injection nếu giáo viên gõ dấu < > trong nội dung buổi học.
+    escapeHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
     // Lưu bảng nhập nhanh: MỖI học sinh được lưu nhận xét RIÊNG của mình (đọc
     // trực tiếp từ thẻ tương ứng), rồi đồng bộ luôn về trang Nhật ký học tập
     // (studentDetails dùng chung nguồn dữ liệu với renderStudentLogs()).
@@ -1214,6 +1216,7 @@ class PinkyClassApp {
         if (!sess) return;
 
         const content = document.getElementById('quickEntryContent').value.trim();
+        const sessionName = document.getElementById('quickEntrySessionName').value.trim();
         const completed = document.getElementById('quickEntryCompleted').checked;
         const generalComment = sess.type === 'chung'
             ? document.getElementById('quickEntryGeneralComment').value.trim()
@@ -1240,6 +1243,7 @@ class PinkyClassApp {
         const updatedSession = {
             ...sess,
             content,
+            sessionName,
             generalComment: finalGeneralComment,
             completed,
             studentDetails: newStudentDetails
@@ -1256,6 +1260,7 @@ class PinkyClassApp {
         } catch (err) {
             console.warn("API lỗi, lưu offline: ", err.message);
             sess.content = content;
+            sess.sessionName = sessionName;
             sess.generalComment = finalGeneralComment;
             sess.completed = completed;
             sess.studentDetails = newStudentDetails;
@@ -1297,9 +1302,12 @@ class PinkyClassApp {
                 // If it's a shared session, split price equally among participants
                 const sessionPricePortion = sess.price / sess.studentIds.length;
                 totalTuitionEarned += sessionPricePortion;
-                // Dùng field Paid riêng biệt (KHÔNG dùng Completed nữa) — buổi học
-                // mới lên lịch mặc định Paid = false (chưa thanh toán).
-                if (sess.paid) {
+                // Dùng field Paid RIÊNG của chính học sinh này trong buổi học đó
+                // (sess.studentDetails[st.id].paid) — KHÔNG dùng cờ paid cấp cả
+                // buổi, vì với buổi học chung, trạng thái đóng tiền của mỗi học
+                // sinh phải độc lập với các bạn học cùng buổi.
+                const detail = sess.studentDetails && sess.studentDetails[st.id];
+                if (detail && detail.paid) {
                     paidTuition += sessionPricePortion;
                 } else {
                     unpaidTuition += sessionPricePortion;
@@ -1334,6 +1342,11 @@ class PinkyClassApp {
                 <td class="role-restricted admin-only" style="text-align:right; color:#dc2626; font-weight:600;">${this.formatVND(unpaidTuition)}</td>
                 
                 <td style="text-align:center;">${statusSelect}</td>
+                <td class="role-restricted admin-only" style="text-align:center;">
+                    <button type="button" class="btn btn-secondary btn-sm" style="padding:6px 14px;"
+                            ${totalSessionsCount === 0 ? 'disabled' : ''}
+                            onclick="app.openInvoiceModal('${st.id}')">Xuất phiếu</button>
+                </td>
             `;
 
             tbody.appendChild(tr);
@@ -1352,6 +1365,219 @@ class PinkyClassApp {
                 this.setStudentPaidStatus(studentId, paid);
             });
         });
+    }
+
+    // Bấm nút "Xuất phiếu" ở 1 dòng học sinh trong bảng Học phí -> tự động
+    // truyền sẵn thông tin học sinh + số liệu học phí của chính em đó vào form,
+    // giáo viên chỉ cần nhập thêm phần nhận xét rồi bấm "Xuất phiếu".
+    openInvoiceModal(studentId) {
+        const st = this.students.find(s => s.id === studentId);
+        if (!st) return;
+
+        const studentSessions = this.filterByMonth(this.sessions)
+            .filter(sess => sess.studentIds.includes(studentId))
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        let totalFee = 0, paidFee = 0, totalHours = 0;
+        studentSessions.forEach(sess => {
+            const portion = sess.price / (sess.studentIds.length || 1);
+            totalFee += portion;
+            totalHours += parseFloat(sess.duration) || 0;
+            const detail = sess.studentDetails && sess.studentDetails[studentId];
+            if (detail && detail.paid) paidFee += portion;
+        });
+        const unpaidFee = totalFee - paidFee;
+
+        document.getElementById('invoiceStudentId').value = studentId;
+        document.getElementById('invoiceStudentName').innerText = st.name;
+        document.getElementById('invoiceStudentClass').innerText = `${st.class} - ${st.subject}`;
+        document.getElementById('invoiceTotalFee').innerText = this.formatVND(totalFee);
+        document.getElementById('invoicePaidFee').innerText = this.formatVND(paidFee);
+        document.getElementById('invoiceUnpaidFee').innerText = this.formatVND(unpaidFee);
+        document.getElementById('invoiceSessionCount').innerText = studentSessions.length;
+        document.getElementById('invoiceTotalHours').innerText = `${totalHours.toFixed(1)} giờ`;
+
+        // Điền sẵn khoảng ngày = ngày buổi đầu tiên -> buổi cuối cùng trong kỳ
+        if (studentSessions.length > 0) {
+            document.getElementById('invoiceFromDate').value = studentSessions[0].date;
+            document.getElementById('invoiceToDate').value = studentSessions[studentSessions.length - 1].date;
+        } else {
+            document.getElementById('invoiceFromDate').value = '';
+            document.getElementById('invoiceToDate').value = '';
+        }
+
+        // Điền sẵn tiêu đề kỳ học dựa trên (các) tháng có buổi học, ví dụ "5+6/2026"
+        const monthsSet = new Set();
+        let sampleYear = new Date().getFullYear();
+        studentSessions.forEach(sess => {
+            const parts = String(sess.date).split('-'); // yyyy-mm-dd
+            if (parts.length >= 2) {
+                monthsSet.add(parseInt(parts[1]));
+                sampleYear = parseInt(parts[0]);
+            }
+        });
+        const monthsList = Array.from(monthsSet).sort((a, b) => a - b);
+        const titleMonths = monthsList.length > 0 ? monthsList.join('+') : (new Date().getMonth() + 1);
+        document.getElementById('invoiceTitle').value = `HỌC PHÍ THÁNG ${titleMonths}/${sampleYear}`;
+
+        // Các trường nhận xét để trống, giáo viên tự viết cho từng kỳ
+        document.getElementById('invoiceOverview').value = '';
+        document.getElementById('invoiceAlgebra').value = '';
+        document.getElementById('invoiceGeometry').value = '';
+        document.getElementById('invoiceRoadmap').value = '';
+        document.getElementById('invoiceSchedule').value = '';
+
+        this._invoiceSessionsCache = studentSessions;
+        this.openModal('invoiceModal');
+    }
+
+    // Render + mở cửa sổ in cho phiếu học phí, dựa trên dữ liệu đã điền sẵn +
+    // phần nhận xét giáo viên vừa nhập thêm trong form.
+    exportInvoice() {
+        const studentId = document.getElementById('invoiceStudentId').value;
+        const st = this.students.find(s => s.id === studentId);
+        if (!st) return;
+
+        const sessions = this._invoiceSessionsCache || [];
+        let totalFee = 0, paidFee = 0, totalHours = 0;
+        let privateCount = 0, privateSum = 0, groupCount = 0, groupSum = 0;
+        sessions.forEach(sess => {
+            const portion = sess.price / (sess.studentIds.length || 1);
+            totalFee += portion;
+            totalHours += parseFloat(sess.duration) || 0;
+            const detail = sess.studentDetails && sess.studentDetails[studentId];
+            if (detail && detail.paid) paidFee += portion;
+            if (sess.type === 'chung') {
+                groupCount += 1;
+                groupSum += portion;
+            } else {
+                privateCount += 1;
+                privateSum += portion;
+            }
+        });
+        const unpaidFee = totalFee - paidFee;
+        const privateUnit = privateCount > 0 ? Math.round(privateSum / privateCount) : 0;
+        const groupUnit = groupCount > 0 ? Math.round(groupSum / groupCount) : 0;
+
+        const title = document.getElementById('invoiceTitle').value.trim() || 'PHIẾU HỌC PHÍ';
+        const overview = document.getElementById('invoiceOverview').value.trim();
+        const algebra = document.getElementById('invoiceAlgebra').value.trim();
+        const geometry = document.getElementById('invoiceGeometry').value.trim();
+        const roadmap = document.getElementById('invoiceRoadmap').value.trim();
+        const schedule = document.getElementById('invoiceSchedule').value.trim();
+        const note = document.getElementById('invoiceNote').value.trim();
+
+        const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const nl2br = (s) => esc(s).replace(/\n/g, '<br>');
+
+        const dateChips = sessions.map(s => {
+            const [y, m, d] = String(s.date).split('-');
+            return `<span class="chip">${d}/${m}</span>`;
+        }).join('');
+
+        // Ghi chú học phí: liệt kê số buổi riêng/chung và đơn giá tương ứng,
+        // theo đúng bố cục "GHI CHÚ HỌC PHÍ" trong mẫu phiếu.
+        const feeNoteLines = [];
+        if (privateCount > 0) feeNoteLines.push(`${privateCount} buổi học riêng: <strong>${this.formatVND(privateUnit)}/buổi</strong>`);
+        if (groupCount > 0) feeNoteLines.push(`${groupCount} buổi học chung: <strong>${this.formatVND(groupUnit)}/buổi</strong>`);
+        const feeNoteHTML = feeNoteLines.map(l => `<div class="fee-note-item">${l}</div>`).join('');
+
+        const breakdownSummary = privateCount > 0 && groupCount > 0
+            ? `Gồm ${privateCount} buổi học riêng và ${groupCount} buổi học chung theo ghi chú bên dưới.`
+            : (privateCount > 0 ? `Gồm ${privateCount} buổi học riêng.` : (groupCount > 0 ? `Gồm ${groupCount} buổi học chung.` : ''));
+
+        const sectionsHTML = [
+            overview  ? `<div class="note-block"><strong>Tổng quan:</strong> ${nl2br(overview)}</div>`  : '',
+            algebra   ? `<div class="note-block"><strong>Đại số:</strong> ${nl2br(algebra)}</div>`      : '',
+            geometry  ? `<div class="note-block"><strong>Hình học:</strong> ${nl2br(geometry)}</div>`   : ''
+        ].filter(Boolean).join('');
+
+        const html = `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>${esc(title)} - ${esc(st.name)}</title>
+<style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; background:#fdf2f8; color:#3f0d24; margin:0; padding:24px; }
+    .sheet { max-width: 760px; margin: 0 auto; background:#fff; border: 2px solid #f3d2e4; border-radius: 24px; padding: 30px 32px; }
+    .tag { display:inline-block; font-size:12px; font-weight:700; color: #be185d; background:#fce7f3; padding:5px 14px; border-radius:20px; }
+    h1 { font-size: 28px; text-align:center; color:#be185d; margin: 16px 0 4px; letter-spacing: 0.5px; }
+    .subtitle { text-align:center; color:#9d6b83; font-size:13px; margin-bottom: 24px; }
+    .row { display:flex; gap:16px; margin-bottom: 20px; }
+    .card { flex:1; border:1px solid #f3d2e4; border-radius:16px; padding:16px 18px; }
+    .card .label { font-size:11px; color:#9d6b83; text-transform:uppercase; font-weight:700; letter-spacing:0.4px; }
+    .card .value { font-size:16px; font-weight:700; margin-top:2px; color:#3f0d24; }
+    .total-card { text-align:center; background:#fdf2f8; }
+    .total-card .value { font-size:30px; color:#be185d; }
+    .chip { display:inline-block; background:#fce7f3; color:#be185d; font-weight:700; font-size:13px; padding:5px 12px; border-radius:20px; margin:3px 4px 0 0; }
+    .section-title { font-weight:700; color:#be185d; margin: 20px 0 8px; font-size:14px; }
+    .note-block { border-left: 3px solid #be185d; background:#fdf2f8; padding: 10px 14px; border-radius: 10px; margin-bottom: 10px; font-size: 13px; line-height:1.6; }
+    .two-col { display:grid; grid-template-columns:1fr 1fr; gap: 20px 24px; }
+    .fee-note-item { font-size:13px; padding: 4px 0; }
+    .footer-note { margin-top:20px; font-size:12px; color:#9d6b83; border-top:1px dashed #f3d2e4; padding-top:14px; display:flex; justify-content:space-between; align-items:center; gap: 10px; }
+    .footer-note .signer { font-weight:700; color:#3f0d24; white-space:nowrap; }
+    @media print { body { padding: 0; background:#fff; } .sheet { border-radius: 0; border: none; } }
+</style>
+</head>
+<body>
+    <div class="sheet">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="tag">Phiếu thông báo học phí</span>
+            <span style="font-size:12px; color:#9d6b83;">Dành cho phụ huynh</span>
+        </div>
+        <h1>${esc(title)}</h1>
+        <div class="subtitle">Tổng hợp buổi học, nhận xét quá trình học tập và lộ trình sắp tới</div>
+
+        <div class="row">
+            <div class="card">
+                <div class="label">Họ và tên</div><div class="value">${esc(st.name)}</div>
+                <div class="label" style="margin-top:10px;">Học phí/buổi</div><div class="value">${privateCount > 0 ? this.formatVND(privateUnit) : this.formatVND(groupUnit)}</div>
+                <div class="label" style="margin-top:10px;">Số buổi học</div><div class="value">${sessions.length} buổi</div>
+                <div class="label" style="margin-top:10px;">Số giờ học</div><div class="value">${totalHours.toFixed(1)} giờ</div>
+                <div style="margin-top:12px;">${dateChips || '<span style="font-size:13px;color:#c48ba6;">Chưa có buổi học trong kỳ</span>'}</div>
+            </div>
+            <div class="card total-card">
+                <div class="label">Tổng học phí</div>
+                <div class="value">${this.formatVND(totalFee)}</div>
+                <div style="margin-top:8px; font-size:12px; color:#9d6b83;">${breakdownSummary}</div>
+                <div style="margin-top:10px; font-size:12px; color:#9d6b83;">
+                    Đã đóng: <strong style="color:#16a34a;">${this.formatVND(paidFee)}</strong><br>
+                    Còn nợ: <strong style="color:#dc2626;">${this.formatVND(unpaidFee)}</strong>
+                </div>
+            </div>
+        </div>
+
+        ${sectionsHTML ? `<div class="section-title">Nhận xét học tập</div><div class="two-col">${sectionsHTML}</div>` : ''}
+
+        <div class="two-col">
+            ${roadmap ? `<div><div class="section-title">Lộ trình sắp tới</div><div class="note-block">${nl2br(roadmap)}</div></div>` : ''}
+            <div>
+                ${schedule ? `<div class="section-title">Lịch học</div><div class="note-block">${nl2br(schedule)}</div>` : ''}
+            </div>
+        </div>
+
+        ${feeNoteHTML ? `<div class="section-title">Ghi chú học phí</div><div class="note-block">${feeNoteHTML}</div>` : ''}
+
+        <div class="footer-note">
+            <span>${note ? nl2br(note) : 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.'}</span>
+            <span class="signer">Giáo viên phụ trách</span>
+        </div>
+    </div>
+    <script>window.onload = () => window.print();</script>
+</body>
+</html>`;
+
+        const win = window.open('', '_blank');
+        if (!win) {
+            this.showToast('Trình duyệt đang chặn cửa sổ mới. Vui lòng cho phép popup để xuất phiếu.', 'error');
+            return;
+        }
+        win.document.open();
+        win.document.write(html);
+        win.document.close();
+
+        this.closeModal('invoiceModal');
     }
 
     // --- VIEW 5: STUDENT MANAGEMENT ---
@@ -1392,8 +1618,7 @@ class PinkyClassApp {
                 lastGrade = st.gradeLevel;
                 const groupRow = document.createElement('tr');
                 groupRow.innerHTML = `
-                    <td colspan="6" style="background:var(--primary-soft); color:var(--primary); font-weight:700; padding:8px 14px; font-size:13px;">
-                        <i class="fa-solid fa-people-group"></i> ${st.gradeLevel ? 'Lớp ' + st.gradeLevel : 'Chưa xác định khối lớp'}
+                    <td colspan="6" style="background:var(--primary-soft); color:var(--primary); font-weight:700; padding:8px 14px; font-size:13px;"> ${st.gradeLevel ? 'Lớp ' + st.gradeLevel : 'Chưa xác định khối lớp'}
                     </td>`;
                 tbody.appendChild(groupRow);
             }
@@ -1402,11 +1627,9 @@ class PinkyClassApp {
 
             const actionsHTML = `
                 <div style="display:flex; justify-content:center; gap:8px;">
-                    <button class="btn btn-secondary btn-sm" onclick="app.openEditStudentModal('${st.id}')">
-                        <i class="fa-solid fa-user-pen"></i> Sửa
+                    <button class="btn btn-secondary btn-sm" onclick="app.openEditStudentModal('${st.id}')"> Sửa
                     </button>
-                    <button class="btn btn-danger btn-sm" onclick="app.deleteStudent('${st.id}')">
-                        <i class="fa-solid fa-user-xmark"></i> Xóa
+                    <button class="btn btn-danger btn-sm" onclick="app.deleteStudent('${st.id}')"> Xóa
                     </button>
                 </div>
             `;
@@ -1536,6 +1759,7 @@ class PinkyClassApp {
     // 2. Log Session (Add Session)
     async handleLogSession() {
         const type = document.getElementById('sessionType').value;
+        const sessionName = document.getElementById('sessionName').value.trim();
         const date = document.getElementById('sessionDate').value;
         const startTime = document.getElementById('sessionStartTime').value;
         const endTime = document.getElementById('sessionEndTime').value;
@@ -1577,6 +1801,7 @@ class PinkyClassApp {
             startTime,
             endTime,
             type,
+            sessionName,
             studentIds,
             duration,
             price,
@@ -1617,6 +1842,7 @@ class PinkyClassApp {
 
         document.getElementById('editSessionId').value = sess.id;
         document.getElementById('editSessionType').value = sess.type;
+        document.getElementById('editSessionName').value = sess.sessionName || '';
         document.getElementById('editSessionDate').value = sess.date;
         document.getElementById('editSessionStartTime').value = sess.startTime;
         document.getElementById('editSessionEndTime').value = sess.endTime;
@@ -1671,6 +1897,7 @@ class PinkyClassApp {
         if (!sess) return;
 
         const type = document.getElementById('editSessionType').value;
+        const sessionName = document.getElementById('editSessionName').value.trim();
         const date = document.getElementById('editSessionDate').value;
         const startTime = document.getElementById('editSessionStartTime').value;
         const endTime = document.getElementById('editSessionEndTime').value;
@@ -1711,6 +1938,7 @@ class PinkyClassApp {
         const updatedSession = {
             ...sess,
             type,
+            sessionName,
             date,
             startTime,
             endTime,
@@ -1732,6 +1960,7 @@ class PinkyClassApp {
         } catch (err) {
             console.warn("API lỗi, lưu offline: ", err.message);
             sess.type = type;
+            sess.sessionName = sessionName;
             sess.date = date;
             sess.startTime = startTime;
             sess.endTime = endTime;
@@ -1870,7 +2099,15 @@ class PinkyClassApp {
             await this.loadData();
         } catch (err) {
             console.warn("API lỗi, cập nhật offline: ", err.message);
-            studentSessions.forEach(sess => { sess.paid = paid; });
+            // QUAN TRỌNG: chỉ set cờ Paid của ĐÚNG học sinh này trong từng buổi
+            // học (sess.studentDetails[studentId].paid) — TUYỆT ĐỐI không set
+            // sess.paid (cấp cả buổi), nếu không buổi học chung sẽ bị đổi trạng
+            // thái of TẤT CẢ học sinh khác học cùng buổi theo em này.
+            studentSessions.forEach(sess => {
+                if (sess.studentDetails && sess.studentDetails[studentId]) {
+                    sess.studentDetails[studentId].paid = paid;
+                }
+            });
             await this.saveData();
         }
         this.showToast(paid ? "Đã đánh dấu học phí: Đã thanh toán" : "Đã đánh dấu học phí: Chưa thanh toán", "success");
@@ -1988,14 +2225,11 @@ class PinkyClassApp {
                 <td>${this.roleLabelText(u.Role)}</td>
                 <td>${u.Role === 'assistant' ? (this.assignedTeacherName(u.AssignedTeacherId) || '<span style="color:var(--text-muted);">Chưa gán</span>') : '<span style="color:var(--text-muted);">—</span>'}</td>
                 <td style="text-align:center;">
-                    <button class="btn btn-secondary btn-sm" onclick="app.openEditUserModal('${u.Id}')">
-                        <i class="fa-solid fa-pen-to-square"></i> Sửa
+                    <button class="btn btn-secondary btn-sm" onclick="app.openEditUserModal('${u.Id}')"> Sửa
                     </button>
-                    <button class="btn ${u.Active ? 'btn-secondary' : 'btn-primary'} btn-sm" onclick="app.toggleUserActive('${u.Id}', ${u.Active ? 'false' : 'true'})">
-                        <i class="fa-solid ${u.Active ? 'fa-lock' : 'fa-lock-open'}"></i> ${u.Active ? 'Khóa' : 'Mở khóa'}
+                    <button class="btn ${u.Active ? 'btn-secondary' : 'btn-primary'} btn-sm" onclick="app.toggleUserActive('${u.Id}', ${u.Active ? 'false' : 'true'})"> ${u.Active ? 'Khóa' : 'Mở khóa'}
                     </button>
-                    <button class="btn btn-danger btn-sm" onclick="app.deleteUser('${u.Id}')">
-                        <i class="fa-solid fa-trash-can"></i> Xóa
+                    <button class="btn btn-danger btn-sm" onclick="app.deleteUser('${u.Id}')"> Xóa
                     </button>
                 </td>
             `;
@@ -2171,9 +2405,9 @@ class PinkyClassApp {
         toast.className = 'notification show ' + type;
 
         if (type === 'success') {
-            icon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+            icon.innerHTML = ' ';
         } else {
-            icon.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i>';
+            icon.innerHTML = ' ';
         }
 
         setTimeout(() => {
