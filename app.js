@@ -1586,25 +1586,28 @@ class PinkyClassApp {
 <head>
 <meta charset="UTF-8">
 <title>${esc(title)} - ${esc(st.name)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-    body { font-family: 'Segoe UI', Arial, sans-serif; background:#fdf2f8; color:#3f0d24; margin:0; padding:24px; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background:#fdf2f8; color:#3f0d24; margin:0; padding:24px; -webkit-font-smoothing:antialiased; }
     .sheet { max-width: 760px; margin: 0 auto; background:#fff; border: 2px solid #f3d2e4; border-radius: 24px; padding: 30px 32px; }
-    .tag { display:inline-block; font-size:12px; font-weight:700; color: #be185d; background:#fce7f3; padding:5px 14px; border-radius:20px; }
-    h1 { font-size: 28px; text-align:center; color:#be185d; margin: 16px 0 4px; letter-spacing: 0.5px; }
-    .subtitle { text-align:center; color:#9d6b83; font-size:13px; margin-bottom: 24px; }
+    .tag { display:inline-block; font-family:'Nunito',sans-serif; font-size:12px; font-weight:800; color: #be185d; background:#fce7f3; padding:5px 14px; border-radius:20px; letter-spacing:0.2px; }
+    h1 { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size: 27px; font-weight:700; text-align:center; color:#be185d; margin: 16px 0 4px; letter-spacing: 0.3px; }
+    .subtitle { text-align:center; color:#9d6b83; font-size:13.5px; margin-bottom: 24px; font-weight:600; }
     .row { display:flex; gap:16px; margin-bottom: 20px; }
     .card { flex:1; border:1px solid #f3d2e4; border-radius:16px; padding:16px 18px; }
-    .card .label { font-size:11px; color:#9d6b83; text-transform:uppercase; font-weight:700; letter-spacing:0.4px; }
-    .card .value { font-size:16px; font-weight:700; margin-top:2px; color:#3f0d24; }
+    .card .label { font-size:11px; color:#9d6b83; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; }
+    .card .value { font-family:'Nunito',sans-serif; font-size:16.5px; font-weight:800; margin-top:2px; color:#3f0d24; }
     .total-card { text-align:center; background:#fdf2f8; }
-    .total-card .value { font-size:30px; color:#be185d; }
-    .chip { display:inline-block; background:#fce7f3; color:#be185d; font-weight:700; font-size:13px; padding:5px 12px; border-radius:20px; margin:3px 4px 0 0; }
-    .section-title { font-weight:700; color:#be185d; margin: 20px 0 8px; font-size:14px; }
-    .note-block { border-left: 3px solid #be185d; background:#fdf2f8; padding: 10px 14px; border-radius: 10px; margin-bottom: 10px; font-size: 13px; line-height:1.6; }
+    .total-card .value { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size:29px; font-weight:700; color:#be185d; }
+    .chip { display:inline-block; background:#fce7f3; color:#be185d; font-weight:800; font-size:13px; padding:5px 12px; border-radius:20px; margin:3px 4px 0 0; }
+    .section-title { font-family:'Nunito',sans-serif; font-weight:800; color:#be185d; margin: 20px 0 8px; font-size:14.5px; letter-spacing:0.2px; }
+    .note-block { border-left: 3px solid #be185d; background:#fdf2f8; padding: 10px 14px; border-radius: 10px; margin-bottom: 10px; font-size: 13.5px; line-height:1.65; }
     .two-col { display:grid; grid-template-columns:1fr 1fr; gap: 20px 24px; }
-    .fee-note-item { font-size:13px; padding: 4px 0; }
-    .footer-note { margin-top:20px; font-size:12px; color:#9d6b83; border-top:1px dashed #f3d2e4; padding-top:14px; display:flex; justify-content:space-between; align-items:center; gap: 10px; }
-    .footer-note .signer { font-weight:700; color:#3f0d24; white-space:nowrap; }
+    .fee-note-item { font-size:13.5px; padding: 4px 0; }
+    .footer-note { margin-top:20px; font-size:12.5px; color:#9d6b83; border-top:1px dashed #f3d2e4; padding-top:14px; display:flex; justify-content:space-between; align-items:center; gap: 10px; font-weight:600; }
+    .footer-note .signer { font-weight:800; color:#3f0d24; white-space:nowrap; }
     @media print { body { padding: 0; background:#fff; } .sheet { border-radius: 0; border: none; } }
 </style>
 </head>
@@ -1649,7 +1652,7 @@ class PinkyClassApp {
 
         <div class="footer-note">
             <span>${note ? nl2br(note) : 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.'}</span>
-            <span class="signer">Giáo viên phụ trách</span>
+            <span class="signer">${esc((this.currentUser && this.currentUser.name) || 'Giáo viên phụ trách')}</span>
         </div>
     </div>
     <script>window.onload = () => window.print();</script>

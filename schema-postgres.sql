@@ -52,13 +52,13 @@ CREATE TABLE Sessions (
     StartTime VARCHAR(10) NOT NULL,
     EndTime VARCHAR(10) NOT NULL,
     SessionType VARCHAR(20) NOT NULL, -- 'riêng' hoặc 'chung'
+    SessionName VARCHAR(100) NULL, -- Tên ca học / tên buổi học (tùy chọn, VD: "Ca sáng", "Ôn thi giữa kỳ")
     Price INT NOT NULL DEFAULT 250000,
     Duration DECIMAL(4,2) NOT NULL DEFAULT 2.0,
     Content TEXT NULL,
     GeneralComment TEXT NULL,
     Completed SMALLINT NOT NULL DEFAULT 1, -- 1: Đã dạy, 0: Chưa dạy/Lên lịch
     TeacherId VARCHAR(50) NOT NULL,
-    SessionName VARCHAR(100) NULL,
     CONSTRAINT FK_Sessions_Teacher FOREIGN KEY (TeacherId) REFERENCES Users(Id)
 );
 
@@ -82,8 +82,9 @@ CREATE TABLE SessionDetails (
 -- Mật khẩu lưu dạng văn bản thuần (plain text) — đồ án sinh viên quy mô nhỏ.
 -- ĐỔI username/password bên dưới thành tài khoản thật của bạn trước khi chạy.
 INSERT INTO Users (Id, Username, Password, Name, Role, Active, AssignedTeacherId) VALUES
-('u_admin', 'admin', 'admin123', 'Quản trị viên', 'admin', 1, NULL),
-('u_teacher', 'teacher', 'teacher123', 'Cô giáo chính', 'teacher', 1, NULL);
+('u_admin', 'admin', 'admin123', 'Nguyễn Bình Minh', 'admin', 1, NULL),
+('u_teacher', 'teacher', 'teacher123', 'Nguyễn Thanh Thúy', 'teacher', 1, NULL),
+('u_assistant', 'trogiang', 'trogiang123', 'Trần Gia Bảo', 'assistant', 1, 'u_teacher');
 
 -- 7. DANH SÁCH HỌC SINH (đúng theo ảnh Hồ sơ học sinh hiện tại)
 INSERT INTO Students (Id, Name, Class, GradeLevel, Subject, BasePrice, TeacherId) VALUES
