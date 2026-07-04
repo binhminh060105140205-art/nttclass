@@ -1567,27 +1567,48 @@ class PinkyClassApp {
         const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const nl2br = (s) => esc(s).replace(/\n/g, '<br>');
 
+        // Danh sách kiểu "checklist" (✓ đầu dòng) dùng cho khối LỊCH HỌC và GHI
+        // CHÚ HỌC PHÍ, giống đúng bố cục trong mẫu phiếu. Nếu dòng có dấu ":"
+        // thì in đậm phần trước dấu ":" (VD "16h–18h thứ 4:" in đậm).
+        const checklistHTML = (text) => {
+            const lines = esc(text).split('\n').map(l => l.trim()).filter(Boolean);
+            if (lines.length === 0) return '';
+            return lines.map(line => {
+                const colonIdx = line.indexOf(':');
+                const item = colonIdx > -1
+                    ? `<strong>${line.slice(0, colonIdx + 1)}</strong>${line.slice(colonIdx + 1)}`
+                    : line;
+                return `<div class="checklist-item"><span class="check-mark">✓</span><span>${item}</span></div>`;
+            }).join('');
+        };
+
         const dateChips = sessions.map(s => {
             const [y, m, d] = String(s.date).split('-');
             return `<span class="chip">${d}/${m}</span>`;
         }).join('');
 
         // Ghi chú học phí: liệt kê số buổi riêng/chung và đơn giá tương ứng,
-        // theo đúng bố cục "GHI CHÚ HỌC PHÍ" trong mẫu phiếu.
+        // theo đúng bố cục "GHI CHÚ HỌC PHÍ" trong mẫu phiếu (dạng checklist ✓).
         const feeNoteLines = [];
         if (privateCount > 0) feeNoteLines.push(`${privateCount} buổi học riêng: <strong>${this.formatVND(privateUnit)}/buổi</strong>`);
         if (groupCount > 0) feeNoteLines.push(`${groupCount} buổi học chung: <strong>${this.formatVND(groupUnit)}/buổi</strong>`);
-        const feeNoteHTML = feeNoteLines.map(l => `<div class="fee-note-item">${l}</div>`).join('');
+        const feeNoteHTML = feeNoteLines.map(l => `<div class="checklist-item"><span class="check-mark">✓</span><span>${l}</span></div>`).join('');
 
         const breakdownSummary = privateCount > 0 && groupCount > 0
             ? `Gồm ${privateCount} buổi học riêng và ${groupCount} buổi học chung theo ghi chú bên dưới.`
             : (privateCount > 0 ? `Gồm ${privateCount} buổi học riêng.` : (groupCount > 0 ? `Gồm ${groupCount} buổi học chung.` : ''));
 
-        const sectionsHTML = [
-            overview  ? `<div class="note-block"><strong>Tổng quan:</strong> ${nl2br(overview)}</div>`  : '',
-            algebra   ? `<div class="note-block"><strong>Đại số:</strong> ${nl2br(algebra)}</div>`      : '',
-            geometry  ? `<div class="note-block"><strong>Hình học:</strong> ${nl2br(geometry)}</div>`   : ''
+        // Nhận xét học tập: gộp Tổng quan/Đại số/Hình học vào chung 1 khung,
+        // mỗi mục hiển thị kiểu "trích dẫn" (viền trái) xếp chồng, giống hệt bố
+        // cục khung "NHẬN XÉT HỌC TẬP" trong mẫu phiếu (không phải 3 ô riêng).
+        const quoteItemsHTML = [
+            overview  ? `<div class="quote-item"><strong>Tổng quan:</strong> ${nl2br(overview)}</div>`  : '',
+            algebra   ? `<div class="quote-item"><strong>Đại số:</strong> ${nl2br(algebra)}</div>`      : '',
+            geometry  ? `<div class="quote-item"><strong>Hình học:</strong> ${nl2br(geometry)}</div>`   : ''
         ].filter(Boolean).join('');
+
+        const scheduleHTML = checklistHTML(schedule);
+        const roadmapHTML = roadmap ? `<div class="plain-paragraph">${nl2br(roadmap)}</div>` : '';
 
         const html = `
 <!DOCTYPE html>
@@ -1604,18 +1625,24 @@ class PinkyClassApp {
     .tag { display:inline-block; font-family:'Nunito',sans-serif; font-size:12px; font-weight:800; color: #be185d; background:#fce7f3; padding:5px 14px; border-radius:20px; letter-spacing:0.2px; }
     h1 { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size: 27px; font-weight:700; text-align:center; color:#be185d; margin: 16px 0 4px; letter-spacing: 0.3px; }
     .subtitle { text-align:center; color:#9d6b83; font-size:13.5px; margin-bottom: 24px; font-weight:600; }
-    .row { display:flex; gap:16px; margin-bottom: 20px; }
-    .card { flex:1; border:1px solid #f3d2e4; border-radius:16px; padding:16px 18px; }
+    .row { display:flex; gap:16px; margin-bottom: 20px; align-items: stretch; }
+    .row > .card { flex: 1; }
+    .card { border:1.5px solid #f3d2e4; border-radius:18px; padding:18px 20px; margin-bottom: 20px; }
     .card .label { font-size:11px; color:#9d6b83; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; }
     .card .value { font-family:'Nunito',sans-serif; font-size:16.5px; font-weight:800; margin-top:2px; color:#3f0d24; }
-    .total-card { text-align:center; background:#fdf2f8; }
+    .divider-dashed { border-top: 1px dashed #f3d2e4; margin: 14px 0 12px; }
+    .total-card { text-align:center; background:#fdf2f8; display:flex; flex-direction:column; justify-content:center; }
     .total-card .value { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size:29px; font-weight:700; color:#be185d; }
     .chip { display:inline-block; background:#fce7f3; color:#be185d; font-weight:800; font-size:13px; padding:5px 12px; border-radius:20px; margin:3px 4px 0 0; }
-    .section-title { font-family:'Nunito',sans-serif; font-weight:800; color:#be185d; margin: 20px 0 8px; font-size:14.5px; letter-spacing:0.2px; }
-    .note-block { border: 1.5px solid #f3d2e4; background:#fdf2f8; padding: 12px 16px; border-radius: 14px; margin-bottom: 10px; font-size: 13.5px; line-height:1.65; }
-    .two-col { display:grid; grid-template-columns:1fr 1fr; gap: 20px 24px; }
+    .section-title { font-family:'Nunito',sans-serif; font-weight:800; color:#be185d; text-transform:uppercase; margin: 0 0 12px; font-size:14px; letter-spacing:0.3px; }
+    .quote-item { border-left: 3px solid #be185d; padding: 2px 0 2px 14px; margin-bottom: 12px; font-size: 13.5px; line-height:1.65; }
+    .quote-item:last-child { margin-bottom: 0; }
+    .plain-paragraph { font-size: 13.5px; line-height: 1.7; }
+    .checklist-item { display:flex; align-items:flex-start; gap:8px; font-size:13.5px; line-height:1.6; margin-bottom:8px; }
+    .checklist-item:last-child { margin-bottom: 0; }
+    .check-mark { color:#be185d; font-weight:800; flex-shrink:0; }
     .fee-note-item { font-size:13.5px; padding: 4px 0; }
-    .footer-note { margin-top:20px; font-size:12.5px; color:#9d6b83; border-top:1px dashed #f3d2e4; padding-top:14px; display:flex; justify-content:space-between; align-items:center; gap: 10px; font-weight:600; }
+    .footer-note { margin-top:4px; font-size:12.5px; color:#9d6b83; border-top:1px dashed #f3d2e4; padding-top:14px; display:flex; justify-content:space-between; align-items:center; gap: 10px; font-weight:600; }
     .footer-note .signer { font-weight:800; color:#3f0d24; white-space:nowrap; }
     @media print { body { padding: 0; background:#fff; } .sheet { border-radius: 0; border: none; } }
 </style>
@@ -1635,7 +1662,9 @@ class PinkyClassApp {
                 <div class="label" style="margin-top:10px;">Học phí/buổi</div><div class="value">${privateCount > 0 ? this.formatVND(privateUnit) : this.formatVND(groupUnit)}</div>
                 <div class="label" style="margin-top:10px;">Số buổi học</div><div class="value">${sessions.length} buổi</div>
                 <div class="label" style="margin-top:10px;">Số giờ học</div><div class="value">${totalHours.toFixed(1)} giờ</div>
-                <div style="margin-top:12px;">${dateChips || '<span style="font-size:13px;color:#c48ba6;">Chưa có buổi học trong kỳ</span>'}</div>
+                <div class="divider-dashed"></div>
+                <div class="label" style="margin-bottom:8px;">Ngày học trong kỳ</div>
+                <div>${dateChips || '<span style="font-size:13px;color:#c48ba6;">Chưa có buổi học trong kỳ</span>'}</div>
             </div>
             <div class="card total-card">
                 <div class="label">Tổng học phí</div>
@@ -1648,16 +1677,21 @@ class PinkyClassApp {
             </div>
         </div>
 
-        ${sectionsHTML ? `<div class="section-title">Nhận xét học tập</div><div class="two-col">${sectionsHTML}</div>` : ''}
+        ${quoteItemsHTML ? `<div class="card"><div class="section-title">Nhận xét học tập</div>${quoteItemsHTML}</div>` : ''}
 
-        <div class="two-col">
-            ${roadmap ? `<div><div class="section-title">Lộ trình sắp tới</div><div class="note-block">${nl2br(roadmap)}</div></div>` : ''}
-            <div>
-                ${schedule ? `<div class="section-title">Lịch học</div><div class="note-block">${nl2br(schedule)}</div>` : ''}
+        ${(scheduleHTML || roadmapHTML) ? `
+        <div class="row">
+            <div class="card">
+                <div class="section-title">Lịch học</div>
+                ${scheduleHTML || '<div class="plain-paragraph" style="color:#c48ba6;">Chưa có lịch học.</div>'}
             </div>
-        </div>
+            <div class="card">
+                <div class="section-title">Lộ trình sắp tới</div>
+                ${roadmapHTML || '<div class="plain-paragraph" style="color:#c48ba6;">Chưa có lộ trình.</div>'}
+            </div>
+        </div>` : ''}
 
-        ${feeNoteHTML ? `<div class="section-title">Ghi chú học phí</div><div class="note-block">${feeNoteHTML}</div>` : ''}
+        ${feeNoteHTML ? `<div class="card"><div class="section-title">Ghi chú học phí</div>${feeNoteHTML}</div>` : ''}
 
         <div class="footer-note">
             <span>${note ? nl2br(note) : 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.'}</span>
