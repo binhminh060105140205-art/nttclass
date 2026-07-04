@@ -33,9 +33,28 @@
 require('dotenv').config();
 
 const express = require('express');
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
 const cors    = require('cors');
 const path    = require('path');
+
+// ==========================================
+// FIX LỖI LỆCH NGÀY (QUAN TRỌNG)
+// ==========================================
+// Mặc định, driver "pg" tự động chuyển cột kiểu DATE trong PostgreSQL thành
+// đối tượng JS Date, dựng từ chuỗi "yyyy-mm-dd" theo giờ UTC. Sau đó nếu code
+// đọc lại ngày/tháng/năm bằng getFullYear()/getMonth()/getDate() (giờ LOCAL
+// của máy chủ Node đang chạy), kết quả sẽ ĐÚNG hay SAI hoàn toàn phụ thuộc
+// vào múi giờ hệ thống của server lưu trữ (Render, VPS...) — nếu server đó
+// đặt múi giờ ở SAU UTC (ví dụ chạy mặc định UTC hoặc múi giờ Mỹ), nửa đêm
+// UTC của ngày X sẽ bị đọc thành NGÀY HÔM TRƯỚC theo giờ local của server,
+// gây ra đúng lỗi "đặt thứ 7 lại hiện thứ 6" mà không hề liên quan gì đến
+// máy/tŕnh duyệt của người dùng.
+//
+// CÁCH SỬA TRIỆT ĐỂ: tắt hẳn việc "pg" tự parse cột DATE (OID 1082) thành
+// đối tượng Date — giữ nguyên chuỗi "yyyy-mm-dd" thô mà PostgreSQL trả về.
+// Không còn đối tượng Date nào được tạo ra => không còn phụ thuộc múi giờ
+// của server ở bất kỳ đâu nữa, luôn đúng 100% với ngày đã lưu trong DB.
+types.setTypeParser(1082, (value) => value); // 1082 = OID của kiểu DATE
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -462,10 +481,24 @@ app.get('/api/students', requireRole('teacher', 'assistant'), requireTeacherCont
 });
 
 app.post('/api/students', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
-    const { id, name, class: sClass, subject, basePrice, gradeLevel } = req.body || {};
+    let { id, name, class: sClass, subject, basePrice, gradeLevel } = req.body || {};
     console.log('[POST /api/students] body nhận được:', req.body);
+
+    // Trim chuỗi để tránh lưu khoảng trắng thừa đầu/cuối (dễ gây ra 2 học
+    // sinh trông "trùng tên" nhưng thực chất khác nhau ở khoảng trắng).
+    name = (name || '').trim();
+    sClass = (sClass || '').trim();
+    subject = (subject || '').trim();
+
     if (!id || !name || !sClass || !subject) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
+    }
+
+    // Học phí/buổi bắt buộc phải là số nguyên dương (> 0) — validate lại ở
+    // backend để chặn cả khi gọi thẳng API (không đi qua form ở frontend).
+    const parsedBasePrice = parseInt(basePrice);
+    if (isNaN(parsedBasePrice) || parsedBasePrice <= 0) {
+        return res.status(400).json({ error: 'Học phí/buổi phải là số lớn hơn 0.' });
     }
 
     try {
@@ -476,7 +509,7 @@ app.post('/api/students', requireRole('teacher', 'assistant'), requireTeacherCon
             .input('class',      sql.NVarChar, sClass)
             .input('gradeLevel', sql.Int,      gradeLevel ? parseInt(gradeLevel) : null)
             .input('subject',    sql.NVarChar, subject)
-            .input('basePrice',  sql.Int,      parseInt(basePrice) || 250000)
+            .input('basePrice',  sql.Int,      parsedBasePrice)
             .input('teacherId',  sql.VarChar,  req.effectiveTeacherId)
             .query('INSERT INTO Students (Id, Name, Class, GradeLevel, Subject, BasePrice, TeacherId) VALUES (@id, @name, @class, @gradeLevel, @subject, @basePrice, @teacherId)');
 
@@ -490,9 +523,19 @@ app.post('/api/students', requireRole('teacher', 'assistant'), requireTeacherCon
 // PUT cập nhật học sinh — FIX: thay vì delete+post hack ở frontend
 app.put('/api/students/:id', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     const { id } = req.params;
-    const { name, class: sClass, subject, basePrice, gradeLevel } = req.body || {};
+    let { name, class: sClass, subject, basePrice, gradeLevel } = req.body || {};
+
+    name = (name || '').trim();
+    sClass = (sClass || '').trim();
+    subject = (subject || '').trim();
+
     if (!name || !sClass || !subject) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
+    }
+
+    const parsedBasePrice = parseInt(basePrice);
+    if (isNaN(parsedBasePrice) || parsedBasePrice <= 0) {
+        return res.status(400).json({ error: 'Học phí/buổi phải là số lớn hơn 0.' });
     }
 
     try {
@@ -515,7 +558,7 @@ app.put('/api/students/:id', requireRole('teacher', 'assistant'), requireTeacher
             .input('class',      sql.NVarChar, sClass)
             .input('gradeLevel', sql.Int,      gradeLevel ? parseInt(gradeLevel) : null)
             .input('subject',    sql.NVarChar, subject)
-            .input('basePrice',  sql.Int,      parseInt(basePrice) || 250000)
+            .input('basePrice',  sql.Int,      parsedBasePrice)
             .query(`UPDATE Students
                     SET Name = @name, Class = @class, GradeLevel = @gradeLevel, Subject = @subject, BasePrice = @basePrice
                     WHERE Id = @id`);
@@ -573,23 +616,13 @@ app.get('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCont
         const sessionsMap = {};
         result.recordset.forEach(row => {
             if (!sessionsMap[row.Id]) {
-                let dateStr = '';
-                if (row.SessionDate) {
-                    // QUAN TRỌNG (fix lỗi lệch ngày, vd: đặt lịch 4/7 lại hiện 3/7):
-                    // driver "pg" parse cột DATE thành đối tượng Date ở NỬA ĐÊM
-                    // GIỜ ĐỊA PHƯƠNG của server (không phải UTC). Trước đây code
-                    // dùng .toISOString() để lấy chuỗi yyyy-mm-dd, nhưng
-                    // toISOString() luôn quy đổi sang UTC trước — nếu server chạy
-                    // ở múi giờ sớm hơn UTC (ví dụ UTC+7), nửa đêm giờ VN sẽ rơi
-                    // vào 17h ngày HÔM TRƯỚC theo UTC, khiến ngày bị lùi lại 1 hôm.
-                    // Sửa: đọc trực tiếp năm/tháng/ngày theo giờ LOCAL (không đi
-                    // qua UTC) để không bao giờ bị lệch, bất kể server đặt múi giờ nào.
-                    const d = new Date(row.SessionDate);
-                    const y = d.getFullYear();
-                    const m = String(d.getMonth() + 1).padStart(2, '0');
-                    const day = String(d.getDate()).padStart(2, '0');
-                    dateStr = `${y}-${m}-${day}`;
-                }
+                // Từ khi tắt auto-parse cột DATE ở phần kết nối DB (xem comment
+                // "FIX LỖI LỆCH NGÀY" phía trên file), row.SessionDate LUÔN LÀ
+                // chuỗi "yyyy-mm-dd" thô do PostgreSQL trả về — dùng thẳng,
+                // không cần (và không được) tạo đối tượng Date rồi đọc lại,
+                // vì bước đó chính là nguyên nhân gây lệch ngày theo múi giờ
+                // của máy chủ trước đây.
+                const dateStr = row.SessionDate ? String(row.SessionDate).slice(0, 10) : '';
                 sessionsMap[row.Id] = {
                     id:             row.Id,
                     date:           dateStr,
@@ -644,6 +677,17 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
     }
 
+    // Giờ kết thúc phải sau giờ bắt đầu — validate lại ở backend để chặn cả
+    // khi gọi thẳng API (không đi qua form ở frontend).
+    if (endTime <= startTime) {
+        return res.status(400).json({ error: 'Giờ kết thúc phải sau giờ bắt đầu.' });
+    }
+
+    const parsedPrice = parseInt(price);
+    if (isNaN(parsedPrice) || parsedPrice <= 0) {
+        return res.status(400).json({ error: 'Học phí buổi học phải là số lớn hơn 0.' });
+    }
+
     let transaction;
     try {
         const pool  = await poolPromise;
@@ -668,7 +712,7 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
             .input('endTime',        sql.VarChar,       endTime)
             .input('type',           sql.VarChar,       type)
             .input('sessionName',    sql.NVarChar,      sessionName    || '')
-            .input('price',          sql.Int,           parseInt(price) || 250000)
+            .input('price',          sql.Int,           parsedPrice)
             .input('duration',       sql.Decimal(4, 2), parseFloat(duration) || 2.0)
             .input('content',        sql.NVarChar,      content        || '')
             .input('generalComment', sql.NVarChar,      generalComment || '')
@@ -712,6 +756,15 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
     }
 
+    if (endTime <= startTime) {
+        return res.status(400).json({ error: 'Giờ kết thúc phải sau giờ bắt đầu.' });
+    }
+
+    const parsedPrice = parseInt(price);
+    if (isNaN(parsedPrice) || parsedPrice <= 0) {
+        return res.status(400).json({ error: 'Học phí buổi học phải là số lớn hơn 0.' });
+    }
+
     let transaction;
     try {
         const pool  = await poolPromise;
@@ -736,7 +789,7 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
             .input('endTime',        sql.VarChar,       endTime)
             .input('type',           sql.VarChar,       type)
             .input('sessionName',    sql.NVarChar,      sessionName    || '')
-            .input('price',          sql.Int,           parseInt(price) || 250000)
+            .input('price',          sql.Int,           parsedPrice)
             .input('duration',       sql.Decimal(4, 2), parseFloat(duration) || 2.0)
             .input('content',        sql.NVarChar,      content        || '')
             .input('generalComment', sql.NVarChar,      generalComment || '')

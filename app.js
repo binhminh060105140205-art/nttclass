@@ -21,6 +21,7 @@ class PinkyClassApp {
         this.currentRole = null; // admin or teacher
         this.currentStudentId = null; // Active student filter (chỉ dùng ở trang Nhật ký học tập)
         this.currentMonthFilter = ''; // '' = tất cả các tháng, '1'..'12' = lọc theo tháng
+        this.currentYearFilter = new Date().getFullYear(); // luôn có 1 năm cụ thể đi kèm bộ lọc tháng, tránh gộp nhầm dữ liệu khác năm
         this.currentWeekStart = this.getMonday(new Date()); // Thứ 2 đầu tuần đang xem ở Lịch dạy & Chấm công
 
         this.init();
@@ -46,7 +47,7 @@ class PinkyClassApp {
         }
 
         // Default date on scheduler to today
-        const today = new Date().toISOString().split('T')[0];
+        const today = this.toISODateOnly(new Date());
         document.getElementById('sessionDate').value = today;
 
         // Render initial view if already logged in
@@ -99,13 +100,38 @@ class PinkyClassApp {
 
     // Trả về danh sách buổi học đã áp dụng bộ lọc "Tháng" toàn cục (dùng chung
     // cho Tổng quan / Nhật ký / Lịch dạy / Học phí để đồng bộ số liệu).
+    // Sinh lại danh sách năm cho bộ lọc dựa trên dữ liệu buổi học thực tế +
+    // năm hiện tại, để không bao giờ thiếu năm cũ/mới. Giữ nguyên năm đang
+    // được chọn (this.currentYearFilter) nếu vẫn còn trong danh sách.
+    populateYearFilterOptions() {
+        const yearFilterEl = document.getElementById('globalYearFilter');
+        if (!yearFilterEl) return;
+        const nowYear = new Date().getFullYear();
+        const yearsInData = new Set(
+            (this.sessions || [])
+                .map(s => parseInt(String(s.date).slice(0, 4)))
+                .filter(y => !isNaN(y))
+        );
+        yearsInData.add(nowYear);
+        yearsInData.add(this.currentYearFilter);
+        const years = Array.from(yearsInData).sort((a, b) => b - a);
+        yearFilterEl.innerHTML = years.map(y => `<option value="${y}">Năm ${y}</option>`).join('');
+        yearFilterEl.value = String(this.currentYearFilter);
+    }
+
+    // Lọc buổi học theo THÁNG + NĂM đang chọn ở bộ lọc toàn hệ thống.
+    // QUAN TRỌNG: trước đây chỉ so khớp số tháng, KHÔNG so năm — khiến buổi
+    // học tháng 5/2025 và tháng 5/2026 (hoặc bất kỳ năm nào khác) bị gộp
+    // chung làm 1, gây sai tổng học phí/báo cáo/phiếu xuất khi hệ thống dùng
+    // qua nhiều năm học. Nay bắt buộc so khớp CẢ tháng lẫn năm.
     filterByMonth(sessions) {
         if (!this.currentMonthFilter) return sessions;
         const month = parseInt(this.currentMonthFilter);
+        const year = parseInt(this.currentYearFilter) || new Date().getFullYear();
         return (sessions || []).filter(s => {
             if (!s.date) return false;
             const parts = String(s.date).split('-'); // yyyy-mm-dd
-            return parts.length >= 2 && parseInt(parts[1]) === month;
+            return parts.length >= 2 && parseInt(parts[1]) === month && parseInt(parts[0]) === year;
         });
     }
 
@@ -176,6 +202,7 @@ class PinkyClassApp {
             // thẳng dữ liệu server trả về, không re-normalize.
             this.sessions = rawSessions;
             this.computeSessionPaidFlags();
+            this.populateYearFilterOptions();
 
             this.populateStudentPickers();
             // QUAN TRỌNG: trước đây loadData() chỉ cập nhật dữ liệu trong bộ nhớ
@@ -238,6 +265,19 @@ class PinkyClassApp {
         if (monthFilterEl) {
             monthFilterEl.addEventListener('change', (e) => {
                 this.currentMonthFilter = e.target.value;
+                this.updateAllViews();
+            });
+        }
+
+        // Bộ lọc NĂM đi kèm bộ lọc tháng — bắt buộc phải có để tránh gộp nhầm
+        // dữ liệu cùng tháng nhưng khác năm (VD: Tháng 5/2025 và Tháng 5/2026
+        // trước đây bị coi là một, gây sai tổng học phí/báo cáo). Danh sách
+        // năm được sinh lại mỗi khi dữ liệu tải xong (xem populateYearFilterOptions()
+        // gọi trong loadData()), ở đây chỉ gắn sự kiện đổi năm.
+        const yearFilterEl = document.getElementById('globalYearFilter');
+        if (yearFilterEl) {
+            yearFilterEl.addEventListener('change', (e) => {
+                this.currentYearFilter = parseInt(e.target.value);
                 this.updateAllViews();
             });
         }
@@ -351,7 +391,7 @@ class PinkyClassApp {
         // Form Reset Button
         document.getElementById('resetLoggerFormBtn').addEventListener('click', () => {
             document.getElementById('sessionLoggerForm').reset();
-            const today = new Date().toISOString().split('T')[0];
+            const today = this.toISODateOnly(new Date());
             document.getElementById('sessionDate').value = today;
             this.renderStudentSelectionGrid('studentsCheckboxGrid');
         });
@@ -384,6 +424,12 @@ class PinkyClassApp {
             e.preventDefault();
             this.exportInvoice();
         });
+
+        // Khi giáo viên tự sửa "Từ ngày/Đến ngày" trong modal xuất phiếu, tính
+        // lại NGAY số buổi/học phí/giờ học tương ứng — trước đây 2 ô này chỉ
+        // để hiển thị, sửa xong không ảnh hưởng gì tới số liệu thực tế.
+        document.getElementById('invoiceFromDate').addEventListener('change', () => this.recomputeInvoiceTotals());
+        document.getElementById('invoiceToDate').addEventListener('change', () => this.recomputeInvoiceTotals());
 
         // Student Manager Add Student Button
         document.getElementById('addNewStudentBtn').addEventListener('click', () => {
@@ -867,7 +913,7 @@ class PinkyClassApp {
         document.getElementById('stat-unpaid-tuition').innerText = this.formatVND(unpaidTuition);
 
         // Render today classes
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = this.toISODateOnly(new Date());
         const todaySessions = this.sessions.filter(s => s.date === todayStr);
         const container = document.getElementById('today-sessions-container');
         container.innerHTML = '';
@@ -1071,10 +1117,10 @@ class PinkyClassApp {
         if (elMoney) elMoney.innerText = this.formatVND(totalMoney);
 
         // ----- Header row: 7 cột ngày -----
-        headerRow.innerHTML = '<div></div>' + days.map((d, i) => {
+        headerRow.innerHTML = '<div style="grid-column:1;"></div>' + days.map((d, i) => {
             const isToday = this.toISODateOnly(d) === todayStr;
             return `
-                <div class="week-day-header ${isToday ? 'is-today' : ''}">
+                <div class="week-day-header ${isToday ? 'is-today' : ''}" style="grid-column:${i + 2};">
                     <span class="day-name">${dayLabels[i]}</span>
                     <span class="day-date">${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}</span>
                 </div>
@@ -1120,10 +1166,15 @@ class PinkyClassApp {
                 `;
             });
 
-            dayColumnsHTML += `<div class="week-day-column" style="height:${hourCount * HOUR_HEIGHT}px;">${blocksHTML}</div>`;
+            dayColumnsHTML += `<div class="week-day-column" style="height:${hourCount * HOUR_HEIGHT}px; grid-column:${i + 2}; grid-row:1 / -1;">${blocksHTML}</div>`;
         });
 
-        body.innerHTML = `<div>${hourLabelsHTML}</div>` + dayColumnsHTML;
+        // QUAN TRỌNG: gán grid-column CỐ ĐỊNH cho cả cột giờ (cột 1) và 7 cột
+        // ngày (cột 2..8) thay vì để CSS Grid tự động xếp (auto-placement).
+        // Trước đây không khai báo grid-column cho các phần tử này, nên thứ tự
+        // hiển thị phụ thuộc vào thuật toán auto-placement của trình duyệt và
+        // có thể bị đảo/lệch (cột giờ bị đẩy sang phải thay vì bên trái).
+        body.innerHTML = `<div class="week-hour-gutter" style="grid-column:1; grid-row:1 / -1;">${hourLabelsHTML}</div>` + dayColumnsHTML;
     }
 
     // Mở bảng nhập nhanh khi click vào 1 ca dạy trên lịch tuần. Nếu ca đó có
@@ -1249,6 +1300,7 @@ class PinkyClassApp {
             studentDetails: newStudentDetails
         };
 
+        this.setBtnLoading('saveQuickEntryBtn', true, 'Đang lưu...');
         try {
             const res = await this.authFetch(`${API_BASE_URL}/api/sessions/${id}`, {
                 method: 'PUT',
@@ -1265,6 +1317,8 @@ class PinkyClassApp {
             sess.completed = completed;
             sess.studentDetails = newStudentDetails;
             await this.saveData();
+        } finally {
+            this.setBtnLoading('saveQuickEntryBtn', false);
         }
 
         this.closeModal('quickSessionEntryModal');
@@ -1374,33 +1428,27 @@ class PinkyClassApp {
         const st = this.students.find(s => s.id === studentId);
         if (!st) return;
 
-        const studentSessions = this.filterByMonth(this.sessions)
+        // Lưu TOÀN BỘ buổi học của học sinh này (không giới hạn theo bộ lọc
+        // tháng/năm toàn cục) để người dùng có thể tự do chọn khoảng "Từ ngày
+        // - Đến ngày" rộng hơn hoặc hẹp hơn tháng đang xem. Việc tính toán số
+        // buổi/học phí/giờ học thực tế sẽ luôn dựa trên khoảng ngày này thông
+        // qua recomputeInvoiceTotals(), CHỨ KHÔNG cố định tại thời điểm mở modal
+        // (trước đây "Từ ngày/Đến ngày" chỉ hiển thị cho có, sửa không có tác
+        // dụng gì tới số liệu thực tế xuất ra).
+        this._invoiceStudentId = studentId;
+        this._invoiceAllSessions = this.sessions
             .filter(sess => sess.studentIds.includes(studentId))
             .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        let totalFee = 0, paidFee = 0, totalHours = 0;
-        studentSessions.forEach(sess => {
-            const portion = sess.price / (sess.studentIds.length || 1);
-            totalFee += portion;
-            totalHours += parseFloat(sess.duration) || 0;
-            const detail = sess.studentDetails && sess.studentDetails[studentId];
-            if (detail && detail.paid) paidFee += portion;
-        });
-        const unpaidFee = totalFee - paidFee;
 
         document.getElementById('invoiceStudentId').value = studentId;
         document.getElementById('invoiceStudentName').innerText = st.name;
         document.getElementById('invoiceStudentClass').innerText = `${st.class} - ${st.subject}`;
-        document.getElementById('invoiceTotalFee').innerText = this.formatVND(totalFee);
-        document.getElementById('invoicePaidFee').innerText = this.formatVND(paidFee);
-        document.getElementById('invoiceUnpaidFee').innerText = this.formatVND(unpaidFee);
-        document.getElementById('invoiceSessionCount').innerText = studentSessions.length;
-        document.getElementById('invoiceTotalHours').innerText = `${totalHours.toFixed(1)} giờ`;
 
-        // Điền sẵn khoảng ngày = ngày buổi đầu tiên -> buổi cuối cùng trong kỳ
-        if (studentSessions.length > 0) {
-            document.getElementById('invoiceFromDate').value = studentSessions[0].date;
-            document.getElementById('invoiceToDate').value = studentSessions[studentSessions.length - 1].date;
+        // Điền sẵn khoảng ngày = ngày buổi đầu tiên -> buổi cuối cùng (toàn bộ
+        // lịch sử); người dùng có thể thu hẹp lại tùy kỳ muốn xuất phiếu.
+        if (this._invoiceAllSessions.length > 0) {
+            document.getElementById('invoiceFromDate').value = this._invoiceAllSessions[0].date;
+            document.getElementById('invoiceToDate').value = this._invoiceAllSessions[this._invoiceAllSessions.length - 1].date;
         } else {
             document.getElementById('invoiceFromDate').value = '';
             document.getElementById('invoiceToDate').value = '';
@@ -1409,7 +1457,7 @@ class PinkyClassApp {
         // Điền sẵn tiêu đề kỳ học dựa trên (các) tháng có buổi học, ví dụ "5+6/2026"
         const monthsSet = new Set();
         let sampleYear = new Date().getFullYear();
-        studentSessions.forEach(sess => {
+        this._invoiceAllSessions.forEach(sess => {
             const parts = String(sess.date).split('-'); // yyyy-mm-dd
             if (parts.length >= 2) {
                 monthsSet.add(parseInt(parts[1]));
@@ -1427,8 +1475,45 @@ class PinkyClassApp {
         document.getElementById('invoiceRoadmap').value = '';
         document.getElementById('invoiceSchedule').value = '';
 
-        this._invoiceSessionsCache = studentSessions;
+        this.recomputeInvoiceTotals();
         this.openModal('invoiceModal');
+    }
+
+    // Lọc this._invoiceAllSessions theo đúng khoảng "Từ ngày - Đến ngày" hiện
+    // đang nhập trong modal, rồi cập nhật lại các ô tổng học phí/đã đóng/còn
+    // nợ/số buổi/số giờ NGAY LẬP TỨC — đảm bảo những gì hiển thị luôn khớp với
+    // những gì sẽ được xuất ra phiếu (gọi lại đúng hàm này trong exportInvoice()).
+    recomputeInvoiceTotals() {
+        const studentId = this._invoiceStudentId;
+        const fromVal = document.getElementById('invoiceFromDate').value;
+        const toVal = document.getElementById('invoiceToDate').value;
+
+        const sessions = (this._invoiceAllSessions || []).filter(sess => {
+            if (fromVal && sess.date < fromVal) return false;
+            if (toVal && sess.date > toVal) return false;
+            return true;
+        });
+
+        let totalFee = 0, paidFee = 0, totalHours = 0;
+        sessions.forEach(sess => {
+            const portion = sess.price / (sess.studentIds.length || 1);
+            totalFee += portion;
+            totalHours += parseFloat(sess.duration) || 0;
+            const detail = sess.studentDetails && sess.studentDetails[studentId];
+            if (detail && detail.paid) paidFee += portion;
+        });
+        const unpaidFee = totalFee - paidFee;
+
+        document.getElementById('invoiceTotalFee').innerText = this.formatVND(totalFee);
+        document.getElementById('invoicePaidFee').innerText = this.formatVND(paidFee);
+        document.getElementById('invoiceUnpaidFee').innerText = this.formatVND(unpaidFee);
+        document.getElementById('invoiceSessionCount').innerText = sessions.length;
+        document.getElementById('invoiceTotalHours').innerText = `${totalHours.toFixed(1)} giờ`;
+
+        // Cache lại danh sách ĐÃ LỌC để exportInvoice() dùng lại chính xác,
+        // không cần lọc lại lần nữa (và không có nguy cơ lệch số liệu).
+        this._invoiceSessionsCache = sessions;
+        return sessions;
     }
 
     // Render + mở cửa sổ in cho phiếu học phí, dựa trên dữ liệu đã điền sẵn +
@@ -1438,7 +1523,10 @@ class PinkyClassApp {
         const st = this.students.find(s => s.id === studentId);
         if (!st) return;
 
-        const sessions = this._invoiceSessionsCache || [];
+        // Luôn tính lại theo đúng khoảng "Từ ngày - Đến ngày" đang hiển thị
+        // ngay trước khi xuất, đảm bảo phiếu in ra khớp 100% với số liệu trên
+        // màn hình — không dùng dữ liệu cache cũ từ lúc mở modal.
+        const sessions = this.recomputeInvoiceTotals();
         let totalFee = 0, paidFee = 0, totalHours = 0;
         let privateCount = 0, privateSum = 0, groupCount = 0, groupSum = 0;
         sessions.forEach(sess => {
@@ -1680,18 +1768,63 @@ class PinkyClassApp {
     }
 
     // 1. Thêm / Sửa học sinh (dùng chung 1 form — editStudentId rỗng nghĩa là thêm mới)
+    // Bật/tắt trạng thái "Đang lưu..." cho nút submit — vô hiệu hóa nút trong
+    // lúc chờ API phản hồi để tránh double-submit (bấm 2 lần liên tiếp tạo ra
+    // 2 bản ghi trùng nhau, đặc biệt khi mạng chậm).
+    setBtnLoading(btnId, isLoading, loadingText = 'Đang lưu...') {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        if (isLoading) {
+            btn.dataset.originalText = btn.dataset.originalText || btn.innerText;
+            btn.innerText = loadingText;
+            btn.disabled = true;
+        } else {
+            btn.innerText = btn.dataset.originalText || btn.innerText;
+            btn.disabled = false;
+        }
+    }
+
+    // Kiểm tra 1 buổi học mới/sửa có bị TRÙNG GIỜ với buổi học khác đã có của
+    // CÙNG giáo viên hay không (dựa trên khung [startTime, endTime) cùng ngày).
+    // excludeId dùng khi đang SỬA 1 buổi học để không tự so trùng với chính nó.
+    findOverlappingSession(date, startTime, endTime, excludeId = null) {
+        const toMin = (t) => {
+            const [h, m] = (t || '00:00').split(':').map(Number);
+            return h * 60 + m;
+        };
+        const newStart = toMin(startTime);
+        const newEnd = toMin(endTime);
+        return this.sessions.find(s => {
+            if (excludeId && s.id === excludeId) return false;
+            if (s.date !== date) return false;
+            const sStart = toMin(s.startTime);
+            const sEnd = toMin(s.endTime);
+            return newStart < sEnd && sStart < newEnd; // 2 khoảng thời gian giao nhau
+        });
+    }
+
     async handleAddStudent() {
         const editId = document.getElementById('editStudentId').value;
         const name = document.getElementById('studentName').value.trim();
         const gradeLevel = parseInt(document.getElementById('studentGrade').value);
         const sClass = `Lớp ${gradeLevel}`;
         const subject = document.getElementById('studentSubject').value.trim();
-        const basePrice = parseInt(document.getElementById('studentBasePrice').value) || 250000;
+        const basePrice = parseInt(document.getElementById('studentBasePrice').value);
 
         if (!name || !gradeLevel || !subject) return;
 
+        // Học phí/buổi phải là số nguyên dương — trước đây nhập 0 tự bị thay
+        // bằng 250.000 (không cho miễn phí có chủ đích) còn nhập số âm lại
+        // được chấp nhận nguyên vẹn, gây sai tổng học phí (trừ tiền thay vì
+        // cộng). Nay validate rõ ràng và chặn ngay tại form.
+        if (isNaN(basePrice) || basePrice <= 0) {
+            this.showToast("Học phí/buổi phải là số lớn hơn 0!", "error");
+            return;
+        }
+
         const payload = { name, class: sClass, gradeLevel, subject, basePrice };
 
+        this.setBtnLoading('saveStudentBtn', true, editId ? 'Đang cập nhật...' : 'Đang thêm...');
         try {
             if (editId) {
                 const res = await this.authFetch(`${API_BASE_URL}/api/students/${editId}`, {
@@ -1701,7 +1834,10 @@ class PinkyClassApp {
                 });
                 if (!res.ok) throw new Error("Server error");
             } else {
-                payload.id = "hs_" + Date.now();
+                // ID sinh từ Date.now() có thể trùng nếu 2 request được gửi
+                // trong cùng 1 mili-giây (double-click, mạng lag khiến bấm 2
+                // lần) — thêm hậu tố ngẫu nhiên để tránh xung đột.
+                payload.id = "hs_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
                 const res = await this.authFetch(`${API_BASE_URL}/api/students`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1716,9 +1852,11 @@ class PinkyClassApp {
                 const student = this.students.find(s => s.id === editId);
                 if (student) Object.assign(student, payload);
             } else {
-                this.students.push({ ...payload, id: payload.id || ("hs_" + Date.now()) });
+                this.students.push({ ...payload, id: payload.id || ("hs_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8)) });
             }
             await this.saveData();
+        } finally {
+            this.setBtnLoading('saveStudentBtn', false);
         }
 
         this.populateStudentPickers();
@@ -1764,8 +1902,26 @@ class PinkyClassApp {
         const startTime = document.getElementById('sessionStartTime').value;
         const endTime = document.getElementById('sessionEndTime').value;
         const duration = parseFloat(document.getElementById('sessionHours').value) || 2.0;
-        const unitPrice = parseInt(document.getElementById('sessionPrice').value) || 250000;
+        const unitPrice = parseInt(document.getElementById('sessionPrice').value);
         const content = document.getElementById('sessionContent').value.trim();
+
+        if (!date || !startTime || !endTime) {
+            this.showToast("Vui lòng nhập đầy đủ ngày học và giờ học!", "error");
+            return;
+        }
+
+        // Giờ kết thúc phải sau giờ bắt đầu — trước đây không kiểm tra, có thể
+        // tạo buổi học với giờ kết thúc trước giờ bắt đầu, làm sai hiển thị
+        // trên lịch tuần và sai số giờ tích lũy trên phiếu học phí.
+        if (endTime <= startTime) {
+            this.showToast("Giờ kết thúc phải sau giờ bắt đầu!", "error");
+            return;
+        }
+
+        if (isNaN(unitPrice) || unitPrice <= 0) {
+            this.showToast("Đơn giá học phí phải là số lớn hơn 0!", "error");
+            return;
+        }
 
         // Get selected students
         const checkedBoxes = document.querySelectorAll('input[name="sessionStudents"]:checked');
@@ -1776,6 +1932,19 @@ class PinkyClassApp {
         if (type === 'riêng' && checkedBoxes.length > 1) {
             this.showToast("Học riêng (1 vs 1) chỉ được chọn đúng 1 học sinh!", "error");
             return;
+        }
+
+        // Cảnh báo trùng lịch: cùng ngày, khung giờ giao nhau với 1 buổi học
+        // khác đã có — trước đây không kiểm tra nên rất dễ vô tình xếp 2 ca
+        // chồng giờ nhau mà không hay biết cho tới khi mở lại lịch tuần.
+        const overlap = this.findOverlappingSession(date, startTime, endTime);
+        if (overlap) {
+            const proceed = confirm(
+                `Khung giờ ${startTime}-${endTime} ngày ${this.formatDateVN(date)} đang TRÙNG với 1 buổi học khác ` +
+                `(${overlap.startTime}-${overlap.endTime}${overlap.sessionName ? ' — ' + overlap.sessionName : ''}).\n\n` +
+                `Bạn có chắc chắn vẫn muốn tạo buổi học này không?`
+            );
+            if (!proceed) return;
         }
 
         const studentIds = [];
@@ -1796,7 +1965,10 @@ class PinkyClassApp {
         });
 
         const newSession = {
-            id: "sess_" + Date.now(),
+            // ID sinh từ Date.now() có thể trùng nếu 2 request được gửi trong
+            // cùng 1 mili-giây (double-click, mạng lag khiến bấm gửi 2 lần) —
+            // thêm hậu tố ngẫu nhiên để đảm bảo luôn duy nhất.
+            id: "sess_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
             date,
             startTime,
             endTime,
@@ -1812,6 +1984,7 @@ class PinkyClassApp {
             studentDetails
         };
 
+        this.setBtnLoading('saveSessionBtn', true, 'Đang lưu...');
         try {
             const res = await this.authFetch(`${API_BASE_URL}/api/sessions`, {
                 method: 'POST',
@@ -1824,11 +1997,13 @@ class PinkyClassApp {
             console.warn("API lỗi, lưu offline: ", err.message);
             this.sessions.push(newSession);
             await this.saveData();
+        } finally {
+            this.setBtnLoading('saveSessionBtn', false);
         }
 
         // Reset form
         document.getElementById('sessionLoggerForm').reset();
-        const today = new Date().toISOString().split('T')[0];
+        const today = this.toISODateOnly(new Date());
         document.getElementById('sessionDate').value = today;
         this.renderStudentSelectionGrid('studentsCheckboxGrid');
 
@@ -1902,8 +2077,24 @@ class PinkyClassApp {
         const startTime = document.getElementById('editSessionStartTime').value;
         const endTime = document.getElementById('editSessionEndTime').value;
         const duration = parseFloat(document.getElementById('editSessionHours').value) || 2.0;
-        const unitPrice = parseInt(document.getElementById('editSessionPrice').value) || 250000;
+        const unitPrice = parseInt(document.getElementById('editSessionPrice').value);
         const content = document.getElementById('editSessionContent').value.trim();
+
+        if (!date || !startTime || !endTime) {
+            this.showToast("Vui lòng nhập đầy đủ ngày học và giờ học!", "error");
+            return;
+        }
+
+        // Giờ kết thúc phải sau giờ bắt đầu (xem giải thích ở handleLogSession)
+        if (endTime <= startTime) {
+            this.showToast("Giờ kết thúc phải sau giờ bắt đầu!", "error");
+            return;
+        }
+
+        if (isNaN(unitPrice) || unitPrice <= 0) {
+            this.showToast("Đơn giá học phí phải là số lớn hơn 0!", "error");
+            return;
+        }
 
         const checkedBoxes = document.querySelectorAll('input[name="editSessionStudents"]:checked');
         if (checkedBoxes.length === 0) {
@@ -1913,6 +2104,17 @@ class PinkyClassApp {
         if (type === 'riêng' && checkedBoxes.length > 1) {
             this.showToast("Học riêng (1 vs 1) chỉ được chọn đúng 1 học sinh!", "error");
             return;
+        }
+
+        // Cảnh báo trùng lịch (loại trừ chính buổi học đang sửa)
+        const overlap = this.findOverlappingSession(date, startTime, endTime, id);
+        if (overlap) {
+            const proceed = confirm(
+                `Khung giờ ${startTime}-${endTime} ngày ${this.formatDateVN(date)} đang TRÙNG với 1 buổi học khác ` +
+                `(${overlap.startTime}-${overlap.endTime}${overlap.sessionName ? ' — ' + overlap.sessionName : ''}).\n\n` +
+                `Bạn có chắc chắn vẫn muốn lưu thay đổi này không?`
+            );
+            if (!proceed) return;
         }
 
         const studentIds = [];
@@ -1949,6 +2151,7 @@ class PinkyClassApp {
             studentDetails: newStudentDetails
         };
 
+        this.setBtnLoading('saveEditSessionBtn', true, 'Đang lưu...');
         try {
             const res = await this.authFetch(`${API_BASE_URL}/api/sessions/${id}`, {
                 method: 'PUT',
@@ -1970,6 +2173,8 @@ class PinkyClassApp {
             sess.studentIds = studentIds;
             sess.studentDetails = newStudentDetails;
             await this.saveData();
+        } finally {
+            this.setBtnLoading('saveEditSessionBtn', false);
         }
 
         this.closeModal('editSessionModal');
@@ -2369,13 +2574,30 @@ class PinkyClassApp {
     }
 
     // Date formatter helper (e.g. 23/05/2026 -> Thứ 7 - 23/05)
+    // QUAN TRỌNG: parse thủ công từng phần năm/tháng/ngày rồi dựng Date bằng
+    // constructor (y, m-1, d) — cách DUY NHẤT parse "yyyy-mm-dd" mà không bị
+    // lệch ngày do quy đổi UTC, bất kể múi giờ máy/trình duyệt người dùng đặt
+    // là gì. TUYỆT ĐỐI không dùng new Date("yyyy-mm-dd") trực tiếp để hiển thị
+    // ngày — cách đó luôn bị JS hiểu là mốc UTC rồi mới quy đổi ra giờ local,
+    // dễ lệch lùi 1 ngày với các múi giờ có offset âm.
     formatDateVN(dateStr) {
-        const d = new Date(dateStr);
+        const d = this.parseLocalDate(dateStr);
+        if (!d) return dateStr || '';
         const days = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
         const dayName = days[d.getDay()];
         const day = d.getDate().toString().padStart(2, '0');
         const month = (d.getMonth() + 1).toString().padStart(2, '0');
         return `${dayName} - ${day}/${month}`;
+    }
+
+    // Parse an toàn chuỗi "yyyy-mm-dd" (hoặc "yyyy-mm-ddTHH:mm:ss...") thành
+    // đối tượng Date ở giờ LOCAL, không đi qua UTC nên không bao giờ lệch ngày.
+    parseLocalDate(dateStr) {
+        if (!dateStr) return null;
+        const datePart = String(dateStr).slice(0, 10); // chỉ lấy "yyyy-mm-dd"
+        const [y, m, d] = datePart.split('-').map(Number);
+        if (!y || !m || !d) return null;
+        return new Date(y, m - 1, d);
     }
 
     // Trả về Date của Thứ 2 (Monday) thuộc tuần chứa ngày `d`

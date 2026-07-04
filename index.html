@@ -89,7 +89,7 @@
 
                 <!-- Month filter (áp dụng cho Tổng quan / Nhật ký / Lịch dạy / Học phí) -->
                 <div class="student-context-picker" id="monthFilterPicker">
-                    <span> Tháng:</span>
+                    <span>Tháng:</span>
                     <select id="globalMonthFilter" class="student-select">
                         <option value="">Tất cả</option>
                         <option value="1">Tháng 1</option>
@@ -105,6 +105,7 @@
                         <option value="11">Tháng 11</option>
                         <option value="12">Tháng 12</option>
                     </select>
+                    <select id="globalYearFilter" class="student-select"></select>
                 </div>
 
                 <button class="btn btn-secondary btn-sm" id="logoutBtn" style="padding: 8px 16px; border-radius: 20px; display:none;">
@@ -288,7 +289,7 @@
                     <div class="form-group form-group-full" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
                         <button type="button" class="btn btn-secondary" id="resetLoggerFormBtn">Xóa form
                         </button>
-                        <button type="submit" class="btn btn-primary"> Lưu buổi học
+                        <button type="submit" class="btn btn-primary" id="saveSessionBtn">Lưu buổi học
                         </button>
                     </div>
                 </form>
@@ -701,7 +702,7 @@
                         <button type="button" class="btn btn-secondary btn-sm" id="quickEntryEditFullBtn"> Sửa chi tiết</button>
                         <button type="button" class="btn btn-danger btn-sm" id="quickEntryDeleteBtn"> Xóa ca</button>
                     </div>
-                    <button type="submit" class="btn btn-primary"> Lưu</button>
+                    <button type="submit" class="btn btn-primary" id="saveQuickEntryBtn">Lưu</button>
                 </div>
             </form>
         </div>
@@ -776,7 +777,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="app.closeModal('editSessionModal')">Hủy bỏ</button>
-                    <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                    <button type="submit" class="btn btn-primary" id="saveEditSessionBtn">Lưu thay đổi</button>
                 </div>
             </form>
         </div>

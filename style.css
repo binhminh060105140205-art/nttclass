@@ -1288,6 +1288,10 @@ textarea.form-control {
     position: relative;
 }
 
+.week-hour-gutter {
+    position: relative;
+}
+
 .week-hour-label {
     grid-column: 1;
     height: 52px;
