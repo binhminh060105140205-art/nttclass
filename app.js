@@ -1683,6 +1683,11 @@ class PinkyClassApp {
     .card { border:1.5px solid #f3d2e4; border-radius:18px; padding:20px 22px; margin-bottom: 18px; background:#fff; }
     .card .label { font-size:11.5px; color:#9d6b83; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; }
     .card .value { font-family:'Nunito',sans-serif; font-size:16.5px; font-weight:800; margin-top:2px; color:#3f0d24; }
+    .info-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding: 9px 0; border-bottom: 1px dashed #f6e2ec; }
+    .info-row:first-of-type { padding-top: 2px; }
+    .info-row:last-of-type { border-bottom: none; }
+    .info-row .label { margin-top:0; white-space:nowrap; }
+    .info-row .value { margin-top:0; text-align:right; }
     .divider-dashed { border-top: 1px dashed #f3d2e4; margin: 14px 0 12px; }
     .total-card { text-align:center; background:#fdf0f7; display:flex; flex-direction:column; justify-content:center; border-color:#f3d2e4; }
     .total-card .label { font-weight:800; }
@@ -1742,10 +1747,10 @@ class PinkyClassApp {
         <div class="row">
             <div class="card">
                 <div class="section-title"><span class="icon">🎓</span>Thông tin học sinh</div>
-                <div class="label">Họ và tên</div><div class="value">${esc(st.name)}</div>
-                <div class="label" style="margin-top:10px;">Học phí/buổi</div><div class="value">${privateCount > 0 ? this.formatVND(privateUnit) : this.formatVND(groupUnit)}</div>
-                <div class="label" style="margin-top:10px;">Số buổi học</div><div class="value">${sessions.length} buổi</div>
-                <div class="label" style="margin-top:10px;">Số giờ học</div><div class="value">${totalHours.toFixed(1)} giờ</div>
+                <div class="info-row"><span class="label">Họ và tên</span><span class="value">${esc(st.name)}</span></div>
+                <div class="info-row"><span class="label">Học phí/buổi</span><span class="value">${privateCount > 0 ? this.formatVND(privateUnit) : this.formatVND(groupUnit)}</span></div>
+                <div class="info-row"><span class="label">Số buổi học</span><span class="value">${sessions.length} buổi</span></div>
+                <div class="info-row"><span class="label">Số giờ học</span><span class="value">${totalHours.toFixed(1)} giờ</span></div>
                 <div class="divider-dashed"></div>
                 <div class="label" style="margin-bottom:8px;">Ngày học trong kỳ</div>
                 <div>${dateChips || '<span style="font-size:13px;color:#c48ba6;">Chưa có buổi học trong kỳ</span>'}</div>
@@ -1754,10 +1759,6 @@ class PinkyClassApp {
                 <div class="label">Tổng học phí</div>
                 <div class="value">${this.formatVND(totalFee)}</div>
                 <div style="margin-top:8px; font-size:12px; color:#9d6b83;">${breakdownSummary}</div>
-                <div style="margin-top:10px; font-size:12px; color:#9d6b83;">
-                    Đã đóng: <strong style="color:#16a34a;">${this.formatVND(paidFee)}</strong><br>
-                    Còn nợ: <strong style="color:#dc2626;">${this.formatVND(unpaidFee)}</strong>
-                </div>
             </div>
         </div>
 
@@ -1770,7 +1771,7 @@ class PinkyClassApp {
                 ${scheduleHTML || '<div class="plain-paragraph" style="color:#c48ba6;">Chưa có lịch học.</div>'}
             </div>
             <div class="card">
-                <div class="section-title"><span class="icon">🎯</span>Lộ trình sắp tới</div>
+                <div class="section-title"><span class="icon">🎯</span>Lộ trình</div>
                 ${roadmapHTML || '<div class="plain-paragraph" style="color:#c48ba6;">Chưa có lộ trình.</div>'}
             </div>
         </div>` : ''}
