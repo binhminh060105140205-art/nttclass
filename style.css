@@ -1,6 +1,37 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
+/* ==========================================================================
+   1. ROOT / VARIABLES
+   Design tokens (colors, shadows, transitions) + mobile-first typography
+   scale. All font-size declarations below use rem, so changing the root
+   font-size here automatically re-scales every text element in the app.
+   Base sizes follow the required breakpoints:
+     - Mobile  (< 768px)  -> 14px base  (87.5%)
+     - Tablet  (>= 768px) -> 16px base  (100%)
+     - Desktop (>= 1024px)-> 18px base  (112.5%)
+   ========================================================================== */
+html {
+    font-size: 87.5%; /* 14px base on mobile */
+}
+
+@media (min-width: 768px) {
+    html { font-size: 100%; } /* 16px base on tablet */
+}
+
+@media (min-width: 1024px) {
+    html { font-size: 112.5%; } /* 18px base on desktop */
+}
+
 :root {
+    /* Container / spacing system (mobile-first). Kept in fixed px (not rem)
+       on purpose: the html font-size above already scales per breakpoint for
+       TYPOGRAPHY, so tying spacing to rem too would make padding drift away
+       from these exact target values (16 / 24 / 32px) as the type-scale changes. */
+    --container-max: 1200px;
+    --space-mobile: 16px;
+    --space-tablet: 24px;
+    --space-desktop: 32px;
+
     --primary: #2563eb;
     --primary-light: #dbeafe;
     --primary-soft: #ebf4ff;
@@ -40,6 +71,9 @@
     --hw-pending-border: #bae6fd;
 }
 
+/* ==========================================================================
+   2. RESET / BASE ELEMENTS
+   ========================================================================== */
 * {
     margin: 0;
     padding: 0;
@@ -54,12 +88,25 @@ body {
     min-height: 100vh;
     display: flex;
     overflow-x: hidden;
+    font-size: 1rem; /* scales with the root breakpoints defined above */
+}
+
+/* Responsive media: images/svg/video never overflow their container and
+   scale down fluidly instead of using fixed pixel widths. */
+img, svg, video {
+    max-width: 100%;
+    height: auto;
+    display: block;
 }
 
 .hidden {
     display: none !important;
 }
 
+/* ==========================================================================
+   3. SHARED UTILITY SCREENS / COMPONENTS
+   (login screen, glassmorphism card, scrollbar styling)
+   ========================================================================== */
 .login-screen {
     min-height: 100vh;
     width: 100%;
@@ -91,14 +138,14 @@ body {
 
 .login-brand h1 {
     margin: 0;
-    font-size: 26px;
+    font-size: 1.625rem;
     color: var(--primary);
 }
 
 .login-brand p {
     margin: 0;
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: 0.875rem;
 }
 
 .login-form .form-group {
@@ -114,7 +161,7 @@ body {
 }
 
 .login-help {
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--text-muted);
     margin-top: 8px;
 }
@@ -154,25 +201,56 @@ body {
     transform: translateY(-2px);
 }
 
-/* App Container Layout */
+/* ==========================================================================
+   4. LAYOUT
+   Main structural building blocks: app shell, sidebar, main content area.
+   ========================================================================== */
+
+/* Generic centered container utility (max-width 1200px, responsive padding).
+   Not required by the current dashboard shell (.main-content already acts
+   as the app's container), but kept available for any full-width section
+   that needs to be centered and constrained (e.g. print/export views). */
+.container {
+    width: 100%;
+    max-width: var(--container-max);
+    margin: 0 auto;
+    padding: var(--space-mobile);
+}
+
+@media (min-width: 768px) {
+    .container { padding: var(--space-tablet); }
+}
+
+@media (min-width: 1024px) {
+    .container { padding: var(--space-desktop); }
+}
+
+/* App Container Layout
+   Mobile-first: stacked by default (sidebar on top, full width). From
+   tablet upward the sidebar becomes a fixed side column (see media queries
+   at the bottom of this file). */
 .app-container {
     display: flex;
+    flex-direction: column;
     width: 100%;
     min-height: 100vh;
 }
 
-/* Sidebar Styling */
+/* Sidebar Styling — mobile default: full-width bar in normal flow.
+   Widened/fixed into a real side column at >= 768px (see responsive
+   section at the end of this file). */
 .sidebar {
-    width: 280px;
+    width: 100%;
+    height: auto;
+    position: relative;
     background: rgba(255, 255, 255, 0.82);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    border-right: 1px solid var(--border-color);
-    padding: 24px 18px;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    padding: 15px;
     display: flex;
     flex-direction: column;
-    position: fixed;
-    height: 100vh;
     z-index: 100;
     transition: var(--transition-normal);
 }
@@ -194,13 +272,13 @@ body {
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 20px;
+    font-size: 1.25rem;
     box-shadow: 0 6px 18px rgba(37, 99, 235, 0.25);
 }
 
 .logo-text {
     font-weight: 700;
-    font-size: 22px;
+    font-size: 1.375rem;
     background: linear-gradient(90deg, #1d4ed8, var(--accent));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -228,7 +306,7 @@ body {
     background: linear-gradient(135deg, var(--primary), var(--accent-strong));
     color: #fff;
     font-weight: 700;
-    font-size: 17px;
+    font-size: 1.0625rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -243,7 +321,7 @@ body {
 
 #sidebarUserName {
     font-weight: 700;
-    font-size: 14.5px;
+    font-size: 0.9062rem;
     color: var(--text-main);
     white-space: nowrap;
     overflow: hidden;
@@ -253,7 +331,7 @@ body {
 #sidebarUserRole {
     display: inline-block;
     width: fit-content;
-    font-size: 10.5px;
+    font-size: 0.6562rem;
     font-weight: 700;
     color: var(--accent-strong);
     background: var(--primary-soft);
@@ -274,7 +352,7 @@ body {
 }
 
 .role-header {
-    font-size: 11px;
+    font-size: 0.6875rem;
     font-weight: 600;
     text-transform: uppercase;
     color: var(--text-muted);
@@ -295,7 +373,7 @@ body {
     background: white;
     font-weight: 600;
     color: var(--accent-strong);
-    font-size: 14px;
+    font-size: 0.875rem;
     cursor: pointer;
     outline: none;
     appearance: none;
@@ -311,7 +389,7 @@ body {
 
 .role-selector-wrapper::after {
     content: "▼";
-    font-size: 10px;
+    font-size: 0.625rem;
     color: var(--accent-strong);
     position: absolute;
     right: 14px;
@@ -320,13 +398,17 @@ body {
     pointer-events: none;
 }
 
-/* Sidebar Menu */
+/* Sidebar Menu — mobile default: horizontal scrollable tab bar.
+   Becomes a vertical list from tablet upward (see responsive section). */
 .sidebar-menu {
     list-style: none;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    overflow-x: auto;
     gap: 8px;
     flex-grow: 1;
+    margin-top: 15px;
+    padding-bottom: 5px;
 }
 
 .menu-item {
@@ -338,13 +420,13 @@ body {
     color: var(--text-main);
     text-decoration: none;
     font-weight: 500;
-    font-size: 15px;
+    font-size: 0.9375rem;
     cursor: pointer;
     transition: var(--transition-normal);
 }
 
 .menu-item i {
-    font-size: 18px;
+    font-size: 1.125rem;
     width: 22px;
     text-align: center;
     color: var(--text-muted);
@@ -374,22 +456,32 @@ body {
     margin-top: auto;
     padding-top: 15px;
     border-top: 1px solid rgba(37, 99, 235, 0.1);
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--text-muted);
     text-align: center;
 }
 
-/* Main Content Area */
+/* Main Content Area — mobile default: full width, no sidebar offset.
+   Gains left offset + larger padding from tablet upward (see responsive
+   section). Padding follows the required scale: 16px mobile / 24px tablet /
+   32px desktop, expressed in rem so it also benefits from the root
+   typography scale. */
 .main-content {
-    margin-left: 280px;
+    margin-left: 0;
     flex-grow: 1;
     min-height: 100vh;
-    padding: 30px;
+    padding: var(--space-mobile);
     display: flex;
     flex-direction: column;
-    gap: 25px;
-    max-width: calc(100vw - 280px);
+    gap: 1rem;
+    max-width: 100%;
 }
+
+/* ==========================================================================
+   5. COMPONENTS
+   Header bar, badges, stat cards, tables, forms, buttons, modals, calendar,
+   and other reusable UI pieces used inside the main content area.
+   ========================================================================== */
 
 /* Top Header Bar */
 .top-header {
@@ -406,13 +498,13 @@ body {
 }
 
 .header-title-box h1 {
-    font-size: 22px;
+    font-size: 1.375rem;
     font-weight: 700;
     color: var(--accent-strong);
 }
 
 .header-title-box p {
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--text-muted);
     margin-top: 2px;
 }
@@ -435,7 +527,7 @@ body {
 }
 
 .student-context-picker span {
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-weight: 500;
     color: var(--text-muted);
 }
@@ -445,7 +537,7 @@ body {
     background: transparent;
     font-weight: 600;
     color: var(--accent-strong);
-    font-size: 14px;
+    font-size: 0.875rem;
     cursor: pointer;
     outline: none;
 }
@@ -454,7 +546,7 @@ body {
 .role-badge {
     padding: 6px 14px;
     border-radius: 30px;
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.5px;
 }
@@ -479,11 +571,12 @@ body {
     border: 1px solid #bfdbfe;
 }
 
-/* Stats Cards Dashboard Grid */
+/* Stats Cards Dashboard Grid — mobile-first: 1 column by default, 2 on
+   tablet, 3-4 on desktop (exact counts set in the responsive section). */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 20px;
+    grid-template-columns: 1fr;
+    gap: 1rem;
 }
 
 .stat-card {
@@ -524,7 +617,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
+    font-size: 1.25rem;
     margin-bottom: 15px;
 }
 
@@ -549,14 +642,14 @@ body {
 }
 
 .stat-value {
-    font-size: 26px;
+    font-size: 1.625rem;
     font-weight: 700;
     color: var(--text-main);
     margin-bottom: 6px;
 }
 
 .stat-label {
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--text-muted);
     font-weight: 500;
 }
@@ -612,13 +705,13 @@ body {
 
 .student-log-title {
     font-weight: 700;
-    font-size: 18px;
+    font-size: 1.125rem;
     letter-spacing: 0.5px;
     text-transform: uppercase;
 }
 
 .student-log-subtitle {
-    font-size: 13px;
+    font-size: 0.8125rem;
     opacity: 0.9;
 }
 
@@ -635,7 +728,7 @@ body {
     width: 100%;
     border-collapse: collapse;
     text-align: left;
-    font-size: 14.5px;
+    font-size: 0.9062rem;
     line-height: 1.7;
     min-width: 1000px;
 }
@@ -645,7 +738,7 @@ body {
     color: #1e3a8a;
     font-weight: 600;
     text-transform: uppercase;
-    font-size: 12px;
+    font-size: 0.75rem;
     letter-spacing: 0.5px;
     padding: 12px 14px;
     border: 1px solid #bfdbfe;
@@ -657,7 +750,7 @@ body {
     border: 1px solid #e2e8f0;
     vertical-align: top;
     color: var(--text-main);
-    font-size: 14.5px;
+    font-size: 0.9062rem;
     line-height: 1.7;
 }
 
@@ -680,7 +773,7 @@ body {
     text-align: center;
     font-weight: 500;
     color: var(--text-muted);
-    font-size: 13px;
+    font-size: 0.8125rem;
     background: #f8fafc;
 }
 
@@ -692,7 +785,7 @@ body {
 }
 
 .session-time-val {
-    font-size: 11px;
+    font-size: 0.6875rem;
     color: var(--text-muted);
 }
 
@@ -710,7 +803,7 @@ body {
 
 .session-date-dm {
     display: block;
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 500;
     color: var(--text-muted);
     margin-top: 2px;
@@ -721,7 +814,7 @@ body {
     display: inline-block;
     padding: 6px 14px;
     border-radius: 20px;
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 600;
     border: 1px solid transparent;
     text-align: center;
@@ -752,7 +845,7 @@ body {
 
 .session-name-tag {
     display: inline-block;
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 700;
     color: var(--primary);
     background: var(--primary-soft);
@@ -762,7 +855,7 @@ body {
 }
 
 .session-content-text {
-    font-size: 14.5px;
+    font-size: 0.9062rem;
     line-height: 1.7;
     white-space: pre-line;
     color: var(--text-main);
@@ -798,7 +891,7 @@ body {
 
 .comment-header {
     font-weight: 600;
-    font-size: 11px;
+    font-size: 0.6875rem;
     text-transform: uppercase;
     color: var(--text-muted);
     margin-bottom: 3px;
@@ -809,7 +902,7 @@ body {
 
 .comment-text {
     white-space: pre-line;
-    font-size: 14.5px;
+    font-size: 0.9062rem;
     line-height: 1.7;
 }
 
@@ -819,19 +912,20 @@ body {
     margin: 8px 0;
 }
 
-/* Form Styles: Ghi buổi học */
+/* Form Styles: Ghi buổi học — mobile-first grid.
+   1 column on mobile, 2 on tablet, 3 on desktop (see responsive section). */
 .grid-form {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
 }
 
 .form-group-full {
-    grid-column: span 3;
+    grid-column: 1 / -1;
 }
 
 .form-group-half {
-    grid-column: span 2;
+    grid-column: 1 / -1;
 }
 
 .form-group {
@@ -841,7 +935,7 @@ body {
 }
 
 .form-group label {
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 600;
     color: var(--text-main);
 }
@@ -852,7 +946,7 @@ body {
     border-radius: 12px;
     border: 1px solid rgba(37, 99, 235, 0.25);
     background: white;
-    font-size: 14px;
+    font-size: 0.875rem;
     outline: none;
     transition: var(--transition-fast);
 }
@@ -876,7 +970,7 @@ textarea.form-control {
     padding: 12px 24px;
     border-radius: 12px;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 0.875rem;
     cursor: pointer;
     border: 1px solid transparent;
     transition: var(--transition-normal);
@@ -918,7 +1012,7 @@ textarea.form-control {
 
 .btn-sm {
     padding: 6px 12px;
-    font-size: 12px;
+    font-size: 0.75rem;
     border-radius: 8px;
 }
 
@@ -929,7 +1023,7 @@ textarea.form-control {
     gap: 6px;
     padding: 5px 12px;
     border-radius: 20px;
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 600;
     border: 1px solid;
 }
@@ -965,7 +1059,7 @@ textarea.form-control {
 }
 
 .filter-group label {
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 600;
     color: var(--text-muted);
 }
@@ -1013,12 +1107,12 @@ textarea.form-control {
 }
 
 .session-date-box .day {
-    font-size: 16px;
+    font-size: 1rem;
     font-weight: 700;
 }
 
 .session-date-box .year {
-    font-size: 10px;
+    font-size: 0.625rem;
     font-weight: 500;
     opacity: 0.8;
 }
@@ -1033,7 +1127,7 @@ textarea.form-control {
     display: flex;
     align-items: center;
     gap: 10px;
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 500;
 }
 
@@ -1047,7 +1141,7 @@ textarea.form-control {
     background: #f1f5f9;
     color: #475569;
     border: 1px solid #cbd5e1;
-    font-size: 11px;
+    font-size: 0.6875rem;
     font-weight: 600;
     padding: 2px 8px;
     border-radius: 4px;
@@ -1110,13 +1204,13 @@ textarea.form-control {
 }
 
 .modal-title {
-    font-size: 18px;
+    font-size: 1.125rem;
     font-weight: 700;
     color: var(--accent-strong);
 }
 
 .modal-close {
-    font-size: 24px;
+    font-size: 1.5rem;
     color: var(--text-muted);
     cursor: pointer;
     background: none;
@@ -1178,7 +1272,7 @@ textarea.form-control {
 }
 
 .student-check-item span {
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-weight: 500;
 }
 
@@ -1193,7 +1287,7 @@ textarea.form-control {
     border-radius: 12px;
     box-shadow: 0 10px 25px rgba(0,0,0,0.2);
     z-index: 2000;
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 500;
     display: flex;
     align-items: center;
@@ -1228,20 +1322,20 @@ textarea.form-control {
 }
 
 .empty-state i {
-    font-size: 48px;
+    font-size: 3rem;
     color: var(--accent);
     margin-bottom: 16px;
 }
 
 .empty-state h3 {
-    font-size: 18px;
+    font-size: 1.125rem;
     font-weight: 600;
     margin-bottom: 6px;
     color: var(--text-main);
 }
 
 .empty-state p {
-    font-size: 14px;
+    font-size: 0.875rem;
 }
 
 /* Dropdown Menu or pill for quick navigation */
@@ -1261,7 +1355,7 @@ textarea.form-control {
     font-weight: 600;
     color: var(--text-muted);
     cursor: pointer;
-    font-size: 14px;
+    font-size: 0.875rem;
     transition: var(--transition-fast);
 }
 
@@ -1301,7 +1395,7 @@ textarea.form-control {
 .payment-status-badge {
     padding: 4px 10px;
     border-radius: 12px;
-    font-size: 11px;
+    font-size: 0.6875rem;
     font-weight: 700;
     text-transform: uppercase;
 }
@@ -1326,7 +1420,7 @@ textarea.form-control {
 }
 
 .week-range-label {
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-weight: 700;
     color: var(--primary);
     min-width: 150px;
@@ -1351,7 +1445,7 @@ textarea.form-control {
     padding: 10px 6px;
     text-align: center;
     border-left: 1px solid var(--border-color);
-    font-size: 12px;
+    font-size: 0.75rem;
 }
 
 .week-day-header .day-name {
@@ -1362,7 +1456,7 @@ textarea.form-control {
 
 .week-day-header .day-date {
     display: block;
-    font-size: 11px;
+    font-size: 0.6875rem;
     color: var(--text-muted);
     margin-top: 2px;
 }
@@ -1400,7 +1494,7 @@ textarea.form-control {
     left: 0;
     right: 0;
     transform: translateY(calc(-100% - 3px));
-    font-size: 10.5px;
+    font-size: 0.6562rem;
     color: var(--text-muted);
     text-align: right;
     padding-right: 6px;
@@ -1437,7 +1531,7 @@ textarea.form-control {
     right: 3px;
     border-radius: 8px;
     padding: 5px 7px;
-    font-size: 11px;
+    font-size: 0.6875rem;
     color: white;
     overflow: hidden;
     cursor: pointer;
@@ -1471,7 +1565,7 @@ textarea.form-control {
 .week-event-block .evt-time {
     font-weight: 700;
     display: block;
-    font-size: 10.5px;
+    font-size: 0.6562rem;
     opacity: 0.9;
 }
 
@@ -1487,7 +1581,7 @@ textarea.form-control {
     position: absolute;
     top: 4px;
     right: 5px;
-    font-size: 9px;
+    font-size: 0.5625rem;
 }
 
 /* Simple 2-state tuition toggle select */
@@ -1495,7 +1589,7 @@ textarea.form-control {
     border-radius: 20px;
     border: 1px solid var(--border-color);
     padding: 6px 12px;
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 700;
     cursor: pointer;
     outline: none;
@@ -1541,7 +1635,7 @@ textarea.form-control {
 }
 
 .qe-student-card label {
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 600;
     color: var(--text-muted);
     display: block;
@@ -1554,7 +1648,7 @@ textarea.form-control {
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 7px 10px;
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-family: inherit;
     outline: none;
 }
@@ -1564,13 +1658,99 @@ textarea.form-control {
     border-color: var(--primary);
 }
 
-/* Responsive styles */
-@media (max-width: 1024px) {
+/* ==========================================================================
+   6. RESPONSIVE / MEDIA QUERIES (mobile-first)
+   The structural rules for .app-container / .sidebar / .sidebar-menu /
+   .main-content / .grid-form / .stats-grid already default to their MOBILE
+   version earlier in this file. The blocks below layer on tablet (>=768px)
+   and desktop (>=1024px) overrides, plus one small "mobile-only" block for
+   a handful of components whose base declaration (further up the file)
+   is still desktop-oriented (header bar, modals, table font-size, etc.).
+   ========================================================================== */
+
+/* ---- Mobile-only refinements (< 768px) -------------------------------- */
+@media (max-width: 767px) {
+    .top-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+        padding: 12px 14px;
+        border-radius: 12px;
+    }
+    .header-actions {
+        justify-content: space-between;
+        flex-wrap: wrap;
+        row-gap: 10px;
+        width: 100%;
+        gap: 10px;
+    }
+    .header-title-box h1 {
+        font-size: 1.0625rem;
+    }
+    .header-title-box p {
+        font-size: 0.75rem;
+    }
+    .student-context-picker {
+        flex: 1 1 auto;
+        width: 100%;
+        padding: 7px 12px;
+    }
+    .student-select {
+        font-size: 0.8125rem;
+        width: 100%;
+    }
+    .modal-container {
+        width: 95%;
+        max-height: 92vh;
+        border-radius: 14px;
+    }
+    .modal-header {
+        padding: 14px 16px;
+    }
+    .modal-title {
+        font-size: 1rem;
+    }
+    .modal-body {
+        padding: 1rem;
+    }
+    .modal-footer {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .modal-footer .btn {
+        flex: 1 1 auto;
+    }
+    .filter-bar {
+        flex-wrap: wrap;
+        row-gap: 10px;
+    }
+    .btn {
+        padding: 9px 14px;
+        font-size: 0.8125rem;
+    }
+    /* Data tables keep a comfortable min-width and scroll horizontally
+       inside .table-wrapper rather than squeezing columns unreadably. */
+    .custom-table {
+        font-size: 0.8125rem;
+        min-width: 720px;
+    }
+}
+
+/* ---- Tablet (>= 768px): fixed icon-only sidebar + 2-column layout ----- */
+@media (min-width: 768px) {
+    .app-container {
+        flex-direction: row;
+    }
     .sidebar {
         width: 80px;
+        height: 100vh;
+        position: fixed;
+        border-right: 1px solid var(--border-color);
+        border-bottom: none;
         padding: 20px 10px;
     }
-    .logo-text, .sidebar-footer, .role-box .role-header, .role-box .role-selector-wrapper::after {
+    .logo-text, .sidebar-footer,
+    .role-box .role-header, .role-box .role-selector-wrapper::after {
         display: none;
     }
     .role-box {
@@ -1578,7 +1758,13 @@ textarea.form-control {
     }
     .role-selector {
         padding: 8px;
-        font-size: 12px;
+        font-size: 0.75rem;
+    }
+    .sidebar-menu {
+        flex-direction: column;
+        overflow-x: visible;
+        margin-top: 0;
+        padding-bottom: 0;
     }
     .menu-item span {
         display: none;
@@ -1590,143 +1776,59 @@ textarea.form-control {
     .main-content {
         margin-left: 80px;
         max-width: calc(100vw - 80px);
-        padding: 20px;
+        padding: var(--space-tablet);
+        gap: 1.5rem;
     }
     .grid-form {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
     }
-    .form-group-full, .form-group-half {
-        grid-column: span 1;
+    .form-group-half {
+        grid-column: span 2; /* full row on the 2-col tablet grid */
+    }
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
-@media (max-width: 768px) {
-    .app-container {
-        flex-direction: column;
-    }
+/* ---- Desktop (>= 1024px): full labeled sidebar + 3-column layout ----- */
+@media (min-width: 1024px) {
     .sidebar {
-        width: 100%;
-        height: auto;
-        position: relative;
-        border-right: none;
-        border-bottom: 1px solid var(--border-color);
-        padding: 15px;
+        width: 280px;
+        padding: 24px 18px;
     }
-    .logo-text, .sidebar-footer {
+    .logo-text, .sidebar-footer,
+    .role-box .role-header, .role-box .role-selector-wrapper::after {
         display: block;
     }
-    .sidebar-menu {
-        flex-direction: row;
-        overflow-x: auto;
-        padding-bottom: 5px;
-        margin-top: 15px;
+    .role-box {
+        padding: 16px;
+    }
+    .role-selector {
+        padding: 10px 14px;
+        font-size: 0.875rem;
     }
     .menu-item span {
         display: block;
-        font-size: 13px;
-    }
-    .main-content {
-        margin-left: 0;
-        max-width: 100%;
-        padding: 15px;
-    }
-    .top-header {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 15px;
-    }
-    .header-actions {
-        justify-content: space-between;
-        flex-wrap: wrap;
-        row-gap: 10px;
-        width: 100%;
-    }
-    .header-title-box h1 {
-        font-size: 19px;
-    }
-    .student-context-picker {
-        flex: 1 1 auto;
-    }
-    .stats-grid {
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 14px;
-    }
-    .modal-container {
-        width: 94%;
-        max-height: 92vh;
-    }
-    .modal-header {
-        padding: 14px 16px;
-    }
-    .modal-title {
-        font-size: 16px;
-    }
-    .modal-body {
-        padding: 16px;
-    }
-    .filter-bar {
-        flex-wrap: wrap;
-        row-gap: 10px;
-    }
-}
-
-/* Extra small phones */
-@media (max-width: 480px) {
-    .main-content {
-        padding: 10px;
-        gap: 16px;
-    }
-    .top-header {
-        padding: 12px 14px;
-        border-radius: 12px;
-    }
-    .header-title-box h1 {
-        font-size: 17px;
-    }
-    .header-title-box p {
-        font-size: 12px;
-    }
-    .header-actions {
-        gap: 10px;
-    }
-    .student-context-picker {
-        padding: 7px 12px;
-        width: 100%;
-    }
-    .student-select {
-        font-size: 13px;
-        width: 100%;
-    }
-    .stats-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-    }
-    .stat-card {
-        padding: 14px;
-    }
-    .sidebar-menu {
-        gap: 6px;
     }
     .menu-item {
-        padding: 10px;
+        justify-content: flex-start;
+        padding: 12px 16px;
     }
-    .btn {
-        padding: 9px 14px;
-        font-size: 13px;
+    .main-content {
+        margin-left: 280px;
+        max-width: calc(100vw - 280px);
+        padding: var(--space-desktop);
+        gap: 1.75rem;
     }
-    .modal-container {
-        width: 96%;
-        border-radius: 14px;
+    .grid-form {
+        grid-template-columns: repeat(3, 1fr);
     }
-    .modal-footer {
-        flex-wrap: wrap;
-        gap: 8px;
+    .form-group-half {
+        grid-column: span 2; /* 2 of 3 columns */
     }
-    .modal-footer .btn {
-        flex: 1 1 auto;
-    }
-    .custom-table {
-        font-size: 12.5px;
-        min-width: 720px;
+    .stats-grid {
+        /* auto-fit lets the 4th stat card flow onto a 4th column on very
+           wide screens, while guaranteeing at least 3 up on a laptop. */
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     }
 }
