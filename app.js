@@ -1623,49 +1623,125 @@ class PinkyClassApp {
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${esc(title)} - ${esc(st.name)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
     * { box-sizing: border-box; }
-    body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background:#fdf2f8; color:#3f0d24; margin:0; padding:24px; -webkit-font-smoothing:antialiased; }
-    .sheet { max-width: 760px; margin: 0 auto; background:#fff; border: 2px solid #f3d2e4; border-radius: 24px; padding: 30px 32px; }
-    .tag { display:inline-block; font-family:'Nunito',sans-serif; font-size:12px; font-weight:800; color: #be185d; background:#fce7f3; padding:5px 14px; border-radius:20px; letter-spacing:0.2px; }
-    h1 { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size: 27px; font-weight:700; text-align:center; color:#be185d; margin: 16px 0 4px; letter-spacing: 0.3px; }
-    .subtitle { text-align:center; color:#9d6b83; font-size:13.5px; margin-bottom: 24px; font-weight:600; }
-    .row { display:flex; gap:16px; margin-bottom: 18px; align-items: stretch; }
+    html, body { overflow-x: hidden; }
+    body {
+        font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
+        background:#fdf2f8;
+        color:#3f0d24;
+        margin:0;
+        padding:24px;
+        -webkit-font-smoothing:antialiased;
+        position: relative;
+        min-height: 100vh;
+    }
+    /* Khối trang trí hình tròn mờ phía sau phiếu, giống mẫu */
+    body::before, body::after {
+        content: "";
+        position: fixed;
+        width: 280px;
+        height: 280px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(236,72,153,0.16) 0%, rgba(236,72,153,0) 70%);
+        z-index: 0;
+        pointer-events: none;
+    }
+    body::before { top: -80px; right: -80px; }
+    body::after { bottom: -80px; left: -80px; }
+    .sheet {
+        position: relative;
+        z-index: 1;
+        max-width: 800px;
+        margin: 0 auto;
+        background:#fff;
+        border: 2px solid #f3d2e4;
+        border-radius: 24px;
+        padding: 32px 36px;
+        overflow: hidden;
+    }
+    .sheet::before, .sheet::after {
+        content: "";
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(236,72,153,0.07);
+        z-index: -1;
+    }
+    .sheet::before { width: 220px; height: 220px; top: -110px; right: -60px; }
+    .sheet::after { width: 180px; height: 180px; bottom: -90px; left: -50px; }
+    .top-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; row-gap: 8px; }
+    .tag { display:inline-block; font-family:'Nunito',sans-serif; font-size:12.5px; font-weight:800; color: #be185d; background:#fce7f3; padding:6px 16px; border-radius:20px; letter-spacing:0.2px; }
+    .for-parent { font-size:12.5px; color:#3f0d24; font-weight:800; }
+    h1 { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size: 30px; font-weight:700; text-align:center; color:#8a1c53; margin: 18px 0 6px; letter-spacing: 0.3px; }
+    .subtitle { text-align:center; color:#9d6b83; font-size:13.5px; margin-bottom: 26px; font-weight:600; }
+    .row { display:flex; gap:18px; margin-bottom: 18px; align-items: stretch; }
     .row > .card { flex: 1; margin-bottom: 0; }
-    .card { border:1.5px solid #f3d2e4; border-radius:18px; padding:18px 20px; margin-bottom: 18px; }
-    .card .label { font-size:11px; color:#9d6b83; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; }
+    .card { border:1.5px solid #f3d2e4; border-radius:18px; padding:20px 22px; margin-bottom: 18px; background:#fff; }
+    .card .label { font-size:11.5px; color:#9d6b83; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; }
     .card .value { font-family:'Nunito',sans-serif; font-size:16.5px; font-weight:800; margin-top:2px; color:#3f0d24; }
     .divider-dashed { border-top: 1px dashed #f3d2e4; margin: 14px 0 12px; }
-    .total-card { text-align:center; background:#fdf2f8; display:flex; flex-direction:column; justify-content:center; }
-    .total-card .value { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size:29px; font-weight:700; color:#be185d; }
-    .chip { display:inline-block; background:#fce7f3; color:#be185d; font-weight:800; font-size:13px; padding:5px 12px; border-radius:20px; margin:3px 4px 0 0; }
-    .section-title { font-family:'Nunito',sans-serif; font-weight:800; color:#be185d; text-transform:uppercase; margin: 0 0 12px; font-size:14px; letter-spacing:0.3px; }
-    .quote-item { border-left: 3px solid #be185d; padding: 2px 0 2px 14px; margin-bottom: 12px; font-size: 13.5px; line-height:1.65; }
+    .total-card { text-align:center; background:#fdf0f7; display:flex; flex-direction:column; justify-content:center; border-color:#f3d2e4; }
+    .total-card .label { font-weight:800; }
+    .total-card .value { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size:32px; font-weight:700; color:#8a1c53; margin-top:6px; }
+    .chip { display:inline-block; background:#fce7f3; color:#be185d; font-weight:800; font-size:13px; padding:6px 14px; border-radius:20px; margin:3px 5px 0 0; }
+    .section-title { display:flex; align-items:center; gap:8px; font-family:'Nunito',sans-serif; font-weight:800; color:#8a1c53; text-transform:uppercase; margin: 0 0 14px; font-size:14.5px; letter-spacing:0.3px; }
+    .section-title .icon { font-size:17px; }
+    .quote-item { border-left: 3px solid #be185d; padding: 2px 0 2px 14px; margin-bottom: 14px; font-size: 13.5px; line-height:1.65; }
     .quote-item:last-child { margin-bottom: 0; }
+    .quote-item strong { color:#8a1c53; }
     .plain-paragraph { font-size: 13.5px; line-height: 1.7; }
-    .checklist-item { display:flex; align-items:flex-start; gap:8px; font-size:13.5px; line-height:1.6; margin-bottom:8px; }
+    .checklist-item { display:flex; align-items:flex-start; gap:9px; font-size:13.5px; line-height:1.6; margin-bottom:9px; }
     .checklist-item:last-child { margin-bottom: 0; }
     .check-mark { color:#be185d; font-weight:800; flex-shrink:0; }
-    .fee-note-item { font-size:13.5px; padding: 4px 0; }
-    .footer-note { margin-top:4px; font-size:12.5px; color:#9d6b83; border-top:1px dashed #f3d2e4; padding-top:14px; display:flex; justify-content:space-between; align-items:center; gap: 10px; font-weight:600; }
+    .footer-note { margin-top:6px; font-size:12.5px; color:#9d6b83; background:#fdf2f8; border:1px solid #f3d2e4; border-radius:14px; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; gap: 10px; font-weight:600; flex-wrap: wrap; }
     .footer-note .signer { font-weight:800; color:#3f0d24; white-space:nowrap; }
-    @media print { body { padding: 0; background:#fff; } .sheet { border-radius: 0; border: none; } }
+    @media print {
+        body { padding: 0; background:#fff; }
+        body::before, body::after { display:none; }
+        .sheet { border-radius: 0; border: none; }
+    }
+    /* Scale gọn cho điện thoại / màn hình thu nhỏ */
+    @media (max-width: 640px) {
+        body { padding: 12px; }
+        .sheet { padding: 20px 16px; border-radius: 18px; }
+        .sheet::before { width: 140px; height: 140px; top: -70px; right: -40px; }
+        .sheet::after { width: 120px; height: 120px; bottom: -60px; left: -30px; }
+        body::before, body::after { width: 160px; height: 160px; }
+        h1 { font-size: 21px; margin: 14px 0 5px; }
+        .subtitle { font-size: 12px; margin-bottom: 18px; }
+        .tag { font-size: 11px; padding: 5px 12px; }
+        .for-parent { font-size: 11px; }
+        .row { flex-direction: column; gap: 14px; }
+        .card { padding: 16px 16px; margin-bottom: 14px; border-radius: 14px; }
+        .card .value { font-size: 15px; }
+        .total-card .value { font-size: 26px; }
+        .section-title { font-size: 13px; }
+        .quote-item, .plain-paragraph, .checklist-item { font-size: 13px; }
+        .footer-note { flex-direction: column; align-items: flex-start; padding: 12px 14px; }
+    }
+    @media (max-width: 380px) {
+        h1 { font-size: 18px; }
+        .total-card .value { font-size: 22px; }
+        .chip { font-size: 12px; padding: 5px 10px; }
+    }
 </style>
 </head>
 <body>
     <div class="sheet">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="top-bar">
             <span class="tag">Phiếu thông báo học phí</span>
-            <span style="font-size:12px; color:#9d6b83;">Dành cho phụ huynh</span>
+            <span class="for-parent">Dành cho phụ huynh</span>
         </div>
         <h1>${esc(title)}</h1>
         <div class="subtitle">Tổng hợp buổi học, nhận xét quá trình học tập và lộ trình sắp tới</div>
 
         <div class="row">
             <div class="card">
+                <div class="section-title"><span class="icon">🎓</span>Thông tin học sinh</div>
                 <div class="label">Họ và tên</div><div class="value">${esc(st.name)}</div>
                 <div class="label" style="margin-top:10px;">Học phí/buổi</div><div class="value">${privateCount > 0 ? this.formatVND(privateUnit) : this.formatVND(groupUnit)}</div>
                 <div class="label" style="margin-top:10px;">Số buổi học</div><div class="value">${sessions.length} buổi</div>
@@ -1685,21 +1761,21 @@ class PinkyClassApp {
             </div>
         </div>
 
-        ${quoteItemsHTML ? `<div class="card"><div class="section-title">Nhận xét học tập</div>${quoteItemsHTML}</div>` : ''}
+        ${quoteItemsHTML ? `<div class="card"><div class="section-title"><span class="icon">📝</span>Nhận xét học tập</div>${quoteItemsHTML}</div>` : ''}
 
         ${(scheduleHTML || roadmapHTML) ? `
         <div class="row">
             <div class="card">
-                <div class="section-title">Lịch học</div>
+                <div class="section-title"><span class="icon">📅</span>Lịch học</div>
                 ${scheduleHTML || '<div class="plain-paragraph" style="color:#c48ba6;">Chưa có lịch học.</div>'}
             </div>
             <div class="card">
-                <div class="section-title">Lộ trình sắp tới</div>
+                <div class="section-title"><span class="icon">🎯</span>Lộ trình sắp tới</div>
                 ${roadmapHTML || '<div class="plain-paragraph" style="color:#c48ba6;">Chưa có lộ trình.</div>'}
             </div>
         </div>` : ''}
 
-        ${feeNoteHTML ? `<div class="card"><div class="section-title">Ghi chú học phí</div>${feeNoteHTML}</div>` : ''}
+        ${feeNoteHTML ? `<div class="card"><div class="section-title"><span class="icon">💡</span>Ghi chú học phí</div>${feeNoteHTML}</div>` : ''}
 
         <div class="footer-note">
             <span>${note ? nl2br(note) : 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.'}</span>

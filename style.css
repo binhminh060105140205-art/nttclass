@@ -1617,5 +1617,96 @@ textarea.form-control {
     }
     .header-actions {
         justify-content: space-between;
+        flex-wrap: wrap;
+        row-gap: 10px;
+        width: 100%;
+    }
+    .header-title-box h1 {
+        font-size: 19px;
+    }
+    .student-context-picker {
+        flex: 1 1 auto;
+    }
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 14px;
+    }
+    .modal-container {
+        width: 94%;
+        max-height: 92vh;
+    }
+    .modal-header {
+        padding: 14px 16px;
+    }
+    .modal-title {
+        font-size: 16px;
+    }
+    .modal-body {
+        padding: 16px;
+    }
+    .filter-bar {
+        flex-wrap: wrap;
+        row-gap: 10px;
+    }
+}
+
+/* Extra small phones */
+@media (max-width: 480px) {
+    .main-content {
+        padding: 10px;
+        gap: 16px;
+    }
+    .top-header {
+        padding: 12px 14px;
+        border-radius: 12px;
+    }
+    .header-title-box h1 {
+        font-size: 17px;
+    }
+    .header-title-box p {
+        font-size: 12px;
+    }
+    .header-actions {
+        gap: 10px;
+    }
+    .student-context-picker {
+        padding: 7px 12px;
+        width: 100%;
+    }
+    .student-select {
+        font-size: 13px;
+        width: 100%;
+    }
+    .stats-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    .stat-card {
+        padding: 14px;
+    }
+    .sidebar-menu {
+        gap: 6px;
+    }
+    .menu-item {
+        padding: 10px;
+    }
+    .btn {
+        padding: 9px 14px;
+        font-size: 13px;
+    }
+    .modal-container {
+        width: 96%;
+        border-radius: 14px;
+    }
+    .modal-footer {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .modal-footer .btn {
+        flex: 1 1 auto;
+    }
+    .custom-table {
+        font-size: 12.5px;
+        min-width: 720px;
     }
 }
