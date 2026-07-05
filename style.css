@@ -499,9 +499,23 @@ body {
     right: -20px;
     width: 80px;
     height: 80px;
-    background: rgba(37, 99, 235, 0.05);
     border-radius: 50%;
+    background: rgba(37, 99, 235, 0.08);
 }
+
+/* Khôi phục màu sắc riêng cho từng thẻ thống kê (trước đây tô màu qua icon,
+   nay icon đã bị bỏ nên tô màu trực tiếp qua số liệu + vòng tròn trang trí). */
+.stats-grid .stat-card:nth-child(1)::before { background: rgba(37, 99, 235, 0.08); }
+.stats-grid .stat-card:nth-child(1) .stat-value { color: var(--primary); }
+
+.stats-grid .stat-card:nth-child(2)::before { background: rgba(168, 85, 247, 0.1); }
+.stats-grid .stat-card:nth-child(2) .stat-value { color: #a855f7; }
+
+.stats-grid .stat-card:nth-child(3)::before { background: rgba(20, 184, 166, 0.1); }
+.stats-grid .stat-card:nth-child(3) .stat-value { color: #14b8a6; }
+
+.stats-grid .stat-card:nth-child(4)::before { background: rgba(245, 158, 11, 0.1); }
+.stats-grid .stat-card:nth-child(4) .stat-value { color: #f59e0b; }
 
 .stat-icon {
     width: 46px;
@@ -580,6 +594,20 @@ body {
     padding: 16px 24px;
     border-radius: 16px 16px 0 0;
     box-shadow: var(--shadow-sm);
+}
+
+/* Khung dùng để chụp xuất ra ảnh PNG (bao gồm banner tên học sinh + bảng nhật
+   ký), nền trắng để ảnh xuất ra không bị trong suốt/lem màu nền trang. */
+.log-export-capture {
+    background: #fff;
+    border-radius: 16px;
+}
+
+/* Ẩn cột "Thao tác" (nút Đánh giá) khi đang chụp xuất ảnh — cột này chỉ có
+   ý nghĩa thao tác trên web, không cần thiết trong ảnh báo cáo gửi phụ huynh.
+   Class này được JS gắn/gỡ tạm thời ngay trước/sau khi chụp ảnh. */
+.log-export-capture.is-exporting .log-export-hide {
+    display: none !important;
 }
 
 .student-log-title {
@@ -1349,31 +1377,42 @@ textarea.form-control {
 }
 
 .week-hour-label {
-    grid-column: 1;
-    height: 52px;
+    /* Đặt nhãn giờ NẰM PHÍA TRÊN đường kẻ ngang thật (cách 1 khoảng nhỏ),
+       thay vì đè lên giữa đường kẻ — dùng translateY(-100% - khoảng cách) để
+       mép DƯỚI của chữ luôn cách đều phía trên đúng đường kẻ tại "top". */
+    position: absolute;
+    left: 0;
+    right: 0;
+    transform: translateY(calc(-100% - 3px));
     font-size: 10.5px;
     color: var(--text-muted);
     text-align: right;
     padding-right: 6px;
-    transform: translateY(-7px);
-    border-top: 1px solid var(--border-color);
 }
 
-.week-hour-label:first-child {
-    border-top: none;
+/* Container chứa các đường kẻ ngang — trải dài HẾT chiều rộng thật (gutter +
+   7 cột ngày) trong 1 lần vẽ duy nhất, dùng CHUNG toạ độ "top" với nhãn giờ
+   (xem renderWeekCalendar trong app.js) nên không thể lệch nhau. */
+.week-hour-lines {
+    position: relative;
+    pointer-events: none; /* không chặn click vào các ca học bên dưới */
+}
+
+.week-hour-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--border-color);
 }
 
 .week-day-column {
     grid-row: 1 / -1;
     position: relative;
     border-left: 1px solid var(--border-color);
-    background-image: repeating-linear-gradient(
-        to bottom,
-        transparent,
-        transparent 51px,
-        var(--border-color) 51px,
-        var(--border-color) 52px
-    );
+    /* Đường kẻ ngang giờ được vẽ RIÊNG bằng các phần tử .week-hour-line (dùng
+       chung toạ độ với nhãn giờ, xem app.js) — không còn dùng background-image
+       lặp lại ở đây nữa để tránh có 2 hệ toạ độ tách rời dễ lệch nhau. */
 }
 
 .week-event-block {

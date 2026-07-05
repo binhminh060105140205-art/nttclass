@@ -163,42 +163,46 @@
                             </select>
                         </div>
                         <div class="role-restricted admin-tutor" style="display: flex; gap: 8px;">
-                            <button class="btn btn-secondary btn-sm" id="btnExportLog"> Xuất Báo Cáo
+                            <button class="btn btn-secondary btn-sm" id="btnExportLog">Xuất ảnh
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Customized Table matching the layout "Quỳnh Anh Toán 8" in Image 1 -->
-                <div class="student-log-header">
-                    <div>
-                        <span class="student-log-title" id="logStudentNameHeader">QUỲNH ANH TOÁN 8</span>
-                        <span style="margin: 0 8px; opacity: 0.7;">|</span>
-                        <span class="student-log-subtitle" id="logStudentYearHeader">(2026-2027)</span>
+                <!-- Customized Table matching the layout "Quỳnh Anh Toán 8" in Image 1.
+                     Bọc trong 1 khung riêng (logExportCapture) để chụp xuất ra
+                     ảnh PNG (không bao gồm thanh tiêu đề/nút bấm phía trên). -->
+                <div id="logExportCapture" class="log-export-capture">
+                    <div class="student-log-header">
+                        <div>
+                            <span class="student-log-title" id="logStudentNameHeader">QUỲNH ANH TOÁN 8</span>
+                            <span style="margin: 0 8px; opacity: 0.7;">|</span>
+                            <span class="student-log-subtitle" id="logStudentYearHeader">(2026-2027)</span>
+                        </div>
+                        <div>
+                            <span class="badge badge-rieng" id="logBadgeIndicator"> Học riêng 1 vs 1</span>
+                        </div>
                     </div>
-                    <div>
-                        <span class="badge badge-rieng" id="logBadgeIndicator"> Học riêng 1 vs 1</span>
+
+                    <div class="table-wrapper">
+                        <table class="custom-table" id="studentLogsTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 80px;">STT</th>
+                                    <th style="width: 80px;">NGÀY</th>
+                                    <th class="col-content">NỘI DUNG BUỔI HỌC</th>
+                                    <th style="width: 120px;">BÀI TẬP VỀ NHÀ</th>
+                                    <th style="width: 100px;">Ý THỨC</th>
+                                    <th>NHẬN XÉT CỦA GIÁO VIÊN</th>
+                                    <th style="width: 100px;">GHI CHÚ</th>
+                                    <th style="width: 80px;" class="role-restricted admin-tutor log-export-hide">THAO TÁC</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentLogsTableBody">
+                                <!-- Filled dynamically -->
+                            </tbody>
+                        </table>
                     </div>
-                </div>
-                
-                <div class="table-wrapper">
-                    <table class="custom-table" id="studentLogsTable">
-                        <thead>
-                            <tr>
-                                <th style="width: 80px;">STT</th>
-                                <th style="width: 80px;">NGÀY</th>
-                                <th class="col-content">NỘI DUNG BUỔI HỌC</th>
-                                <th style="width: 120px;">BÀI TẬP VỀ NHÀ</th>
-                                <th style="width: 100px;">Ý THỨC</th>
-                                <th>NHẬN XÉT CỦA GIÁO VIÊN</th>
-                                <th style="width: 100px;">GHI CHÚ</th>
-                                <th style="width: 80px;" class="role-restricted admin-tutor">THAO TÁC</th>
-                            </tr>
-                        </thead>
-                        <tbody id="studentLogsTableBody">
-                            <!-- Filled dynamically -->
-                        </tbody>
-                    </table>
                 </div>
             </div>
         </section>

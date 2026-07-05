@@ -1014,9 +1014,12 @@ class PinkyClassApp {
             // BÀI TẬP VỀ NHÀ: chỉ HIỂN THỊ (badge tĩnh), không cho sửa trực
             // tiếp ở bảng này nữa — giá trị luôn lấy từ dữ liệu chấm công đã
             // nhập ở Lịch dạy & Chấm công (quick entry) hoặc modal "Đánh giá".
-            let hwClass = 'pending';
+            // Màu theo mức độ nghiêm trọng: "Không hoàn thành" (hoàn toàn chưa
+            // làm gì) dùng màu đỏ cảnh báo mạnh hơn; "Chưa hoàn thành" (làm dở/
+            // chưa xong) dùng màu xanh nhạt trung tính hơn.
+            let hwClass = 'not-done'; // mặc định ('Chưa làm' cũ / Không hoàn thành) -> đỏ
             if (detail.homework === 'Hoàn thành') hwClass = 'done';
-            if (detail.homework === 'Chưa hoàn thành') hwClass = 'not-done';
+            if (detail.homework === 'Chưa hoàn thành') hwClass = 'pending';
             const homeworkBadge = `<span class="homework-badge ${hwClass}">${this.getHomeworkLabel(detail.homework)}</span>`;
 
             // Session Date display formatted like 'Thứ 7 - 23/05'
@@ -1047,7 +1050,7 @@ class PinkyClassApp {
                 <td><strong>${detail.attitude || 'Tập trung'}</strong></td>
                 <td>${commentHTML}</td>
                 <td><span style="font-size:13px; color:var(--text-muted);">${detail.note || '-'}</span></td>
-                <td class="role-restricted admin-tutor">${actionsHTML}</td>
+                <td class="role-restricted admin-tutor log-export-hide">${actionsHTML}</td>
             `;
 
             tbody.appendChild(tr);
@@ -1136,11 +1139,21 @@ class PinkyClassApp {
             `;
         }).join('');
 
-        // ----- Body: nhãn giờ bên trái + 7 cột ngày chứa các block ca dạy -----
+        // ----- Body: nhãn giờ bên trái + đường kẻ ngang + 7 cột ngày -----
+        // QUAN TRỌNG: nhãn giờ VÀ đường kẻ ngang được vẽ CÙNG 1 VÒNG LẶP, DÙNG
+        // CHUNG 1 giá trị "top" duy nhất cho mỗi giờ — trước đây nhãn giờ định
+        // vị bằng 1 công thức px (JS) còn đường kẻ vẽ bằng CSS background-image
+        // repeating-gradient (công thức px KHÁC, tính riêng trong CSS) — 2 hệ
+        // toạ độ tách rời như vậy rất dễ bị lệch nhau dù mỗi bên tưởng là đúng.
+        // Nay cả nhãn lẫn đường kẻ đều lấy từ ĐÚNG 1 con số "top" nên không thể
+        // lệch nhau được nữa.
         const hourCount = HOUR_END - HOUR_START;
         let hourLabelsHTML = '';
+        let hourLinesHTML = '';
         for (let h = HOUR_START; h < HOUR_END; h++) {
-            hourLabelsHTML += `<div class="week-hour-label">${h}:00</div>`;
+            const top = (h - HOUR_START) * HOUR_HEIGHT;
+            hourLabelsHTML += `<div class="week-hour-label" style="top:${top}px;">${h}:00</div>`;
+            hourLinesHTML += `<div class="week-hour-line" style="top:${top}px;"></div>`;
         }
 
         let dayColumnsHTML = '';
@@ -1183,7 +1196,12 @@ class PinkyClassApp {
         // Trước đây không khai báo grid-column cho các phần tử này, nên thứ tự
         // hiển thị phụ thuộc vào thuật toán auto-placement của trình duyệt và
         // có thể bị đảo/lệch (cột giờ bị đẩy sang phải thay vì bên trái).
-        body.innerHTML = `<div class="week-hour-gutter" style="grid-column:1; grid-row:1 / -1;">${hourLabelsHTML}</div>` + dayColumnsHTML;
+        // Các đường kẻ ngang (hourLinesHTML) được đặt NGOÀI cột ngày, trải dài
+        // hết chiều rộng thật (position:absolute, left/right:0 so với chính
+        // .week-calendar-body) — vẽ 1 lần duy nhất, đảm bảo luôn khớp nhãn giờ.
+        body.innerHTML = `<div class="week-hour-gutter" style="grid-column:1; grid-row:1 / -1;">${hourLabelsHTML}</div>`
+            + `<div class="week-hour-lines" style="grid-column:1 / -1; grid-row:1 / -1;">${hourLinesHTML}</div>`
+            + dayColumnsHTML;
     }
 
     // Mở bảng nhập nhanh khi click vào 1 ca dạy trên lịch tuần. Nếu ca đó có
@@ -1853,8 +1871,8 @@ class PinkyClassApp {
         // bằng 250.000 (không cho miễn phí có chủ đích) còn nhập số âm lại
         // được chấp nhận nguyên vẹn, gây sai tổng học phí (trừ tiền thay vì
         // cộng). Nay validate rõ ràng và chặn ngay tại form.
-        if (isNaN(basePrice) || basePrice <= 0) {
-            this.showToast("Học phí/buổi phải là số lớn hơn 0!", "error");
+        if (isNaN(basePrice) || basePrice < 0) {
+            this.showToast("Học phí/buổi không được là số âm!", "error");
             return;
         }
 
@@ -1954,8 +1972,8 @@ class PinkyClassApp {
             return;
         }
 
-        if (isNaN(unitPrice) || unitPrice <= 0) {
-            this.showToast("Đơn giá học phí phải là số lớn hơn 0!", "error");
+        if (isNaN(unitPrice) || unitPrice < 0) {
+            this.showToast("Đơn giá học phí không được là số âm!", "error");
             return;
         }
 
@@ -2127,8 +2145,8 @@ class PinkyClassApp {
             return;
         }
 
-        if (isNaN(unitPrice) || unitPrice <= 0) {
-            this.showToast("Đơn giá học phí phải là số lớn hơn 0!", "error");
+        if (isNaN(unitPrice) || unitPrice < 0) {
+            this.showToast("Đơn giá học phí không được là số âm!", "error");
             return;
         }
 
@@ -2355,40 +2373,71 @@ class PinkyClassApp {
     }
 
     // Export log to CSV
-    exportStudentLogToCSV() {
+    // Tự động tải thư viện html2canvas từ CDN (chỉ tải 1 lần, dùng lại cho
+    // các lần xuất ảnh sau) — dùng để "chụp" 1 khối HTML thành ảnh PNG.
+    async ensureHtml2Canvas() {
+        if (window.html2canvas) return window.html2canvas;
+        if (!this._html2canvasLoadingPromise) {
+            this._html2canvasLoadingPromise = new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                script.onload = () => resolve(window.html2canvas);
+                script.onerror = () => reject(new Error('Không tải được thư viện xuất ảnh (kiểm tra kết nối mạng).'));
+                document.head.appendChild(script);
+            });
+        }
+        return this._html2canvasLoadingPromise;
+    }
+
+    // Xuất bảng Nhật ký học tập (banner tên học sinh + bảng buổi học) ra 1
+    // file ảnh PNG duy nhất — thay cho xuất CSV trước đây, dễ gửi trực tiếp
+    // cho phụ huynh qua Zalo/tin nhắn mà không cần mở file bằng Excel.
+    async exportStudentLogToCSV() {
         const studentId = this.currentStudentId;
         const studentName = this.getStudentName(studentId);
-        const studentSessions = this.sessions
-            .filter(sess => sess.studentIds.includes(studentId))
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
+        const studentSessions = this.sessions.filter(sess => sess.studentIds.includes(studentId));
 
         if (studentSessions.length === 0) {
             this.showToast("Không có dữ liệu nhật ký để xuất!", "error");
             return;
         }
 
-        let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // UTF-8 BOM
-        csvContent += "STT,Ngay,Buoi Hoc,Noi Dung,Bai Tap Ve Nha,Y Thuc,Nhan Xet,Ghi Chu\n";
+        const captureEl = document.getElementById('logExportCapture');
+        if (!captureEl) return;
 
-        studentSessions.forEach((sess, idx) => {
-            const detail = sess.studentDetails[studentId] || { homework: 'Chưa làm', attitude: 'Tốt', individualComment: '', note: '' };
-            const dateStr = this.formatDateVN(sess.date);
-            const contentClean = (sess.content || '').replace(/"/g, '""').replace(/\n/g, ' | ');
-            const commentClean = ((sess.type === 'chung' && sess.generalComment ? '[CHUNG]: ' + sess.generalComment + ' | ' : '') + 
-                                  (detail.individualComment || sess.generalComment || '')).replace(/"/g, '""').replace(/\n/g, ' | ');
-            
-            const row = `"${idx + 1}","${dateStr}","Ca ${sess.startTime}-${sess.endTime}","${contentClean}","${detail.homework}","${detail.attitude}","${commentClean}","${detail.note}"`;
-            csvContent += row + "\n";
-        });
+        this.setBtnLoading('btnExportLog', true, 'Đang tạo ảnh...');
+        try {
+            const html2canvas = await this.ensureHtml2Canvas();
 
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `NhatKyHocTap_${studentName.replace(/\s+/g, '')}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        this.showToast("Xuất file báo cáo thành công!", "success");
+            // Ẩn tạm cột "Thao tác" trong lúc chụp (chỉ có ý nghĩa thao tác
+            // trên web, không cần trong ảnh gửi phụ huynh), chụp xong gỡ ra ngay.
+            captureEl.classList.add('is-exporting');
+
+            const canvas = await html2canvas(captureEl, {
+                scale: 2, // nét hơn khi phóng to/in ra
+                backgroundColor: '#ffffff',
+                useCORS: true
+            });
+
+            captureEl.classList.remove('is-exporting');
+
+            const dataUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            const todayStr = this.toISODateOnly(new Date());
+            link.download = `NhatKyHocTap_${studentName.replace(/\s+/g, '')}_${todayStr}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            this.showToast("Đã xuất ảnh nhật ký học tập thành công!", "success");
+        } catch (err) {
+            console.error('Lỗi xuất ảnh:', err);
+            captureEl.classList.remove('is-exporting');
+            this.showToast(err.message || "Xuất ảnh thất bại, vui lòng thử lại.", "error");
+        } finally {
+            this.setBtnLoading('btnExportLog', false);
+        }
     }
 
     // --- USER MANAGEMENT (Admin only) ---
