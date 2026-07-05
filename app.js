@@ -1049,7 +1049,7 @@ class PinkyClassApp {
                 <td style="text-align:center;">${homeworkBadge}</td>
                 <td><strong>${detail.attitude || 'Tập trung'}</strong></td>
                 <td>${commentHTML}</td>
-                <td><span style="font-size:13px; color:var(--text-muted);">${detail.note || '-'}</span></td>
+                <td><span style="font-size:14.5px; color:var(--text-muted);">${detail.note || '-'}</span></td>
                 <td class="role-restricted admin-tutor log-export-hide">${actionsHTML}</td>
             `;
 
@@ -1215,7 +1215,13 @@ class PinkyClassApp {
         document.getElementById('quickEntryTimeMeta').innerText = `${sess.startTime} - ${sess.endTime} (${sess.duration} giờ) — Học ${sess.type}`;
         document.getElementById('quickEntryDateMeta').innerText = this.formatDateVN(sess.date);
         document.getElementById('quickEntrySessionName').value = sess.sessionName || '';
-        document.getElementById('quickEntryCompleted').checked = !!sess.completed;
+        const isDone = this.isSessionCompleted(sess);
+        const statusHint = document.getElementById('quickEntryStatusHint');
+        if (statusHint) {
+            statusHint.innerText = isDone ? '✓ Đã dạy (tự động theo lịch)' : '⏳ Sắp tới — chưa đến giờ dạy';
+            statusHint.style.background = isDone ? 'var(--hw-done-bg, #dcfce7)' : 'var(--primary-soft)';
+            statusHint.style.color = isDone ? 'var(--hw-done-text, #16a34a)' : 'var(--primary)';
+        }
         document.getElementById('quickEntryContent').value = sess.content || '';
 
         // Sinh 1 thẻ nhập liệu RIÊNG cho từng học sinh trong ca, dữ liệu khởi
@@ -1284,7 +1290,7 @@ class PinkyClassApp {
 
         const content = document.getElementById('quickEntryContent').value.trim();
         const sessionName = document.getElementById('quickEntrySessionName').value.trim();
-        const completed = document.getElementById('quickEntryCompleted').checked;
+        const completed = this.isSessionCompleted(sess);
 
         const newStudentDetails = {};
         document.querySelectorAll('#quickEntryStudentsList .qe-student-card').forEach(card => {
@@ -1485,6 +1491,10 @@ class PinkyClassApp {
         const titleMonths = monthsList.length > 0 ? monthsList.join('+') : (new Date().getMonth() + 1);
         document.getElementById('invoiceTitle').value = `HỌC PHÍ THÁNG ${titleMonths}/${sampleYear}`;
 
+        // Tên GV điền sẵn từ tài khoản đang đăng nhập, SĐT để trống tự nhập
+        document.getElementById('invoiceTeacherName').value = (this.currentUser && this.currentUser.name) || '';
+        document.getElementById('invoiceTeacherPhone').value = '';
+
         // Các trường nhận xét để trống, giáo viên tự viết cho từng kỳ
         document.getElementById('invoiceOverview').value = '';
         document.getElementById('invoiceAlgebra').value = '';
@@ -1565,6 +1575,8 @@ class PinkyClassApp {
         const groupUnit = groupCount > 0 ? Math.round(groupSum / groupCount) : 0;
 
         const title = document.getElementById('invoiceTitle').value.trim() || 'PHIẾU HỌC PHÍ';
+        const teacherName = document.getElementById('invoiceTeacherName').value.trim() || (this.currentUser && this.currentUser.name) || 'Giáo viên phụ trách';
+        const teacherPhone = document.getElementById('invoiceTeacherPhone').value.trim();
         const overview = document.getElementById('invoiceOverview').value.trim();
         const algebra = document.getElementById('invoiceAlgebra').value.trim();
         const geometry = document.getElementById('invoiceGeometry').value.trim();
@@ -1601,10 +1613,6 @@ class PinkyClassApp {
         if (privateCount > 0) feeNoteLines.push(`${privateCount} buổi học riêng: <strong>${this.formatVND(privateUnit)}/buổi</strong>`);
         if (groupCount > 0) feeNoteLines.push(`${groupCount} buổi học chung: <strong>${this.formatVND(groupUnit)}/buổi</strong>`);
         const feeNoteHTML = feeNoteLines.map(l => `<div class="checklist-item"><span class="check-mark">✓</span><span>${l}</span></div>`).join('');
-
-        const breakdownSummary = privateCount > 0 && groupCount > 0
-            ? `Gồm ${privateCount} buổi học riêng và ${groupCount} buổi học chung theo ghi chú bên dưới.`
-            : (privateCount > 0 ? `Gồm ${privateCount} buổi học riêng.` : (groupCount > 0 ? `Gồm ${groupCount} buổi học chung.` : ''));
 
         // Nhận xét học tập: gộp Tổng quan/Đại số/Hình học vào chung 1 khung,
         // mỗi mục hiển thị kiểu "trích dẫn" (viền trái) xếp chồng, giống hệt bố
@@ -1674,24 +1682,24 @@ class PinkyClassApp {
     .sheet::before { width: 220px; height: 220px; top: -110px; right: -60px; }
     .sheet::after { width: 180px; height: 180px; bottom: -90px; left: -50px; }
     .top-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; row-gap: 8px; }
-    .tag { display:inline-block; font-family:'Nunito',sans-serif; font-size:12.5px; font-weight:800; color: #be185d; background:#fce7f3; padding:6px 16px; border-radius:20px; letter-spacing:0.2px; }
-    .for-parent { font-size:12.5px; color:#3f0d24; font-weight:800; }
-    h1 { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size: 30px; font-weight:700; text-align:center; color:#8a1c53; margin: 18px 0 6px; letter-spacing: 0.3px; }
-    .subtitle { text-align:center; color:#9d6b83; font-size:13.5px; margin-bottom: 26px; font-weight:600; }
+    .teacher-name { font-size:13.5px; font-weight:800; color:#8a1c53; }
+    .teacher-phone { font-size:13px; color:#3f0d24; font-weight:800; }
+    h1 { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size: 31px; font-weight:800; text-align:center; color:#8a1c53; margin: 22px 0 24px; letter-spacing: 0.3px; }
     .row { display:flex; gap:18px; margin-bottom: 18px; align-items: stretch; }
     .row > .card { flex: 1; margin-bottom: 0; }
     .card { border:1.5px solid #f3d2e4; border-radius:18px; padding:20px 22px; margin-bottom: 18px; background:#fff; }
     .card .label { font-size:11.5px; color:#9d6b83; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; }
     .card .value { font-family:'Nunito',sans-serif; font-size:16.5px; font-weight:800; margin-top:2px; color:#3f0d24; }
+    .student-meta { font-size:12.5px; color:#be185d; font-weight:700; margin:-2px 0 12px; }
     .info-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding: 9px 0; border-bottom: 1px dashed #f6e2ec; }
     .info-row:first-of-type { padding-top: 2px; }
     .info-row:last-of-type { border-bottom: none; }
     .info-row .label { margin-top:0; white-space:nowrap; }
-    .info-row .value { margin-top:0; text-align:right; }
+    .info-row .value { margin-top:0; text-align:right; font-weight:800; }
     .divider-dashed { border-top: 1px dashed #f3d2e4; margin: 14px 0 12px; }
     .total-card { text-align:center; background:#fdf0f7; display:flex; flex-direction:column; justify-content:center; border-color:#f3d2e4; }
-    .total-card .label { font-weight:800; }
-    .total-card .value { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size:32px; font-weight:700; color:#8a1c53; margin-top:6px; }
+    .total-card .label { font-weight:800; font-size:13px; }
+    .total-card .value { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size:34px; font-weight:700; color:#8a1c53; margin-top:8px; }
     .chip { display:inline-block; background:#fce7f3; color:#be185d; font-weight:800; font-size:13px; padding:6px 14px; border-radius:20px; margin:3px 5px 0 0; }
     .section-title { display:flex; align-items:center; gap:8px; font-family:'Nunito',sans-serif; font-weight:800; color:#8a1c53; text-transform:uppercase; margin: 0 0 14px; font-size:14.5px; letter-spacing:0.3px; }
     .section-title .icon { font-size:17px; }
@@ -1702,8 +1710,7 @@ class PinkyClassApp {
     .checklist-item { display:flex; align-items:flex-start; gap:9px; font-size:13.5px; line-height:1.6; margin-bottom:9px; }
     .checklist-item:last-child { margin-bottom: 0; }
     .check-mark { color:#be185d; font-weight:800; flex-shrink:0; }
-    .footer-note { margin-top:6px; font-size:12.5px; color:#9d6b83; background:#fdf2f8; border:1px solid #f3d2e4; border-radius:14px; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; gap: 10px; font-weight:600; flex-wrap: wrap; }
-    .footer-note .signer { font-weight:800; color:#3f0d24; white-space:nowrap; }
+    .footer-note { margin-top:6px; font-size:12.5px; color:#9d6b83; background:#fdf2f8; border:1px solid #f3d2e4; border-radius:14px; padding:14px 20px; text-align:center; font-weight:600; }
     @media print {
         body { padding: 0; background:#fff; }
         body::before, body::after { display:none; }
@@ -1716,21 +1723,19 @@ class PinkyClassApp {
         .sheet::before { width: 140px; height: 140px; top: -70px; right: -40px; }
         .sheet::after { width: 120px; height: 120px; bottom: -60px; left: -30px; }
         body::before, body::after { width: 160px; height: 160px; }
-        h1 { font-size: 21px; margin: 14px 0 5px; }
-        .subtitle { font-size: 12px; margin-bottom: 18px; }
-        .tag { font-size: 11px; padding: 5px 12px; }
-        .for-parent { font-size: 11px; }
+        h1 { font-size: 22px; margin: 16px 0 18px; }
+        .teacher-name, .teacher-phone { font-size: 11.5px; }
         .row { flex-direction: column; gap: 14px; }
         .card { padding: 16px 16px; margin-bottom: 14px; border-radius: 14px; }
         .card .value { font-size: 15px; }
-        .total-card .value { font-size: 26px; }
+        .total-card .value { font-size: 27px; }
         .section-title { font-size: 13px; }
         .quote-item, .plain-paragraph, .checklist-item { font-size: 13px; }
-        .footer-note { flex-direction: column; align-items: flex-start; padding: 12px 14px; }
+        .footer-note { padding: 12px 14px; }
     }
     @media (max-width: 380px) {
-        h1 { font-size: 18px; }
-        .total-card .value { font-size: 22px; }
+        h1 { font-size: 19px; }
+        .total-card .value { font-size: 23px; }
         .chip { font-size: 12px; padding: 5px 10px; }
     }
 </style>
@@ -1738,27 +1743,26 @@ class PinkyClassApp {
 <body>
     <div class="sheet">
         <div class="top-bar">
-            <span class="tag">Phiếu thông báo học phí</span>
-            <span class="for-parent">Dành cho phụ huynh</span>
+            <span class="teacher-name">GV. ${esc(teacherName)}</span>
+            ${teacherPhone ? `<span class="teacher-phone">SĐT: ${esc(teacherPhone)}</span>` : ''}
         </div>
         <h1>${esc(title)}</h1>
-        <div class="subtitle">Tổng hợp buổi học, nhận xét quá trình học tập và lộ trình sắp tới</div>
 
         <div class="row">
             <div class="card">
                 <div class="section-title"><span class="icon">🎓</span>Thông tin học sinh</div>
+                <div class="student-meta">${esc(st.name)} — ${esc(st.class)}</div>
                 <div class="info-row"><span class="label">Họ và tên</span><span class="value">${esc(st.name)}</span></div>
                 <div class="info-row"><span class="label">Học phí/buổi</span><span class="value">${privateCount > 0 ? this.formatVND(privateUnit) : this.formatVND(groupUnit)}</span></div>
                 <div class="info-row"><span class="label">Số buổi học</span><span class="value">${sessions.length} buổi</span></div>
                 <div class="info-row"><span class="label">Số giờ học</span><span class="value">${totalHours.toFixed(1)} giờ</span></div>
                 <div class="divider-dashed"></div>
-                <div class="label" style="margin-bottom:8px;">Ngày học trong kỳ</div>
+                <div class="label" style="margin-bottom:8px;">Ngày học</div>
                 <div>${dateChips || '<span style="font-size:13px;color:#c48ba6;">Chưa có buổi học trong kỳ</span>'}</div>
             </div>
             <div class="card total-card">
                 <div class="label">Tổng học phí</div>
                 <div class="value">${this.formatVND(totalFee)}</div>
-                <div style="margin-top:8px; font-size:12px; color:#9d6b83;">${breakdownSummary}</div>
             </div>
         </div>
 
@@ -1776,11 +1780,10 @@ class PinkyClassApp {
             </div>
         </div>` : ''}
 
-        ${feeNoteHTML ? `<div class="card"><div class="section-title"><span class="icon">💡</span>Ghi chú học phí</div>${feeNoteHTML}</div>` : ''}
+        ${feeNoteHTML ? `<div class="card"><div class="section-title"><span class="icon">💡</span>Ghi chú</div>${feeNoteHTML}</div>` : ''}
 
         <div class="footer-note">
-            <span>${note ? nl2br(note) : 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.'}</span>
-            <span class="signer">${esc((this.currentUser && this.currentUser.name) || 'Giáo viên phụ trách')}</span>
+            ${note ? nl2br(note) : 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.'}
         </div>
     </div>
     <script>window.onload = () => window.print();</script>
@@ -1944,12 +1947,11 @@ class PinkyClassApp {
 
         if (!name || !gradeLevel || !subject) return;
 
-        // Học phí/buổi phải là số nguyên dương — trước đây nhập 0 tự bị thay
-        // bằng 250.000 (không cho miễn phí có chủ đích) còn nhập số âm lại
-        // được chấp nhận nguyên vẹn, gây sai tổng học phí (trừ tiền thay vì
-        // cộng). Nay validate rõ ràng và chặn ngay tại form.
-        if (isNaN(basePrice) || basePrice < 0) {
-            this.showToast("Học phí/buổi không được là số âm!", "error");
+        // Học phí/buổi phải là số nguyên DƯƠNG (>0) — 0 hoặc số âm đều bị chặn
+        // ngay tại form để tránh tạo học sinh với mức học phí vô nghĩa, dẫn
+        // đến thất thoát doanh thu do quên nhập/nhập nhầm giá.
+        if (isNaN(basePrice) || basePrice <= 0) {
+            this.showToast("Học phí/buổi phải lớn hơn 0!", "error");
             return;
         }
 
@@ -2110,7 +2112,7 @@ class PinkyClassApp {
             price,
             content,
             generalComment: content ? `Cả lớp học: ${content.split('\n')[0]}` : "",
-            completed: true, // Mặc định coi như "đã dạy" khi ghi nhận (trạng thái chấm công)
+            completed: this.isSessionCompleted({ date, endTime }), // Tự động theo lịch, không cần chấm công thủ công
             paid: false,     // QUAN TRỌNG: học phí LUÔN mặc định "chưa thanh toán" khi mới lên lịch
             studentDetails
         };
@@ -2777,6 +2779,19 @@ class PinkyClassApp {
         const m = (d.getMonth() + 1).toString().padStart(2, '0');
         const day = d.getDate().toString().padStart(2, '0');
         return `${y}-${m}-${day}`;
+    }
+
+    // Trạng thái "đã dạy" (completed) được suy ra TỰ ĐỘNG từ ngày + giờ kết
+    // thúc của buổi học so với thời điểm hiện tại — không còn dựa vào checkbox
+    // giáo viên phải tự tay tích ("Đã dạy buổi này (chấm công)"). Nhờ vậy học
+    // phí luôn được tính đúng, không bị thất thoát doanh thu chỉ vì quên
+    // chấm công thủ công.
+    isSessionCompleted(sess) {
+        if (!sess || !sess.date) return false;
+        const [eh, em] = (sess.endTime || '23:59').split(':').map(Number);
+        const end = new Date(sess.date);
+        end.setHours(eh || 0, em || 0, 0, 0);
+        return end.getTime() <= Date.now();
     }
 
     // Toast Alert Helper

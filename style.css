@@ -635,7 +635,8 @@ body {
     width: 100%;
     border-collapse: collapse;
     text-align: left;
-    font-size: 14px;
+    font-size: 14.5px;
+    line-height: 1.7;
     min-width: 1000px;
 }
 
@@ -656,7 +657,8 @@ body {
     border: 1px solid #e2e8f0;
     vertical-align: top;
     color: var(--text-main);
-    line-height: 1.5;
+    font-size: 14.5px;
+    line-height: 1.7;
 }
 
 .custom-table tr:hover {
@@ -747,8 +749,8 @@ body {
 }
 
 .session-content-text {
-    font-size: 15.5px;
-    line-height: 1.6;
+    font-size: 14.5px;
+    line-height: 1.7;
     white-space: pre-line;
     color: var(--text-main);
 }
@@ -794,7 +796,8 @@ body {
 
 .comment-text {
     white-space: pre-line;
-    font-size: 13px;
+    font-size: 14.5px;
+    line-height: 1.7;
 }
 
 .comment-divider {
@@ -1437,11 +1440,15 @@ textarea.form-control {
 }
 
 .week-event-block.type-rieng {
-    background: linear-gradient(135deg, #6366f1, #818cf8);
+    background: linear-gradient(135deg, #bfdbfe, #93c5fd);
+    color: #1e3a8a;
+    border-left-color: rgba(30, 58, 138, 0.3);
 }
 
 .week-event-block.type-chung {
-    background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+    background: linear-gradient(135deg, #60a5fa, #3b82f6);
+    color: #ffffff;
+    border-left-color: rgba(30, 58, 138, 0.35);
 }
 
 .week-event-block.is-unpaid {
