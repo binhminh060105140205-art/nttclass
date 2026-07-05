@@ -1022,8 +1022,8 @@ class PinkyClassApp {
             if (detail.homework === 'Chưa hoàn thành') hwClass = 'pending';
             const homeworkBadge = `<span class="homework-badge ${hwClass}">${this.getHomeworkLabel(detail.homework)}</span>`;
 
-            // Session Date display formatted like 'Thứ 7 - 23/05'
-            const dateStr = this.formatDateVN(sess.date);
+            // Session Date display: dòng trên "Thứ 7", dòng dưới "23/05" (không gạch ngang)
+            const dateStr = this.formatDateVNSplit(sess.date);
 
             // NỘI DUNG BUỔI HỌC: hiển thị text thuần, không bullet point.
             const contentText = (sess.content || '').trim();
@@ -1947,11 +1947,10 @@ class PinkyClassApp {
 
         if (!name || !gradeLevel || !subject) return;
 
-        // Học phí/buổi phải là số nguyên DƯƠNG (>0) — 0 hoặc số âm đều bị chặn
-        // ngay tại form để tránh tạo học sinh với mức học phí vô nghĩa, dẫn
-        // đến thất thoát doanh thu do quên nhập/nhập nhầm giá.
-        if (isNaN(basePrice) || basePrice <= 0) {
-            this.showToast("Học phí/buổi phải lớn hơn 0!", "error");
+        // Học phí/buổi phải là số nguyên KHÔNG ÂM (>= 0) — cho phép để 0 (VD học
+        // sinh học miễn phí/học thử), chỉ chặn số âm hoặc giá trị không hợp lệ.
+        if (isNaN(basePrice) || basePrice < 0) {
+            this.showToast("Học phí/buổi không được là số âm!", "error");
             return;
         }
 
@@ -2752,6 +2751,19 @@ class PinkyClassApp {
         const day = d.getDate().toString().padStart(2, '0');
         const month = (d.getMonth() + 1).toString().padStart(2, '0');
         return `${dayName} - ${day}/${month}`;
+    }
+
+    // Giống formatDateVN nhưng trả về HTML 2 dòng, KHÔNG có dấu gạch ngang:
+    // dòng trên là Thứ, dòng dưới là ngày/tháng. Dùng cho các bảng hẹp
+    // (VD bảng Nhật ký học tập) để tránh bị coi là bị lệch dòng có gạch ngang.
+    formatDateVNSplit(dateStr) {
+        const d = this.parseLocalDate(dateStr);
+        if (!d) return dateStr || '';
+        const days = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+        const dayName = days[d.getDay()];
+        const day = d.getDate().toString().padStart(2, '0');
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        return `<span class="session-date-day">${dayName}</span><span class="session-date-dm">${day}/${month}</span>`;
     }
 
     // Parse an toàn chuỗi "yyyy-mm-dd" (hoặc "yyyy-mm-ddTHH:mm:ss...") thành

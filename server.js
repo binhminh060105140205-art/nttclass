@@ -509,11 +509,12 @@ app.post('/api/students', requireRole('teacher', 'assistant'), requireTeacherCon
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
     }
 
-    // Học phí/buổi bắt buộc phải là số nguyên dương (> 0) — validate lại ở
-    // backend để chặn cả khi gọi thẳng API (không đi qua form ở frontend).
+    // Học phí/buổi bắt buộc phải là số nguyên KHÔNG ÂM (>= 0, cho phép 0) —
+    // validate lại ở backend để chặn cả khi gọi thẳng API (không đi qua form
+    // ở frontend). Chỉ chặn giá trị âm hoặc không hợp lệ.
     const parsedBasePrice = parseInt(basePrice);
-    if (isNaN(parsedBasePrice) || parsedBasePrice <= 0) {
-        return res.status(400).json({ error: 'Học phí/buổi phải là số lớn hơn 0.' });
+    if (isNaN(parsedBasePrice) || parsedBasePrice < 0) {
+        return res.status(400).json({ error: 'Học phí/buổi không được là số âm.' });
     }
 
     try {
@@ -549,8 +550,8 @@ app.put('/api/students/:id', requireRole('teacher', 'assistant'), requireTeacher
     }
 
     const parsedBasePrice = parseInt(basePrice);
-    if (isNaN(parsedBasePrice) || parsedBasePrice <= 0) {
-        return res.status(400).json({ error: 'Học phí/buổi phải là số lớn hơn 0.' });
+    if (isNaN(parsedBasePrice) || parsedBasePrice < 0) {
+        return res.status(400).json({ error: 'Học phí/buổi không được là số âm.' });
     }
 
     try {

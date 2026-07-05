@@ -703,6 +703,19 @@ body {
     vertical-align: middle;
 }
 
+.session-date-day {
+    display: block;
+    font-weight: 700;
+}
+
+.session-date-dm {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
 /* Homework status badge (chỉ hiển thị, không thể bấm sửa ở bảng Nhật ký) */
 .homework-badge {
     display: inline-block;
