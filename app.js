@@ -1871,7 +1871,7 @@ class PinkyClassApp {
         const sheetHTML = `
 <div class="invoice-sheet" id="invoiceExportSheet">
     <style>
-        #invoiceExportSheet, #invoiceExportSheet * { box-sizing: border-box; }
+        #invoiceExportSheet, #invoiceExportSheet * { box-sizing: border-box; font-family: inherit; }
         #invoiceExportSheet {
             font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
             background:#fdf2f8;
