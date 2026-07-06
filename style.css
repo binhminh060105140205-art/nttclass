@@ -1564,17 +1564,17 @@ textarea.form-control {
 
 .week-calendar-header-row {
     display: grid;
-    /* Cột cuối 8px KHÔNG chứa nội dung — chỉ để "chừa chỗ" đúng bằng độ rộng
-       thanh cuộn dọc (::-webkit-scrollbar width: 8px, xem phần "Custom
-       Scrollbar" phía trên). .week-calendar-body bên dưới nằm TRONG khung có
-       overflow-y: auto nên 7 cột ngày của nó bị hẹp lại một chút do thanh
-       cuộn chiếm chỗ; còn header-row nằm NGOÀI khung cuộn nên không bị hẹp
-       theo — nếu không chừa cột 8px này, các cột ngày ở header sẽ rộng hơn
-       cột thật bên dưới, khiến toàn bộ header bị lệch dần sang phải (lệch
-       nhiều nhất ở cột cuối cùng, đúng như lỗi đã gặp). */
-    grid-template-columns: 56px repeat(7, 1fr) 8px;
+    grid-template-columns: 56px repeat(7, 1fr);
     border-bottom: 1px solid var(--border-color);
     background: #f8fafc;
+    /* Header nay nằm BÊN TRONG .week-calendar-scroll (cùng vùng cuộn với
+       .week-calendar-body) nên chắc chắn có ĐÚNG cùng chiều rộng thật với các
+       cột ngày bên dưới — không còn 2 vùng chiều rộng tách biệt nên không thể
+       lệch cột được nữa. Dùng sticky để header vẫn luôn dính ở trên khi cuộn
+       dọc, giữ nguyên trải nghiệm như trước. */
+    position: sticky;
+    top: 0;
+    z-index: 5;
 }
 
 .week-day-header {
@@ -1610,7 +1610,7 @@ textarea.form-control {
 .week-calendar-scroll {
     max-height: 640px;
     overflow-y: auto;
-    scrollbar-width: thin; /* Firefox: bỏ qua ::-webkit-scrollbar, ép về thanh cuộn mảnh cho khớp cột 8px chừa sẵn ở header phía trên */
+    scrollbar-width: thin;
 }
 
 .week-calendar-body {
