@@ -168,6 +168,8 @@
                             </select>
                         </div>
                         <div class="role-restricted admin-tutor" style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary btn-sm" id="btnExportLogImage">Xuất ảnh
+                            </button>
                             <button class="btn btn-secondary btn-sm" id="btnExportLog">Xuất file Excel
                             </button>
                         </div>
@@ -274,7 +276,14 @@
                     <!-- Unit price -->
                     <div class="form-group">
                         <label for="sessionPrice" id="sessionPriceLabel">Đơn giá buổi học (VNĐ/học sinh)</label>
-                        <input type="number" id="sessionPrice" class="form-control" step="1000" value="250000" placeholder="Ví dụ: 250000">
+                        <select id="sessionPrice" class="form-control">
+                            <option value="100000">100.000 đ</option>
+                            <option value="120000">120.000 đ</option>
+                            <option value="150000">150.000 đ</option>
+                            <option value="180000">180.000 đ</option>
+                            <option value="200000">200.000 đ</option>
+                            <option value="250000" selected>250.000 đ</option>
+                        </select>
                     </div>
 
                     <div class="form-group">
@@ -771,7 +780,14 @@
 
                         <div class="form-group">
                             <label for="editSessionPrice" id="editSessionPriceLabel">Đơn giá buổi học (VNĐ/học sinh)</label>
-                            <input type="number" id="editSessionPrice" class="form-control" step="1000">
+                            <select id="editSessionPrice" class="form-control">
+                                <option value="100000">100.000 đ</option>
+                                <option value="120000">120.000 đ</option>
+                                <option value="150000">150.000 đ</option>
+                                <option value="180000">180.000 đ</option>
+                                <option value="200000">200.000 đ</option>
+                                <option value="250000">250.000 đ</option>
+                            </select>
                         </div>
 
                         <div class="form-group">

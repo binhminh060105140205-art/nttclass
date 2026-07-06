@@ -440,6 +440,7 @@ class PinkyClassApp {
         // Form Reset Button
         document.getElementById('resetLoggerFormBtn').addEventListener('click', () => {
             document.getElementById('sessionLoggerForm').reset();
+            delete document.getElementById('sessionPrice').dataset.userEdited;
             const today = this.toISODateOnly(new Date());
             document.getElementById('sessionDate').value = today;
             this.renderStudentSelectionGrid('studentsCheckboxGrid');
@@ -448,6 +449,9 @@ class PinkyClassApp {
         // Export Log Action
         document.getElementById('btnExportLog').addEventListener('click', () => {
             this.exportStudentLogToCSV();
+        });
+        document.getElementById('btnExportLogImage').addEventListener('click', () => {
+            this.exportStudentLogToImage();
         });
 
         // Form Submit: Add Student
@@ -492,8 +496,14 @@ class PinkyClassApp {
         document.getElementById('editSessionType').addEventListener('change', () => {
             this.applySessionTypeRules('editSession');
         });
-        document.getElementById('sessionPrice').addEventListener('input', () => this.updateSessionPricing('session'));
-        document.getElementById('editSessionPrice').addEventListener('input', () => this.updateSessionPricing('editSession'));
+        document.getElementById('sessionPrice').addEventListener('change', (e) => {
+            e.target.dataset.userEdited = 'true';
+            this.updateSessionPricing('session');
+        });
+        document.getElementById('editSessionPrice').addEventListener('change', (e) => {
+            e.target.dataset.userEdited = 'true';
+            this.updateSessionPricing('editSession');
+        });
 
         // Ô tìm kiếm/lọc học sinh trong lưới chọn học sinh tham gia (gõ tên
         // hoặc lớp, VD "Lớp 6", "6", "Khánh Hà"... đều lọc ra đúng học sinh).
@@ -731,6 +741,11 @@ class PinkyClassApp {
                         if (other !== checkbox) other.checked = false;
                     });
                 }
+                // Học sinh vừa đổi -> cho phép gợi ý lại học phí cơ bản của
+                // học sinh MỚI (xóa cờ "người dùng đã tự sửa" của lần chọn trước).
+                const priceInputId = prefix === 'session' ? 'sessionPrice' : 'editSessionPrice';
+                const priceEl = document.getElementById(priceInputId);
+                if (priceEl) delete priceEl.dataset.userEdited;
                 this.updateSessionPricing(prefix);
             });
 
@@ -782,6 +797,11 @@ class PinkyClassApp {
             checked.forEach((cb, idx) => { if (idx > 0) cb.checked = false; });
         }
 
+        // Đổi loại buổi học -> cho phép gợi ý lại học phí (xóa cờ "đã tự sửa").
+        const priceInputId = prefix === 'session' ? 'sessionPrice' : 'editSessionPrice';
+        const priceEl = document.getElementById(priceInputId);
+        if (priceEl) delete priceEl.dataset.userEdited;
+
         this.updateSessionPricing(prefix);
     }
 
@@ -811,20 +831,38 @@ class PinkyClassApp {
         }).length;
         const unitPrice = parseInt(priceEl.value) || 0;
 
-        // Học riêng, tự động điền học phí cơ bản của học sinh khi chỉ chọn 1 em
-        // (không ghi đè nếu người dùng đã tự sửa số vượt quá học phí cơ bản, nhưng
-        // để đơn giản và tránh nhầm lẫn, ta luôn gợi ý bằng học phí cơ bản khi vừa chọn).
-        if (!isGroup && checkedCount === 1) {
+        // Học riêng, tự động gợi ý học phí cơ bản của học sinh khi chỉ chọn 1 em
+        // — nhưng CHỈ khi giáo viên chưa tự tay đổi lựa chọn học phí (đánh dấu
+        // bằng priceEl.dataset.userEdited, được set ở sự kiện 'change' của ô
+        // học phí). Trước đây cờ này không bao giờ được set nên điều kiện luôn
+        // đúng, khiến ô học phí bị ghi đè liên tục và không thể sửa được.
+        if (!isGroup && checkedCount === 1 && !priceEl.dataset.userEdited) {
             const cb = document.querySelector(`input[name="${gridName}"]:checked`);
             const student = this.students.find(s => s.id === cb.value);
-            if (student && (!priceEl.dataset.userEdited || priceEl.value == priceEl.dataset.lastAuto)) {
-                priceEl.value = student.basePrice;
-                priceEl.dataset.lastAuto = student.basePrice;
+            if (student) {
+                this.setPriceSelectValue(priceEl, student.basePrice);
             }
         }
 
         const total = isGroup ? unitPrice * Math.max(payingCount, 0) : (parseInt(priceEl.value) || 0);
         totalEl.innerText = this.formatVND(total);
+    }
+
+    // Gán giá trị cho <select> học phí (100k/120k/150k/180k/200k/250k). Nếu học
+    // phí cơ bản của học sinh không trùng khớp lựa chọn có sẵn nào (VD giáo
+    // viên từng đặt 1 mức giá lẻ khác cho học sinh đó), tự thêm tạm 1 option
+    // đúng bằng mức giá đó để không bị mất/hiển thị sai giá.
+    setPriceSelectValue(selectEl, value) {
+        if (!selectEl) return;
+        const val = String(parseInt(value) || 0);
+        let opt = Array.from(selectEl.options).find(o => o.value === val);
+        if (!opt) {
+            opt = document.createElement('option');
+            opt.value = val;
+            opt.textContent = this.formatVND(Number(val));
+            selectEl.appendChild(opt);
+        }
+        selectEl.value = val;
     }
 
     switchView(viewId) {
@@ -1138,8 +1176,7 @@ class PinkyClassApp {
 
             // NỘI DUNG BUỔI HỌC: hiển thị text thuần, không bullet point.
             const contentText = (sess.content || '').trim();
-            const sessionNamePrefix = sess.sessionName ? `<div class="session-name-tag">${this.escapeHtml(sess.sessionName)}</div>` : '';
-            const contentHTML = `${sessionNamePrefix}<div class="session-content-text">${contentText ? this.nl2brText(contentText) : '<span style="color:var(--text-muted);">Chưa có nội dung.</span>'}</div>`;
+            const contentHTML = `<div class="session-content-text">${contentText ? this.nl2brText(contentText) : '<span style="color:var(--text-muted);">Chưa có nội dung.</span>'}</div>`;
 
             // NHẬN XÉT CỦA GIÁO VIÊN: gộp thành 1 trường duy nhất, chỉ lấy
             // nhận xét RIÊNG của học sinh này từ chấm công (individualComment).
@@ -2268,6 +2305,7 @@ class PinkyClassApp {
 
         // Reset form
         document.getElementById('sessionLoggerForm').reset();
+        delete document.getElementById('sessionPrice').dataset.userEdited;
         const today = this.toISODateOnly(new Date());
         document.getElementById('sessionDate').value = today;
         this.renderStudentSelectionGrid('studentsCheckboxGrid');
@@ -2291,7 +2329,9 @@ class PinkyClassApp {
         // với học chung cần chia lại theo SỐ HỌC SINH CÓ ĐÓNG HỌC PHÍ để ra đúng
         // đơn giá/học sinh hiển thị trong ô nhập liệu.
         const payingCount = Math.max(this.getPayingStudentIds(sess).length, 1);
-        document.getElementById('editSessionPrice').value = sess.type === 'chung' ? Math.round(sess.price / payingCount) : sess.price;
+        const editPriceEl = document.getElementById('editSessionPrice');
+        this.setPriceSelectValue(editPriceEl, sess.type === 'chung' ? Math.round(sess.price / payingCount) : sess.price);
+        editPriceEl.dataset.userEdited = 'true'; // giữ đúng giá đã lưu, không để bị tự động ghi đè
         document.getElementById('editSessionContent').value = sess.content || '';
 
         // Dựng lại danh sách checkbox học sinh, đánh dấu các em đang tham gia
@@ -2595,6 +2635,64 @@ class PinkyClassApp {
             await this.saveData();
         }
         this.showToast(paid ? "Đã đánh dấu học phí: Đã thanh toán" : "Đã đánh dấu học phí: Chưa thanh toán", "success");
+    }
+
+    // Tự động tải thư viện html2canvas từ CDN (chỉ tải 1 lần) — dùng để chụp
+    // khung Nhật ký học tập (banner tên học sinh + bảng) ra ảnh PNG.
+    async ensureHtml2Canvas() {
+        if (window.html2canvas) return window.html2canvas;
+        if (!this._html2canvasLoadingPromise) {
+            this._html2canvasLoadingPromise = new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                script.onload = () => resolve(window.html2canvas);
+                script.onerror = () => reject(new Error('Không tải được thư viện xuất ảnh (kiểm tra kết nối mạng).'));
+                document.head.appendChild(script);
+            });
+        }
+        return this._html2canvasLoadingPromise;
+    }
+
+    // Chụp khung Nhật ký học tập (#logExportCapture) ra 1 file ảnh PNG — ẩn tạm
+    // cột "Thao tác" trong lúc chụp (class .log-export-hide, xem style.css)
+    // để ảnh gửi phụ huynh không có nút bấm thao tác trên web.
+    async exportStudentLogToImage() {
+        const studentId = this.currentStudentId;
+        const studentName = this.getStudentName(studentId);
+
+        const studentSessions = this.filterByMonth(this.sessions)
+            .filter(sess => sess.studentIds.includes(studentId));
+
+        if (studentSessions.length === 0) {
+            this.showToast("Không có dữ liệu nhật ký để xuất!", "error");
+            return;
+        }
+
+        const captureEl = document.getElementById('logExportCapture');
+        this.setBtnLoading('btnExportLogImage', true, 'Đang tạo ảnh...');
+        captureEl.classList.add('is-exporting');
+        try {
+            const html2canvas = await this.ensureHtml2Canvas();
+            const canvas = await html2canvas(captureEl, {
+                scale: 2,
+                backgroundColor: '#ffffff',
+                useCORS: true
+            });
+
+            const todayStr = this.toISODateOnly(new Date());
+            const link = document.createElement('a');
+            link.download = `NhatKyHocTap_${studentName.replace(/\s+/g, '')}_${todayStr}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+
+            this.showToast("Đã xuất ảnh nhật ký học tập thành công!", "success");
+        } catch (err) {
+            console.error('Lỗi xuất ảnh:', err);
+            this.showToast(err.message || "Xuất ảnh thất bại, vui lòng thử lại.", "error");
+        } finally {
+            captureEl.classList.remove('is-exporting');
+            this.setBtnLoading('btnExportLogImage', false);
+        }
     }
 
     // Export log to Excel

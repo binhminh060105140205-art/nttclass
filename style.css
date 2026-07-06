@@ -37,6 +37,7 @@ html {
     --primary-light: #dbeafe;
     --primary-soft: #ebf4ff;
     --accent: #0ea5e9;
+    --accent-rgb: 14, 165, 233;
     --accent-strong: #0284c7;
     --text-main: #0f172a;
     --text-muted: #475569;
@@ -101,6 +102,7 @@ html {
     --primary-light: #ede9fe;
     --primary-soft: #f5f3ff;
     --accent: #a855f7;
+    --accent-rgb: 168, 85, 247;
     --accent-strong: #9333ea;
     --border-color: rgba(168, 85, 247, 0.24);
     --bg-grad-1: #f3ecff;
@@ -114,6 +116,13 @@ html {
     --event-chung-b: #8b5cf6;
     --event-border: rgba(76, 29, 149, 0.3);
     --event-border-strong: rgba(76, 29, 149, 0.35);
+
+    --badge-private-bg: #ede9fe;
+    --badge-private-text: #5b21b6;
+    --badge-private-border: #c4b5fd;
+    --badge-group-bg: #f5f3ff;
+    --badge-group-text: #7e22ce;
+    --badge-group-border: #d8b4fe;
 }
 
 [data-theme="pink"] {
@@ -122,6 +131,7 @@ html {
     --primary-light: #fce7f3;
     --primary-soft: #fdf2f8;
     --accent: #ec4899;
+    --accent-rgb: 236, 72, 153;
     --accent-strong: #be185d;
     --border-color: rgba(236, 72, 153, 0.24);
     --bg-grad-1: #fff0f6;
@@ -135,6 +145,13 @@ html {
     --event-chung-b: #ec4899;
     --event-border: rgba(131, 24, 67, 0.3);
     --event-border-strong: rgba(131, 24, 67, 0.35);
+
+    --badge-private-bg: #fce7f3;
+    --badge-private-text: #9d174d;
+    --badge-private-border: #f9a8d4;
+    --badge-group-bg: #fdf2f8;
+    --badge-group-text: #a21caf;
+    --badge-group-border: #f0abfc;
 }
 
 /* ==========================================================================
@@ -180,7 +197,7 @@ img, svg, video {
     justify-content: center;
     align-items: center;
     padding: 24px;
-    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.1), rgba(96, 165, 250, 0.1));
+    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.1), rgba(var(--accent-rgb), 0.1));
 }
 
 .login-card {
@@ -345,7 +362,7 @@ img, svg, video {
 .logo-text {
     font-weight: 700;
     font-size: 1.375rem;
-    background: linear-gradient(90deg, #1d4ed8, var(--accent));
+    background: linear-gradient(90deg, var(--primary), var(--accent));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     letter-spacing: -0.5px;
@@ -358,7 +375,7 @@ img, svg, video {
     gap: 12px;
     padding: 12px 14px;
     margin: 4px 0 22px;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(224, 239, 255, 0.7));
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), var(--primary-soft));
     border: 1px solid var(--border-color);
     border-radius: 16px;
     box-shadow: var(--shadow-sm);
@@ -409,7 +426,7 @@ img, svg, video {
 
 /* Role Switcher in Sidebar */
 .role-box {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 238, 242, 0.8));
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), var(--primary-soft));
     border: 1px solid var(--border-color);
     border-radius: 14px;
     padding: 16px;
@@ -435,7 +452,7 @@ img, svg, video {
     width: 100%;
     padding: 10px 14px;
     border-radius: 12px;
-    border: 1px solid rgba(56, 189, 248, 0.25);
+    border: 1px solid rgba(var(--accent-rgb), 0.25);
     background: white;
     font-weight: 600;
     color: var(--accent-strong);
@@ -450,7 +467,7 @@ img, svg, video {
 
 .role-selector:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
 }
 
 .role-selector-wrapper::after {
@@ -500,7 +517,7 @@ img, svg, video {
 }
 
 .menu-item:hover {
-    background: rgba(59, 130, 246, 0.1);
+    background: rgba(var(--primary-rgb), 0.1);
     color: var(--accent-strong);
 }
 
