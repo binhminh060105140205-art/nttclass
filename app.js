@@ -478,6 +478,32 @@ class PinkyClassApp {
             this.exportInvoice();
         });
 
+        // Tải ảnh QR thanh toán lên phiếu học phí (tuỳ chọn) — đọc file thành
+        // base64 để nhúng thẳng vào ảnh xuất ra (không cần lưu file lên server).
+        document.getElementById('invoiceQrInput').addEventListener('change', (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                this.showToast('Vui lòng chọn 1 file ảnh (PNG/JPG) cho mã QR!', 'error');
+                e.target.value = '';
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                this.showToast('Ảnh QR quá lớn (tối đa 5MB)!', 'error');
+                e.target.value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => this.setInvoiceQrImage(reader.result);
+            reader.onerror = () => this.showToast('Không đọc được ảnh QR, vui lòng thử lại.', 'error');
+            reader.readAsDataURL(file);
+        });
+
+        // Xoá ảnh QR đang chọn (quay lại trạng thái chưa có QR)
+        document.getElementById('btnRemoveQr').addEventListener('click', () => {
+            this.setInvoiceQrImage(null);
+        });
+
         // Khi giáo viên tự sửa "Từ ngày/Đến ngày" trong modal xuất phiếu, tính
         // lại NGAY số buổi/học phí/giờ học tương ứng — trước đây 2 ô này chỉ
         // để hiển thị, sửa xong không ảnh hưởng gì tới số liệu thực tế.
@@ -1660,8 +1686,46 @@ class PinkyClassApp {
         document.getElementById('invoiceRoadmap').value = '';
         document.getElementById('invoiceSchedule').value = '';
 
+        // Ảnh QR thanh toán: tự động điền lại ảnh QR đã dùng lần gần nhất (lưu
+        // trong localStorage) để giáo viên KHÔNG phải tải lên lại mỗi lần xuất
+        // phiếu — vẫn có thể đổi/xoá ảnh khác ngay trong form nếu cần.
+        this.setInvoiceQrImage(localStorage.getItem('nttclass_invoice_qr') || null, { persist: false });
+
         this.recomputeInvoiceTotals();
         this.openModal('invoiceModal');
+    }
+
+    // Gán/xoá ảnh QR thanh toán đang dùng cho phiếu học phí + cập nhật khung
+    // xem trước trong form. Mặc định lưu lại vào localStorage (persist=true)
+    // để lần xuất phiếu tiếp theo tự điền sẵn, trừ khi gọi lúc mở modal (chỉ
+    // đọc lại giá trị đã lưu, không ghi đè).
+    setInvoiceQrImage(dataUrl, { persist = true } = {}) {
+        this._invoiceQrDataUrl = dataUrl || null;
+
+        const wrap = document.getElementById('qrUploadPreviewWrap');
+        const preview = document.getElementById('qrUploadPreview');
+        const label = document.getElementById('qrUploadLabel');
+        const input = document.getElementById('invoiceQrInput');
+
+        if (this._invoiceQrDataUrl) {
+            preview.src = this._invoiceQrDataUrl;
+            wrap.style.display = '';
+            label.style.display = 'none';
+        } else {
+            preview.src = '';
+            wrap.style.display = 'none';
+            label.style.display = '';
+            if (input) input.value = '';
+        }
+
+        if (persist) {
+            if (this._invoiceQrDataUrl) {
+                try { localStorage.setItem('nttclass_invoice_qr', this._invoiceQrDataUrl); }
+                catch (err) { /* ảnh quá lớn cho localStorage, bỏ qua lưu tự động */ }
+            } else {
+                localStorage.removeItem('nttclass_invoice_qr');
+            }
+        }
     }
 
     // Lọc this._invoiceAllSessions theo đúng khoảng "Từ ngày - Đến ngày" hiện
@@ -1704,9 +1768,13 @@ class PinkyClassApp {
         return sessions;
     }
 
-    // Render + mở cửa sổ in cho phiếu học phí, dựa trên dữ liệu đã điền sẵn +
-    // phần nhận xét giáo viên vừa nhập thêm trong form.
-    exportInvoice() {
+    // Render phiếu học phí ra 1 file ẢNH (PNG) chất lượng cao, dựa trên dữ
+    // liệu đã điền sẵn + phần nhận xét giáo viên vừa nhập thêm trong form.
+    // Trước đây mở cửa sổ mới rồi gọi window.print() (xuất PDF qua hộp thoại
+    // in của trình duyệt); nay dựng phiếu trong 1 khung ẩn ngay trên trang,
+    // đợi font/ảnh QR tải xong rồi dùng html2canvas chụp lại thành ảnh và tải
+    // xuống trực tiếp — không cần popup, không phụ thuộc máy in ảo.
+    async exportInvoice() {
         const studentId = document.getElementById('invoiceStudentId').value;
         const st = this.students.find(s => s.id === studentId);
         if (!st) return;
@@ -1790,121 +1858,74 @@ class PinkyClassApp {
         const scheduleHTML = checklistHTML(schedule);
         const roadmapHTML = roadmap ? `<div class="plain-paragraph">${nl2br(roadmap)}</div>` : '';
 
-        const html = `
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${esc(title)} - ${esc(st.name)}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<style>
-    * { box-sizing: border-box; }
-    html, body { overflow-x: hidden; }
-    body {
-        font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
-        background:#fdf2f8;
-        color:#3f0d24;
-        margin:0;
-        padding:24px;
-        -webkit-font-smoothing:antialiased;
-        position: relative;
-        min-height: 100vh;
-    }
-    /* Khối trang trí hình tròn mờ phía sau phiếu, giống mẫu */
-    body::before, body::after {
-        content: "";
-        position: fixed;
-        width: 280px;
-        height: 280px;
-        border-radius: 50%;
-        background: radial-gradient(circle, rgba(236,72,153,0.16) 0%, rgba(236,72,153,0) 70%);
-        z-index: 0;
-        pointer-events: none;
-    }
-    body::before { top: -80px; right: -80px; }
-    body::after { bottom: -80px; left: -80px; }
-    .sheet {
-        position: relative;
-        z-index: 1;
-        max-width: 800px;
-        margin: 0 auto;
-        background:#fff;
-        border: 2px solid #f3d2e4;
-        border-radius: 24px;
-        padding: 32px 36px;
-        overflow: hidden;
-    }
-    .sheet::before, .sheet::after {
-        content: "";
-        position: absolute;
-        border-radius: 50%;
-        background: rgba(236,72,153,0.07);
-        z-index: -1;
-    }
-    .sheet::before { width: 220px; height: 220px; top: -110px; right: -60px; }
-    .sheet::after { width: 180px; height: 180px; bottom: -90px; left: -50px; }
-    .top-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; row-gap: 8px; }
-    .teacher-name { font-size:13.5px; font-weight:800; color:#8a1c53; }
-    .teacher-phone { font-size:13px; color:#3f0d24; font-weight:800; }
-    h1 { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size: 31px; font-weight:800; text-align:center; color:#8a1c53; margin: 22px 0 24px; letter-spacing: 0.3px; }
-    .row { display:flex; gap:18px; margin-bottom: 18px; align-items: stretch; }
-    .row > .card { flex: 1; margin-bottom: 0; }
-    .card { border:1.5px solid #f3d2e4; border-radius:18px; padding:20px 22px; margin-bottom: 18px; background:#fff; }
-    .card .label { font-size:11.5px; color:#9d6b83; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; }
-    .card .value { font-family:'Nunito',sans-serif; font-size:16.5px; font-weight:800; margin-top:2px; color:#3f0d24; }
-    .student-meta { font-size:12.5px; color:#be185d; font-weight:700; margin:-2px 0 12px; }
-    .info-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding: 9px 0; border-bottom: 1px dashed #f6e2ec; }
-    .info-row:first-of-type { padding-top: 2px; }
-    .info-row:last-of-type { border-bottom: none; }
-    .info-row .label { margin-top:0; white-space:nowrap; }
-    .info-row .value { margin-top:0; text-align:right; font-weight:800; }
-    .divider-dashed { border-top: 1px dashed #f3d2e4; margin: 14px 0 12px; }
-    .total-card { text-align:center; background:#fdf0f7; display:flex; flex-direction:column; justify-content:center; border-color:#f3d2e4; }
-    .total-card .label { font-weight:800; font-size:13px; }
-    .total-card .value { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size:34px; font-weight:700; color:#8a1c53; margin-top:8px; }
-    .chip { display:inline-block; background:#fce7f3; color:#be185d; font-weight:800; font-size:13px; padding:6px 14px; border-radius:20px; margin:3px 5px 0 0; }
-    .section-title { display:flex; align-items:center; gap:8px; font-family:'Nunito',sans-serif; font-weight:800; color:#8a1c53; text-transform:uppercase; margin: 0 0 14px; font-size:14.5px; letter-spacing:0.3px; }
-    .section-title .icon { font-size:17px; }
-    .quote-item { border-left: 3px solid #be185d; padding: 2px 0 2px 14px; margin-bottom: 14px; font-size: 13.5px; line-height:1.65; }
-    .quote-item:last-child { margin-bottom: 0; }
-    .quote-item strong { color:#8a1c53; }
-    .plain-paragraph { font-size: 13.5px; line-height: 1.7; }
-    .checklist-item { display:flex; align-items:flex-start; gap:9px; font-size:13.5px; line-height:1.6; margin-bottom:9px; }
-    .checklist-item:last-child { margin-bottom: 0; }
-    .check-mark { color:#be185d; font-weight:800; flex-shrink:0; }
-    .footer-note { margin-top:6px; font-size:12.5px; color:#9d6b83; background:#fdf2f8; border:1px solid #f3d2e4; border-radius:14px; padding:14px 20px; text-align:center; font-weight:600; }
-    @media print {
-        body { padding: 0; background:#fff; }
-        body::before, body::after { display:none; }
-        .sheet { border-radius: 0; border: none; }
-    }
-    /* Scale gọn cho điện thoại / màn hình thu nhỏ */
-    @media (max-width: 640px) {
-        body { padding: 12px; }
-        .sheet { padding: 20px 16px; border-radius: 18px; }
-        .sheet::before { width: 140px; height: 140px; top: -70px; right: -40px; }
-        .sheet::after { width: 120px; height: 120px; bottom: -60px; left: -30px; }
-        body::before, body::after { width: 160px; height: 160px; }
-        h1 { font-size: 22px; margin: 16px 0 18px; }
-        .teacher-name, .teacher-phone { font-size: 11.5px; }
-        .row { flex-direction: column; gap: 14px; }
-        .card { padding: 16px 16px; margin-bottom: 14px; border-radius: 14px; }
-        .card .value { font-size: 15px; }
-        .total-card .value { font-size: 27px; }
-        .section-title { font-size: 13px; }
-        .quote-item, .plain-paragraph, .checklist-item { font-size: 13px; }
-        .footer-note { padding: 12px 14px; }
-    }
-    @media (max-width: 380px) {
-        h1 { font-size: 19px; }
-        .total-card .value { font-size: 23px; }
-        .chip { font-size: 12px; padding: 5px 10px; }
-    }
-</style>
-</head>
-<body>
+        // Ảnh QR thanh toán (tuỳ chọn) — chèn ngay dưới khối "Tổng học phí",
+        // căn giữa, không icon, giữ nguyên tỉ lệ ảnh gốc (object-fit:contain).
+        const qrHTML = this._invoiceQrDataUrl
+            ? `<div class="qr-block"><img src="${this._invoiceQrDataUrl}" alt="QR thanh toán"></div>`
+            : '';
+
+        // Toàn bộ phiếu được dựng trong 1 khung ẩn (off-screen) ngay trên
+        // trang hiện tại — dùng CHUNG font đã tải sẵn của trang thay vì phải
+        // tải lại font trong 1 cửa sổ/tab mới, tránh tình trạng chữ có dấu bị
+        // vỡ/font dự phòng do chưa kịp tải font khi chụp ảnh.
+        const sheetHTML = `
+<div class="invoice-sheet" id="invoiceExportSheet">
+    <style>
+        #invoiceExportSheet, #invoiceExportSheet * { box-sizing: border-box; }
+        #invoiceExportSheet {
+            font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
+            background:#fdf2f8;
+            color:#3f0d24;
+            width: 800px;
+            padding: 26px 30px;
+            -webkit-font-smoothing:antialiased;
+            position: relative;
+        }
+        #invoiceExportSheet .decor { position:absolute; border-radius:50%; pointer-events:none; z-index:0; }
+        #invoiceExportSheet .decor-1 { width:220px; height:220px; top:-80px; right:-80px; background:radial-gradient(circle, rgba(236,72,153,0.16) 0%, rgba(236,72,153,0) 70%); }
+        #invoiceExportSheet .decor-2 { width:200px; height:200px; bottom:-80px; left:-80px; background:radial-gradient(circle, rgba(236,72,153,0.16) 0%, rgba(236,72,153,0) 70%); }
+        #invoiceExportSheet .sheet {
+            position: relative;
+            z-index: 1;
+            background:#fff;
+            border: 2px solid #f3d2e4;
+            border-radius: 20px;
+            padding: 24px 28px;
+        }
+        #invoiceExportSheet .top-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; row-gap: 6px; }
+        #invoiceExportSheet .teacher-name { font-size:13.5px; font-weight:800; color:#8a1c53; }
+        #invoiceExportSheet .teacher-phone { font-size:13px; color:#3f0d24; font-weight:800; }
+        #invoiceExportSheet h1 { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size: 28px; font-weight:800; text-align:center; color:#8a1c53; margin: 14px 0 16px; letter-spacing: 0.3px; }
+        #invoiceExportSheet .row { display:flex; gap:14px; margin-bottom: 12px; align-items: stretch; }
+        #invoiceExportSheet .row > .card { flex: 1; margin-bottom: 0; }
+        #invoiceExportSheet .card { border:1.5px solid #f3d2e4; border-radius:16px; padding:16px 18px; margin-bottom: 12px; background:#fff; }
+        #invoiceExportSheet .card .label { font-size:11px; color:#9d6b83; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; }
+        #invoiceExportSheet .card .value { font-family:'Nunito',sans-serif; font-size:15.5px; font-weight:800; margin-top:2px; color:#3f0d24; }
+        #invoiceExportSheet .student-meta { font-size:13px; color:#3f0d24; font-weight:400; margin: 0 0 8px; }
+        #invoiceExportSheet .info-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding: 6px 0; border-bottom: 1px dashed #f6e2ec; }
+        #invoiceExportSheet .info-row:first-of-type { padding-top: 0; }
+        #invoiceExportSheet .info-row:last-of-type { border-bottom: none; }
+        #invoiceExportSheet .info-row .label { margin-top:0; white-space:nowrap; }
+        #invoiceExportSheet .info-row .value { margin-top:0; text-align:right; font-weight:800; }
+        #invoiceExportSheet .divider-dashed { border-top: 1px dashed #f3d2e4; margin: 10px 0 8px; }
+        #invoiceExportSheet .total-card { text-align:center; background:#fdf0f7; display:flex; flex-direction:column; justify-content:center; border-color:#f3d2e4; }
+        #invoiceExportSheet .total-card .label { font-weight:800; font-size:13px; }
+        #invoiceExportSheet .total-card .value { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size:38px; font-weight:800; color:#8a1c53; margin-top:6px; }
+        #invoiceExportSheet .qr-block { display:flex; justify-content:center; margin-top: 10px; }
+        #invoiceExportSheet .qr-block img { width: 132px; height: 132px; object-fit: contain; border-radius: 10px; border: 1px solid #f3d2e4; background:#fff; padding: 6px; }
+        #invoiceExportSheet .chip { display:inline-block; background:#fce7f3; color:#be185d; font-weight:800; font-size:12.5px; padding:5px 12px; border-radius:20px; margin:3px 5px 0 0; }
+        #invoiceExportSheet .section-title { font-family:'Nunito',sans-serif; font-weight:800; color:#8a1c53; text-transform:uppercase; margin: 0 0 10px; font-size:13.5px; letter-spacing:0.3px; }
+        #invoiceExportSheet .quote-item { border-left: 3px solid #be185d; padding: 1px 0 1px 12px; margin-bottom: 10px; font-size: 13px; line-height:1.55; }
+        #invoiceExportSheet .quote-item:last-child { margin-bottom: 0; }
+        #invoiceExportSheet .quote-item strong { color:#8a1c53; }
+        #invoiceExportSheet .plain-paragraph { font-size: 13px; line-height: 1.55; }
+        #invoiceExportSheet .checklist-item { display:flex; align-items:flex-start; gap:8px; font-size:13px; line-height:1.5; margin-bottom:7px; }
+        #invoiceExportSheet .checklist-item:last-child { margin-bottom: 0; }
+        #invoiceExportSheet .check-mark { color:#be185d; font-weight:800; flex-shrink:0; }
+        #invoiceExportSheet .footer-note { margin-top:2px; font-size:12px; color:#9d6b83; background:#fdf2f8; border:1px solid #f3d2e4; border-radius:12px; padding:11px 16px; text-align:center; font-weight:600; }
+    </style>
+    <div class="decor decor-1"></div>
+    <div class="decor decor-2"></div>
     <div class="sheet">
         <div class="top-bar">
             <span class="teacher-name">GV. ${esc(teacherName)}</span>
@@ -1914,56 +1935,95 @@ class PinkyClassApp {
 
         <div class="row">
             <div class="card">
-                <div class="section-title"><span class="icon">🎓</span>Thông tin học sinh</div>
-                <div class="student-meta">${esc(st.name)} — ${esc(st.class)}</div>
-                <div class="info-row"><span class="label">Họ và tên</span><span class="value">${esc(st.name)}</span></div>
+                <div class="section-title">Thông tin học sinh</div>
+                <div class="student-meta">${esc(st.name)} – ${esc(st.class)}</div>
                 <div class="info-row"><span class="label">Học phí/buổi</span><span class="value">${privateCount > 0 ? this.formatVND(privateUnit) : this.formatVND(groupUnit)}</span></div>
                 <div class="info-row"><span class="label">Số buổi học</span><span class="value">${sessions.length} buổi</span></div>
                 <div class="info-row"><span class="label">Số giờ học</span><span class="value">${totalHours.toFixed(1)} giờ</span></div>
                 <div class="divider-dashed"></div>
-                <div class="label" style="margin-bottom:8px;">Ngày học</div>
+                <div class="label" style="margin-bottom:6px;">Ngày học</div>
                 <div>${dateChips || '<span style="font-size:13px;color:#c48ba6;">Chưa có buổi học trong kỳ</span>'}</div>
             </div>
             <div class="card total-card">
                 <div class="label">Tổng học phí</div>
                 <div class="value">${this.formatVND(totalFee)}</div>
+                ${qrHTML}
             </div>
         </div>
 
-        ${quoteItemsHTML ? `<div class="card"><div class="section-title"><span class="icon">📝</span>Nhận xét học tập</div>${quoteItemsHTML}</div>` : ''}
+        ${quoteItemsHTML ? `<div class="card"><div class="section-title">Nhận xét học tập</div>${quoteItemsHTML}</div>` : ''}
 
         ${(scheduleHTML || roadmapHTML) ? `
         <div class="row">
             <div class="card">
-                <div class="section-title"><span class="icon">📅</span>Lịch học</div>
+                <div class="section-title">Lịch học</div>
                 ${scheduleHTML || '<div class="plain-paragraph" style="color:#c48ba6;">Chưa có lịch học.</div>'}
             </div>
             <div class="card">
-                <div class="section-title"><span class="icon">🎯</span>Lộ trình</div>
+                <div class="section-title">Lộ trình</div>
                 ${roadmapHTML || '<div class="plain-paragraph" style="color:#c48ba6;">Chưa có lộ trình.</div>'}
             </div>
         </div>` : ''}
 
-        ${feeNoteHTML ? `<div class="card"><div class="section-title"><span class="icon">💡</span>Ghi chú</div>${feeNoteHTML}</div>` : ''}
+        ${feeNoteHTML ? `<div class="card"><div class="section-title">Ghi chú</div>${feeNoteHTML}</div>` : ''}
 
         <div class="footer-note">
             ${note ? nl2br(note) : 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.'}
         </div>
     </div>
-    <script>window.onload = () => window.print();</script>
-</body>
-</html>`;
+</div>`;
 
-        const win = window.open('', '_blank');
-        if (!win) {
-            this.showToast('Trình duyệt đang chặn cửa sổ mới. Vui lòng cho phép popup để xuất phiếu.', 'error');
-            return;
+        this.setBtnLoading('btnExportInvoice', true, 'Đang tạo ảnh...');
+
+        // Dựng khung ẩn NGOÀI vùng nhìn thấy (không dùng display:none, vì
+        // html2canvas cần layout thật để đo/vẽ đúng) để chụp ảnh.
+        const holder = document.createElement('div');
+        holder.style.position = 'fixed';
+        holder.style.top = '0';
+        holder.style.left = '-99999px';
+        holder.style.zIndex = '-1';
+        holder.innerHTML = sheetHTML;
+        document.body.appendChild(holder);
+        const captureEl = document.getElementById('invoiceExportSheet');
+
+        try {
+            // Đợi toàn bộ font chữ (kể cả font tiếng Việt Comfortaa/Nunito)
+            // tải xong trước khi chụp — đây là nguyên nhân chính khiến chữ có
+            // dấu đôi khi hiển thị sai/vỡ nếu chụp quá sớm lúc font chưa sẵn.
+            if (document.fonts && document.fonts.ready) {
+                await document.fonts.ready;
+            }
+            // Đợi ảnh QR (nếu có) tải xong hẳn để không bị chụp thiếu ảnh.
+            const qrImg = captureEl.querySelector('.qr-block img');
+            if (qrImg && !qrImg.complete) {
+                await new Promise(resolve => {
+                    qrImg.onload = resolve;
+                    qrImg.onerror = resolve;
+                });
+            }
+
+            const html2canvas = await this.ensureHtml2Canvas();
+            const canvas = await html2canvas(captureEl, {
+                scale: 3, // ảnh nét, độ phân giải cao
+                backgroundColor: '#fdf2f8',
+                useCORS: true
+            });
+
+            const todayStr = this.toISODateOnly(new Date());
+            const link = document.createElement('a');
+            link.download = `PhieuHocPhi_${st.name.replace(/\s+/g, '')}_${todayStr}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+
+            this.showToast('Đã xuất phiếu học phí dạng ảnh thành công!', 'success');
+            this.closeModal('invoiceModal');
+        } catch (err) {
+            console.error('Lỗi xuất phiếu học phí:', err);
+            this.showToast(err.message || 'Xuất ảnh phiếu học phí thất bại, vui lòng thử lại.', 'error');
+        } finally {
+            document.body.removeChild(holder);
+            this.setBtnLoading('btnExportInvoice', false);
         }
-        win.document.open();
-        win.document.write(html);
-        win.document.close();
-
-        this.closeModal('invoiceModal');
     }
 
     // --- VIEW 5: STUDENT MANAGEMENT ---

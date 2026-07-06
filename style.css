@@ -1567,11 +1567,12 @@ textarea.form-control {
     grid-template-columns: 56px repeat(7, 1fr);
     border-bottom: 1px solid var(--border-color);
     background: #f8fafc;
-    /* Header nay nằm BÊN TRONG .week-calendar-scroll (cùng vùng cuộn với
-       .week-calendar-body) nên chắc chắn có ĐÚNG cùng chiều rộng thật với các
-       cột ngày bên dưới — không còn 2 vùng chiều rộng tách biệt nên không thể
-       lệch cột được nữa. Dùng sticky để header vẫn luôn dính ở trên khi cuộn
-       dọc, giữ nguyên trải nghiệm như trước. */
+    /* Header nằm THẬT SỰ BÊN TRONG .week-calendar-scroll (cùng vùng cuộn với
+       .week-calendar-body, là 2 con trực tiếp của cùng 1 container cuộn) nên
+       có ĐÚNG cùng chiều rộng thật với các cột ngày bên dưới — kể cả khi
+       thanh cuộn dọc xuất hiện/biến mất, cả 2 đều bị co cùng 1 lượng như
+       nhau nên không thể lệch cột được nữa. Dùng sticky để header vẫn luôn
+       dính ở trên khi cuộn dọc bên trong wrapper. */
     position: sticky;
     top: 0;
     z-index: 5;
@@ -1969,4 +1970,85 @@ textarea.form-control {
            wide screens, while guaranteeing at least 3 up on a laptop. */
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     }
+}
+/* --- QR PAYMENT IMAGE UPLOAD (Phiếu học phí) --- */
+.qr-upload-box {
+    border: 1.5px dashed var(--border-color);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    background: #fafafa;
+}
+
+.qr-upload-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 8px 14px;
+    border-radius: 8px;
+    transition: var(--transition-fast);
+}
+
+.qr-upload-label:hover {
+    background: var(--primary-soft);
+    color: var(--primary);
+}
+
+.qr-upload-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-weight: 800;
+    font-size: 0.875rem;
+    line-height: 1;
+}
+
+.qr-upload-preview-wrap {
+    position: relative;
+    display: inline-block;
+}
+
+.qr-upload-preview-wrap img {
+    max-width: 140px;
+    max-height: 140px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    display: block;
+    object-fit: contain;
+    background: #fff;
+}
+
+.qr-upload-remove {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #dc2626;
+    color: #fff;
+    border: 2px solid #fff;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-sm);
+}
+
+.qr-upload-remove:hover {
+    background: #b91c1c;
 }

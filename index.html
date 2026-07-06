@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NttClass - Quản lý Học sinh & Học phí Cá nhân</title>
-    <!-- Google Fonts Comfortaa -->
+    <!-- Google Fonts Comfortaa + Nunito (Nunito dùng cho phiếu học phí xuất
+         ảnh — tải sẵn ở đây để đảm bảo có mặt & đủ dấu tiếng Việt trước khi
+         html2canvas chụp, tránh vỡ font do tải chưa kịp trong lúc xuất ảnh) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -341,8 +343,8 @@
 
                 <!-- Weekly calendar grid: filled dynamically by JS (header row + hour rows + event blocks) -->
                 <div class="week-calendar-wrapper" id="weekCalendarWrapper">
-                    <div class="week-calendar-header-row" id="weekCalendarHeaderRow"></div>
                     <div class="week-calendar-scroll">
+                        <div class="week-calendar-header-row" id="weekCalendarHeaderRow"></div>
                         <div class="week-calendar-body" id="weekCalendarBody"></div>
                     </div>
                 </div>
@@ -658,6 +660,21 @@
                     </div>
 
                     <div class="form-group">
+                        <label>Ảnh QR thanh toán</label>
+                        <div class="qr-upload-box" id="qrUploadBox">
+                            <div class="qr-upload-preview-wrap" id="qrUploadPreviewWrap" style="display:none;">
+                                <img id="qrUploadPreview" alt="Xem trước QR thanh toán">
+                                <button type="button" class="qr-upload-remove" id="btnRemoveQr" title="Xoá ảnh QR">&times;</button>
+                            </div>
+                            <label for="invoiceQrInput" class="qr-upload-label" id="qrUploadLabel">
+                                <span class="qr-upload-icon">+</span>
+                                <span>Tải ảnh QR lên (tuỳ chọn)</span>
+                            </label>
+                            <input type="file" id="invoiceQrInput" accept="image/*" hidden>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
                         <label for="invoiceNote">Ghi chú cuối phiếu</label>
                         <textarea id="invoiceNote" class="form-control" rows="2" placeholder="Ghi chú thêm cho phụ huynh...">Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.</textarea>
                     </div>
@@ -665,7 +682,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="app.closeModal('invoiceModal')">Hủy bỏ</button>
-                    <button type="submit" class="btn btn-primary">Xuất phiếu</button>
+                    <button type="submit" class="btn btn-primary" id="btnExportInvoice">Xuất phiếu (ảnh)</button>
                 </div>
             </form>
         </div>
