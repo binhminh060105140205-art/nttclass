@@ -1237,6 +1237,12 @@ textarea.form-control {
     background: #f8fafc;
 }
 
+/* Ô tìm kiếm/lọc học sinh (theo tên hoặc theo lớp) ngay phía trên lưới chọn
+   học sinh tham gia buổi học. */
+.student-check-search {
+    margin-bottom: 8px;
+}
+
 /* Multi-select check grid for student selection in session scheduler */
 .student-check-grid {
     display: grid;
@@ -1558,9 +1564,10 @@ textarea.form-control {
     border-left-color: rgba(30, 58, 138, 0.35);
 }
 
-.week-event-block.is-unpaid {
-    border-left-color: #f87171;
-}
+/* Đã bỏ vạch kẻ đỏ báo "chưa đóng học phí" ở lịch tuần theo yêu cầu — ca học
+   chưa đóng tiền giờ không còn viền đỏ bên trái nữa, chỉ còn màu nền phân
+   biệt Học riêng / Học chung như bình thường (class .is-unpaid vẫn được gắn
+   ở app.js để dễ khôi phục sau này nếu cần, nhưng không còn tạo hiệu ứng gì). */
 
 .week-event-block .evt-time {
     font-weight: 700;

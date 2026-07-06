@@ -163,7 +163,7 @@
                             </select>
                         </div>
                         <div class="role-restricted admin-tutor" style="display: flex; gap: 8px;">
-                            <button class="btn btn-secondary btn-sm" id="btnExportLog">Xuất ảnh
+                            <button class="btn btn-secondary btn-sm" id="btnExportLog">Xuất file Excel
                             </button>
                         </div>
                     </div>
@@ -229,6 +229,8 @@
                     <!-- Students selection grid -->
                     <div class="form-group form-group-half">
                         <label>Chọn học sinh tham gia <span style="color:red;">*</span></label>
+                        <input type="text" id="studentsCheckboxSearch" class="form-control student-check-search"
+                               placeholder="Tìm theo tên hoặc lớp (VD: Lớp 6, 6, Khánh Hà...)">
                         <div class="student-check-grid" id="studentsCheckboxGrid">
                             <!-- Filled dynamically with checkboxes -->
                         </div>
@@ -730,6 +732,8 @@
                         
                         <div class="form-group form-group-half">
                             <label>Học sinh tham gia <span style="color:red;">*</span></label>
+                            <input type="text" id="editStudentsCheckboxSearch" class="form-control student-check-search"
+                                   placeholder="Tìm theo tên hoặc lớp (VD: Lớp 6, 6, Khánh Hà...)">
                             <div class="student-check-grid" id="editStudentsCheckboxGrid">
                                 <!-- Filled dynamically -->
                             </div>

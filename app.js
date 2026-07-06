@@ -453,6 +453,15 @@ class PinkyClassApp {
         document.getElementById('sessionPrice').addEventListener('input', () => this.updateSessionPricing('session'));
         document.getElementById('editSessionPrice').addEventListener('input', () => this.updateSessionPricing('editSession'));
 
+        // Ô tìm kiếm/lọc học sinh trong lưới chọn học sinh tham gia (gõ tên
+        // hoặc lớp, VD "Lớp 6", "6", "Khánh Hà"... đều lọc ra đúng học sinh).
+        document.getElementById('studentsCheckboxSearch').addEventListener('input', (e) => {
+            this.filterStudentCheckboxGrid('studentsCheckboxGrid', e.target.value);
+        });
+        document.getElementById('editStudentsCheckboxSearch').addEventListener('input', (e) => {
+            this.filterStudentCheckboxGrid('editStudentsCheckboxGrid', e.target.value);
+        });
+
         // User Management (Admin only)
         document.getElementById('addNewUserBtn').addEventListener('click', () => {
             this.openAddUserModal();
@@ -633,6 +642,16 @@ class PinkyClassApp {
         this.renderStudentSelectionGrid('editStudentsCheckboxGrid');
     }
 
+    // Bỏ dấu tiếng Việt để tìm kiếm không phân biệt có dấu/không dấu
+    // (VD gõ "quynh" vẫn tìm ra "Quỳnh").
+    removeVietnameseTones(str) {
+        return (str || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+            .toLowerCase();
+    }
+
     renderStudentSelectionGrid(containerId) {
         const prefix = containerId === 'studentsCheckboxGrid' ? 'session' : 'editSession';
         const typeSelectId = prefix === 'session' ? 'sessionType' : 'editSessionType';
@@ -641,7 +660,12 @@ class PinkyClassApp {
         this.students.forEach(st => {
             const label = document.createElement('label');
             label.className = 'student-check-item';
-            
+
+            // Chuỗi dùng để tìm kiếm/lọc: tên + lớp đầy đủ ("Lớp 6") + số lớp
+            // riêng ("6") — để gõ "6", "lớp 6" hay "Lớp 6" đều lọc ra đúng.
+            const classNumberOnly = (st.class || '').replace(/lớp/i, '').trim();
+            label.dataset.search = this.removeVietnameseTones(`${st.name} ${st.class} ${classNumberOnly}`);
+
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.value = st.id;
@@ -676,7 +700,25 @@ class PinkyClassApp {
             grid.appendChild(label);
         });
 
+        // Giữ nguyên từ khóa đang lọc (nếu có) khi lưới được vẽ lại — tránh
+        // việc mở modal Sửa buổi học lại hiện ra danh sách đầy đủ chưa lọc.
+        const searchInputId = containerId === 'studentsCheckboxGrid' ? 'studentsCheckboxSearch' : 'editStudentsCheckboxSearch';
+        const searchInput = document.getElementById(searchInputId);
+        if (searchInput) this.filterStudentCheckboxGrid(containerId, searchInput.value);
+
         this.updateSessionPricing(prefix);
+    }
+
+    // Ẩn/hiện các học sinh trong lưới checkbox theo từ khóa gõ vào ô tìm kiếm
+    // (so khớp theo tên HOẶC theo lớp, không phân biệt dấu/không dấu/hoa thường).
+    filterStudentCheckboxGrid(gridId, keyword) {
+        const grid = document.getElementById(gridId);
+        if (!grid) return;
+        const kw = this.removeVietnameseTones((keyword || '').trim());
+        grid.querySelectorAll('.student-check-item').forEach(label => {
+            const match = !kw || (label.dataset.search || '').includes(kw);
+            label.style.display = match ? '' : 'none';
+        });
     }
 
     // Áp dụng quy tắc "Học riêng chỉ 1 học sinh / Học chung nhiều học sinh" khi
@@ -2213,10 +2255,17 @@ class PinkyClassApp {
         // Dựng lại danh sách checkbox học sinh, đánh dấu các em đang tham gia
         const grid = document.getElementById('editStudentsCheckboxGrid');
         grid.innerHTML = '';
+        // Reset lại ô tìm kiếm mỗi lần mở modal Sửa buổi học để luôn thấy đủ
+        // danh sách học sinh trước khi lọc lại nếu cần.
+        const searchInput = document.getElementById('editStudentsCheckboxSearch');
+        if (searchInput) searchInput.value = '';
         this.students.forEach(st => {
             const label = document.createElement('label');
             label.className = 'student-check-item';
-            
+
+            const classNumberOnly = (st.class || '').replace(/lớp/i, '').trim();
+            label.dataset.search = this.removeVietnameseTones(`${st.name} ${st.class} ${classNumberOnly}`);
+
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.value = st.id;
