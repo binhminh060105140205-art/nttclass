@@ -701,7 +701,9 @@ class PinkyClassApp {
         this.updateSessionPricing(prefix);
     }
 
-    // Tính "Tổng thu buổi học": học riêng = đơn giá nhập; học chung = đơn giá/học sinh x số học sinh.
+    // Tính "Tổng thu buổi học": học riêng = đơn giá nhập; học chung = đơn giá/học sinh
+    // x SỐ HỌC SINH CÓ ĐÓNG HỌC PHÍ (loại trừ học sinh học phí 0đ ra khỏi phép nhân,
+    // vì các em này không đóng tiền nên không được tính vào tổng thu buổi học).
     updateSessionPricing(prefix) {
         const typeSelectId = prefix === 'session' ? 'sessionType' : 'editSessionType';
         const gridName = prefix === 'session' ? 'sessionStudents' : 'editSessionStudents';
@@ -714,7 +716,15 @@ class PinkyClassApp {
         if (!typeEl || !priceEl || !totalEl) return;
 
         const isGroup = typeEl.value === 'chung';
-        const checkedCount = document.querySelectorAll(`input[name="${gridName}"]:checked`).length;
+        const checkedBoxes = Array.from(document.querySelectorAll(`input[name="${gridName}"]:checked`));
+        const checkedCount = checkedBoxes.length;
+        // Số học sinh THỰC SỰ đóng học phí trong buổi (bỏ qua các em có học phí
+        // cơ bản = 0đ — ví dụ học miễn phí/học thử) — dùng số này để nhân với
+        // đơn giá/học sinh khi tính tổng thu của buổi học chung.
+        const payingCount = checkedBoxes.filter(cb => {
+            const student = this.students.find(s => s.id === cb.value);
+            return student && Number(student.basePrice) > 0;
+        }).length;
         const unitPrice = parseInt(priceEl.value) || 0;
 
         // Học riêng, tự động điền học phí cơ bản của học sinh khi chỉ chọn 1 em
@@ -729,7 +739,7 @@ class PinkyClassApp {
             }
         }
 
-        const total = isGroup ? unitPrice * Math.max(checkedCount, 0) : (parseInt(priceEl.value) || 0);
+        const total = isGroup ? unitPrice * Math.max(payingCount, 0) : (parseInt(priceEl.value) || 0);
         totalEl.innerText = this.formatVND(total);
     }
 
@@ -867,6 +877,17 @@ class PinkyClassApp {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
     }
 
+    // Trả về danh sách studentId trong 1 buổi học CÓ đóng học phí (loại trừ
+    // học sinh có học phí cơ bản = 0đ — VD học miễn phí/học thử). Dùng để
+    // chia đều "Tổng thu buổi học" và tính "học phí chưa đóng" cho đúng,
+    // tránh việc học sinh 0đ vừa bị tính vào tổng thu vừa bị tính là "nợ học phí".
+    getPayingStudentIds(sess) {
+        return (sess.studentIds || []).filter(sid => {
+            const student = this.students.find(s => s.id === sid);
+            return student && Number(student.basePrice) > 0;
+        });
+    }
+
     // --- VIEW 1: DASHBOARD ---
     renderDashboard() {
         // Set stats cards counts
@@ -887,12 +908,15 @@ class PinkyClassApp {
             // Sum unpaid tuition for this student (dựa trên trạng thái Paid
             // RIÊNG của chính học sinh này trong từng buổi, TÁCH BIỆT hoàn toàn
             // với trạng thái "đã dạy/chưa dạy" VÀ với trạng thái đóng tiền của
-            // các bạn học chung buổi khác)
+            // các bạn học chung buổi khác). Nếu chính học sinh này học phí 0đ
+            // thì không bao giờ bị tính là "chưa đóng" (vì không có gì để đóng).
             studentSessions.forEach(sess => {
+                const payingIds = this.getPayingStudentIds(sess);
+                if (!payingIds.includes(this.currentStudentId)) return;
                 const detail = sess.studentDetails && sess.studentDetails[this.currentStudentId];
                 if (!detail || !detail.paid) {
-                    // Price divided by number of participants if it's a shared session, or full price
-                    const partCount = sess.studentIds.length;
+                    // Price divided by number of PAYING participants if it's a shared session, or full price
+                    const partCount = payingIds.length || 1;
                     unpaidTuition += sess.price / partCount;
                 }
             });
@@ -904,11 +928,14 @@ class PinkyClassApp {
             // Cộng dồn phần học phí CHƯA đóng của TỪNG học sinh trong từng buổi
             // (dựa trên Paid riêng của mỗi em, không dùng Completed, không dùng
             // cờ tổng hợp cấp buổi) — để buổi học chung chỉ tính đúng phần của
-            // (các) học sinh thực sự chưa đóng, không tính cả buổi.
+            // (các) học sinh thực sự chưa đóng, không tính cả buổi. Học sinh
+            // học phí 0đ được loại trừ hoàn toàn khỏi phép chia lẫn khỏi vòng
+            // lặp tính "chưa đóng" (không đóng tiền thì không thể "nợ" học phí).
             monthSessions.forEach(sess => {
-                const partCount = sess.studentIds.length || 1;
+                const payingIds = this.getPayingStudentIds(sess);
+                const partCount = payingIds.length || 1;
                 const portion = sess.price / partCount;
-                sess.studentIds.forEach(sid => {
+                payingIds.forEach(sid => {
                     const detail = sess.studentDetails && sess.studentDetails[sid];
                     if (!detail || !detail.paid) {
                         unpaidTuition += portion;
@@ -1117,7 +1144,12 @@ class PinkyClassApp {
         const groupCount = weekSessions.filter(s => s.type === 'chung').length;
         let totalMoney = 0;
         weekSessions.forEach(s => {
-            totalMoney += this.currentRole === 'student' ? (s.price / s.studentIds.length) : s.price;
+            if (this.currentRole === 'student') {
+                const payingIds = this.getPayingStudentIds(s);
+                totalMoney += payingIds.includes(this.currentStudentId) ? (s.price / (payingIds.length || 1)) : 0;
+            } else {
+                totalMoney += s.price;
+            }
         });
         const elSessions = document.getElementById('summary-total-sessions');
         const elHours = document.getElementById('summary-total-hours');
@@ -1376,8 +1408,13 @@ class PinkyClassApp {
             let unpaidTuition = 0;
 
             studentSessions.forEach(sess => {
-                // If it's a shared session, split price equally among participants
-                const sessionPricePortion = sess.price / sess.studentIds.length;
+                // Học sinh học phí 0đ không đóng góp gì vào tổng thu/đã đóng/chưa
+                // đóng của chính mình — bỏ qua buổi này hoàn toàn cho em đó.
+                const payingIds = this.getPayingStudentIds(sess);
+                if (!payingIds.includes(st.id)) return;
+                // Nếu là buổi học chung, chia đều theo SỐ HỌC SINH THỰC SỰ ĐÓNG
+                // HỌC PHÍ trong buổi (không tính các bạn học phí 0đ vào mẫu số).
+                const sessionPricePortion = sess.price / (payingIds.length || 1);
                 totalTuitionEarned += sessionPricePortion;
                 // Dùng field Paid RIÊNG của chính học sinh này trong buổi học đó
                 // (sess.studentDetails[st.id].paid) — KHÔNG dùng cờ paid cấp cả
@@ -1523,9 +1560,12 @@ class PinkyClassApp {
 
         let totalFee = 0, paidFee = 0, totalHours = 0;
         sessions.forEach(sess => {
-            const portion = sess.price / (sess.studentIds.length || 1);
-            totalFee += portion;
             totalHours += parseFloat(sess.duration) || 0;
+            // Học sinh học phí 0đ không đóng góp gì vào tổng học phí của phiếu.
+            const payingIds = this.getPayingStudentIds(sess);
+            if (!payingIds.includes(studentId)) return;
+            const portion = sess.price / (payingIds.length || 1);
+            totalFee += portion;
             const detail = sess.studentDetails && sess.studentDetails[studentId];
             if (detail && detail.paid) paidFee += portion;
         });
@@ -1557,9 +1597,12 @@ class PinkyClassApp {
         let totalFee = 0, paidFee = 0, totalHours = 0;
         let privateCount = 0, privateSum = 0, groupCount = 0, groupSum = 0;
         sessions.forEach(sess => {
-            const portion = sess.price / (sess.studentIds.length || 1);
-            totalFee += portion;
             totalHours += parseFloat(sess.duration) || 0;
+            // Học sinh học phí 0đ không đóng góp gì vào tổng học phí của phiếu.
+            const payingIds = this.getPayingStudentIds(sess);
+            if (!payingIds.includes(studentId)) return;
+            const portion = sess.price / (payingIds.length || 1);
+            totalFee += portion;
             const detail = sess.studentDetails && sess.studentDetails[studentId];
             if (detail && detail.paid) paidFee += portion;
             if (sess.type === 'chung') {
@@ -2082,8 +2125,14 @@ class PinkyClassApp {
         const studentIds = [];
         checkedBoxes.forEach(cb => studentIds.push(cb.value));
 
-        // Học chung: tổng thu = đơn giá/học sinh x số học sinh. Học riêng: giữ nguyên đơn giá.
-        const price = type === 'chung' ? unitPrice * studentIds.length : unitPrice;
+        // Học chung: tổng thu = đơn giá/học sinh x SỐ HỌC SINH CÓ ĐÓNG HỌC PHÍ
+        // (loại trừ học sinh học phí cơ bản = 0đ khỏi phép nhân). Học riêng:
+        // giữ nguyên đơn giá đã nhập (đã tự = 0 nếu học sinh đó học phí 0đ).
+        const payingCount = studentIds.filter(stId => {
+            const student = this.students.find(s => s.id === stId);
+            return student && Number(student.basePrice) > 0;
+        }).length;
+        const price = type === 'chung' ? unitPrice * payingCount : unitPrice;
 
         // Create studentDetails map
         const studentDetails = {};
@@ -2154,10 +2203,11 @@ class PinkyClassApp {
         document.getElementById('editSessionStartTime').value = sess.startTime;
         document.getElementById('editSessionEndTime').value = sess.endTime;
         document.getElementById('editSessionHours').value = sess.duration;
-        // sess.price được lưu là TỔNG thu của buổi học; với học chung cần chia lại
-        // ra đơn giá/học sinh để hiển thị đúng ý nghĩa trong ô nhập liệu.
-        const count = Math.max(sess.studentIds.length, 1);
-        document.getElementById('editSessionPrice').value = sess.type === 'chung' ? Math.round(sess.price / count) : sess.price;
+        // sess.price được lưu là TỔNG thu của buổi học (đã loại trừ học sinh 0đ);
+        // với học chung cần chia lại theo SỐ HỌC SINH CÓ ĐÓNG HỌC PHÍ để ra đúng
+        // đơn giá/học sinh hiển thị trong ô nhập liệu.
+        const payingCount = Math.max(this.getPayingStudentIds(sess).length, 1);
+        document.getElementById('editSessionPrice').value = sess.type === 'chung' ? Math.round(sess.price / payingCount) : sess.price;
         document.getElementById('editSessionContent').value = sess.content || '';
 
         // Dựng lại danh sách checkbox học sinh, đánh dấu các em đang tham gia
@@ -2252,7 +2302,13 @@ class PinkyClassApp {
         const studentIds = [];
         checkedBoxes.forEach(cb => studentIds.push(cb.value));
 
-        const price = type === 'chung' ? unitPrice * studentIds.length : unitPrice;
+        // Học chung: tổng thu = đơn giá/học sinh x SỐ HỌC SINH CÓ ĐÓNG HỌC PHÍ
+        // (loại trừ học sinh học phí cơ bản = 0đ khỏi phép nhân), giống lúc tạo mới.
+        const payingCount = studentIds.filter(stId => {
+            const student = this.students.find(s => s.id === stId);
+            return student && Number(student.basePrice) > 0;
+        }).length;
+        const price = type === 'chung' ? unitPrice * payingCount : unitPrice;
 
         // Sync studentDetails map (preserve existing if student already in class)
         const newStudentDetails = {};
@@ -2450,69 +2506,97 @@ class PinkyClassApp {
         this.showToast(paid ? "Đã đánh dấu học phí: Đã thanh toán" : "Đã đánh dấu học phí: Chưa thanh toán", "success");
     }
 
-    // Export log to CSV
-    // Tự động tải thư viện html2canvas từ CDN (chỉ tải 1 lần, dùng lại cho
-    // các lần xuất ảnh sau) — dùng để "chụp" 1 khối HTML thành ảnh PNG.
-    async ensureHtml2Canvas() {
-        if (window.html2canvas) return window.html2canvas;
-        if (!this._html2canvasLoadingPromise) {
-            this._html2canvasLoadingPromise = new Promise((resolve, reject) => {
+    // Export log to Excel
+    // Tự động tải thư viện SheetJS (xlsx) từ CDN (chỉ tải 1 lần, dùng lại cho
+    // các lần xuất Excel sau) — dùng để tạo file .xlsx trực tiếp trên trình duyệt.
+    async ensureXLSX() {
+        if (window.XLSX) return window.XLSX;
+        if (!this._xlsxLoadingPromise) {
+            this._xlsxLoadingPromise = new Promise((resolve, reject) => {
                 const script = document.createElement('script');
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-                script.onload = () => resolve(window.html2canvas);
-                script.onerror = () => reject(new Error('Không tải được thư viện xuất ảnh (kiểm tra kết nối mạng).'));
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+                script.onload = () => resolve(window.XLSX);
+                script.onerror = () => reject(new Error('Không tải được thư viện xuất Excel (kiểm tra kết nối mạng).'));
                 document.head.appendChild(script);
             });
         }
-        return this._html2canvasLoadingPromise;
+        return this._xlsxLoadingPromise;
     }
 
     // Xuất bảng Nhật ký học tập (banner tên học sinh + bảng buổi học) ra 1
-    // file ảnh PNG duy nhất — thay cho xuất CSV trước đây, dễ gửi trực tiếp
-    // cho phụ huynh qua Zalo/tin nhắn mà không cần mở file bằng Excel.
+    // file Excel (.xlsx) — thay cho xuất ảnh trước đây, giúp dễ chỉnh sửa,
+    // lọc, hoặc nhập tiếp vào các file quản lý khác.
     async exportStudentLogToCSV() {
         const studentId = this.currentStudentId;
         const studentName = this.getStudentName(studentId);
-        const studentSessions = this.sessions.filter(sess => sess.studentIds.includes(studentId));
+        const studentClass = this.getStudentClass(studentId);
+        const studentSubject = this.getStudentSubject(studentId);
+
+        // Dùng đúng danh sách đang hiển thị trên bảng (đã lọc theo Kỳ đang chọn)
+        // để số liệu xuất ra khớp 100% với những gì giáo viên đang xem.
+        const studentSessions = this.filterByMonth(this.sessions)
+            .filter(sess => sess.studentIds.includes(studentId))
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
 
         if (studentSessions.length === 0) {
             this.showToast("Không có dữ liệu nhật ký để xuất!", "error");
             return;
         }
 
-        const captureEl = document.getElementById('logExportCapture');
-        if (!captureEl) return;
-
-        this.setBtnLoading('btnExportLog', true, 'Đang tạo ảnh...');
+        this.setBtnLoading('btnExportLog', true, 'Đang tạo file Excel...');
         try {
-            const html2canvas = await this.ensureHtml2Canvas();
+            const XLSX = await this.ensureXLSX();
 
-            // Ẩn tạm cột "Thao tác" trong lúc chụp (chỉ có ý nghĩa thao tác
-            // trên web, không cần trong ảnh gửi phụ huynh), chụp xong gỡ ra ngay.
-            captureEl.classList.add('is-exporting');
+            const header = ['STT', 'Ngày', 'Giờ học', 'Nội dung buổi học', 'Bài tập về nhà', 'Ý thức', 'Nhận xét của giáo viên', 'Ghi chú'];
+            const rows = studentSessions.map((sess, idx) => {
+                const detail = sess.studentDetails[studentId] || { homework: 'Chưa làm', attitude: 'Tốt', individualComment: '', note: '' };
+                const d = this.parseLocalDate(sess.date);
+                const days = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+                const dateLabel = d ? `${days[d.getDay()]}, ${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}` : sess.date;
 
-            const canvas = await html2canvas(captureEl, {
-                scale: 2, // nét hơn khi phóng to/in ra
-                backgroundColor: '#ffffff',
-                useCORS: true
+                const contentParts = [];
+                if (sess.sessionName) contentParts.push(sess.sessionName);
+                contentParts.push(sess.content && sess.content.trim() ? sess.content.trim() : 'Chưa có nội dung.');
+
+                return [
+                    `Buổi ${idx + 1}`,
+                    dateLabel,
+                    `${sess.startTime} - ${sess.endTime}`,
+                    contentParts.join('\n'),
+                    this.getHomeworkLabel(detail.homework),
+                    detail.attitude || 'Tốt',
+                    detail.individualComment && detail.individualComment.trim() ? detail.individualComment.trim() : 'Chưa nhận xét.',
+                    detail.note || ''
+                ];
             });
 
-            captureEl.classList.remove('is-exporting');
+            const titleRow = [`NHẬT KÝ HỌC TẬP - ${studentName.toUpperCase()} ${studentSubject} ${studentClass}`.trim()];
+            const wsData = [titleRow, [], header, ...rows];
 
-            const dataUrl = canvas.toDataURL('image/png');
-            const link = document.createElement('a');
-            link.href = dataUrl;
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            ws['!cols'] = [
+                { wch: 10 }, // STT
+                { wch: 20 }, // Ngày
+                { wch: 14 }, // Giờ học
+                { wch: 40 }, // Nội dung
+                { wch: 16 }, // Bài tập
+                { wch: 14 }, // Ý thức
+                { wch: 40 }, // Nhận xét
+                { wch: 20 }  // Ghi chú
+            ];
+            // Gộp ô tiêu đề trên cùng cho đẹp (trải hết chiều rộng bảng)
+            ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: header.length - 1 } }];
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Nhat ky hoc tap');
+
             const todayStr = this.toISODateOnly(new Date());
-            link.download = `NhatKyHocTap_${studentName.replace(/\s+/g, '')}_${todayStr}.png`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            XLSX.writeFile(wb, `NhatKyHocTap_${studentName.replace(/\s+/g, '')}_${todayStr}.xlsx`);
 
-            this.showToast("Đã xuất ảnh nhật ký học tập thành công!", "success");
+            this.showToast("Đã xuất file Excel nhật ký học tập thành công!", "success");
         } catch (err) {
-            console.error('Lỗi xuất ảnh:', err);
-            captureEl.classList.remove('is-exporting');
-            this.showToast(err.message || "Xuất ảnh thất bại, vui lòng thử lại.", "error");
+            console.error('Lỗi xuất Excel:', err);
+            this.showToast(err.message || "Xuất file Excel thất bại, vui lòng thử lại.", "error");
         } finally {
             this.setBtnLoading('btnExportLog', false);
         }

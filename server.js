@@ -699,9 +699,11 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
         return res.status(400).json({ error: 'Giờ kết thúc phải sau giờ bắt đầu.' });
     }
 
+    // Học phí buổi học được phép = 0 (buổi học miễn phí / học sinh 0đ),
+    // chỉ chặn số âm hoặc giá trị không hợp lệ.
     const parsedPrice = parseInt(price);
-    if (isNaN(parsedPrice) || parsedPrice <= 0) {
-        return res.status(400).json({ error: 'Học phí buổi học phải là số lớn hơn 0.' });
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+        return res.status(400).json({ error: 'Học phí buổi học không được là số âm.' });
     }
 
     let transaction;
@@ -776,9 +778,11 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
         return res.status(400).json({ error: 'Giờ kết thúc phải sau giờ bắt đầu.' });
     }
 
+    // Học phí buổi học được phép = 0 (buổi học miễn phí / học sinh 0đ),
+    // chỉ chặn số âm hoặc giá trị không hợp lệ.
     const parsedPrice = parseInt(price);
-    if (isNaN(parsedPrice) || parsedPrice <= 0) {
-        return res.status(400).json({ error: 'Học phí buổi học phải là số lớn hơn 0.' });
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+        return res.status(400).json({ error: 'Học phí buổi học không được là số âm.' });
     }
 
     let transaction;
