@@ -33,6 +33,7 @@ html {
     --space-desktop: 32px;
 
     --primary: #2563eb;
+    --primary-rgb: 37, 99, 235;
     --primary-light: #dbeafe;
     --primary-soft: #ebf4ff;
     --accent: #0ea5e9;
@@ -42,11 +43,16 @@ html {
     --background: #e0efff;
     --card-bg: rgba(255, 255, 255, 0.88);
     --border-color: rgba(96, 165, 250, 0.24);
-    --shadow-sm: 0 4px 18px rgba(37, 99, 235, 0.08);
-    --shadow-md: 0 10px 28px rgba(37, 99, 235, 0.12);
-    --shadow-lg: 0 16px 42px rgba(37, 99, 235, 0.16);
+    --shadow-sm: 0 4px 18px rgba(var(--primary-rgb), 0.08);
+    --shadow-md: 0 10px 28px rgba(var(--primary-rgb), 0.12);
+    --shadow-lg: 0 16px 42px rgba(var(--primary-rgb), 0.16);
     --transition-fast: all 0.18s ease;
     --transition-normal: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Nền trang (gradient nhạt) — đổi theo từng giao diện màu bên dưới */
+    --bg-grad-1: #e5f2ff;
+    --bg-grad-2: #dbeefe;
+    --bg-grad-3: #f8fcff;
     
     /* Session type colors */
     --badge-private-bg: #dbeafe;
@@ -72,6 +78,40 @@ html {
 }
 
 /* ==========================================================================
+   THEME PALETTES
+   3 bảng màu cho cả trang, chuyển đổi bằng cách gán data-theme="..." lên
+   thẻ <html> (xem bộ chọn màu trong sidebar + theme.js ở cuối app.js).
+   "blue" là màu mặc định hiện tại (khai báo trong :root ở trên), 2 bảng dưới
+   đây ghi đè lại đúng các biến màu cốt lõi để toàn bộ nút bấm/badge/sidebar/
+   tiêu đề/nền trang... tự động đổi theo mà không cần sửa từng chỗ.
+   ========================================================================== */
+[data-theme="violet"] {
+    --primary: #7c3aed;
+    --primary-rgb: 124, 58, 237;
+    --primary-light: #ede9fe;
+    --primary-soft: #f5f3ff;
+    --accent: #a855f7;
+    --accent-strong: #9333ea;
+    --border-color: rgba(168, 85, 247, 0.24);
+    --bg-grad-1: #f3ecff;
+    --bg-grad-2: #ede4ff;
+    --bg-grad-3: #fbf8ff;
+}
+
+[data-theme="emerald"] {
+    --primary: #059669;
+    --primary-rgb: 5, 150, 105;
+    --primary-light: #d1fae5;
+    --primary-soft: #ecfdf5;
+    --accent: #14b8a6;
+    --accent-strong: #0d9488;
+    --border-color: rgba(20, 184, 166, 0.24);
+    --bg-grad-1: #e3fbf3;
+    --bg-grad-2: #d9f7eb;
+    --bg-grad-3: #f6fffb;
+}
+
+/* ==========================================================================
    2. RESET / BASE ELEMENTS
    ========================================================================== */
 * {
@@ -82,7 +122,7 @@ html {
 }
 
 body {
-    background: linear-gradient(135deg, #e5f2ff 0%, #dbeefe 45%, #f8fcff 100%);
+    background: linear-gradient(135deg, var(--bg-grad-1) 0%, var(--bg-grad-2) 45%, var(--bg-grad-3) 100%);
     background-attachment: fixed;
     color: var(--text-main);
     min-height: 100vh;
@@ -114,7 +154,7 @@ img, svg, video {
     justify-content: center;
     align-items: center;
     padding: 24px;
-    background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(96, 165, 250, 0.1));
+    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.1), rgba(96, 165, 250, 0.1));
 }
 
 .login-card {
@@ -122,8 +162,8 @@ img, svg, video {
     max-width: 420px;
     background: rgba(255, 255, 255, 0.95);
     border-radius: 24px;
-    box-shadow: 0 24px 70px rgba(37, 99, 235, 0.14);
-    border: 1px solid rgba(37, 99, 235, 0.12);
+    box-shadow: 0 24px 70px rgba(var(--primary-rgb), 0.14);
+    border: 1px solid rgba(var(--primary-rgb), 0.12);
     padding: 32px;
     display: flex;
     flex-direction: column;
@@ -176,14 +216,14 @@ img, svg, video {
     height: 8px;
 }
 ::-webkit-scrollbar-track {
-    background: rgba(37, 99, 235, 0.08);
+    background: rgba(var(--primary-rgb), 0.08);
 }
 ::-webkit-scrollbar-thumb {
-    background: rgba(37, 99, 235, 0.3);
+    background: rgba(var(--primary-rgb), 0.3);
     border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(37, 99, 235, 0.55);
+    background: rgba(var(--primary-rgb), 0.55);
 }
 
 /* Glassmorphism utility card */
@@ -273,7 +313,7 @@ img, svg, video {
     justify-content: center;
     color: white;
     font-size: 1.25rem;
-    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.25);
+    box-shadow: 0 6px 18px rgba(var(--primary-rgb), 0.25);
 }
 
 .logo-text {
@@ -445,7 +485,7 @@ img, svg, video {
 .menu-item.active {
     background: linear-gradient(135deg, var(--primary), var(--accent));
     color: white;
-    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.2);
+    box-shadow: 0 6px 18px rgba(var(--primary-rgb), 0.2);
 }
 
 .menu-item.active i {
@@ -455,10 +495,49 @@ img, svg, video {
 .sidebar-footer {
     margin-top: auto;
     padding-top: 15px;
-    border-top: 1px solid rgba(37, 99, 235, 0.1);
+    border-top: 1px solid rgba(var(--primary-rgb), 0.1);
     font-size: 0.75rem;
     color: var(--text-muted);
     text-align: center;
+}
+
+/* Bộ chọn màu giao diện (3 chấm tròn màu) ở cuối sidebar */
+.theme-switcher {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.theme-swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.12);
+    cursor: pointer;
+    padding: 0;
+    transition: var(--transition-fast);
+}
+
+.theme-swatch:hover {
+    transform: scale(1.12);
+}
+
+.theme-swatch.active {
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--primary);
+}
+
+.theme-swatch[data-theme-value="blue"] {
+    background: linear-gradient(135deg, #2563eb, #0ea5e9);
+}
+
+.theme-swatch[data-theme-value="violet"] {
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+}
+
+.theme-swatch[data-theme-value="emerald"] {
+    background: linear-gradient(135deg, #059669, #14b8a6);
 }
 
 /* Main Content Area — mobile default: full width, no sidebar offset.
@@ -593,12 +672,12 @@ img, svg, video {
     width: 80px;
     height: 80px;
     border-radius: 50%;
-    background: rgba(37, 99, 235, 0.08);
+    background: rgba(var(--primary-rgb), 0.08);
 }
 
 /* Khôi phục màu sắc riêng cho từng thẻ thống kê (trước đây tô màu qua icon,
    nay icon đã bị bỏ nên tô màu trực tiếp qua số liệu + vòng tròn trang trí). */
-.stats-grid .stat-card:nth-child(1)::before { background: rgba(37, 99, 235, 0.08); }
+.stats-grid .stat-card:nth-child(1)::before { background: rgba(var(--primary-rgb), 0.08); }
 .stats-grid .stat-card:nth-child(1) .stat-value { color: var(--primary); }
 
 .stats-grid .stat-card:nth-child(2)::before { background: rgba(168, 85, 247, 0.1); }
@@ -622,7 +701,7 @@ img, svg, video {
 }
 
 .stat-icon.blue {
-    background: rgba(37, 99, 235, 0.12);
+    background: rgba(var(--primary-rgb), 0.12);
     color: var(--primary);
 }
 
@@ -755,7 +834,7 @@ img, svg, video {
 }
 
 .custom-table tr:hover {
-    background-color: rgba(37, 99, 235, 0.02);
+    background-color: rgba(var(--primary-rgb), 0.02);
 }
 
 /* Multi-row alignment styling */
@@ -944,7 +1023,7 @@ img, svg, video {
     width: 100%;
     padding: 12px 16px;
     border-radius: 12px;
-    border: 1px solid rgba(37, 99, 235, 0.25);
+    border: 1px solid rgba(var(--primary-rgb), 0.25);
     background: white;
     font-size: 0.875rem;
     outline: none;
@@ -953,7 +1032,7 @@ img, svg, video {
 
 .form-control:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.12);
 }
 
 textarea.form-control {
@@ -980,11 +1059,11 @@ textarea.form-control {
 .btn-primary {
     background: linear-gradient(135deg, var(--primary), var(--accent-strong));
     color: white;
-    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.25);
+    box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.25);
 }
 
 .btn-primary:hover {
-    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+    box-shadow: 0 6px 20px rgba(var(--primary-rgb), 0.35);
     transform: translateY(-1px);
 }
 
@@ -1084,7 +1163,7 @@ textarea.form-control {
 
 .session-item:hover {
     box-shadow: var(--shadow-md);
-    border-color: rgba(37, 99, 235, 0.35);
+    border-color: rgba(var(--primary-rgb), 0.35);
 }
 
 .session-info {
@@ -1248,7 +1327,7 @@ textarea.form-control {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 10px;
-    border: 1px solid rgba(37, 99, 235, 0.2);
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
     border-radius: 12px;
     padding: 12px;
     max-height: 150px;

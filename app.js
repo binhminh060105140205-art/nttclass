@@ -23,7 +23,39 @@ class PinkyClassApp {
         this.currentMonthFilter = ''; // '' = tất cả, hoặc dạng "yyyy-m" (VD "2026-7") ứng với 1 mục trong dropdown "Kỳ"
         this.currentWeekStart = this.getMonday(new Date()); // Thứ 2 đầu tuần đang xem ở Lịch dạy & Chấm công
 
+        // Áp dụng lại màu giao diện đã lưu (nếu có) ngay từ đầu, trước khi vẽ
+        // bất cứ gì, để tránh bị "chớp" màu mặc định rồi mới đổi màu.
+        this.initTheme();
+
         this.init();
+    }
+
+    // Đọc màu giao diện đã lưu trong localStorage (mặc định "blue" nếu chưa
+    // từng chọn) và gán vào thuộc tính data-theme của <html> — toàn bộ màu
+    // sắc của trang được định nghĩa bằng CSS variable theo data-theme này
+    // (xem khối "THEME PALETTES" trong style.css).
+    initTheme() {
+        const saved = localStorage.getItem('nttclass_theme') || 'blue';
+        document.documentElement.setAttribute('data-theme', saved);
+    }
+
+    // Gắn sự kiện click cho 3 chấm màu ở cuối sidebar: đổi data-theme + lưu
+    // lại lựa chọn + tô sáng chấm đang được chọn.
+    bindThemeSwitcher() {
+        const switcher = document.getElementById('themeSwitcher');
+        if (!switcher) return;
+        const current = localStorage.getItem('nttclass_theme') || 'blue';
+        const swatches = switcher.querySelectorAll('.theme-swatch');
+        swatches.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.themeValue === current);
+            btn.addEventListener('click', () => {
+                const theme = btn.dataset.themeValue;
+                document.documentElement.setAttribute('data-theme', theme);
+                localStorage.setItem('nttclass_theme', theme);
+                swatches.forEach(b => b.classList.toggle('active', b === btn));
+                this.showToast('Đã đổi màu giao diện!', 'success');
+            });
+        });
     }
 
     async init() {
@@ -273,6 +305,9 @@ class PinkyClassApp {
     }
 
     registerEvents() {
+        // Bộ chọn màu giao diện (3 chấm màu ở cuối sidebar)
+        this.bindThemeSwitcher();
+
         // Lọc học sinh theo lớp (Lớp 6 -> Lớp 12)
         const gradeFilterEl = document.getElementById('studentGradeFilter');
         if (gradeFilterEl) {
