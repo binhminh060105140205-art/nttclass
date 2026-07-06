@@ -1861,7 +1861,7 @@ class PinkyClassApp {
         // Ảnh QR thanh toán (tuỳ chọn) — chèn ngay dưới khối "Tổng học phí",
         // căn giữa, giữ nguyên tỉ lệ ảnh gốc (object-fit:contain).
         const qrHTML = this._invoiceQrDataUrl
-            ? `<div class="qr-block"><img src="${this._invoiceQrDataUrl}" alt="QR thanh toán"></div>`
+            ? `<div class="qr-block"><img src="${this._invoiceQrDataUrl}" alt="QR thanh toán"><div class="qr-account-info">STK: 68688886669<br>Chủ tài khoản: Nguyễn Thanh Thuý</div></div>`
             : '';
 
         // Toàn bộ phiếu được dựng trong 1 khung ẩn (off-screen) ngay trên
@@ -1914,8 +1914,9 @@ class PinkyClassApp {
         #invoiceExportSheet .total-card { text-align:center; background:#fdf0f7; display:flex; flex-direction:column; justify-content:center; border-color:#f3d2e4; }
         #invoiceExportSheet .total-card .label { font-weight:800; font-size:13px; }
         #invoiceExportSheet .total-card .value { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size:38px; font-weight:900; color:#1f0e17; margin-top:8px; }
-        #invoiceExportSheet .qr-block { display:flex; justify-content:center; margin-top: 12px; }
+        #invoiceExportSheet .qr-block { display:flex; flex-direction:column; align-items:center; margin-top: 12px; }
         #invoiceExportSheet .qr-block img { width: 120px; height: 120px; object-fit: contain; border-radius: 10px; border: 1px solid #f3d2e4; background:#fff; padding: 6px; }
+        #invoiceExportSheet .qr-account-info { margin-top: 8px; font-size: 12px; line-height: 1.5; font-weight: 700; color: #7a1c4d; text-align: center; }
         #invoiceExportSheet .chip { display:inline-block; background:#fce7f3; color:#be185d; font-weight:800; font-size:12.5px; padding:5px 12px; border-radius:20px; margin:3px 5px 0 0; }
         #invoiceExportSheet .section-title { display:flex; align-items:center; gap:7px; font-family:'Nunito',sans-serif; font-weight:800; color:#8a1c53; text-transform:uppercase; margin: 0 0 10px; font-size:13.5px; letter-spacing:0.3px; }
         #invoiceExportSheet .section-title .icon { font-size:15.5px; }
