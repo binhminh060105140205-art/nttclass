@@ -1774,18 +1774,20 @@ class PinkyClassApp {
     // in của trình duyệt); nay dựng phiếu trong 1 khung ẩn ngay trên trang,
     // đợi font/ảnh QR tải xong rồi dùng html2canvas chụp lại thành ảnh và tải
     // xuống trực tiếp — không cần popup, không phụ thuộc máy in ảo.
- // Render phiếu học phí ra 1 file ẢNH (PNG) chất lượng cao giống mẫu image_eb251e.jpg
     async exportInvoice() {
         const studentId = document.getElementById('invoiceStudentId').value;
         const st = this.students.find(s => s.id === studentId);
         if (!st) return;
 
         // Luôn tính lại theo đúng khoảng "Từ ngày - Đến ngày" đang hiển thị
+        // ngay trước khi xuất, đảm bảo phiếu in ra khớp 100% với số liệu trên
+        // màn hình — không dùng dữ liệu cache cũ từ lúc mở modal.
         const sessions = this.recomputeInvoiceTotals();
         let totalFee = 0, paidFee = 0, totalHours = 0;
         let privateCount = 0, privateSum = 0, groupCount = 0, groupSum = 0;
         sessions.forEach(sess => {
             totalHours += parseFloat(sess.duration) || 0;
+            // Học sinh học phí 0đ không đóng góp gì vào tổng học phí của phiếu.
             const payingIds = this.getPayingStudentIds(sess);
             if (!payingIds.includes(studentId)) return;
             const portion = sess.price / (payingIds.length || 1);
@@ -1817,14 +1819,16 @@ class PinkyClassApp {
         const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const nl2br = (s) => esc(s).replace(/\n/g, '<br>');
 
-        // Bố cục checklist dạng (✓) chuyên nghiệp cho lịch học và lộ trình
+        // Danh sách kiểu "checklist" (✓ đầu dòng) dùng cho khối LỊCH HỌC và GHI
+        // CHÚ HỌC PHÍ, giống đúng bố cục trong mẫu phiếu. Nếu dòng có dấu ":"
+        // thì in đậm phần trước dấu ":" (VD "16h–18h thứ 4:" in đậm).
         const checklistHTML = (text) => {
             const lines = esc(text).split('\n').map(l => l.trim()).filter(Boolean);
             if (lines.length === 0) return '';
             return lines.map(line => {
                 const colonIdx = line.indexOf(':');
                 const item = colonIdx > -1
-                    ? `<strong style="color: #7a1c4d;">${line.slice(0, colonIdx + 1)}</strong>${line.slice(colonIdx + 1)}`
+                    ? `<strong>${line.slice(0, colonIdx + 1)}</strong>${line.slice(colonIdx + 1)}`
                     : line;
                 return `<div class="checklist-item"><span class="check-mark">✓</span><span>${item}</span></div>`;
             }).join('');
@@ -1835,13 +1839,16 @@ class PinkyClassApp {
             return `<span class="chip">${d}/${m}</span>`;
         }).join('');
 
-        // Khối Ghi chú học phí bám sát mẫu image_eb251e.jpg
+        // Ghi chú học phí: liệt kê số buổi riêng/chung và đơn giá tương ứng,
+        // theo đúng bố cục "GHI CHÚ HỌC PHÍ" trong mẫu phiếu (dạng checklist ✓).
         const feeNoteLines = [];
         if (privateCount > 0) feeNoteLines.push(`${privateCount} buổi học riêng: <strong>${this.formatVND(privateUnit)}/buổi</strong>`);
         if (groupCount > 0) feeNoteLines.push(`${groupCount} buổi học chung: <strong>${this.formatVND(groupUnit)}/buổi</strong>`);
         const feeNoteHTML = feeNoteLines.map(l => `<div class="checklist-item"><span class="check-mark">✓</span><span>${l}</span></div>`).join('');
 
-        // Khối Nhận xét học tập được bao bọc trong một khối border-left đổ màu tinh tế
+        // Nhận xét học tập: gộp Tổng quan/Đại số/Hình học vào chung 1 khung,
+        // mỗi mục hiển thị kiểu "trích dẫn" (viền trái) xếp chồng, giống hệt bố
+        // cục khung "NHẬN XÉT HỌC TẬP" trong mẫu phiếu (không phải 3 ô riêng).
         const quoteItemsHTML = [
             overview  ? `<div class="quote-item"><strong>Tổng quan:</strong> ${nl2br(overview)}</div>`  : '',
             algebra   ? `<div class="quote-item"><strong>Đại số:</strong> ${nl2br(algebra)}</div>`      : '',
@@ -1849,295 +1856,151 @@ class PinkyClassApp {
         ].filter(Boolean).join('');
 
         const scheduleHTML = checklistHTML(schedule);
-        const roadmapHTML = roadmap ? checklistHTML(roadmap) : '';
+        const roadmapHTML = roadmap ? `<div class="plain-paragraph">${nl2br(roadmap)}</div>` : '';
 
-        // Khối QR thanh toán bám sát phần footer chuyển khoản của mẫu phiếu
+        // Ảnh QR thanh toán (tuỳ chọn) — chèn ngay dưới khối "Tổng học phí",
+        // căn giữa, giữ nguyên tỉ lệ ảnh gốc (object-fit:contain).
         const qrHTML = this._invoiceQrDataUrl
-            ? `<div class="qr-block">
-                <img src="${this._invoiceQrDataUrl}" alt="QR thanh toán">
-                <div class="qr-account-info">
-                    <span style="font-weight: 800; color: #831843; font-size: 11px; letter-spacing: 0.3px;">THÔNG TIN CHUYỂN KHOẢN</span><br>
-                    Số tài khoản: <strong style="color: #be185d;">68688886669</strong><br>
-                    Chủ tài khoản: <strong>Nguyễn Thanh Thuý</strong>
-                </div>
-               </div>`
+            ? `<div class="qr-block"><img src="${this._invoiceQrDataUrl}" alt="QR thanh toán"><div class="qr-account-info">Số tài khoản: 68688886669<br>Chủ tài khoản: Nguyễn Thanh Thuý</div></div>`
             : '';
 
-        // Tiến hành dựng cấu trúc HTML phiếu học phí mới với CSS nâng cấp chuẩn mẫu image_eb251e.jpg
+        // Toàn bộ phiếu được dựng trong 1 khung ẩn (off-screen) ngay trên
+        // trang hiện tại — dùng CHUNG font đã tải sẵn của trang thay vì phải
+        // tải lại font trong 1 cửa sổ/tab mới, tránh tình trạng chữ có dấu bị
+        // vỡ/font dự phòng do chưa kịp tải font khi chụp ảnh.
         const sheetHTML = `
 <div class="invoice-sheet" id="invoiceExportSheet">
     <style>
         #invoiceExportSheet, #invoiceExportSheet * { box-sizing: border-box; }
         #invoiceExportSheet {
             font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
-            background: #fff5f9;
-            color: #3f0d24;
+            background:#fdf2f8;
+            color:#3f0d24;
             width: 480px;
-            padding: 24px;
-            -webkit-font-smoothing: antialiased;
+            padding: 16px;
+            -webkit-font-smoothing:antialiased;
             position: relative;
+            /* Luôn tự động xuống dòng theo từ ở MỌI phần tử con — chặn triệt
+               để tình trạng tràn ngang khi nhận xét/ghi chú quá dài. */
             overflow-wrap: break-word;
             word-break: break-word;
         }
+        #invoiceExportSheet .decor { position:absolute; border-radius:50%; pointer-events:none; z-index:0; }
+        #invoiceExportSheet .decor-1 { width:180px; height:180px; top:-60px; right:-60px; background:radial-gradient(circle, rgba(236,72,153,0.16) 0%, rgba(236,72,153,0) 70%); }
+        #invoiceExportSheet .decor-2 { width:160px; height:160px; bottom:-60px; left:-60px; background:radial-gradient(circle, rgba(236,72,153,0.16) 0%, rgba(236,72,153,0) 70%); }
         #invoiceExportSheet .sheet {
             position: relative;
             z-index: 1;
-            background: #fff;
-            border: 2px solid #fbcfe8;
+            background:#fff;
+            border: 2px solid #f3d2e4;
             border-radius: 24px;
-            padding: 24px;
-            box-shadow: 0 10px 25px -5px rgba(219, 39, 119, 0.05);
+            padding: 18px 18px;
         }
-        #invoiceExportSheet .top-bar { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            margin-bottom: 16px;
-        }
-        #invoiceExportSheet .badge-pill { 
-            display: inline-block; 
-            background: #be185d; 
-            color: #fff; 
-            font-weight: 800; 
-            font-size: 12px; 
-            padding: 6px 14px; 
-            border-radius: 50px; 
-            text-transform: uppercase;
-            letter-spacing: 0.5px; 
-        }
-        #invoiceExportSheet .top-note { 
-            font-size: 12px; 
-            color: #9d6b83; 
-            font-weight: 700; 
-        }
-        #invoiceExportSheet h1 { 
-            font-family: 'Comfortaa', 'Nunito', sans-serif; 
-            font-size: 24px; 
-            font-weight: 900; 
-            text-align: center; 
-            color: #831843; 
-            margin: 8px 0 20px 0; 
-            letter-spacing: 0.5px; 
-            line-height: 1.2; 
-        }
-        #invoiceExportSheet .grid-2 { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 12px; 
-            margin-bottom: 12px; 
-        }
-        #invoiceExportSheet .card { 
-            border: 1.5px solid #fce7f3; 
-            border-radius: 16px; 
-            padding: 16px; 
-            margin-bottom: 12px; 
-            background: #fff; 
-        }
-        #invoiceExportSheet .card.compact { 
-            padding: 14px; 
-            margin-bottom: 0;
-        }
-        #invoiceExportSheet .info-row { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            gap: 12px; 
-            padding: 6px 0; 
-            line-height: 1.3; 
-            border-bottom: 1px dashed #fce7f3; 
-        }
-        #invoiceExportSheet .info-row:last-of-type { 
-            border-bottom: none; 
-        }
-        #invoiceExportSheet .info-row .label { 
-            font-size: 13px; 
-            color: #6b21a8; 
-            font-weight: 700; 
-        }
-        #invoiceExportSheet .info-row .value { 
-            font-size: 13.5px; 
-            text-align: right; 
-            font-weight: 600; 
-            color: #1e1b4b;
-        }
-        #invoiceExportSheet .chips-container {
-            margin-top: 10px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-        #invoiceExportSheet .chip { 
-            display: inline-block; 
-            background: #fdf2f8; 
-            color: #db2777; 
-            font-weight: 700; 
-            font-size: 11.5px; 
-            padding: 4px 10px; 
-            border-radius: 8px; 
-            border: 1px solid #fbcfe8;
-        }
-        #invoiceExportSheet .section-title { 
-            display: flex; 
-            align-items: center; 
-            gap: 6px; 
-            font-weight: 800; 
-            color: #831843; 
-            text-transform: uppercase; 
-            margin-bottom: 12px; 
-            font-size: 13px; 
-            letter-spacing: 0.3px; 
-            border-bottom: 2px solid #fbcfe8;
-            padding-bottom: 4px;
-        }
-        #invoiceExportSheet .total-card { 
-            text-align: center; 
-            background: #fff1f2; 
-            border: 2px dashed #fda4af;
-            padding: 16px; 
-            border-radius: 16px;
-            margin-bottom: 16px;
-        }
-        #invoiceExportSheet .total-card .label { 
-            font-weight: 800; 
-            font-size: 13px; 
-            color: #9f1239;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        #invoiceExportSheet .total-card .value { 
-            font-family: 'Comfortaa', 'Nunito', sans-serif; 
-            font-size: 30px; 
-            font-weight: 900; 
-            color: #4c0519; 
-            margin-top: 4px; 
-        }
-        #invoiceExportSheet .qr-block { 
-            display: flex; 
-            align-items: center; 
-            justify-content: flex-start; /* Đẩy sát sang trái để căn chỉnh đều với chữ */
-            gap: 16px; 
-            margin-top: 16px; 
-            padding-top: 14px;
-            border-top: 1px dashed #fbcfe8; /* Đường gạch đứt nhẹ nhàng bên trong khung */
-        }
-        #invoiceExportSheet .qr-block img { 
-            width: 85px; 
-            height: 85px; 
-            object-fit: cover; 
-            border-radius: 12px; 
-            border: 1px solid #fbcfe8; 
-            background: #fff; 
-            padding: 2px; 
-            flex-shrink: 0; /* Không cho ảnh bị bóp méo */
-        }
-        #invoiceExportSheet .qr-account-info { 
-            font-size: 12px; 
-            line-height: 1.5; 
-            color: #4c0519; 
-            text-align: left; /* Chữ căn trái chuẩn theo ảnh mẫu */
-        }
-        #invoiceExportSheet .quote-item { 
-            border-left: 3.5px solid #db2777; 
-            padding-left: 12px; 
-            margin-bottom: 12px; 
-            font-size: 13.5px; 
-            line-height: 1.5; 
-        }
-        #invoiceExportSheet .quote-item:last-child { 
-            margin-bottom: 0; 
-        }
-        #invoiceExportSheet .quote-item strong { 
-            color: #831843; 
-        }
-        #invoiceExportSheet .checklist-item { 
-            display: flex; 
-            align-items: flex-start; 
-            gap: 6px; 
-            font-size: 13px; 
-            line-height: 1.4; 
-            margin-bottom: 6px; 
-        }
-        #invoiceExportSheet .checklist-item:last-child { 
-            margin-bottom: 0; 
-        }
-        #invoiceExportSheet .check-mark { 
-            color: #db2777; 
-            font-weight: 900; 
-            flex-shrink: 0; 
-        }
-        #invoiceExportSheet .footer-note { 
-            margin-top: 16px; 
-            font-size: 12px; 
-            color: #4c0519; 
-            background: #fff5f9; 
-            border: 1px solid #fbcfe8; 
-            border-radius: 12px; 
-            padding: 10px 14px; 
-            font-weight: 600; 
-            text-align: center; 
-            line-height: 1.4;
-        }
+        #invoiceExportSheet .top-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; row-gap: 8px; }
+        #invoiceExportSheet .badge-pill { display:inline-block; background:#b34a7a; color:#fff; font-weight:800; font-size:12.5px; padding:7px 16px; border-radius:20px; letter-spacing:0.2px; }
+        #invoiceExportSheet .top-note { font-size:12.5px; color:#9d6b83; font-weight:700; }
+        #invoiceExportSheet h1 { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size: 22px; font-weight:800; text-align:center; color:#7a1c4d; margin: 12px 0 4px; letter-spacing: 0.3px; line-height:1.25; }
+        #invoiceExportSheet .row { display:flex; gap:10px; margin-bottom: 10px; align-items: stretch; }
+        #invoiceExportSheet .row > .card { flex: 1; margin-bottom: 0; min-width: 0; }
+        #invoiceExportSheet .row-top { align-items: stretch; }
+        #invoiceExportSheet .row-top > .card { flex: 1.35; padding: 12px 13px; }
+        #invoiceExportSheet .row-top > .total-card { flex: 1; padding: 12px 10px; }
+        #invoiceExportSheet .row-top .section-title { font-size: 12px; margin-bottom: 8px; }
+        #invoiceExportSheet .row-top .info-row { gap: 4px; font-size: 12px; flex-wrap: wrap; }
+        #invoiceExportSheet .row-top .info-row .label { flex-shrink: 0; }
+        #invoiceExportSheet .row-top .info-row .value { text-align:right; flex: 1; min-width: 0; }
+        #invoiceExportSheet .row-top .chip { font-size: 10.5px; padding: 4px 8px; margin: 2px 3px 0 0; }
+        #invoiceExportSheet .row-top .total-card .label { font-size: 11.5px; }
+        #invoiceExportSheet .row-top .total-card .value { font-size: 23px; }
+        #invoiceExportSheet .row-top .qr-block img { width: 78px; height: 78px; }
+        #invoiceExportSheet .row-top .qr-account-info { font-size: 10.5px; }
+        #invoiceExportSheet .card { border:1.5px solid #f3d2e4; border-radius:18px; padding:14px 16px; margin-bottom: 10px; background:#fff; }
+        #invoiceExportSheet .card.compact { padding: 11px 13px; }
+        #invoiceExportSheet .card .label { font-size:11px; color:#9d6b83; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; line-height:1.2; }
+        #invoiceExportSheet .card .value { font-family:'Nunito',sans-serif; font-size:14.5px; font-weight:500; margin-top:2px; color:#3f0d24; line-height:1.25; }
+        #invoiceExportSheet .info-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding: 4px 0; line-height:1.25; border-bottom: 1px dashed #f6e2ec; }
+        #invoiceExportSheet .info-row:first-of-type { padding-top: 0; }
+        #invoiceExportSheet .info-row:last-of-type { border-bottom: none; }
+        #invoiceExportSheet .info-row .label { margin-top:0; white-space:nowrap; }
+        #invoiceExportSheet .info-row .value { margin-top:0; text-align:right; font-weight:500; }
+        #invoiceExportSheet .divider-dashed { border-top: 1px dashed #f3d2e4; margin: 6px 0 5px; }
+        #invoiceExportSheet .total-card { text-align:center; background:#fdf0f7; display:flex; flex-direction:column; justify-content:center; align-items:center; border-color:#f3d2e4; padding: 12px 16px; }
+        #invoiceExportSheet .total-card .label { font-weight:800; font-size:12.5px; line-height:1.2; }
+        #invoiceExportSheet .total-card .value { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size:28px; font-weight:900; color:#1f0e17; margin-top:4px; line-height:1.15; }
+        #invoiceExportSheet .qr-block { display:flex; flex-direction:column; align-items:center; margin-top: 8px; }
+        #invoiceExportSheet .qr-block img { width: 92px; height: 92px; object-fit: contain; border-radius: 10px; border: 1px solid #f3d2e4; background:#fff; padding: 5px; }
+        #invoiceExportSheet .qr-account-info { margin-top: 6px; font-size: 12px; line-height: 1.35; font-weight: 700; color: #7a1c4d; text-align: center; }
+        #invoiceExportSheet .chip { display:inline-block; background:#fce7f3; color:#be185d; font-weight:800; font-size:12px; padding:5px 11px; border-radius:16px; margin:3px 5px 0 0; }
+        #invoiceExportSheet .section-title { display:flex; align-items:center; gap:7px; font-family:'Nunito',sans-serif; font-weight:800; color:#8a1c53; text-transform:uppercase; margin: 0 0 10px; font-size:13.5px; letter-spacing:0.3px; }
+        #invoiceExportSheet .card.compact .section-title { font-size: 12px; margin-bottom: 7px; }
+        #invoiceExportSheet .section-title .icon { font-size:15.5px; }
+        #invoiceExportSheet .card.card-notes { padding: 20px 20px; margin-top: 2px; }
+        #invoiceExportSheet .card.card-notes .section-title { font-size: 14.5px; margin-bottom: 14px; }
+        #invoiceExportSheet .quote-item { border-left: 3px solid #be185d; padding: 2px 0 2px 13px; margin-bottom: 12px; font-size: 13.5px; line-height:1.6; }
+        #invoiceExportSheet .card-notes .quote-item { font-size: 14.5px; line-height: 1.72; margin-bottom: 16px; padding: 3px 0 3px 14px; }
+        #invoiceExportSheet .quote-item:last-child { margin-bottom: 0; }
+        #invoiceExportSheet .quote-item strong { color:#8a1c53; }
+        #invoiceExportSheet .plain-paragraph { font-size: 12.5px; line-height: 1.5; }
+        #invoiceExportSheet .checklist-item { display:flex; align-items:flex-start; gap:7px; font-size:12.5px; line-height:1.4; margin-bottom:5px; }
+        #invoiceExportSheet .checklist-item:last-child { margin-bottom: 0; }
+        #invoiceExportSheet .check-mark { color:#be185d; font-weight:800; flex-shrink:0; }
+        #invoiceExportSheet .footer-note { margin-top:2px; display:flex; justify-content:center; align-items:center; flex-wrap:wrap; row-gap:6px; gap: 14px; font-size:11.5px; color:#9d6b83; background:#fdf2f8; border:1px solid #f3d2e4; border-radius:14px; padding:9px 13px; font-weight:600; text-align:center; }
+        #invoiceExportSheet .footer-note-text { flex: 1; text-align:center; }
     </style>
+    <div class="decor decor-1"></div>
+    <div class="decor decor-2"></div>
     <div class="sheet">
         <div class="top-bar">
-            <span class="badge-pill">GV: ${esc(teacherName)}</span>
-            <span class="top-note">${teacherPhone ? 'SĐT: ' + esc(teacherPhone) : 'PinkyClass Academy'}</span>
+            <span class="badge-pill">${esc(teacherName)}</span>
+            <span class="top-note">${teacherPhone ? esc(teacherPhone) : 'Dành cho phụ huynh'}</span>
         </div>
         <h1>${esc(title)}</h1>
 
-        <!-- Khối thông tin chung -->
-        <div class="card">
-            <div class="section-title">🎓 Thông tin học tập</div>
-            <div class="info-row"><span class="label">Học sinh</span><span class="value" style="font-weight:800; color:#831843;">${esc(st.name)} (${esc(st.class)})</span></div>
-            <div class="info-row"><span class="label">Tổng số buổi học</span><span class="value">${sessions.length} buổi</span></div>
-            <div class="info-row"><span class="label">Tổng số giờ học</span><span class="value">${totalHours.toFixed(1)} giờ</span></div>
-            <div class="info-row" style="border-bottom:none;"><span class="label">Danh sách ngày học</span></div>
-            <div class="chips-container">${dateChips || '<span style="font-size:12.5px;color:#9d6b83;font-style:italic;">Chưa có buổi học nào</span>'}</div>
+        <div class="row row-top">
+            <div class="card">
+                <div class="section-title"><span class="icon">🎓</span>Thông tin học sinh</div>
+                <div class="info-row"><span class="label">Họ và tên</span><span class="value">${esc(st.name)} – ${esc(st.class)}</span></div>
+                <div class="info-row"><span class="label">Học phí/buổi</span><span class="value">${privateCount > 0 ? this.formatVND(privateUnit) : this.formatVND(groupUnit)}</span></div>
+                <div class="info-row"><span class="label">Số buổi học</span><span class="value">${sessions.length} buổi</span></div>
+                <div class="info-row"><span class="label">Số giờ học</span><span class="value">${totalHours.toFixed(1)} giờ</span></div>
+                <div class="divider-dashed"></div>
+                <div class="label" style="margin-bottom:6px;">Ngày học trong kỳ</div>
+                <div>${dateChips || '<span style="font-size:13px;color:#c48ba6;">Chưa có buổi học trong kỳ</span>'}</div>
+            </div>
+
+            <div class="card total-card">
+                <div class="label">Tổng học phí</div>
+                <div class="value">${this.formatVND(totalFee)}</div>
+                ${qrHTML}
+            </div>
         </div>
 
-        <!-- Khối Tổng tiền và Chuyển khoản QR -->
-        <div class="total-card">
-            <div class="label">Tổng Học Phí Cần Thanh Toán</div>
-            <div class="value">${this.formatVND(totalFee)}</div>
-            ${qrHTML}
-        </div>
+        ${quoteItemsHTML ? `<div class="card card-notes"><div class="section-title"><span class="icon">📝</span>Nhận xét học tập</div>${quoteItemsHTML}</div>` : ''}
 
-        <!-- Khối nhận xét học tập -->
-        ${quoteItemsHTML ? `
-        <div class="card">
-            <div class="section-title">📝 Nhận xét của giáo viên</div>
-            ${quoteItemsHTML}
-        </div>` : ''}
-
-        <!-- Lịch học và Lộ trình sắp tới chia 2 cột đều nhau -->
         ${(scheduleHTML || roadmapHTML) ? `
-        <div class="grid-2">
+        <div class="row">
             <div class="card compact">
-                <div class="section-title">📅 Lịch học cố định</div>
-                ${scheduleHTML || '<div style="font-size:12px;color:#9d6b83;font-style:italic;">Chưa xếp lịch.</div>'}
+                <div class="section-title"><span class="icon">📅</span>Lịch học</div>
+                ${scheduleHTML || '<div class="plain-paragraph" style="color:#c48ba6;">Chưa có lịch học.</div>'}
             </div>
             <div class="card compact">
-                <div class="section-title">🎯 Mục tiêu tiếp theo</div>
-                ${roadmapHTML || '<div style="font-size:12px;color:#9d6b83;font-style:italic;">Theo lộ trình lớp.</div>'}
+                <div class="section-title"><span class="icon">🎯</span>Lộ trình sắp tới</div>
+                ${roadmapHTML || '<div class="plain-paragraph" style="color:#c48ba6;">Chưa có lộ trình.</div>'}
             </div>
         </div>` : ''}
 
-        <!-- Ghi chú chi tiết học phí -->
-        ${feeNoteHTML ? `
-        <div class="card" style="margin-top: 12px;">
-            <div class="section-title">💡 Chi tiết đơn giá học phí</div>
-            ${feeNoteHTML}
-        </div>` : ''}
+        ${feeNoteHTML ? `<div class="card compact"><div class="section-title"><span class="icon">💡</span>Ghi chú học phí</div>${feeNoteHTML}</div>` : ''}
 
-        <!-- Khối chân trang cảm ơn / Lời nhắn -->
         <div class="footer-note">
-            <span>${note ? nl2br(note) : 'Trân trọng cảm ơn Phụ huynh đã luôn đồng hành cùng PinkyClass!'}</span>
+            <span class="footer-note-text">${note ? nl2br(note) : 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.'}</span>
         </div>
     </div>
 </div>`;
 
         this.setBtnLoading('btnExportInvoice', true, 'Đang tạo ảnh...');
 
+        // Dựng khung ẩn NGOÀI vùng nhìn thấy (không dùng display:none, vì
+        // html2canvas cần layout thật để đo/vẽ đúng) để chụp ảnh.
         const holder = document.createElement('div');
         holder.style.position = 'fixed';
         holder.style.top = '0';
@@ -2148,9 +2011,13 @@ class PinkyClassApp {
         const captureEl = document.getElementById('invoiceExportSheet');
 
         try {
+            // Đợi toàn bộ font chữ (kể cả font tiếng Việt Comfortaa/Nunito)
+            // tải xong trước khi chụp — đây là nguyên nhân chính khiến chữ có
+            // dấu đôi khi hiển thị sai/vỡ nếu chụp quá sớm lúc font chưa sẵn.
             if (document.fonts && document.fonts.ready) {
                 await document.fonts.ready;
             }
+            // Đợi ảnh QR (nếu có) tải xong hẳn để không bị chụp thiếu ảnh.
             const qrImg = captureEl.querySelector('.qr-block img');
             if (qrImg && !qrImg.complete) {
                 await new Promise(resolve => {
@@ -2161,8 +2028,8 @@ class PinkyClassApp {
 
             const html2canvas = await this.ensureHtml2Canvas();
             const canvas = await html2canvas(captureEl, {
-                scale: 3, // Giữ độ phân giải x3 cho ảnh sắc nét tuyệt đối, không nhòe chữ
-                backgroundColor: '#fff5f9',
+                scale: 3, // ảnh nét, độ phân giải cao
+                backgroundColor: '#fdf2f8',
                 useCORS: true
             });
 
