@@ -1858,11 +1858,23 @@ class PinkyClassApp {
         const scheduleHTML = checklistHTML(schedule);
         const roadmapHTML = roadmap ? `<div class="plain-paragraph">${nl2br(roadmap)}</div>` : '';
 
+        // Dòng tóm tắt nhỏ dưới số "Tổng học phí", kiểu "Gồm 6 buổi học riêng
+        // và 1 buổi học chung theo ghi chú bên dưới." — giống hệt mẫu tham
+        // khảo, chỉ liệt kê phần nào thực sự có buổi học.
+        const summaryParts = [];
+        if (privateCount > 0) summaryParts.push(`${privateCount} buổi học riêng`);
+        if (groupCount > 0) summaryParts.push(`${groupCount} buổi học chung`);
+        const totalSummaryHTML = summaryParts.length
+            ? `<div class="total-summary">Gồm ${summaryParts.join(' và ')}${feeNoteHTML ? ' theo ghi chú bên dưới.' : '.'}</div>`
+            : '';
+
         // Ảnh QR thanh toán (tuỳ chọn) — chèn ngay dưới khối "Tổng học phí",
-        // căn giữa, không icon, giữ nguyên tỉ lệ ảnh gốc (object-fit:contain).
+        // căn giữa, giữ nguyên tỉ lệ ảnh gốc (object-fit:contain).
         const qrHTML = this._invoiceQrDataUrl
             ? `<div class="qr-block"><img src="${this._invoiceQrDataUrl}" alt="QR thanh toán"></div>`
             : '';
+
+        const teacherLineHTML = `GV. ${esc(teacherName)}${teacherPhone ? ` · SĐT: ${esc(teacherPhone)}` : ''}`;
 
         // Toàn bộ phiếu được dựng trong 1 khung ẩn (off-screen) ngay trên
         // trang hiện tại — dùng CHUNG font đã tải sẵn của trang thay vì phải
@@ -1880,6 +1892,10 @@ class PinkyClassApp {
             padding: 26px 30px;
             -webkit-font-smoothing:antialiased;
             position: relative;
+            /* Luôn tự động xuống dòng theo từ ở MỌI phần tử con — chặn triệt
+               để tình trạng tràn ngang khi nhận xét/ghi chú quá dài. */
+            overflow-wrap: break-word;
+            word-break: break-word;
         }
         #invoiceExportSheet .decor { position:absolute; border-radius:50%; pointer-events:none; z-index:0; }
         #invoiceExportSheet .decor-1 { width:220px; height:220px; top:-80px; right:-80px; background:radial-gradient(circle, rgba(236,72,153,0.16) 0%, rgba(236,72,153,0) 70%); }
@@ -1892,29 +1908,31 @@ class PinkyClassApp {
             border-radius: 20px;
             padding: 24px 28px;
         }
-        #invoiceExportSheet .top-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; row-gap: 6px; }
-        #invoiceExportSheet .teacher-name { font-size:13.5px; font-weight:800; color:#8a1c53; }
-        #invoiceExportSheet .teacher-phone { font-size:13px; color:#3f0d24; font-weight:800; }
-        #invoiceExportSheet h1 { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size: 28px; font-weight:800; text-align:center; color:#8a1c53; margin: 14px 0 16px; letter-spacing: 0.3px; }
+        #invoiceExportSheet .top-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; row-gap: 8px; }
+        #invoiceExportSheet .badge-pill { display:inline-block; background:#b34a7a; color:#fff; font-weight:800; font-size:12.5px; padding:7px 16px; border-radius:20px; letter-spacing:0.2px; }
+        #invoiceExportSheet .top-note { font-size:12.5px; color:#9d6b83; font-weight:700; }
+        #invoiceExportSheet h1 { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size: 27px; font-weight:800; text-align:center; color:#7a1c4d; margin: 16px 0 6px; letter-spacing: 0.3px; }
+        #invoiceExportSheet .subtitle { text-align:center; font-size:12.5px; color:#9d6b83; font-weight:600; margin: 0 0 18px; }
         #invoiceExportSheet .row { display:flex; gap:14px; margin-bottom: 12px; align-items: stretch; }
         #invoiceExportSheet .row > .card { flex: 1; margin-bottom: 0; }
         #invoiceExportSheet .card { border:1.5px solid #f3d2e4; border-radius:16px; padding:16px 18px; margin-bottom: 12px; background:#fff; }
         #invoiceExportSheet .card .label { font-size:11px; color:#9d6b83; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; }
-        #invoiceExportSheet .card .value { font-family:'Nunito',sans-serif; font-size:15.5px; font-weight:800; margin-top:2px; color:#3f0d24; }
-        #invoiceExportSheet .student-meta { font-size:13px; color:#3f0d24; font-weight:400; margin: 0 0 8px; }
-        #invoiceExportSheet .info-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding: 6px 0; border-bottom: 1px dashed #f6e2ec; }
+        #invoiceExportSheet .card .value { font-family:'Nunito',sans-serif; font-size:15px; font-weight:500; margin-top:2px; color:#3f0d24; }
+        #invoiceExportSheet .info-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding: 7px 0; border-bottom: 1px dashed #f6e2ec; }
         #invoiceExportSheet .info-row:first-of-type { padding-top: 0; }
         #invoiceExportSheet .info-row:last-of-type { border-bottom: none; }
         #invoiceExportSheet .info-row .label { margin-top:0; white-space:nowrap; }
-        #invoiceExportSheet .info-row .value { margin-top:0; text-align:right; font-weight:800; }
+        #invoiceExportSheet .info-row .value { margin-top:0; text-align:right; font-weight:500; }
         #invoiceExportSheet .divider-dashed { border-top: 1px dashed #f3d2e4; margin: 10px 0 8px; }
         #invoiceExportSheet .total-card { text-align:center; background:#fdf0f7; display:flex; flex-direction:column; justify-content:center; border-color:#f3d2e4; }
         #invoiceExportSheet .total-card .label { font-weight:800; font-size:13px; }
-        #invoiceExportSheet .total-card .value { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size:38px; font-weight:800; color:#8a1c53; margin-top:6px; }
-        #invoiceExportSheet .qr-block { display:flex; justify-content:center; margin-top: 10px; }
-        #invoiceExportSheet .qr-block img { width: 132px; height: 132px; object-fit: contain; border-radius: 10px; border: 1px solid #f3d2e4; background:#fff; padding: 6px; }
+        #invoiceExportSheet .total-card .value { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size:38px; font-weight:900; color:#1f0e17; margin-top:8px; }
+        #invoiceExportSheet .total-summary { font-size:11.5px; color:#9d6b83; font-weight:600; line-height:1.5; margin-top:10px; padding: 0 6px; }
+        #invoiceExportSheet .qr-block { display:flex; justify-content:center; margin-top: 12px; }
+        #invoiceExportSheet .qr-block img { width: 120px; height: 120px; object-fit: contain; border-radius: 10px; border: 1px solid #f3d2e4; background:#fff; padding: 6px; }
         #invoiceExportSheet .chip { display:inline-block; background:#fce7f3; color:#be185d; font-weight:800; font-size:12.5px; padding:5px 12px; border-radius:20px; margin:3px 5px 0 0; }
-        #invoiceExportSheet .section-title { font-family:'Nunito',sans-serif; font-weight:800; color:#8a1c53; text-transform:uppercase; margin: 0 0 10px; font-size:13.5px; letter-spacing:0.3px; }
+        #invoiceExportSheet .section-title { display:flex; align-items:center; gap:7px; font-family:'Nunito',sans-serif; font-weight:800; color:#8a1c53; text-transform:uppercase; margin: 0 0 10px; font-size:13.5px; letter-spacing:0.3px; }
+        #invoiceExportSheet .section-title .icon { font-size:15.5px; }
         #invoiceExportSheet .quote-item { border-left: 3px solid #be185d; padding: 1px 0 1px 12px; margin-bottom: 10px; font-size: 13px; line-height:1.55; }
         #invoiceExportSheet .quote-item:last-child { margin-bottom: 0; }
         #invoiceExportSheet .quote-item strong { color:#8a1c53; }
@@ -1922,53 +1940,58 @@ class PinkyClassApp {
         #invoiceExportSheet .checklist-item { display:flex; align-items:flex-start; gap:8px; font-size:13px; line-height:1.5; margin-bottom:7px; }
         #invoiceExportSheet .checklist-item:last-child { margin-bottom: 0; }
         #invoiceExportSheet .check-mark { color:#be185d; font-weight:800; flex-shrink:0; }
-        #invoiceExportSheet .footer-note { margin-top:2px; font-size:12px; color:#9d6b83; background:#fdf2f8; border:1px solid #f3d2e4; border-radius:12px; padding:11px 16px; text-align:center; font-weight:600; }
+        #invoiceExportSheet .footer-note { margin-top:2px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; row-gap:6px; gap: 14px; font-size:12px; color:#9d6b83; background:#fdf2f8; border:1px solid #f3d2e4; border-radius:12px; padding:11px 16px; font-weight:600; }
+        #invoiceExportSheet .footer-note-text { flex: 1; min-width: 200px; }
+        #invoiceExportSheet .footer-teacher { color:#8a1c53; font-weight:800; white-space:nowrap; }
     </style>
     <div class="decor decor-1"></div>
     <div class="decor decor-2"></div>
     <div class="sheet">
         <div class="top-bar">
-            <span class="teacher-name">GV. ${esc(teacherName)}</span>
-            ${teacherPhone ? `<span class="teacher-phone">SĐT: ${esc(teacherPhone)}</span>` : ''}
+            <span class="badge-pill">Phiếu thông báo học phí</span>
+            <span class="top-note">Dành cho phụ huynh</span>
         </div>
         <h1>${esc(title)}</h1>
+        <div class="subtitle">Tổng hợp buổi học, nhận xét quá trình học tập và lộ trình sắp tới</div>
 
         <div class="row">
             <div class="card">
-                <div class="section-title">Thông tin học sinh</div>
-                <div class="student-meta">${esc(st.name)} – ${esc(st.class)}</div>
+                <div class="section-title"><span class="icon">🎓</span>Thông tin học sinh</div>
+                <div class="info-row"><span class="label">Họ và tên</span><span class="value">${esc(st.name)} – ${esc(st.class)}</span></div>
                 <div class="info-row"><span class="label">Học phí/buổi</span><span class="value">${privateCount > 0 ? this.formatVND(privateUnit) : this.formatVND(groupUnit)}</span></div>
                 <div class="info-row"><span class="label">Số buổi học</span><span class="value">${sessions.length} buổi</span></div>
                 <div class="info-row"><span class="label">Số giờ học</span><span class="value">${totalHours.toFixed(1)} giờ</span></div>
                 <div class="divider-dashed"></div>
-                <div class="label" style="margin-bottom:6px;">Ngày học</div>
+                <div class="label" style="margin-bottom:6px;">Ngày học trong kỳ</div>
                 <div>${dateChips || '<span style="font-size:13px;color:#c48ba6;">Chưa có buổi học trong kỳ</span>'}</div>
             </div>
             <div class="card total-card">
                 <div class="label">Tổng học phí</div>
                 <div class="value">${this.formatVND(totalFee)}</div>
+                ${totalSummaryHTML}
                 ${qrHTML}
             </div>
         </div>
 
-        ${quoteItemsHTML ? `<div class="card"><div class="section-title">Nhận xét học tập</div>${quoteItemsHTML}</div>` : ''}
+        ${quoteItemsHTML ? `<div class="card"><div class="section-title"><span class="icon">📝</span>Nhận xét học tập</div>${quoteItemsHTML}</div>` : ''}
 
         ${(scheduleHTML || roadmapHTML) ? `
         <div class="row">
             <div class="card">
-                <div class="section-title">Lịch học</div>
+                <div class="section-title"><span class="icon">📅</span>Lịch học</div>
                 ${scheduleHTML || '<div class="plain-paragraph" style="color:#c48ba6;">Chưa có lịch học.</div>'}
             </div>
             <div class="card">
-                <div class="section-title">Lộ trình</div>
+                <div class="section-title"><span class="icon">🎯</span>Lộ trình sắp tới</div>
                 ${roadmapHTML || '<div class="plain-paragraph" style="color:#c48ba6;">Chưa có lộ trình.</div>'}
             </div>
         </div>` : ''}
 
-        ${feeNoteHTML ? `<div class="card"><div class="section-title">Ghi chú</div>${feeNoteHTML}</div>` : ''}
+        ${feeNoteHTML ? `<div class="card"><div class="section-title"><span class="icon">💡</span>Ghi chú học phí</div>${feeNoteHTML}</div>` : ''}
 
         <div class="footer-note">
-            ${note ? nl2br(note) : 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.'}
+            <span class="footer-note-text">${note ? nl2br(note) : 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.'}</span>
+            <span class="footer-teacher">${teacherLineHTML}</span>
         </div>
     </div>
 </div>`;
