@@ -75,6 +75,15 @@ html {
     --hw-pending-bg: #f0f9ff;
     --hw-pending-text: #0369a1;
     --hw-pending-border: #bae6fd;
+
+    /* Màu khối ca học trên Lịch dạy & Chấm công (đổi theo giao diện màu) */
+    --event-rieng-a: #bfdbfe;
+    --event-rieng-b: #93c5fd;
+    --event-rieng-text: #1e3a8a;
+    --event-chung-a: #60a5fa;
+    --event-chung-b: #3b82f6;
+    --event-border: rgba(30, 58, 138, 0.3);
+    --event-border-strong: rgba(30, 58, 138, 0.35);
 }
 
 /* ==========================================================================
@@ -83,7 +92,8 @@ html {
    thẻ <html> (xem bộ chọn màu trong sidebar + theme.js ở cuối app.js).
    "blue" là màu mặc định hiện tại (khai báo trong :root ở trên), 2 bảng dưới
    đây ghi đè lại đúng các biến màu cốt lõi để toàn bộ nút bấm/badge/sidebar/
-   tiêu đề/nền trang... tự động đổi theo mà không cần sửa từng chỗ.
+   tiêu đề/nền trang/khối ca học trên lịch tuần... tự động đổi theo mà không
+   cần sửa từng chỗ.
    ========================================================================== */
 [data-theme="violet"] {
     --primary: #7c3aed;
@@ -96,19 +106,35 @@ html {
     --bg-grad-1: #f3ecff;
     --bg-grad-2: #ede4ff;
     --bg-grad-3: #fbf8ff;
+
+    --event-rieng-a: #ddd6fe;
+    --event-rieng-b: #c4b5fd;
+    --event-rieng-text: #4c1d95;
+    --event-chung-a: #a78bfa;
+    --event-chung-b: #8b5cf6;
+    --event-border: rgba(76, 29, 149, 0.3);
+    --event-border-strong: rgba(76, 29, 149, 0.35);
 }
 
-[data-theme="emerald"] {
-    --primary: #059669;
-    --primary-rgb: 5, 150, 105;
-    --primary-light: #d1fae5;
-    --primary-soft: #ecfdf5;
-    --accent: #14b8a6;
-    --accent-strong: #0d9488;
-    --border-color: rgba(20, 184, 166, 0.24);
-    --bg-grad-1: #e3fbf3;
-    --bg-grad-2: #d9f7eb;
-    --bg-grad-3: #f6fffb;
+[data-theme="pink"] {
+    --primary: #db2777;
+    --primary-rgb: 219, 39, 119;
+    --primary-light: #fce7f3;
+    --primary-soft: #fdf2f8;
+    --accent: #ec4899;
+    --accent-strong: #be185d;
+    --border-color: rgba(236, 72, 153, 0.24);
+    --bg-grad-1: #fff0f6;
+    --bg-grad-2: #ffe4ef;
+    --bg-grad-3: #fffafc;
+
+    --event-rieng-a: #fbcfe8;
+    --event-rieng-b: #f9a8d4;
+    --event-rieng-text: #831843;
+    --event-chung-a: #f472b6;
+    --event-chung-b: #ec4899;
+    --event-border: rgba(131, 24, 67, 0.3);
+    --event-border-strong: rgba(131, 24, 67, 0.35);
 }
 
 /* ==========================================================================
@@ -536,8 +562,8 @@ img, svg, video {
     background: linear-gradient(135deg, #7c3aed, #a855f7);
 }
 
-.theme-swatch[data-theme-value="emerald"] {
-    background: linear-gradient(135deg, #059669, #14b8a6);
+.theme-swatch[data-theme-value="pink"] {
+    background: linear-gradient(135deg, #db2777, #ec4899);
 }
 
 /* Main Content Area — mobile default: full width, no sidebar offset.
@@ -1632,15 +1658,15 @@ textarea.form-control {
 }
 
 .week-event-block.type-rieng {
-    background: linear-gradient(135deg, #bfdbfe, #93c5fd);
-    color: #1e3a8a;
-    border-left-color: rgba(30, 58, 138, 0.3);
+    background: linear-gradient(135deg, var(--event-rieng-a), var(--event-rieng-b));
+    color: var(--event-rieng-text);
+    border-left-color: var(--event-border);
 }
 
 .week-event-block.type-chung {
-    background: linear-gradient(135deg, #60a5fa, #3b82f6);
+    background: linear-gradient(135deg, var(--event-chung-a), var(--event-chung-b));
     color: #ffffff;
-    border-left-color: rgba(30, 58, 138, 0.35);
+    border-left-color: var(--event-border-strong);
 }
 
 /* Đã bỏ vạch kẻ đỏ báo "chưa đóng học phí" ở lịch tuần theo yêu cầu — ca học

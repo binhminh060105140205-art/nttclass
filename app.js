@@ -35,7 +35,14 @@ class PinkyClassApp {
     // sắc của trang được định nghĩa bằng CSS variable theo data-theme này
     // (xem khối "THEME PALETTES" trong style.css).
     initTheme() {
-        const saved = localStorage.getItem('nttclass_theme') || 'blue';
+        let saved = localStorage.getItem('nttclass_theme') || 'blue';
+        // Trước đây có bảng màu "emerald" (xanh lá), nay đã thay bằng "pink"
+        // (hồng) — tự động chuyển những ai đã lỡ chọn xanh lá sang hồng để
+        // không bị rơi về màu mặc định một cách khó hiểu.
+        if (saved === 'emerald') {
+            saved = 'pink';
+            localStorage.setItem('nttclass_theme', saved);
+        }
         document.documentElement.setAttribute('data-theme', saved);
     }
 
