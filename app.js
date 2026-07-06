@@ -1856,7 +1856,7 @@ class PinkyClassApp {
             ? `<div class="qr-block">
                 <img src="${this._invoiceQrDataUrl}" alt="QR thanh toán">
                 <div class="qr-account-info">
-                    <span style="font-weight: 800; color: #500b30;">THÔNG TIN CHUYỂN KHOẢN</span><br>
+                    <span style="font-weight: 800; color: #831843; font-size: 11px; letter-spacing: 0.3px;">THÔNG TIN CHUYỂN KHOẢN</span><br>
                     Số tài khoản: <strong style="color: #be185d;">68688886669</strong><br>
                     Chủ tài khoản: <strong>Nguyễn Thanh Thuý</strong>
                 </div>
@@ -2014,26 +2014,27 @@ class PinkyClassApp {
         #invoiceExportSheet .qr-block { 
             display: flex; 
             align-items: center; 
-            justify-content: center;
+            justify-content: flex-start; /* Đẩy sát sang trái để căn chỉnh đều với chữ */
             gap: 16px; 
-            margin-top: 14px; 
+            margin-top: 16px; 
             padding-top: 14px;
-            border-top: 1px dashed #fca5a5;
+            border-top: 1px dashed #fbcfe8; /* Đường gạch đứt nhẹ nhàng bên trong khung */
         }
         #invoiceExportSheet .qr-block img { 
-            width: 90px; 
-            height: 90px; 
-            object-fit: contain; 
+            width: 85px; 
+            height: 85px; 
+            object-fit: cover; 
             border-radius: 12px; 
-            border: 1px solid #fecdd3; 
+            border: 1px solid #fbcfe8; 
             background: #fff; 
-            padding: 4px; 
+            padding: 2px; 
+            flex-shrink: 0; /* Không cho ảnh bị bóp méo */
         }
         #invoiceExportSheet .qr-account-info { 
             font-size: 12px; 
             line-height: 1.5; 
             color: #4c0519; 
-            text-align: left; 
+            text-align: left; /* Chữ căn trái chuẩn theo ảnh mẫu */
         }
         #invoiceExportSheet .quote-item { 
             border-left: 3.5px solid #db2777; 
