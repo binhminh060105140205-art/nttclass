@@ -1858,23 +1858,11 @@ class PinkyClassApp {
         const scheduleHTML = checklistHTML(schedule);
         const roadmapHTML = roadmap ? `<div class="plain-paragraph">${nl2br(roadmap)}</div>` : '';
 
-        // Dòng tóm tắt nhỏ dưới số "Tổng học phí", kiểu "Gồm 6 buổi học riêng
-        // và 1 buổi học chung theo ghi chú bên dưới." — giống hệt mẫu tham
-        // khảo, chỉ liệt kê phần nào thực sự có buổi học.
-        const summaryParts = [];
-        if (privateCount > 0) summaryParts.push(`${privateCount} buổi học riêng`);
-        if (groupCount > 0) summaryParts.push(`${groupCount} buổi học chung`);
-        const totalSummaryHTML = summaryParts.length
-            ? `<div class="total-summary">Gồm ${summaryParts.join(' và ')}${feeNoteHTML ? ' theo ghi chú bên dưới.' : '.'}</div>`
-            : '';
-
         // Ảnh QR thanh toán (tuỳ chọn) — chèn ngay dưới khối "Tổng học phí",
         // căn giữa, giữ nguyên tỉ lệ ảnh gốc (object-fit:contain).
         const qrHTML = this._invoiceQrDataUrl
             ? `<div class="qr-block"><img src="${this._invoiceQrDataUrl}" alt="QR thanh toán"></div>`
             : '';
-
-        const teacherLineHTML = `GV. ${esc(teacherName)}${teacherPhone ? ` · SĐT: ${esc(teacherPhone)}` : ''}`;
 
         // Toàn bộ phiếu được dựng trong 1 khung ẩn (off-screen) ngay trên
         // trang hiện tại — dùng CHUNG font đã tải sẵn của trang thay vì phải
@@ -1912,7 +1900,6 @@ class PinkyClassApp {
         #invoiceExportSheet .badge-pill { display:inline-block; background:#b34a7a; color:#fff; font-weight:800; font-size:12.5px; padding:7px 16px; border-radius:20px; letter-spacing:0.2px; }
         #invoiceExportSheet .top-note { font-size:12.5px; color:#9d6b83; font-weight:700; }
         #invoiceExportSheet h1 { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size: 27px; font-weight:800; text-align:center; color:#7a1c4d; margin: 16px 0 6px; letter-spacing: 0.3px; }
-        #invoiceExportSheet .subtitle { text-align:center; font-size:12.5px; color:#9d6b83; font-weight:600; margin: 0 0 18px; }
         #invoiceExportSheet .row { display:flex; gap:14px; margin-bottom: 12px; align-items: stretch; }
         #invoiceExportSheet .row > .card { flex: 1; margin-bottom: 0; }
         #invoiceExportSheet .card { border:1.5px solid #f3d2e4; border-radius:16px; padding:16px 18px; margin-bottom: 12px; background:#fff; }
@@ -1927,7 +1914,6 @@ class PinkyClassApp {
         #invoiceExportSheet .total-card { text-align:center; background:#fdf0f7; display:flex; flex-direction:column; justify-content:center; border-color:#f3d2e4; }
         #invoiceExportSheet .total-card .label { font-weight:800; font-size:13px; }
         #invoiceExportSheet .total-card .value { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size:38px; font-weight:900; color:#1f0e17; margin-top:8px; }
-        #invoiceExportSheet .total-summary { font-size:11.5px; color:#9d6b83; font-weight:600; line-height:1.5; margin-top:10px; padding: 0 6px; }
         #invoiceExportSheet .qr-block { display:flex; justify-content:center; margin-top: 12px; }
         #invoiceExportSheet .qr-block img { width: 120px; height: 120px; object-fit: contain; border-radius: 10px; border: 1px solid #f3d2e4; background:#fff; padding: 6px; }
         #invoiceExportSheet .chip { display:inline-block; background:#fce7f3; color:#be185d; font-weight:800; font-size:12.5px; padding:5px 12px; border-radius:20px; margin:3px 5px 0 0; }
@@ -1940,19 +1926,17 @@ class PinkyClassApp {
         #invoiceExportSheet .checklist-item { display:flex; align-items:flex-start; gap:8px; font-size:13px; line-height:1.5; margin-bottom:7px; }
         #invoiceExportSheet .checklist-item:last-child { margin-bottom: 0; }
         #invoiceExportSheet .check-mark { color:#be185d; font-weight:800; flex-shrink:0; }
-        #invoiceExportSheet .footer-note { margin-top:2px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; row-gap:6px; gap: 14px; font-size:12px; color:#9d6b83; background:#fdf2f8; border:1px solid #f3d2e4; border-radius:12px; padding:11px 16px; font-weight:600; }
-        #invoiceExportSheet .footer-note-text { flex: 1; min-width: 200px; }
-        #invoiceExportSheet .footer-teacher { color:#8a1c53; font-weight:800; white-space:nowrap; }
+        #invoiceExportSheet .footer-note { margin-top:2px; display:flex; justify-content:center; align-items:center; flex-wrap:wrap; row-gap:6px; gap: 14px; font-size:12px; color:#9d6b83; background:#fdf2f8; border:1px solid #f3d2e4; border-radius:12px; padding:11px 16px; font-weight:600; text-align:center; }
+        #invoiceExportSheet .footer-note-text { flex: 1; text-align:center; }
     </style>
     <div class="decor decor-1"></div>
     <div class="decor decor-2"></div>
     <div class="sheet">
         <div class="top-bar">
-            <span class="badge-pill">Phiếu thông báo học phí</span>
-            <span class="top-note">Dành cho phụ huynh</span>
+            <span class="badge-pill">${esc(teacherName)}</span>
+            <span class="top-note">${teacherPhone ? esc(teacherPhone) : 'Dành cho phụ huynh'}</span>
         </div>
         <h1>${esc(title)}</h1>
-        <div class="subtitle">Tổng hợp buổi học, nhận xét quá trình học tập và lộ trình sắp tới</div>
 
         <div class="row">
             <div class="card">
@@ -1968,7 +1952,6 @@ class PinkyClassApp {
             <div class="card total-card">
                 <div class="label">Tổng học phí</div>
                 <div class="value">${this.formatVND(totalFee)}</div>
-                ${totalSummaryHTML}
                 ${qrHTML}
             </div>
         </div>
@@ -1991,7 +1974,6 @@ class PinkyClassApp {
 
         <div class="footer-note">
             <span class="footer-note-text">${note ? nl2br(note) : 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.'}</span>
-            <span class="footer-teacher">${teacherLineHTML}</span>
         </div>
     </div>
 </div>`;
