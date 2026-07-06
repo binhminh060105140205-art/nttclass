@@ -1881,98 +1881,70 @@ class PinkyClassApp {
     <style>
         #invoiceExportSheet, #invoiceExportSheet * { box-sizing: border-box; font-family: inherit; }
         #invoiceExportSheet {
-            font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
-            background:#fdf2f8;
-            color:#3f0d24;
-            width: 480px;
+            font-family: 'Be Vietnam Pro', 'Nunito', 'Segoe UI', Arial, sans-serif;
+            background:#f8e9ef;
+            color:#333;
+            width: 472px;
             padding: 16px;
             -webkit-font-smoothing:antialiased;
             position: relative;
-            /* Luôn tự động xuống dòng theo từ ở MỌI phần tử con — chặn triệt
-               để tình trạng tràn ngang khi nhận xét/ghi chú quá dài. */
             overflow-wrap: break-word;
             word-break: break-word;
         }
-        #invoiceExportSheet .decor { position:absolute; border-radius:50%; pointer-events:none; z-index:0; }
-        #invoiceExportSheet .decor-1 { width:180px; height:180px; top:-60px; right:-60px; background:radial-gradient(circle, rgba(236,72,153,0.16) 0%, rgba(236,72,153,0) 70%); }
-        #invoiceExportSheet .decor-2 { width:160px; height:160px; bottom:-60px; left:-60px; background:radial-gradient(circle, rgba(236,72,153,0.16) 0%, rgba(236,72,153,0) 70%); }
         #invoiceExportSheet .sheet {
-            position: relative;
-            z-index: 1;
+            max-width: 440px;
+            margin: 0 auto;
             background:#fff;
-            border: 2px solid #f3d2e4;
-            border-radius: 24px;
-            padding: 18px 18px;
+            border-radius: 22px;
+            border: 2px solid #f3d6df;
+            padding: 20px;
         }
         #invoiceExportSheet .top-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; row-gap: 8px; }
-        #invoiceExportSheet .badge-pill { display:inline-block; background:linear-gradient(135deg, #ec4899 0%, #be185d 100%); color:#fff; font-weight:800; font-size:12.5px; padding:7px 16px; border-radius:20px; letter-spacing:0.2px; }
-        #invoiceExportSheet .top-note { font-size:12.5px; color:#9d6b83; font-weight:700; }
-        #invoiceExportSheet h1 { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size: 22px; font-weight:800; text-align:center; color:#7a1c4d; margin: 12px 0 4px; letter-spacing: 0.3px; line-height:1.25; }
-        #invoiceExportSheet .title-dots { display:flex; justify-content:center; align-items:center; gap:6px; margin: 0 0 14px; }
-        #invoiceExportSheet .title-dots span { width:5px; height:5px; border-radius:50%; background:#f0a8c8; display:inline-block; }
-        #invoiceExportSheet .row { display:flex; gap:10px; margin-bottom: 10px; align-items: stretch; }
-        #invoiceExportSheet .row > .card { flex: 1; margin-bottom: 0; min-width: 0; }
-        #invoiceExportSheet .row-top { align-items: stretch; }
-        #invoiceExportSheet .row-top > .card { flex: 1; padding: 12px 13px; }
-        #invoiceExportSheet .row-top > .total-card { flex: 1; padding: 12px 10px; }
-        #invoiceExportSheet .row-top .section-title { font-size: 12px; margin-bottom: 8px; }
-        #invoiceExportSheet .row-top .info-row { gap: 4px; font-size: 12px; flex-wrap: wrap; }
-        #invoiceExportSheet .row-top .info-row .label { flex-shrink: 0; }
-        #invoiceExportSheet .row-top .info-row .value { text-align:right; flex: 1; min-width: 0; }
-        #invoiceExportSheet .row-top .chip { font-size: 10.5px; padding: 4px 8px; margin: 2px 3px 0 0; }
-        #invoiceExportSheet .row-top .total-card .label { font-size: 11.5px; }
-        #invoiceExportSheet .row-top .total-card .value { font-size: 23px; }
-        #invoiceExportSheet .row-top .qr-block img { width: 100px; height: 100px; }
-        #invoiceExportSheet .row-top .qr-account-info { font-size: 11px; }
-        #invoiceExportSheet .card { border:1.5px solid #f3d2e4; border-radius:18px; padding:14px 16px; margin-bottom: 10px; background:#fff; }
-        #invoiceExportSheet .card.compact { padding: 11px 13px; }
-        #invoiceExportSheet .card .label { font-size:11px; color:#9d6b83; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; line-height:1.2; }
-        #invoiceExportSheet .card .value { font-family:'Nunito',sans-serif; font-size:14.5px; font-weight:500; margin-top:2px; color:#3f0d24; line-height:1.25; }
-        #invoiceExportSheet .info-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding: 4px 0; line-height:1.25; border-bottom: 1px dashed #f6e2ec; }
-        #invoiceExportSheet .info-row:first-of-type { padding-top: 0; }
+        #invoiceExportSheet .badge-pill { display:inline-block; background:linear-gradient(135deg, #d94f7a, #b83b6a); color:#fff; font-weight:600; font-size:14px; padding:8px 16px; border-radius:999px; }
+        #invoiceExportSheet .top-note { font-size:14px; color:#8a3a55; }
+        #invoiceExportSheet h1 { font-size: 26px; font-weight:700; text-align:center; color:#8a1f4d; margin: 16px 0; letter-spacing: 1px; line-height:1.25; }
+        #invoiceExportSheet .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom: 14px; }
+        #invoiceExportSheet .card { background:#fff; border:1.5px solid #f1cbd7; border-radius:18px; padding:16px; }
+        #invoiceExportSheet .section-title { display:flex; align-items:center; gap:6px; font-weight:600; color:#8a1f4d; margin: 0 0 10px; font-size:16px; }
+        #invoiceExportSheet .section-title .icon { font-size:16px; }
+        #invoiceExportSheet .info-row { display:flex; justify-content:space-between; align-items:center; gap:10px; padding: 6px 0; line-height:1.3; border-bottom: 1px dashed #f1cbd7; }
         #invoiceExportSheet .info-row:last-of-type { border-bottom: none; }
-        #invoiceExportSheet .info-row .label { margin-top:0; white-space:nowrap; }
-        #invoiceExportSheet .info-row .value { margin-top:0; text-align:right; font-weight:500; }
-        #invoiceExportSheet .divider-dashed { border-top: 1px dashed #f3d2e4; margin: 6px 0 5px; }
-        #invoiceExportSheet .total-card { text-align:center; background:#fdf0f7; display:flex; flex-direction:column; justify-content:center; align-items:center; border-color:#f3d2e4; padding: 12px 16px; }
-        #invoiceExportSheet .total-card .label { font-weight:800; font-size:12.5px; line-height:1.2; }
-        #invoiceExportSheet .total-card .value { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size:28px; font-weight:900; color:#1f0e17; margin-top:4px; line-height:1.15; }
-        #invoiceExportSheet .qr-block { display:flex; flex-direction:column; align-items:center; margin-top: 8px; width:100%; }
-        #invoiceExportSheet .qr-block img { width: 104px; height: 104px; object-fit: contain; border-radius: 10px; border: 1px solid #f3d2e4; background:#fff; padding: 5px; }
-        #invoiceExportSheet .qr-divider { width:100%; max-width:150px; border-top:1px dashed #f3d2e4; margin: 10px 0 8px; }
-        #invoiceExportSheet .qr-account-info { font-size: 11.5px; line-height: 1.45; font-weight: 500; color: #9d6b83; text-align: center; }
-        #invoiceExportSheet .qr-account-info strong { color: #7a1c4d; font-weight: 800; }
-        #invoiceExportSheet .chip { display:inline-block; background:#fce7f3; color:#be185d; font-weight:800; font-size:12px; padding:5px 11px; border-radius:16px; margin:3px 5px 0 0; }
-        #invoiceExportSheet .section-title { display:flex; align-items:center; gap:7px; font-family:'Nunito',sans-serif; font-weight:800; color:#8a1c53; text-transform:uppercase; margin: 0 0 10px; font-size:13.5px; letter-spacing:0.3px; }
-        #invoiceExportSheet .card.compact .section-title { font-size: 12px; margin-bottom: 7px; }
-        #invoiceExportSheet .section-title .icon { font-size:15.5px; }
-        #invoiceExportSheet .card.card-notes { padding: 20px 20px; margin-top: 2px; }
-        #invoiceExportSheet .card.card-notes .section-title { font-size: 14.5px; margin-bottom: 14px; }
-        #invoiceExportSheet .quote-item { background:#fdf2f8; border-left: 3px solid #be185d; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; font-size: 13.5px; line-height:1.6; }
-        #invoiceExportSheet .card-notes .quote-item { font-size: 13.5px; line-height: 1.6; margin-bottom: 12px; padding: 10px 14px; }
-        #invoiceExportSheet .quote-item:last-child { margin-bottom: 0; }
-        #invoiceExportSheet .quote-item strong { color:#8a1c53; }
-        #invoiceExportSheet .plain-paragraph { font-size: 12.5px; line-height: 1.5; }
-        #invoiceExportSheet .checklist-item { display:flex; align-items:flex-start; gap:7px; font-size:12.5px; line-height:1.4; margin-bottom:5px; }
+        #invoiceExportSheet .info-row .label { font-size:13px; color:#a35b73; font-weight:500; white-space:nowrap; }
+        #invoiceExportSheet .info-row .value { font-size:14px; font-weight:500; color:#333; text-align:right; }
+        #invoiceExportSheet .card .label { font-size:13px; color:#a35b73; font-weight:500; line-height:1.3; }
+        #invoiceExportSheet .divider-dashed { border-top: 1px dashed #f1cbd7; margin: 6px 0 8px; }
+        #invoiceExportSheet .chip { display:inline-block; background:#f7dce5; color:#c2185b; font-weight:600; font-size:13px; padding:4px 10px; border-radius:999px; margin:0 4px 4px 0; }
+        #invoiceExportSheet .total-card { text-align:center; }
+        #invoiceExportSheet .total-card .label { font-size:14px; color:#a35b73; text-align:center; }
+        #invoiceExportSheet .total-card .value { font-size:32px; font-weight:700; color:#8a1f4d; text-align:center; margin-top:4px; line-height:1.2; }
+        #invoiceExportSheet .qr-block { display:flex; flex-direction:column; align-items:center; width:100%; }
+        #invoiceExportSheet .qr-block img { width:110px; height:110px; display:block; margin:10px auto; object-fit:contain; border-radius:10px; border:2px solid #f1cbd7; }
+        #invoiceExportSheet .qr-divider { width:100%; border-top:1px solid #f1cbd7; margin:10px 0; }
+        #invoiceExportSheet .qr-account-info { font-size:13px; line-height:1.4; color:#6e3b4f; text-align:center; }
+        #invoiceExportSheet .qr-account-info strong { font-weight:600; color:#8a1f4d; }
+        #invoiceExportSheet .card-notes { margin-bottom: 14px; }
+        #invoiceExportSheet .quote-item { position:relative; background:#fdeff4; border-radius:12px; padding:12px 12px 12px 22px; margin-top:10px; font-size:14px; line-height:1.4; color:#333; }
+        #invoiceExportSheet .quote-item::before { content:''; position:absolute; left:0; top:0; width:4px; height:100%; background:#d94f7a; border-radius:4px; }
+        #invoiceExportSheet .quote-item strong { color:#8a1f4d; }
+        #invoiceExportSheet .plain-paragraph { font-size: 14px; line-height: 1.4; }
+        #invoiceExportSheet .checklist-item { display:flex; align-items:flex-start; gap:7px; font-size:14px; line-height:1.4; margin-bottom:6px; }
         #invoiceExportSheet .checklist-item:last-child { margin-bottom: 0; }
-        #invoiceExportSheet .check-mark { color:#be185d; font-weight:800; flex-shrink:0; }
-        #invoiceExportSheet .bullet-item { display:flex; align-items:flex-start; gap:7px; font-size:12.5px; line-height:1.4; margin-bottom:5px; }
+        #invoiceExportSheet .check-mark { color:#d94f7a; font-weight:700; flex-shrink:0; }
+        #invoiceExportSheet .bullet-item { display:flex; align-items:flex-start; gap:7px; font-size:14px; line-height:1.4; margin-bottom:6px; }
         #invoiceExportSheet .bullet-item:last-child { margin-bottom: 0; }
-        #invoiceExportSheet .bullet-mark { color:#be185d; font-weight:800; flex-shrink:0; }
-        #invoiceExportSheet .footer-note { margin-top:2px; display:flex; justify-content:center; align-items:center; flex-wrap:wrap; row-gap:6px; gap: 14px; font-size:11.5px; color:#9d6b83; background:#fdf2f8; border:1px solid #f3d2e4; border-radius:14px; padding:9px 13px; font-weight:600; text-align:center; }
-        #invoiceExportSheet .footer-note-text { flex: 1; text-align:center; }
+        #invoiceExportSheet .bullet-mark { color:#d94f7a; font-weight:700; flex-shrink:0; }
+        #invoiceExportSheet .fee-note { font-size:14px; color:#333; }
+        #invoiceExportSheet .fee-note strong { font-weight:600; color:#8a1f4d; }
+        #invoiceExportSheet .footer-note { margin-top:2px; background:#f7dce5; border-radius:14px; padding:10px; text-align:center; font-size:13px; color:#8a3a55; }
     </style>
-    <div class="decor decor-1"></div>
-    <div class="decor decor-2"></div>
     <div class="sheet">
         <div class="top-bar">
             <span class="badge-pill">${esc(teacherName)}</span>
             <span class="top-note">${teacherPhone ? esc(teacherPhone) : 'Dành cho phụ huynh'}</span>
         </div>
         <h1>${esc(title)}</h1>
-        <div class="title-dots"><span></span><span></span><span></span></div>
 
-        <div class="row row-top">
+        <div class="grid-2">
             <div class="card">
                 <div class="section-title"><span class="icon">🎓</span>Thông tin học sinh</div>
                 <div class="info-row"><span class="label">Họ và tên</span><span class="value">${esc(st.name)} – ${esc(st.class)}</span></div>
@@ -1994,18 +1966,18 @@ class PinkyClassApp {
         ${quoteItemsHTML ? `<div class="card card-notes"><div class="section-title"><span class="icon">📝</span>Nhận xét học tập</div>${quoteItemsHTML}</div>` : ''}
 
         ${(scheduleHTML || roadmapHTML) ? `
-        <div class="row">
-            <div class="card compact">
+        <div class="grid-2">
+            <div class="card">
                 <div class="section-title"><span class="icon">📅</span>Lịch học</div>
                 ${scheduleHTML || '<div class="plain-paragraph" style="color:#c48ba6;">Chưa có lịch học.</div>'}
             </div>
-            <div class="card compact">
+            <div class="card">
                 <div class="section-title"><span class="icon">🎯</span>Lộ trình sắp tới</div>
                 ${roadmapHTML || '<div class="plain-paragraph" style="color:#c48ba6;">Chưa có lộ trình.</div>'}
             </div>
         </div>` : ''}
 
-        ${feeNoteHTML ? `<div class="card compact"><div class="section-title"><span class="icon">💡</span>Ghi chú học phí</div>${feeNoteHTML}</div>` : ''}
+        ${feeNoteHTML ? `<div class="card" style="margin-bottom:14px;"><div class="section-title"><span class="icon">💡</span>Ghi chú học phí</div><div class="fee-note">${feeNoteHTML}</div></div>` : ''}
 
         <div class="footer-note">
             <span class="footer-note-text">${note ? nl2br(note) : 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.'}</span>
