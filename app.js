@@ -1855,13 +1855,21 @@ class PinkyClassApp {
             geometry  ? `<div class="quote-item"><strong>Hình học:</strong> ${nl2br(geometry)}</div>`   : ''
         ].filter(Boolean).join('');
 
+        // Lộ trình sắp tới: hiển thị dạng bullet "•" mỗi dòng 1 mục, giống bố
+        // cục "LỘ TRÌNH SẮP TỚI" trong mẫu phiếu (khác LỊCH HỌC dùng dấu ✓).
+        const bulletListHTML = (text) => {
+            const lines = esc(text).split('\n').map(l => l.trim()).filter(Boolean);
+            if (lines.length === 0) return '';
+            return lines.map(line => `<div class="bullet-item"><span class="bullet-mark">•</span><span>${line}</span></div>`).join('');
+        };
+
         const scheduleHTML = checklistHTML(schedule);
-        const roadmapHTML = roadmap ? `<div class="plain-paragraph">${nl2br(roadmap)}</div>` : '';
+        const roadmapHTML = bulletListHTML(roadmap);
 
         // Ảnh QR thanh toán (tuỳ chọn) — chèn ngay dưới khối "Tổng học phí",
         // căn giữa, giữ nguyên tỉ lệ ảnh gốc (object-fit:contain).
         const qrHTML = this._invoiceQrDataUrl
-            ? `<div class="qr-block"><img src="${this._invoiceQrDataUrl}" alt="QR thanh toán"><div class="qr-account-info">Số tài khoản: 68688886669<br>Chủ tài khoản: Nguyễn Thanh Thuý</div></div>`
+            ? `<div class="qr-block"><img src="${this._invoiceQrDataUrl}" alt="QR thanh toán"><div class="qr-divider"></div><div class="qr-account-info">Số tài khoản: <strong>68688886669</strong><br>Chủ tài khoản: <strong>Nguyễn Thanh Thuý</strong></div></div>`
             : '';
 
         // Toàn bộ phiếu được dựng trong 1 khung ẩn (off-screen) ngay trên
@@ -1897,13 +1905,15 @@ class PinkyClassApp {
             padding: 18px 18px;
         }
         #invoiceExportSheet .top-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; row-gap: 8px; }
-        #invoiceExportSheet .badge-pill { display:inline-block; background:#b34a7a; color:#fff; font-weight:800; font-size:12.5px; padding:7px 16px; border-radius:20px; letter-spacing:0.2px; }
+        #invoiceExportSheet .badge-pill { display:inline-block; background:linear-gradient(135deg, #ec4899 0%, #be185d 100%); color:#fff; font-weight:800; font-size:12.5px; padding:7px 16px; border-radius:20px; letter-spacing:0.2px; }
         #invoiceExportSheet .top-note { font-size:12.5px; color:#9d6b83; font-weight:700; }
         #invoiceExportSheet h1 { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size: 22px; font-weight:800; text-align:center; color:#7a1c4d; margin: 12px 0 4px; letter-spacing: 0.3px; line-height:1.25; }
+        #invoiceExportSheet .title-dots { display:flex; justify-content:center; align-items:center; gap:6px; margin: 0 0 14px; }
+        #invoiceExportSheet .title-dots span { width:5px; height:5px; border-radius:50%; background:#f0a8c8; display:inline-block; }
         #invoiceExportSheet .row { display:flex; gap:10px; margin-bottom: 10px; align-items: stretch; }
         #invoiceExportSheet .row > .card { flex: 1; margin-bottom: 0; min-width: 0; }
         #invoiceExportSheet .row-top { align-items: stretch; }
-        #invoiceExportSheet .row-top > .card { flex: 1.35; padding: 12px 13px; }
+        #invoiceExportSheet .row-top > .card { flex: 1; padding: 12px 13px; }
         #invoiceExportSheet .row-top > .total-card { flex: 1; padding: 12px 10px; }
         #invoiceExportSheet .row-top .section-title { font-size: 12px; margin-bottom: 8px; }
         #invoiceExportSheet .row-top .info-row { gap: 4px; font-size: 12px; flex-wrap: wrap; }
@@ -1912,8 +1922,8 @@ class PinkyClassApp {
         #invoiceExportSheet .row-top .chip { font-size: 10.5px; padding: 4px 8px; margin: 2px 3px 0 0; }
         #invoiceExportSheet .row-top .total-card .label { font-size: 11.5px; }
         #invoiceExportSheet .row-top .total-card .value { font-size: 23px; }
-        #invoiceExportSheet .row-top .qr-block img { width: 78px; height: 78px; }
-        #invoiceExportSheet .row-top .qr-account-info { font-size: 10.5px; }
+        #invoiceExportSheet .row-top .qr-block img { width: 100px; height: 100px; }
+        #invoiceExportSheet .row-top .qr-account-info { font-size: 11px; }
         #invoiceExportSheet .card { border:1.5px solid #f3d2e4; border-radius:18px; padding:14px 16px; margin-bottom: 10px; background:#fff; }
         #invoiceExportSheet .card.compact { padding: 11px 13px; }
         #invoiceExportSheet .card .label { font-size:11px; color:#9d6b83; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; line-height:1.2; }
@@ -1927,23 +1937,28 @@ class PinkyClassApp {
         #invoiceExportSheet .total-card { text-align:center; background:#fdf0f7; display:flex; flex-direction:column; justify-content:center; align-items:center; border-color:#f3d2e4; padding: 12px 16px; }
         #invoiceExportSheet .total-card .label { font-weight:800; font-size:12.5px; line-height:1.2; }
         #invoiceExportSheet .total-card .value { font-family: 'Comfortaa', 'Nunito', sans-serif; font-size:28px; font-weight:900; color:#1f0e17; margin-top:4px; line-height:1.15; }
-        #invoiceExportSheet .qr-block { display:flex; flex-direction:column; align-items:center; margin-top: 8px; }
-        #invoiceExportSheet .qr-block img { width: 92px; height: 92px; object-fit: contain; border-radius: 10px; border: 1px solid #f3d2e4; background:#fff; padding: 5px; }
-        #invoiceExportSheet .qr-account-info { margin-top: 6px; font-size: 12px; line-height: 1.35; font-weight: 700; color: #7a1c4d; text-align: center; }
+        #invoiceExportSheet .qr-block { display:flex; flex-direction:column; align-items:center; margin-top: 8px; width:100%; }
+        #invoiceExportSheet .qr-block img { width: 104px; height: 104px; object-fit: contain; border-radius: 10px; border: 1px solid #f3d2e4; background:#fff; padding: 5px; }
+        #invoiceExportSheet .qr-divider { width:100%; max-width:150px; border-top:1px dashed #f3d2e4; margin: 10px 0 8px; }
+        #invoiceExportSheet .qr-account-info { font-size: 11.5px; line-height: 1.45; font-weight: 500; color: #9d6b83; text-align: center; }
+        #invoiceExportSheet .qr-account-info strong { color: #7a1c4d; font-weight: 800; }
         #invoiceExportSheet .chip { display:inline-block; background:#fce7f3; color:#be185d; font-weight:800; font-size:12px; padding:5px 11px; border-radius:16px; margin:3px 5px 0 0; }
         #invoiceExportSheet .section-title { display:flex; align-items:center; gap:7px; font-family:'Nunito',sans-serif; font-weight:800; color:#8a1c53; text-transform:uppercase; margin: 0 0 10px; font-size:13.5px; letter-spacing:0.3px; }
         #invoiceExportSheet .card.compact .section-title { font-size: 12px; margin-bottom: 7px; }
         #invoiceExportSheet .section-title .icon { font-size:15.5px; }
         #invoiceExportSheet .card.card-notes { padding: 20px 20px; margin-top: 2px; }
         #invoiceExportSheet .card.card-notes .section-title { font-size: 14.5px; margin-bottom: 14px; }
-        #invoiceExportSheet .quote-item { border-left: 3px solid #be185d; padding: 2px 0 2px 13px; margin-bottom: 12px; font-size: 13.5px; line-height:1.6; }
-        #invoiceExportSheet .card-notes .quote-item { font-size: 14.5px; line-height: 1.72; margin-bottom: 16px; padding: 3px 0 3px 14px; }
+        #invoiceExportSheet .quote-item { background:#fdf2f8; border-left: 3px solid #be185d; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; font-size: 13.5px; line-height:1.6; }
+        #invoiceExportSheet .card-notes .quote-item { font-size: 13.5px; line-height: 1.6; margin-bottom: 12px; padding: 10px 14px; }
         #invoiceExportSheet .quote-item:last-child { margin-bottom: 0; }
         #invoiceExportSheet .quote-item strong { color:#8a1c53; }
         #invoiceExportSheet .plain-paragraph { font-size: 12.5px; line-height: 1.5; }
         #invoiceExportSheet .checklist-item { display:flex; align-items:flex-start; gap:7px; font-size:12.5px; line-height:1.4; margin-bottom:5px; }
         #invoiceExportSheet .checklist-item:last-child { margin-bottom: 0; }
         #invoiceExportSheet .check-mark { color:#be185d; font-weight:800; flex-shrink:0; }
+        #invoiceExportSheet .bullet-item { display:flex; align-items:flex-start; gap:7px; font-size:12.5px; line-height:1.4; margin-bottom:5px; }
+        #invoiceExportSheet .bullet-item:last-child { margin-bottom: 0; }
+        #invoiceExportSheet .bullet-mark { color:#be185d; font-weight:800; flex-shrink:0; }
         #invoiceExportSheet .footer-note { margin-top:2px; display:flex; justify-content:center; align-items:center; flex-wrap:wrap; row-gap:6px; gap: 14px; font-size:11.5px; color:#9d6b83; background:#fdf2f8; border:1px solid #f3d2e4; border-radius:14px; padding:9px 13px; font-weight:600; text-align:center; }
         #invoiceExportSheet .footer-note-text { flex: 1; text-align:center; }
     </style>
@@ -1955,6 +1970,7 @@ class PinkyClassApp {
             <span class="top-note">${teacherPhone ? esc(teacherPhone) : 'Dành cho phụ huynh'}</span>
         </div>
         <h1>${esc(title)}</h1>
+        <div class="title-dots"><span></span><span></span><span></span></div>
 
         <div class="row row-top">
             <div class="card">
@@ -1964,7 +1980,7 @@ class PinkyClassApp {
                 <div class="info-row"><span class="label">Số buổi học</span><span class="value">${sessions.length} buổi</span></div>
                 <div class="info-row"><span class="label">Số giờ học</span><span class="value">${totalHours.toFixed(1)} giờ</span></div>
                 <div class="divider-dashed"></div>
-                <div class="label" style="margin-bottom:6px;">Ngày học trong kỳ</div>
+                <div class="label" style="margin-bottom:6px;">Ngày học đăng ký</div>
                 <div>${dateChips || '<span style="font-size:13px;color:#c48ba6;">Chưa có buổi học trong kỳ</span>'}</div>
             </div>
 
