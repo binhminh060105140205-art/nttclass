@@ -306,7 +306,9 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
         #invoiceExportSheet .card { border:1.5px solid #f1cbd7; border-radius:18px; padding:14px; background:#fff; }
         /* Khoảng cách tiêu đề "📝 Nhận xét học tập" -> ô comment-box đầu tiên: chỉnh margin-bottom này */
-        #invoiceExportSheet .section-title { font-size:15px; font-weight:600; color:#8a1f4d; margin-bottom:10px; }
+        #invoiceExportSheet .section-title { font-size:15px; font-weight:600; color:#8a1f4d; margin-bottom:6px; }
+        /* Riêng khoảng cách tiêu đề "📝 Nhận xét học tập" -> ô đầu tiên: chỉnh margin-bottom này */
+        #invoiceExportSheet .section-title.section-title-notes { margin-bottom:10px; }
 
         /* ============ IV. THÔNG TIN HỌC SINH ============ */
         #invoiceExportSheet .row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:5px 0; border-bottom:1px dashed #f1cbd7; }
@@ -373,7 +375,7 @@ Object.assign(PinkyClassApp.prototype, {
             </div>
         </div>
 
-        ${quoteItemsHTML ? `<div class="section-block"><div class="section-title">📝 Nhận xét học tập</div>${quoteItemsHTML}</div>` : ''}
+        ${quoteItemsHTML ? `<div class="section-block"><div class="section-title section-title-notes">📝 Nhận xét học tập</div>${quoteItemsHTML}</div>` : ''}
 
         ${(scheduleHTML || roadmapHTML) ? `
         <div class="grid-bottom">
