@@ -133,6 +133,10 @@ Object.assign(PinkyClassApp.prototype, {
         const sessions = (this._invoiceAllSessions || []).filter(sess => {
             if (fromVal && sess.date < fromVal) return false;
             if (toVal && sess.date > toVal) return false;
+            // Chỉ tính các buổi ĐÃ THỰC SỰ DIỄN RA vào phiếu học phí — buổi
+            // học lên lịch trong tương lai (dù nằm trong khoảng ngày đã chọn)
+            // sẽ không được cộng vào số buổi/số giờ/tiền học phí của phiếu.
+            if (!this.isSessionCompleted(sess)) return false;
             return true;
         });
 
@@ -280,7 +284,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         /* ============ I. ROOT ============ */
         #invoiceExportSheet {
-            font-family: 'Comfortaa', 'Be Vietnam Pro', 'Nunito', 'Segoe UI', Arial, sans-serif;
+            font-family: 'Nunito', 'Be Vietnam Pro', 'Segoe UI', Arial, sans-serif;
             background: #f8e9ef;
             width: 600px;
             max-width: 600px;
@@ -294,9 +298,9 @@ Object.assign(PinkyClassApp.prototype, {
 
         /* ============ II. HEADER ============ */
         #invoiceExportSheet .header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; row-gap:6px; }
-        #invoiceExportSheet .badge { display:inline-flex; align-items:center; line-height:1; color:#b83b6a; font-size:15px; font-weight:700; border:none; padding:0; border-radius:0; gap:0; background:none; }
+        #invoiceExportSheet .badge { display:inline-flex; align-items:center; line-height:1.4; color:#b83b6a; font-size:15px; font-weight:700; border:none; padding:0; border-radius:0; gap:0; background:none; }
         #invoiceExportSheet .phone { font-size:13px; color:#8a3a55; }
-        #invoiceExportSheet .title { text-align:center; font-size:26px; font-weight:700; color:#8a1f4d; margin:6px 0 22px; line-height:1.25; }
+        #invoiceExportSheet .title { text-align:center; font-size:26px; font-weight:700; color:#8a1f4d; margin:6px 0 22px; line-height:1.5; }
 
         /* ============ III. GRID 2 CỘT ============ */
         #invoiceExportSheet .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
@@ -309,7 +313,7 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .label { font-size:12px; color:#a35b73; }
         #invoiceExportSheet .value { font-size:13px; color:#333; font-weight:500; text-align:right; }
         #invoiceExportSheet .date-label { font-size:12px; color:#a35b73; margin:8px 0 6px; }
-        #invoiceExportSheet .date-chip { display:inline-flex; align-items:center; justify-content:center; line-height:1; background:#f7dce5; color:#c2185b; font-weight:600; font-size:12px; padding:5px 9px 4px; border-radius:999px; margin:0 4px 4px 0; }
+        #invoiceExportSheet .date-chip { display:inline-flex; align-items:center; justify-content:center; line-height:1.5; background:#f7dce5; color:#c2185b; font-weight:600; font-size:12px; padding:5px 9px; border-radius:999px; margin:0 4px 4px 0; }
 
         /* ============ V. TỔNG HỌC PHÍ ============ */
         #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#a35b73; }
@@ -334,7 +338,7 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .empty-hint { font-size:13px; color:#c48ba6; }
 
         /* ============ VIII. FOOTER ============ */
-        #invoiceExportSheet .footer { background:#f7dce5; border-radius:12px; padding:9px 8px 7px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; color:#8a3a55; line-height:1.4; }
+        #invoiceExportSheet .footer { background:#f7dce5; border-radius:12px; padding:9px 8px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; color:#8a3a55; line-height:1.6; }
         #invoiceExportSheet .section-block { margin-top:10px; }
     </style>
     <div class="card-main">

@@ -1544,7 +1544,11 @@ class PinkyClassApp {
         }
 
         studentsList.forEach(st => {
-            const studentSessions = this.filterByMonth(this.sessions).filter(sess => sess.studentIds.includes(st.id));
+            // CHỈ tính các buổi học ĐÃ THỰC SỰ DIỄN RA (đã qua giờ kết thúc so
+            // với hiện tại) vào báo cáo học phí — buổi học nằm trong tương lai
+            // (kể cả ngày mai, tuần sau) sẽ KHÔNG được cộng vào số buổi/số giờ/
+            // tiền học phí ở đây nữa, dù đã có mặt trên lịch dạy.
+            const studentSessions = this.filterByMonth(this.sessions).filter(sess => sess.studentIds.includes(st.id) && this.isSessionCompleted(sess));
             
             const totalSessionsCount = studentSessions.length;
             const totalHours = studentSessions.reduce((acc, curr) => acc + parseFloat(curr.duration), 0);
