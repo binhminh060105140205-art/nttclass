@@ -319,9 +319,9 @@ Object.assign(PinkyClassApp.prototype, {
         /* ============ V. TỔNG HỌC PHÍ ============ */
         #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#a35b73; }
         /* Khoảng cách TỔNG HỌC PHÍ -> 700.000đ: chỉnh số margin-top này (đang để 6px bằng với gap dưới) */
-        #invoiceExportSheet .total-price { text-align:center; font-size:30px; font-weight:700; color:#8a1f4d; margin-top:6px; }
+        #invoiceExportSheet .total-price { text-align:center; font-size:30px; font-weight:700; color:#8a1f4d; margin-top:0px; }
         /* Khoảng cách 700.000đ -> ảnh QR: chỉnh số margin-top này (đang để 6px bằng với gap trên) */
-        #invoiceExportSheet .qr { width:110px; height:110px; display:block; margin:6px auto 8px; object-fit:contain; border-radius:10px; border:2px solid #f1cbd7; background:#fff; }
+        #invoiceExportSheet .qr { width:110px; height:110px; display:block; margin:16px auto 8px; object-fit:contain; border-radius:10px; border:2px solid #f1cbd7; background:#fff; }
         #invoiceExportSheet .divider { border-top:1px solid #f1cbd7; margin:8px 0; }
         #invoiceExportSheet .bank { text-align:center; font-size:13px; color:#6e3b4f; line-height:1.4; }
         #invoiceExportSheet .bank b { color:#8a1f4d; }
