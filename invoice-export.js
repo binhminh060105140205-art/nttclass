@@ -265,7 +265,7 @@ Object.assign(PinkyClassApp.prototype, {
         const qrHTML = this._invoiceQrDataUrl
             ? `<img class="qr" src="${this._invoiceQrDataUrl}" alt="QR thanh toán">
                <div class="divider"></div>
-               <div class="bank">Số tài khoản: <b>68688886669</b><br>Chủ tài khoản: <b>Nguyễn Thanh Thuý</b></div>`
+               <div class="bank">Số TK: <b>68688886669</b><br>Chủ TK: <b>Nguyễn Thanh Thuý</b></div>`
             : '';
 
         // Toàn bộ phiếu được dựng trong 1 khung ẩn (off-screen) ngay trên
@@ -294,9 +294,9 @@ Object.assign(PinkyClassApp.prototype, {
 
         /* ============ II. HEADER ============ */
         #invoiceExportSheet .header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; row-gap:6px; }
-        #invoiceExportSheet .badge { display:inline-block; background:linear-gradient(135deg, #d94f7a, #b83b6a); color:#fff; padding:6px 14px; border-radius:999px; font-size:13px; font-weight:600; }
+        #invoiceExportSheet .badge { display:inline-flex; align-items:center; line-height:1; background:linear-gradient(135deg, #d94f7a, #b83b6a); color:#fff; padding:7px 14px; border-radius:999px; font-size:13px; font-weight:600; }
         #invoiceExportSheet .phone { font-size:13px; color:#8a3a55; }
-        #invoiceExportSheet .title { text-align:center; font-size:26px; font-weight:700; color:#8a1f4d; margin:14px 0; line-height:1.25; }
+        #invoiceExportSheet .title { text-align:center; font-size:26px; font-weight:700; color:#8a1f4d; margin:6px 0 22px; line-height:1.25; }
 
         /* ============ III. GRID 2 CỘT ============ */
         #invoiceExportSheet .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
@@ -371,7 +371,7 @@ Object.assign(PinkyClassApp.prototype, {
                 ${scheduleHTML || '<span class="empty-hint">Chưa có lịch học.</span>'}
             </div>
             <div class="card">
-                <div class="section-title">🎯 Lộ trình sắp tới</div>
+                <div class="section-title">🎯 Lộ trình</div>
                 ${roadmapHTML || '<span class="empty-hint">Chưa có lộ trình.</span>'}
             </div>
         </div>` : ''}
