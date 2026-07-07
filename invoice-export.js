@@ -294,7 +294,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         /* ============ II. HEADER ============ */
         #invoiceExportSheet .header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; row-gap:6px; }
-        #invoiceExportSheet .badge { display:inline-flex; align-items:center; line-height:1; color:#b83b6a; font-size:15px; font-weight:700; border:none; padding:0; border-radius:0; gap:0; background:none; }
+        #invoiceExportSheet .badge { display:inline-flex; align-items:center; line-height:1; color:#1e3a8a; font-size:15px; font-weight:700; border:none; padding:0; border-radius:0; gap:0; background:none; }
         #invoiceExportSheet .phone { font-size:13px; color:#8a3a55; }
         #invoiceExportSheet .title { text-align:center; font-size:26px; font-weight:700; color:#8a1f4d; margin:6px 0 22px; line-height:1.25; }
 
