@@ -320,9 +320,9 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .bank b { color:#8a1f4d; }
 
         /* ============ VI. NHẬN XÉT ============ */
-        #invoiceExportSheet .comment-box { background:#fdeff4; border-radius:12px; padding:8px 8px 8px 12px; margin-bottom:6px; position:relative; }
+        #invoiceExportSheet .comment-box { background:#fdeff4; border-radius:12px; padding:8px 8px 8px 12px; margin-bottom:6px; position:relative; overflow:hidden; }
         #invoiceExportSheet .comment-box:last-child { margin-bottom:0; }
-        #invoiceExportSheet .comment-box::before { content:''; position:absolute; left:0; top:0; width:4px; height:100%; background:#d94f7a; border-radius:4px; }
+        #invoiceExportSheet .comment-box::before { content:''; position:absolute; left:0; top:0; width:5px; height:100%; background:#d94f7a; border-radius:12px 0 0 12px; }
         #invoiceExportSheet .comment-text { font-size:13px; line-height:1.25; }
         #invoiceExportSheet .comment-text strong { color:#8a1f4d; }
 
