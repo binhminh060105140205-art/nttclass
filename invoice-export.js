@@ -314,7 +314,7 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .value { font-size:13px; color:#333; font-weight:500; text-align:right; }
         #invoiceExportSheet .date-label { font-size:12px; color:#a35b73; margin:8px 0 6px; }
         #invoiceExportSheet .date-chip { display:inline-flex; align-items:center; justify-content:center; background:#f7dce5; color:#c2185b; font-weight:600; font-size:12px; padding:7px 9px 5px; border-radius:999px; margin:0 4px 4px 0; }
-        #invoiceExportSheet .date-chip-text { line-height:1; position:relative; top:-10px; }
+        #invoiceExportSheet .date-chip-text { line-height:1; position:relative; top:-1px; }
 
         /* ============ V. TỔNG HỌC PHÍ ============ */
         #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#a35b73; }
@@ -339,7 +339,8 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .empty-hint { font-size:13px; color:#c48ba6; }
 
         /* ============ VIII. FOOTER ============ */
-        #invoiceExportSheet .footer { background:#f7dce5; border-radius:12px; padding:9px 8px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; color:#8a3a55; line-height:1.6; }
+        #invoiceExportSheet .footer { background:#f7dce5; border-radius:12px; padding:9px 8px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; color:#8a3a55; }
+        #invoiceExportSheet .footer-text { line-height:1.4; position:relative; top:-7px; }
         #invoiceExportSheet .section-block { margin-top:10px; }
     </style>
     <div class="card-main">
@@ -383,7 +384,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         ${feeNoteHTML ? `<div class="card section-block"><div class="section-title">💡 Ghi chú học phí</div>${feeNoteHTML}</div>` : ''}
 
-        <div class="footer section-block">${note ? nl2br(note) : 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.'}</div>
+        <div class="footer section-block"><span class="footer-text">${note ? nl2br(note) : 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.'}</span></div>
     </div>
 </div>`;
 
