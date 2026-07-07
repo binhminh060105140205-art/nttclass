@@ -275,11 +275,15 @@ Object.assign(PinkyClassApp.prototype, {
         const sheetHTML = `
 <div class="container" id="invoiceExportSheet">
     <style>
+        /* ============ 0. RESET ============ */
         #invoiceExportSheet, #invoiceExportSheet * { box-sizing: border-box; font-family: inherit; margin:0; padding:0; }
+
+        /* ============ I. ROOT ============ */
         #invoiceExportSheet {
             font-family: 'Be Vietnam Pro', 'Nunito', 'Segoe UI', Arial, sans-serif;
-            width: 440px;
             background: #f8e9ef;
+            width: 440px;
+            max-width: 440px;
             padding: 20px;
             color: #333;
             overflow-wrap: break-word;
@@ -287,35 +291,49 @@ Object.assign(PinkyClassApp.prototype, {
             -webkit-font-smoothing: antialiased;
         }
         #invoiceExportSheet .card-main { background:#fff; border-radius:22px; border:2px solid #f3d6df; padding:18px; }
+
+        /* ============ II. HEADER ============ */
         #invoiceExportSheet .header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; row-gap:6px; }
         #invoiceExportSheet .badge { display:inline-block; background:linear-gradient(135deg, #d94f7a, #b83b6a); color:#fff; padding:6px 14px; border-radius:999px; font-size:13px; font-weight:600; }
         #invoiceExportSheet .phone { font-size:13px; color:#8a3a55; }
         #invoiceExportSheet .title { text-align:center; font-size:26px; font-weight:700; color:#8a1f4d; margin:14px 0; line-height:1.25; }
+
+        /* ============ III. GRID 2 CỘT ============ */
         #invoiceExportSheet .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
         #invoiceExportSheet .card { border:1.5px solid #f1cbd7; border-radius:18px; padding:14px; background:#fff; }
         #invoiceExportSheet .section-title { font-size:15px; font-weight:600; color:#8a1f4d; margin-bottom:8px; }
+
+        /* ============ IV. THÔNG TIN HỌC SINH ============ */
         #invoiceExportSheet .row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:5px 0; border-bottom:1px dashed #f1cbd7; }
         #invoiceExportSheet .row:last-of-type { border-bottom:none; }
         #invoiceExportSheet .label { font-size:12px; color:#a35b73; }
         #invoiceExportSheet .value { font-size:13px; color:#333; font-weight:500; text-align:right; }
         #invoiceExportSheet .date-label { font-size:12px; color:#a35b73; margin:8px 0 6px; }
         #invoiceExportSheet .date-chip { display:inline-block; background:#f7dce5; color:#c2185b; font-weight:600; font-size:12px; padding:4px 9px; border-radius:999px; margin:0 4px 4px 0; }
+
+        /* ============ V. TỔNG HỌC PHÍ ============ */
         #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#a35b73; }
         #invoiceExportSheet .total-price { text-align:center; font-size:30px; font-weight:700; color:#8a1f4d; margin-top:2px; }
         #invoiceExportSheet .qr { width:110px; height:110px; display:block; margin:8px auto; object-fit:contain; border-radius:10px; border:2px solid #f1cbd7; background:#fff; }
         #invoiceExportSheet .divider { border-top:1px solid #f1cbd7; margin:8px 0; }
         #invoiceExportSheet .bank { text-align:center; font-size:13px; color:#6e3b4f; line-height:1.4; }
         #invoiceExportSheet .bank b { color:#8a1f4d; }
+
+        /* ============ VI. NHẬN XÉT ============ */
         #invoiceExportSheet .comment-box { background:#fdeff4; border-radius:12px; padding:10px 10px 10px 14px; margin-bottom:8px; position:relative; }
         #invoiceExportSheet .comment-box:last-child { margin-bottom:0; }
         #invoiceExportSheet .comment-box::before { content:''; position:absolute; left:0; top:0; width:4px; height:100%; background:#d94f7a; border-radius:4px; }
         #invoiceExportSheet .comment-text { font-size:13px; line-height:1.4; }
         #invoiceExportSheet .comment-text strong { color:#8a1f4d; }
+
+        /* ============ VII. 2 CARD DƯỚI ============ */
         #invoiceExportSheet .grid-bottom { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:10px; }
         #invoiceExportSheet .list-item { display:flex; align-items:flex-start; gap:6px; font-size:13px; line-height:1.4; margin-bottom:5px; }
         #invoiceExportSheet .list-item:last-child { margin-bottom:0; }
         #invoiceExportSheet .list-item .mark { color:#d94f7a; font-weight:700; flex-shrink:0; }
         #invoiceExportSheet .empty-hint { font-size:13px; color:#c48ba6; }
+
+        /* ============ VIII. FOOTER ============ */
         #invoiceExportSheet .footer { background:#f7dce5; border-radius:12px; padding:8px; text-align:center; font-size:12px; color:#8a3a55; line-height:1.4; }
         #invoiceExportSheet .section-block { margin-top:14px; }
     </style>
