@@ -313,7 +313,7 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .label { font-size:12px; color:#a35b73; }
         #invoiceExportSheet .value { font-size:13px; color:#333; font-weight:500; text-align:right; }
         #invoiceExportSheet .date-label { font-size:12px; color:#a35b73; margin:8px 0 6px; }
-        #invoiceExportSheet .date-chip { display:inline-flex; align-items:center; justify-content:center; background:#f7dce5; color:#c2185b; font-weight:600; font-size:12px; line-height:1; padding:7px 10px; border-radius:999px; margin:0 4px 4px 0; }
+        #invoiceExportSheet .date-chip { display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; height:28px; line-height:28px; background:#f7dce5; color:#c2185b; font-weight:600; font-size:12px; padding:0 10px; border-radius:999px; margin:0 4px 4px 0; }
 
         /* ============ V. TỔNG HỌC PHÍ ============ */
         #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#a35b73; }
