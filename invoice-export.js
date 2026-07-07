@@ -227,7 +227,7 @@ Object.assign(PinkyClassApp.prototype, {
                 const item = colonIdx > -1
                     ? `<strong>${line.slice(0, colonIdx + 1)}</strong>${line.slice(colonIdx + 1)}`
                     : line;
-                return `<div class="list-item"><span class="mark">✓</span><span>${item}</span></div>`;
+                return `<div class="list-item"><span class="mark">✓</span><span class="list-text">${item}</span></div>`;
             }).join('');
         };
 
@@ -241,7 +241,7 @@ Object.assign(PinkyClassApp.prototype, {
         const feeNoteLines = [];
         if (privateCount > 0) feeNoteLines.push(`${privateCount} buổi học riêng: <strong>${this.formatVND(privateUnit)}/buổi</strong>`);
         if (groupCount > 0) feeNoteLines.push(`${groupCount} buổi học chung: <strong>${this.formatVND(groupUnit)}/buổi</strong>`);
-        const feeNoteHTML = feeNoteLines.map(l => `<div class="list-item"><span class="mark">✓</span><span>${l}</span></div>`).join('');
+        const feeNoteHTML = feeNoteLines.map(l => `<div class="list-item"><span class="mark">✓</span><span class="list-text">${l}</span></div>`).join('');
 
         // Nhận xét học tập: gộp Tổng quan/Đại số/Hình học vào chung 1 khung,
         // mỗi mục là 1 "comment-box" (nền hồng nhạt + thanh dọc trái), xếp
@@ -257,7 +257,7 @@ Object.assign(PinkyClassApp.prototype, {
         const bulletListHTML = (text) => {
             const lines = esc(text).split('\n').map(l => l.trim()).filter(Boolean);
             if (lines.length === 0) return '';
-            return lines.map(line => `<div class="list-item"><span class="mark">•</span><span>${line}</span></div>`).join('');
+            return lines.map(line => `<div class="list-item"><span class="mark">•</span><span class="list-text">${line}</span></div>`).join('');
         };
 
         const scheduleHTML = checklistHTML(schedule);
@@ -340,9 +340,11 @@ Object.assign(PinkyClassApp.prototype, {
 
         /* ============ VII. 2 CARD DƯỚI ============ */
         #invoiceExportSheet .grid-bottom { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:10px; }
-        #invoiceExportSheet .list-item { display:flex; align-items:flex-start; gap:6px; font-size:13px; line-height:1.4; margin-bottom:5px; position:relative; top:-3px; }
+        #invoiceExportSheet .list-item { display:flex; align-items:flex-start; gap:6px; font-size:13px; line-height:1.4; margin-bottom:5px; }
         #invoiceExportSheet .list-item:last-child { margin-bottom:0; }
         #invoiceExportSheet .list-item .mark { color:#d94f7a; font-weight:700; flex-shrink:0; }
+        /* Chữ trong Lịch học/Lộ trình/Ghi chú học phí lệch so với dấu ✓/•: chỉnh top này */
+        #invoiceExportSheet .list-item .list-text { position:relative; top:-3px; }
         #invoiceExportSheet .empty-hint { font-size:13px; color:#c48ba6; }
 
         /* ============ VIII. FOOTER ============ */
