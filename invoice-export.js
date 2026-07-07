@@ -312,14 +312,14 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .row:last-of-type { border-bottom:none; }
         #invoiceExportSheet .label { font-size:12px; color:#a35b73; }
         #invoiceExportSheet .value { font-size:13px; color:#333; font-weight:500; text-align:right; }
-        #invoiceExportSheet .date-label { font-size:12px; color:#a35b73; margin:8px 0 6px; }
+        #invoiceExportSheet .date-label { font-size:12px; font-weight:700; color:#a35b73; margin:8px 0 6px; }
         #invoiceExportSheet .date-chip { display:inline-flex; align-items:center; justify-content:center; background:#f7dce5; color:#c2185b; font-weight:600; font-size:12px; padding:7px 9px 5px; border-radius:999px; margin:0 4px 4px 0; }
-        #invoiceExportSheet .date-chip-text { line-height:1; position:relative; top:-7px; }
+        #invoiceExportSheet .date-chip-text { line-height:1; position:relative; top:-1px; }
 
         /* ============ V. TỔNG HỌC PHÍ ============ */
         #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#a35b73; }
-        #invoiceExportSheet .total-price { text-align:center; font-size:30px; font-weight:700; color:#8a1f4d; margin-top:2px; }
-        #invoiceExportSheet .qr { width:110px; height:110px; display:block; margin:8px auto; object-fit:contain; border-radius:10px; border:2px solid #f1cbd7; background:#fff; }
+        #invoiceExportSheet .total-price { text-align:center; font-size:30px; font-weight:700; color:#8a1f4d; margin-top:10px; }
+        #invoiceExportSheet .qr { width:110px; height:110px; display:block; margin:10px auto 8px; object-fit:contain; border-radius:10px; border:2px solid #f1cbd7; background:#fff; }
         #invoiceExportSheet .divider { border-top:1px solid #f1cbd7; margin:8px 0; }
         #invoiceExportSheet .bank { text-align:center; font-size:13px; color:#6e3b4f; line-height:1.4; }
         #invoiceExportSheet .bank b { color:#8a1f4d; }
@@ -339,7 +339,7 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .empty-hint { font-size:13px; color:#c48ba6; }
 
         /* ============ VIII. FOOTER ============ */
-        #invoiceExportSheet .footer { background:#f7dce5; border-radius:12px; padding:9px 8px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; color:#8a3a55; }
+        #invoiceExportSheet .footer { background:#f7dce5; border-radius:12px; padding:9px 8px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; font-weight:700; color:#8a3a55; }
         #invoiceExportSheet .footer-text { line-height:1.4; position:relative; top:-7px; }
         #invoiceExportSheet .section-block { margin-top:10px; }
     </style>
