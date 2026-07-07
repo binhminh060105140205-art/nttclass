@@ -344,7 +344,7 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .list-item:last-child { margin-bottom:0; }
         #invoiceExportSheet .list-item .mark { color:#d94f7a; font-weight:700; flex-shrink:0; }
         /* Chữ trong Lịch học/Lộ trình/Ghi chú học phí lệch so với dấu ✓/•: chỉnh top này */
-        #invoiceExportSheet .list-item .list-text { position:relative; top:-3px; }
+        #invoiceExportSheet .list-item .list-text { position:relative; top:-7px; }
         #invoiceExportSheet .empty-hint { font-size:13px; color:#c48ba6; }
 
         /* ============ VIII. FOOTER ============ */
