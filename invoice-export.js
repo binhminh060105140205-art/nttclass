@@ -294,14 +294,14 @@ Object.assign(PinkyClassApp.prototype, {
 
         /* ============ II. HEADER ============ */
         #invoiceExportSheet .header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; row-gap:6px; }
-        #invoiceExportSheet .badge { display:inline-flex; align-items:center; line-height:1; background:linear-gradient(135deg, #d94f7a, #b83b6a); color:#fff; padding:7px 14px; border-radius:999px; font-size:13px; font-weight:600; }
+        #invoiceExportSheet .badge { display:inline-flex; align-items:center; line-height:1; color:#b83b6a; font-size:15px; font-weight:700; }
         #invoiceExportSheet .phone { font-size:13px; color:#8a3a55; }
         #invoiceExportSheet .title { text-align:center; font-size:26px; font-weight:700; color:#8a1f4d; margin:6px 0 22px; line-height:1.25; }
 
         /* ============ III. GRID 2 CỘT ============ */
         #invoiceExportSheet .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
         #invoiceExportSheet .card { border:1.5px solid #f1cbd7; border-radius:18px; padding:14px; background:#fff; }
-        #invoiceExportSheet .section-title { font-size:15px; font-weight:600; color:#8a1f4d; margin-bottom:8px; }
+        #invoiceExportSheet .section-title { font-size:15px; font-weight:600; color:#8a1f4d; margin-bottom:6px; }
 
         /* ============ IV. THÔNG TIN HỌC SINH ============ */
         #invoiceExportSheet .row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:5px 0; border-bottom:1px dashed #f1cbd7; }
@@ -320,10 +320,10 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .bank b { color:#8a1f4d; }
 
         /* ============ VI. NHẬN XÉT ============ */
-        #invoiceExportSheet .comment-box { background:#fdeff4; border-radius:12px; padding:10px 10px 10px 14px; margin-bottom:8px; position:relative; }
+        #invoiceExportSheet .comment-box { background:#fdeff4; border-radius:12px; padding:8px 8px 8px 12px; margin-bottom:6px; position:relative; }
         #invoiceExportSheet .comment-box:last-child { margin-bottom:0; }
         #invoiceExportSheet .comment-box::before { content:''; position:absolute; left:0; top:0; width:4px; height:100%; background:#d94f7a; border-radius:4px; }
-        #invoiceExportSheet .comment-text { font-size:13px; line-height:1.4; }
+        #invoiceExportSheet .comment-text { font-size:13px; line-height:1.25; }
         #invoiceExportSheet .comment-text strong { color:#8a1f4d; }
 
         /* ============ VII. 2 CARD DƯỚI ============ */
@@ -335,7 +335,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         /* ============ VIII. FOOTER ============ */
         #invoiceExportSheet .footer { background:#f7dce5; border-radius:12px; padding:8px; text-align:center; font-size:12px; color:#8a3a55; line-height:1.4; }
-        #invoiceExportSheet .section-block { margin-top:14px; }
+        #invoiceExportSheet .section-block { margin-top:10px; }
     </style>
     <div class="card-main">
         <div class="header">
