@@ -305,6 +305,8 @@ Object.assign(PinkyClassApp.prototype, {
         /* ============ III. GRID 2 CỘT ============ */
         #invoiceExportSheet .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
         #invoiceExportSheet .card { border:1.5px solid #f1cbd7; border-radius:18px; padding:14px; background:#fff; }
+        /* Riêng padding trên của Lịch học/Lộ trình/Ghi chú học phí: chỉnh số đầu tiên (padding-top) này */
+        #invoiceExportSheet .card.card-tight { padding:8px 14px 14px; }
         /* Khoảng cách tiêu đề "📝 Nhận xét học tập" -> ô comment-box đầu tiên: chỉnh margin-bottom này */
         #invoiceExportSheet .section-title { font-size:15px; font-weight:600; color:#8a1f4d; margin-bottom:6px; }
         /* Riêng khoảng cách tiêu đề "📝 Nhận xét học tập" -> ô đầu tiên: chỉnh margin-bottom này */
@@ -344,7 +346,7 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .list-item:last-child { margin-bottom:0; }
         #invoiceExportSheet .list-item .mark { color:#d94f7a; font-weight:700; flex-shrink:0; }
         /* Chữ trong Lịch học/Lộ trình/Ghi chú học phí lệch so với dấu ✓/•: chỉnh top này */
-        #invoiceExportSheet .list-item .list-text { position:relative; top:-12px; }
+        #invoiceExportSheet .list-item .list-text { position:relative; top:-7px; }
         #invoiceExportSheet .empty-hint { font-size:13px; color:#c48ba6; }
 
         /* ============ VIII. FOOTER ============ */
@@ -381,17 +383,17 @@ Object.assign(PinkyClassApp.prototype, {
 
         ${(scheduleHTML || roadmapHTML) ? `
         <div class="grid-bottom">
-            <div class="card">
+            <div class="card card-tight">
                 <div class="section-title">📅 Lịch học</div>
                 ${scheduleHTML || '<span class="empty-hint">Chưa có lịch học.</span>'}
             </div>
-            <div class="card">
+            <div class="card card-tight">
                 <div class="section-title">🎯 Lộ trình</div>
                 ${roadmapHTML || '<span class="empty-hint">Chưa có lộ trình.</span>'}
             </div>
         </div>` : ''}
 
-        ${feeNoteHTML ? `<div class="card section-block"><div class="section-title">💡 Ghi chú học phí</div>${feeNoteHTML}</div>` : ''}
+        ${feeNoteHTML ? `<div class="card card-tight section-block"><div class="section-title">💡 Ghi chú học phí</div>${feeNoteHTML}</div>` : ''}
 
         <div class="footer section-block"><span class="footer-text">${note ? nl2br(note) : 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.'}</span></div>
     </div>
