@@ -282,8 +282,8 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet {
             font-family: 'Be Vietnam Pro', 'Nunito', 'Segoe UI', Arial, sans-serif;
             background: #f8e9ef;
-            width: 440px;
-            max-width: 440px;
+            width: 528px;
+            max-width: 528px;
             padding: 20px;
             color: #333;
             overflow-wrap: break-word;
