@@ -406,9 +406,10 @@ img, svg, video {
     font-weight: 700;
     font-size: 0.9062rem;
     color: var(--text-main);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    overflow: visible;
+    word-break: break-word;
+    line-height: 1.25;
 }
 
 #sidebarUserRole {
