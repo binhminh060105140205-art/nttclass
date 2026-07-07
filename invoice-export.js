@@ -309,7 +309,7 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .label { font-size:12px; color:#a35b73; }
         #invoiceExportSheet .value { font-size:13px; color:#333; font-weight:500; text-align:right; }
         #invoiceExportSheet .date-label { font-size:12px; color:#a35b73; margin:8px 0 6px; }
-        #invoiceExportSheet .date-chip { display:inline-block; background:#f7dce5; color:#c2185b; font-weight:600; font-size:12px; padding:4px 9px; border-radius:999px; margin:0 4px 4px 0; }
+        #invoiceExportSheet .date-chip { display:inline-flex; align-items:center; justify-content:center; line-height:1; background:#f7dce5; color:#c2185b; font-weight:600; font-size:12px; padding:5px 9px 4px; border-radius:999px; margin:0 4px 4px 0; }
 
         /* ============ V. TỔNG HỌC PHÍ ============ */
         #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#a35b73; }
@@ -334,7 +334,7 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .empty-hint { font-size:13px; color:#c48ba6; }
 
         /* ============ VIII. FOOTER ============ */
-        #invoiceExportSheet .footer { background:#f7dce5; border-radius:12px; padding:8px; text-align:center; font-size:12px; color:#8a3a55; line-height:1.4; }
+        #invoiceExportSheet .footer { background:#f7dce5; border-radius:12px; padding:9px 8px 7px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; color:#8a3a55; line-height:1.4; }
         #invoiceExportSheet .section-block { margin-top:10px; }
     </style>
     <div class="card-main">
