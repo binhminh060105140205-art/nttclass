@@ -1096,42 +1096,79 @@ class PinkyClassApp {
         document.getElementById('stat-total-hours').innerText = totalHours.toFixed(1) + 'h';
         document.getElementById('stat-unpaid-tuition').innerText = this.formatVND(unpaidTuition);
 
-        // Render today classes
-        const todayStr = this.toISODateOnly(new Date());
-        const todaySessions = this.sessions.filter(s => s.date === todayStr);
-        const container = document.getElementById('today-sessions-container');
+        // Render today + tomorrow classes (lối tắt: bấm vào 1 ca sẽ mở đúng
+        // bảng "Nhập nhanh nội dung buổi học" giống hệt khi bấm ca đó bên
+        // Lịch dạy, vì dùng chung đúng 1 hàm openSessionQuickEntry(sessionId)
+        // — không có 2 bản logic tách rời dễ lệch nhau).
+        const todayDate = new Date();
+        const tomorrowDate = new Date();
+        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+        const todayStr = this.toISODateOnly(todayDate);
+        const tomorrowStr = this.toISODateOnly(tomorrowDate);
+
+        const todayLabelEl = document.getElementById('today-date-label');
+        const tomorrowLabelEl = document.getElementById('tomorrow-date-label');
+        if (todayLabelEl) todayLabelEl.innerText = this.formatDateVN(todayStr);
+        if (tomorrowLabelEl) tomorrowLabelEl.innerText = this.formatDateVN(tomorrowStr);
+
+        this.renderDashboardDaySessions('today-sessions-container', todayStr, 'hôm nay');
+        this.renderDashboardDaySessions('tomorrow-sessions-container', tomorrowStr, 'ngày mai');
+    }
+
+    // Vẽ danh sách ca dạy của MỘT ngày cụ thể vào 1 container trên Tổng quan.
+    // Tách riêng thành hàm dùng chung cho cả "hôm nay" và "ngày mai" để chắc
+    // chắn 2 khối luôn cùng 1 logic lọc/hiển thị/click, tránh copy-paste lệch nhau.
+    renderDashboardDaySessions(containerId, dateStr, dayLabel) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        let daySessions = this.sessions.filter(s => s.date === dateStr);
+
+        // Học sinh chỉ nên thấy ca dạy có mặt mình trên Tổng quan (đồng nhất
+        // với cách các thẻ thống kê phía trên đã lọc riêng cho học sinh).
+        if (this.currentRole === 'student') {
+            daySessions = daySessions.filter(s => s.studentIds.includes(this.currentStudentId));
+        }
+
+        // Sắp xếp theo giờ bắt đầu để hiển thị đúng thứ tự trong ngày.
+        daySessions = daySessions.slice().sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+
         container.innerHTML = '';
 
-        if (todaySessions.length === 0) {
+        if (daySessions.length === 0) {
             container.innerHTML = `
-                <div style="padding: 15px; text-align: center; color: var(--text-muted); font-size: 13.5px;"> Không có ca dạy nào được xếp hôm nay (${this.formatDateVN(todayStr)}).
+                <div style="padding: 15px; text-align: center; color: var(--text-muted); font-size: 13.5px;"> Không có ca dạy nào được xếp ${dayLabel} (${this.formatDateVN(dateStr)}).
                 </div>
             `;
-        } else {
-            todaySessions.forEach(sess => {
-                const item = document.createElement('div');
-                item.style.padding = '12px';
-                item.style.background = 'white';
-                item.style.border = '1px solid var(--border-color)';
-                item.style.borderRadius = '10px';
-                item.style.marginBottom = '8px';
-                
-                const names = sess.studentIds.map(id => this.getStudentName(id)).join(', ');
-                const badgeClass = sess.type === 'riêng' ? 'badge-rieng' : 'badge-chung';
-                
-                item.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-                        <span style="font-weight: 600; font-size: 13px; color: var(--primary);">${sess.startTime} - ${sess.endTime}</span>
-                        <span class="badge ${badgeClass}" style="font-size: 10px; padding: 2px 8px;">Học ${sess.type}</span>
-                    </div>
-                    <div style="font-size:14px; font-weight:700; color:var(--text-main);">${sess.sessionName ? this.escapeHtml(sess.sessionName) + ' — ' : ''}${names}</div>
-                    <div style="font-size:12px; color:var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px;">
-                        ${sess.content ? sess.content.replace(/\n/g, ' | ') : 'Chưa có nội dung'}
-                    </div>
-                `;
-                container.appendChild(item);
-            });
+            return;
         }
+
+        daySessions.forEach(sess => {
+            const item = document.createElement('div');
+            item.style.padding = '12px';
+            item.style.background = 'white';
+            item.style.border = '1px solid var(--border-color)';
+            item.style.borderRadius = '10px';
+            item.style.marginBottom = '8px';
+            item.style.cursor = 'pointer';
+            item.title = 'Bấm để nhập/xem nội dung buổi học';
+            item.addEventListener('click', () => this.openSessionQuickEntry(sess.id));
+
+            const names = sess.studentIds.map(id => this.getStudentName(id)).join(', ');
+            const badgeClass = sess.type === 'riêng' ? 'badge-rieng' : 'badge-chung';
+
+            item.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+                    <span style="font-weight: 600; font-size: 13px; color: var(--primary);">${sess.startTime} - ${sess.endTime}</span>
+                    <span class="badge ${badgeClass}" style="font-size: 10px; padding: 2px 8px;">Học ${sess.type}</span>
+                </div>
+                <div style="font-size:14px; font-weight:700; color:var(--text-main);">${sess.sessionName ? this.escapeHtml(sess.sessionName) + ' — ' : ''}${names}</div>
+                <div style="font-size:12px; color:var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px;">
+                    ${sess.content ? sess.content.replace(/\n/g, ' | ') : 'Chưa có nội dung'}
+                </div>
+            `;
+            container.appendChild(item);
+        });
     }
 
     // --- VIEW 2: STUDENT LOGS (Image 1 replica) ---
