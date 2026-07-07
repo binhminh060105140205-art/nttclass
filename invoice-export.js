@@ -233,7 +233,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         const dateChips = sessions.map(s => {
             const [y, m, d] = String(s.date).split('-');
-            return `<span class="date-chip">${d}/${m}</span>`;
+            return `<span class="date-chip"><span class="date-chip-text">${d}/${m}</span></span>`;
         }).join('');
 
         // Ghi chú học phí: liệt kê số buổi riêng/chung và đơn giá tương ứng,
@@ -313,7 +313,8 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .label { font-size:12px; color:#a35b73; }
         #invoiceExportSheet .value { font-size:13px; color:#333; font-weight:500; text-align:right; }
         #invoiceExportSheet .date-label { font-size:12px; color:#a35b73; margin:8px 0 6px; }
-        #invoiceExportSheet .date-chip { display:inline-flex; align-items:center; justify-content:center; background:#f7dce5; color:#c2185b; font-weight:600; font-size:12px; padding:9px 10px; border-radius:999px; margin:0 4px 4px 0; }
+        #invoiceExportSheet .date-chip { display:inline-flex; align-items:center; justify-content:center; background:#f7dce5; color:#c2185b; font-weight:600; font-size:12px; padding:7px 9px 5px; border-radius:999px; margin:0 4px 4px 0; }
+        #invoiceExportSheet .date-chip-text { line-height:1; position:relative; top:-7px; }
 
         /* ============ V. TỔNG HỌC PHÍ ============ */
         #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#a35b73; }
