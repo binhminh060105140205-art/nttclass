@@ -23,6 +23,14 @@ class PinkyClassApp {
         this.currentMonthFilter = ''; // '' = tất cả, hoặc dạng "yyyy-m" (VD "2026-7") ứng với 1 mục trong dropdown "Kỳ"
         this.currentWeekStart = this.getMonday(new Date()); // Thứ 2 đầu tuần đang xem ở Lịch dạy & Chấm công
 
+        // Hằng số lưới giờ của Lịch tuần — dùng chung giữa renderWeeklyCalendar()
+        // và tính năng kéo-thả đổi lịch (initCalendarDragToReschedule) để 2 bên
+        // luôn quy đổi px <-> giờ:phút theo ĐÚNG 1 công thức, không thể lệch nhau.
+        this.CAL_HOUR_START = 6;   // 06:00
+        this.CAL_HOUR_END = 22;    // 22:00
+        this.CAL_HOUR_HEIGHT = 52; // px, phải khớp với .week-hour-label height trong CSS
+        this.calDrag = null; // Trạng thái đang kéo-thả 1 buổi học trên lịch tuần (null = không kéo)
+
         // Áp dụng lại màu giao diện đã lưu (nếu có) ngay từ đầu, trước khi vẽ
         // bất cứ gì, để tránh bị "chớp" màu mặc định rồi mới đổi màu.
         this.initTheme();
@@ -552,6 +560,10 @@ class PinkyClassApp {
         // Khởi tạo đúng nhãn/giá theo loại buổi học mặc định khi tải trang
         this.applySessionTypeRules('session');
         this.applySessionTypeRules('editSession');
+
+        // Kéo-thả 1 buổi học trên Lịch tuần sang ngày/giờ khác (xem chi tiết
+        // cách hoạt động trong initCalendarDragToReschedule bên dưới).
+        this.initCalendarDragToReschedule();
     }
 
     showLoginPage() {
@@ -855,7 +867,7 @@ class PinkyClassApp {
             const student = this.students.find(s => s.id === cb.value);
             return student && Number(student.basePrice) > 0;
         }).length;
-        const unitPrice = parseInt(priceEl.value) || 0;
+        const unitPrice = this.parsePriceValue(priceEl.value);
 
         // Học riêng, tự động gợi ý học phí cơ bản của học sinh khi chỉ chọn 1 em
         // — nhưng CHỈ khi giáo viên chưa tự tay đổi lựa chọn học phí (đánh dấu
@@ -870,7 +882,7 @@ class PinkyClassApp {
             }
         }
 
-        const total = isGroup ? unitPrice * Math.max(payingCount, 0) : (parseInt(priceEl.value) || 0);
+        const total = isGroup ? unitPrice * Math.max(payingCount, 0) : (this.parsePriceValue(priceEl.value) || 0);
         totalEl.innerText = this.formatVND(total);
     }
 
@@ -881,17 +893,24 @@ class PinkyClassApp {
     // trong danh sách gợi ý (VD giáo viên từng đặt 1 mức giá lẻ khác cho học
     // sinh đó), tự thêm tạm 1 option đúng bằng mức giá đó vào datalist để lần
     // sau vẫn thấy trong danh sách gợi ý.
+    // Chuyển chuỗi học phí giáo viên gõ/chọn (VD "250.000 đ", "250000", hay
+    // "250.000") thành số nguyên VNĐ, bỏ qua mọi ký tự không phải chữ số.
+    parsePriceValue(str) {
+        const digitsOnly = String(str || '').replace(/[^0-9]/g, '');
+        return digitsOnly ? parseInt(digitsOnly, 10) : 0;
+    }
+
     setPriceSelectValue(selectEl, value) {
         if (!selectEl) return;
-        const val = String(parseInt(value) || 0);
+        const val = this.parsePriceValue(value);
+        const display = this.formatVND(val);
         const listEl = selectEl.list;
-        if (listEl && !Array.from(listEl.options).some(o => o.value === val)) {
+        if (listEl && !Array.from(listEl.options).some(o => o.value === display)) {
             const opt = document.createElement('option');
-            opt.value = val;
-            opt.label = this.formatVND(Number(val));
+            opt.value = display;
             listEl.appendChild(opt);
         }
-        selectEl.value = val;
+        selectEl.value = display;
     }
 
     switchView(viewId) {
@@ -1275,9 +1294,9 @@ class PinkyClassApp {
         const body = document.getElementById('weekCalendarBody');
         if (!headerRow || !body) return;
 
-        const HOUR_START = 6;   // 06:00
-        const HOUR_END = 22;    // 22:00
-        const HOUR_HEIGHT = 52; // px, phải khớp với .week-hour-label height trong CSS
+        const HOUR_START = this.CAL_HOUR_START;
+        const HOUR_END = this.CAL_HOUR_END;
+        const HOUR_HEIGHT = this.CAL_HOUR_HEIGHT;
 
         const weekStart = this.currentWeekStart; // Thứ 2
         const dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -1378,18 +1397,26 @@ class PinkyClassApp {
                 const evtTitle = sess.sessionName ? sess.sessionName : names;
                 const evtTooltip = sess.sessionName ? `${sess.sessionName} — ${names}` : names;
 
+                // Buổi học đã diễn ra rồi (giờ bắt đầu đã ở quá khứ so với hiện
+                // tại) thì KHÔNG cho kéo-thả đổi lịch nữa — chỉ xem/chấm công.
+                const sessionStartDate = new Date(`${sess.date}T${sess.startTime || '00:00'}:00`);
+                const isPast = sessionStartDate < new Date();
+                const lockedClass = isPast ? 'is-locked' : '';
+
                 blocksHTML += `
-                    <div class="week-event-block ${typeClass} ${unpaidClass}"
+                    <div class="week-event-block ${typeClass} ${unpaidClass} ${lockedClass}"
                          style="top:${top}px; height:${height}px;"
+                         data-session-id="${sess.id}"
+                         data-locked="${isPast ? '1' : '0'}"
                          onclick="app.openSessionQuickEntry('${sess.id}')"
-                         title="${this.escapeHtmlAttr(evtTooltip)}">
+                         title="${this.escapeHtmlAttr(isPast ? evtTooltip + ' (đã qua, không thể kéo)' : evtTooltip)}">
                         <span class="evt-time">${sess.startTime}–${sess.endTime}</span>
                         <span class="evt-title">${this.escapeHtml(evtTitle)}</span>
                     </div>
                 `;
             });
 
-            dayColumnsHTML += `<div class="week-day-column" style="height:${hourCount * HOUR_HEIGHT}px; grid-column:${i + 2}; grid-row:1 / -1;">${blocksHTML}</div>`;
+            dayColumnsHTML += `<div class="week-day-column" data-date="${dateStr}" style="height:${hourCount * HOUR_HEIGHT}px; grid-column:${i + 2}; grid-row:1 / -1;">${blocksHTML}</div>`;
         });
 
         // QUAN TRỌNG: gán grid-column CỐ ĐỊNH cho cả cột giờ (cột 1) và 7 cột
@@ -1408,6 +1435,168 @@ class PinkyClassApp {
     // Mở bảng nhập nhanh khi click vào 1 ca dạy trên lịch tuần. Nếu ca đó có
     // nhiều học sinh (học chung), hiện MỘT THẺ RIÊNG cho từng em để chấm/nhận
     // xét độc lập — không gộp chung nội dung của các em lại với nhau.
+    // ===== KÉO-THẢ ĐỔI LỊCH TRÊN LỊCH TUẦN =====
+    // Giữ chuột (hoặc giữ tay trên điện thoại) vào 1 buổi học rồi kéo sang
+    // cột ngày khác / vị trí giờ khác để đổi lịch — vẫn giữ nguyên số giờ học
+    // (thời lượng) ban đầu. Quy tắc:
+    //   - Buổi học ĐÃ QUA (giờ bắt đầu đã ở quá khứ) không kéo được.
+    //   - Giờ bắt đầu mới luôn được làm tròn về mốc 30 phút gần nhất.
+    //   - Nếu khung giờ mới bị TRÙNG với 1 buổi học khác -> chặn lại, báo lỗi,
+    //     buổi học tự trả về đúng vị trí cũ.
+    //   - Thả xong là lưu luôn, không hỏi xác nhận lại.
+    // Dùng Pointer Events (không dùng HTML5 Drag&Drop API) để hoạt động giống
+    // nhau trên cả chuột lẫn cảm ứng, và để tự tính toán/snap vị trí theo ý mình.
+    initCalendarDragToReschedule() {
+        const body = document.getElementById('weekCalendarBody');
+        if (!body) return;
+
+        const DRAG_THRESHOLD = 6; // px di chuyển tối thiểu mới coi là "đang kéo" (để không phá vỡ click mở chi tiết)
+        const SNAP_MINUTES = 30;
+
+        body.addEventListener('pointerdown', (e) => {
+            const block = e.target.closest('.week-event-block');
+            if (!block) return;
+            if (block.dataset.locked === '1') return; // buổi đã qua -> không cho kéo
+
+            const column = block.closest('.week-day-column');
+            if (!column) return;
+
+            const blockRect = block.getBoundingClientRect();
+            this.calDrag = {
+                pointerId: e.pointerId,
+                sessionId: block.dataset.sessionId,
+                block,
+                originalColumn: column,
+                originalTop: parseFloat(block.style.top) || 0,
+                grabOffsetY: e.clientY - blockRect.top, // điểm đang giữ nằm cách mép trên khối bao nhiêu px
+                blockHeightPx: blockRect.height,
+                startClientX: e.clientX,
+                startClientY: e.clientY,
+                isDragging: false
+            };
+        });
+
+        document.addEventListener('pointermove', (e) => {
+            const drag = this.calDrag;
+            if (!drag || e.pointerId !== drag.pointerId) return;
+
+            const movedX = Math.abs(e.clientX - drag.startClientX);
+            const movedY = Math.abs(e.clientY - drag.startClientY);
+            if (!drag.isDragging) {
+                if (movedX < DRAG_THRESHOLD && movedY < DRAG_THRESHOLD) return;
+                // Bắt đầu kéo thật sự
+                drag.isDragging = true;
+                drag.block.classList.add('is-dragging');
+                drag.block.setPointerCapture && drag.block.setPointerCapture(drag.pointerId);
+            }
+
+            // Xác định cột ngày đang ở dưới con trỏ (so khoảng cách trái/phải của
+            // mỗi cột với vị trí X hiện tại của con trỏ)
+            const columns = Array.from(body.querySelectorAll('.week-day-column'));
+            let targetColumn = drag.originalColumn;
+            for (const col of columns) {
+                const rect = col.getBoundingClientRect();
+                if (e.clientX >= rect.left && e.clientX < rect.right) {
+                    targetColumn = col;
+                    break;
+                }
+            }
+            if (targetColumn !== drag.block.parentElement) {
+                targetColumn.appendChild(drag.block);
+            }
+
+            // Tính vị trí top mới theo con trỏ, snap về mốc 30 phút
+            const colRect = targetColumn.getBoundingClientRect();
+            let newTopPx = e.clientY - colRect.top - drag.grabOffsetY;
+            const totalMinutes = (this.CAL_HOUR_END - this.CAL_HOUR_START) * 60;
+            const pxPerMinute = this.CAL_HOUR_HEIGHT / 60;
+            let minutesFromStart = newTopPx / pxPerMinute;
+            minutesFromStart = Math.round(minutesFromStart / SNAP_MINUTES) * SNAP_MINUTES;
+            // Không cho kéo vượt ra ngoài khung giờ hiển thị 06:00 - 22:00
+            const durationMinutes = Math.round((drag.blockHeightPx + 2) / pxPerMinute / SNAP_MINUTES) * SNAP_MINUTES || SNAP_MINUTES;
+            minutesFromStart = Math.max(0, Math.min(minutesFromStart, totalMinutes - durationMinutes));
+            newTopPx = minutesFromStart * pxPerMinute;
+
+            drag.block.style.top = `${newTopPx}px`;
+            drag.pendingDate = targetColumn.dataset.date;
+            drag.pendingMinutesFromStart = minutesFromStart;
+        });
+
+        const endDrag = (e) => {
+            const drag = this.calDrag;
+            if (!drag || e.pointerId !== drag.pointerId) return;
+            this.calDrag = null;
+            drag.block.classList.remove('is-dragging');
+
+            if (!drag.isDragging) return; // chỉ là 1 cú click bình thường, không kéo gì cả
+
+            const sess = this.sessions.find(s => s.id === drag.sessionId);
+            if (!sess || drag.pendingDate == null) {
+                this.renderWeeklyCalendar();
+                return;
+            }
+
+            const toHHMM = (mins) => {
+                const h = this.CAL_HOUR_START + Math.floor(mins / 60);
+                const m = mins % 60;
+                return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+            };
+            const [oh, om] = (sess.startTime || '00:00').split(':').map(Number);
+            const [eh, em] = (sess.endTime || '00:00').split(':').map(Number);
+            const durationMin = Math.max(SNAP_MINUTES, (eh * 60 + em) - (oh * 60 + om));
+
+            const newDate = drag.pendingDate;
+            const newStartTime = toHHMM(drag.pendingMinutesFromStart);
+            const newEndTime = toHHMM(drag.pendingMinutesFromStart + durationMin);
+
+            // Không đổi gì cả -> khỏi cần lưu
+            if (newDate === sess.date && newStartTime === sess.startTime && newEndTime === sess.endTime) {
+                this.renderWeeklyCalendar();
+                return;
+            }
+
+            // Trùng lịch với buổi khác -> chặn lại, trả buổi học về đúng vị trí cũ
+            const overlap = this.findOverlappingSession(newDate, newStartTime, newEndTime, sess.id);
+            if (overlap) {
+                this.showToast(
+                    `Khung giờ ${newStartTime}-${newEndTime} ngày ${this.formatDateVN(newDate)} đang trùng với buổi học khác, không thể đặt vào đây!`,
+                    "error"
+                );
+                this.renderWeeklyCalendar();
+                return;
+            }
+
+            this.moveSessionByDrag(sess.id, newDate, newStartTime, newEndTime);
+        };
+        document.addEventListener('pointerup', endDrag);
+        document.addEventListener('pointercancel', endDrag);
+    }
+
+    // Lưu lịch mới (ngày + giờ bắt đầu/kết thúc) sau khi kéo-thả 1 buổi học
+    // trên Lịch tuần — cùng cơ chế lưu server/offline như handleEditSession.
+    async moveSessionByDrag(sessionId, newDate, newStartTime, newEndTime) {
+        const sess = this.sessions.find(s => s.id === sessionId);
+        if (!sess) return;
+
+        const updatedSession = { ...sess, date: newDate, startTime: newStartTime, endTime: newEndTime };
+        try {
+            const res = await this.authFetch(`${API_BASE_URL}/api/sessions/${sessionId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedSession)
+            });
+            if (!res.ok) throw new Error("Server error");
+            await this.loadData();
+        } catch (err) {
+            console.warn("API lỗi, lưu offline: ", err.message);
+            sess.date = newDate;
+            sess.startTime = newStartTime;
+            sess.endTime = newEndTime;
+            await this.saveData();
+        }
+        this.showToast("Đã cập nhật lịch học!", "success");
+    }
+
     openSessionQuickEntry(sessionId) {
         const sess = this.sessions.find(s => s.id === sessionId);
         if (!sess) return;
@@ -1890,7 +2079,7 @@ class PinkyClassApp {
         const startTime = document.getElementById('sessionStartTime').value;
         const endTime = document.getElementById('sessionEndTime').value;
         const duration = parseFloat(document.getElementById('sessionHours').value) || 2.0;
-        const unitPrice = parseInt(document.getElementById('sessionPrice').value);
+        const unitPrice = this.parsePriceValue(document.getElementById('sessionPrice').value);
         const content = document.getElementById('sessionContent').value.trim();
 
         if (!date || !startTime || !endTime) {
@@ -2082,7 +2271,7 @@ class PinkyClassApp {
         const startTime = document.getElementById('editSessionStartTime').value;
         const endTime = document.getElementById('editSessionEndTime').value;
         const duration = parseFloat(document.getElementById('editSessionHours').value) || 2.0;
-        const unitPrice = parseInt(document.getElementById('editSessionPrice').value);
+        const unitPrice = this.parsePriceValue(document.getElementById('editSessionPrice').value);
         const content = document.getElementById('editSessionContent').value.trim();
 
         if (!date || !startTime || !endTime) {

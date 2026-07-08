@@ -1691,6 +1691,23 @@ textarea.form-control {
     z-index: 5;
 }
 
+/* Buổi học đã diễn ra rồi (quá khứ) -> không kéo-thả được nữa, chỉ xem/chấm công */
+.week-event-block.is-locked {
+    cursor: pointer;
+}
+.week-event-block.is-locked:hover {
+    filter: none;
+}
+
+/* Trạng thái đang được kéo trên Lịch tuần (xem initCalendarDragToReschedule trong app.js) */
+.week-event-block.is-dragging {
+    cursor: grabbing;
+    z-index: 20;
+    opacity: 0.9;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    filter: brightness(1.05);
+}
+
 .week-event-block.type-rieng {
     background: linear-gradient(135deg, var(--event-rieng-a), var(--event-rieng-b));
     color: var(--event-rieng-text);

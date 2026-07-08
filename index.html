@@ -286,14 +286,14 @@
                     <!-- Unit price -->
                     <div class="form-group">
                         <label for="sessionPrice" id="sessionPriceLabel">Đơn giá buổi học (VNĐ/học sinh)</label>
-                        <input type="number" id="sessionPrice" class="form-control" list="sessionPriceOptions" min="0" step="1000" value="250000">
+                        <input type="text" inputmode="numeric" id="sessionPrice" class="form-control" list="sessionPriceOptions" value="250.000 ₫">
                         <datalist id="sessionPriceOptions">
-                            <option value="100000" label="100.000 đ"></option>
-                            <option value="120000" label="120.000 đ"></option>
-                            <option value="150000" label="150.000 đ"></option>
-                            <option value="180000" label="180.000 đ"></option>
-                            <option value="200000" label="200.000 đ"></option>
-                            <option value="250000" label="250.000 đ"></option>
+                            <option value="100.000 ₫"></option>
+                            <option value="120.000 ₫"></option>
+                            <option value="150.000 ₫"></option>
+                            <option value="180.000 ₫"></option>
+                            <option value="200.000 ₫"></option>
+                            <option value="250.000 ₫"></option>
                         </datalist>
                     </div>
 
@@ -803,7 +803,7 @@
 
                         <div class="form-group">
                             <label for="editSessionPrice" id="editSessionPriceLabel">Đơn giá buổi học (VNĐ/học sinh)</label>
-                            <input type="number" id="editSessionPrice" class="form-control" list="sessionPriceOptions" min="0" step="1000">
+                            <input type="text" inputmode="numeric" id="editSessionPrice" class="form-control" list="sessionPriceOptions">
                         </div>
 
                         <div class="form-group">
