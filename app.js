@@ -874,19 +874,22 @@ class PinkyClassApp {
         totalEl.innerText = this.formatVND(total);
     }
 
-    // Gán giá trị cho <select> học phí (100k/120k/150k/180k/200k/250k). Nếu học
-    // phí cơ bản của học sinh không trùng khớp lựa chọn có sẵn nào (VD giáo
-    // viên từng đặt 1 mức giá lẻ khác cho học sinh đó), tự thêm tạm 1 option
-    // đúng bằng mức giá đó để không bị mất/hiển thị sai giá.
+    // Gán giá trị cho ô học phí (input số, có gợi ý mức giá 100k/120k/150k/
+    // 180k/200k/250k qua danh sách datalist đi kèm). Ô này cho phép giáo viên
+    // vừa gõ tay số tiền tuỳ ý, vừa bấm mũi tên để chọn nhanh 1 mức giá có
+    // sẵn — nếu học phí cơ bản của học sinh không trùng mức giá nào đã có
+    // trong danh sách gợi ý (VD giáo viên từng đặt 1 mức giá lẻ khác cho học
+    // sinh đó), tự thêm tạm 1 option đúng bằng mức giá đó vào datalist để lần
+    // sau vẫn thấy trong danh sách gợi ý.
     setPriceSelectValue(selectEl, value) {
         if (!selectEl) return;
         const val = String(parseInt(value) || 0);
-        let opt = Array.from(selectEl.options).find(o => o.value === val);
-        if (!opt) {
-            opt = document.createElement('option');
+        const listEl = selectEl.list;
+        if (listEl && !Array.from(listEl.options).some(o => o.value === val)) {
+            const opt = document.createElement('option');
             opt.value = val;
-            opt.textContent = this.formatVND(Number(val));
-            selectEl.appendChild(opt);
+            opt.label = this.formatVND(Number(val));
+            listEl.appendChild(opt);
         }
         selectEl.value = val;
     }
@@ -1185,24 +1188,6 @@ class PinkyClassApp {
         const studentSessions = this.filterByMonth(this.sessions)
             .filter(sess => sess.studentIds.includes(studentId))
             .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        // Group Indicator (just private vs group text based on ratio)
-        const privateCount = studentSessions.filter(s => s.type === 'riêng').length;
-        const groupCount = studentSessions.filter(s => s.type === 'chung').length;
-        const indicator = document.getElementById('logBadgeIndicator');
-        if (privateCount > groupCount) {
-            indicator.className = 'badge badge-rieng';
-            indicator.innerHTML = ` Chủ yếu học riêng (${privateCount}b)`;
-        } else if (groupCount > privateCount) {
-            indicator.className = 'badge badge-chung';
-            indicator.innerHTML = ` Chủ yếu học chung (${groupCount}b)`;
-        } else {
-            indicator.className = 'badge';
-            indicator.style.background = '#f1f5f9';
-            indicator.style.color = '#334155';
-            indicator.style.borderColor = '#cbd5e1';
-            indicator.innerHTML = ` Cân bằng chung/riêng`;
-        }
 
         const tbody = document.getElementById('studentLogsTableBody');
         tbody.innerHTML = '';
@@ -1969,7 +1954,7 @@ class PinkyClassApp {
                 homework: "Chưa làm",
                 attitude: "Tốt",
                 individualComment: "",
-                note: this.getStudentSubject(stId) + " " + this.getStudentClass(stId).replace("Lớp ", "")
+                note: ""
             };
         });
 
@@ -2158,7 +2143,7 @@ class PinkyClassApp {
                     homework: "Chưa làm",
                     attitude: "Tốt",
                     individualComment: "",
-                    note: this.getStudentSubject(stId) + " " + this.getStudentClass(stId).replace("Lớp ", "")
+                    note: ""
                 };
             }
         });

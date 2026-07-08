@@ -199,9 +199,6 @@
                             <span style="margin: 0 8px; opacity: 0.7;">|</span>
                             <span class="student-log-subtitle" id="logStudentYearHeader">(2026-2027)</span>
                         </div>
-                        <div>
-                            <span class="badge badge-rieng" id="logBadgeIndicator"> Học riêng 1 vs 1</span>
-                        </div>
                     </div>
 
                     <div class="table-wrapper">
@@ -289,14 +286,15 @@
                     <!-- Unit price -->
                     <div class="form-group">
                         <label for="sessionPrice" id="sessionPriceLabel">Đơn giá buổi học (VNĐ/học sinh)</label>
-                        <select id="sessionPrice" class="form-control">
-                            <option value="100000">100.000 đ</option>
-                            <option value="120000">120.000 đ</option>
-                            <option value="150000">150.000 đ</option>
-                            <option value="180000">180.000 đ</option>
-                            <option value="200000">200.000 đ</option>
-                            <option value="250000" selected>250.000 đ</option>
-                        </select>
+                        <input type="number" id="sessionPrice" class="form-control" list="sessionPriceOptions" min="0" step="1000" value="250000">
+                        <datalist id="sessionPriceOptions">
+                            <option value="100000" label="100.000 đ"></option>
+                            <option value="120000" label="120.000 đ"></option>
+                            <option value="150000" label="150.000 đ"></option>
+                            <option value="180000" label="180.000 đ"></option>
+                            <option value="200000" label="200.000 đ"></option>
+                            <option value="250000" label="250.000 đ"></option>
+                        </datalist>
                     </div>
 
                     <div class="form-group">
@@ -805,14 +803,7 @@
 
                         <div class="form-group">
                             <label for="editSessionPrice" id="editSessionPriceLabel">Đơn giá buổi học (VNĐ/học sinh)</label>
-                            <select id="editSessionPrice" class="form-control">
-                                <option value="100000">100.000 đ</option>
-                                <option value="120000">120.000 đ</option>
-                                <option value="150000">150.000 đ</option>
-                                <option value="180000">180.000 đ</option>
-                                <option value="200000">200.000 đ</option>
-                                <option value="250000">250.000 đ</option>
-                            </select>
+                            <input type="number" id="editSessionPrice" class="form-control" list="sessionPriceOptions" min="0" step="1000">
                         </div>
 
                         <div class="form-group">
