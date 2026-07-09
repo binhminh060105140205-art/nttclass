@@ -17,6 +17,8 @@ class PinkyClassApp {
         this.students = [];
         this.sessions = [];
         this.users = [];
+        this.scores = []; // Điểm số (BTVN/Kiểm tra/Thái độ) — Phase 3
+        this.charts = {}; // Instance các biểu đồ Chart.js đang hiển thị (Phase 4), để destroy() trước khi vẽ lại
         this.currentUser = null;
         this.currentRole = null; // admin or teacher
         this.currentStudentId = null; // Active student filter (chỉ dùng ở trang Nhật ký học tập)
@@ -288,6 +290,16 @@ class PinkyClassApp {
             }));
 
             this.computeSessionPaidFlags();
+
+            // Điểm số của chính học sinh (Phase 3) — chỉ đọc.
+            try {
+                const resScores = await this.authFetch(`${API_BASE_URL}/api/me/scores`);
+                this.scores = resScores.ok ? await resScores.json() : [];
+            } catch (scoreErr) {
+                console.error('[loadStudentSelfData] Lỗi tải điểm số:', scoreErr.message);
+                this.scores = [];
+            }
+
             this.populateMonthFilterOptions();
             this.populateStudentPickers();
             if (this.currentUser) this.updateAllViews();
@@ -331,6 +343,17 @@ class PinkyClassApp {
             this.sessions = rawSessions;
             this.computeSessionPaidFlags();
             this.populateMonthFilterOptions();
+
+            // Tải điểm số (Phase 3) — lấy TẤT CẢ điểm của giáo viên hiện tại 1 lần,
+            // lọc theo học sinh ở phía frontend khi đổi "Đang chọn" để khỏi phải
+            // gọi lại API mỗi lần đổi học sinh.
+            try {
+                const resScores = await this.authFetch(`${API_BASE_URL}/api/scores`);
+                this.scores = resScores.ok ? await resScores.json() : [];
+            } catch (scoreErr) {
+                console.error('[loadData] Lỗi tải điểm số:', scoreErr.message);
+                this.scores = [];
+            }
 
             this.populateStudentPickers();
             // QUAN TRỌNG: trước đây loadData() chỉ cập nhật dữ liệu trong bộ nhớ
@@ -442,6 +465,33 @@ class PinkyClassApp {
             this.updateAllViews();
             this.showToast("Đã chuyển sang học sinh: " + this.getStudentName(this.currentStudentId), "success");
         });
+
+        // Student Picker riêng của trang Điểm số — đồng bộ 2 chiều với picker
+        // toàn cục ở trang Nhật ký học tập (cùng dùng chung this.currentStudentId).
+        const scoresPickerEl = document.getElementById('scoresStudentPicker');
+        if (scoresPickerEl) {
+            scoresPickerEl.addEventListener('change', (e) => {
+                this.currentStudentId = e.target.value;
+                document.getElementById('globalStudentPicker').value = this.currentStudentId;
+                this.updateAllViews();
+                this.showToast("Đã chuyển sang học sinh: " + this.getStudentName(this.currentStudentId), "success");
+            });
+        }
+
+        // Nút "Thêm điểm" ở trang Điểm số
+        const addScoreBtnEl = document.getElementById('addScoreBtn');
+        if (addScoreBtnEl) {
+            addScoreBtnEl.addEventListener('click', () => this.openAddScoreModal());
+        }
+
+        // Form thêm/sửa điểm
+        const scoreFormEl = document.getElementById('scoreForm');
+        if (scoreFormEl) {
+            scoreFormEl.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.saveScore();
+            });
+        }
 
         // Weekly calendar navigation (Lịch dạy & Chấm công)
         document.getElementById('prevWeekBtn').addEventListener('click', () => {
@@ -769,6 +819,7 @@ class PinkyClassApp {
         // Show/hide navigation tabs
         const navDashboard = document.getElementById('nav-dashboard');
         const navLogs = document.getElementById('nav-logs');
+        const navScores = document.getElementById('nav-scores');
         const navTuition = document.getElementById('nav-tuition');
         const navScheduler = document.getElementById('nav-scheduler');
         const navStudents = document.getElementById('nav-students');
@@ -779,6 +830,7 @@ class PinkyClassApp {
             // các chức năng dạy học khác.
             navDashboard.style.display = 'none';
             navLogs.style.display = 'none';
+            navScores.style.display = 'none';
             navTuition.style.display = 'none';
             navScheduler.style.display = 'none';
             navStudents.style.display = 'none';
@@ -786,16 +838,18 @@ class PinkyClassApp {
         } else if (role === 'assistant') {
             navDashboard.style.display = 'flex';
             navLogs.style.display = 'flex';
+            navScores.style.display = 'flex';
             navTuition.style.display = 'flex';
             navScheduler.style.display = 'flex';
             navStudents.style.display = 'flex'; // TA can view classes/students of their assigned teacher
             navUsers.style.display = 'none';
         } else if (role === 'student') {
-            // Học sinh: CHỈ xem "Nhật ký học tập" (lịch học + bài tập/nhận xét
-            // của chính mình) — không thấy học phí, không thấy học sinh khác,
-            // không thấy lịch dạy tổng, không có quyền quản lý tài khoản.
+            // Học sinh: xem "Nhật ký học tập" + "Điểm số" của chính mình —
+            // không thấy học phí, không thấy học sinh khác, không thấy lịch
+            // dạy tổng, không có quyền quản lý tài khoản.
             navDashboard.style.display = 'none';
             navLogs.style.display = 'flex';
+            navScores.style.display = 'flex';
             navTuition.style.display = 'none';
             navScheduler.style.display = 'none';
             navStudents.style.display = 'none';
@@ -804,6 +858,7 @@ class PinkyClassApp {
             // teacher: toàn quyền với các chức năng dạy học
             navDashboard.style.display = 'flex';
             navLogs.style.display = 'flex';
+            navScores.style.display = 'flex';
             navTuition.style.display = 'flex';
             navScheduler.style.display = 'flex';
             navStudents.style.display = 'flex';
@@ -818,13 +873,17 @@ class PinkyClassApp {
 
     populateStudentPickers() {
         const globalPicker = document.getElementById('globalStudentPicker');
+        const scoresPicker = document.getElementById('scoresStudentPicker');
         globalPicker.innerHTML = '';
-        
+        if (scoresPicker) scoresPicker.innerHTML = '';
+
         this.students.forEach(st => {
             const opt = document.createElement('option');
             opt.value = st.id;
             opt.innerText = `${st.name} (${st.class})`;
             globalPicker.appendChild(opt);
+
+            if (scoresPicker) scoresPicker.appendChild(opt.cloneNode(true));
         });
 
         if (this.students.length > 0) {
@@ -835,6 +894,7 @@ class PinkyClassApp {
                 this.currentStudentId = this.students[0].id;
                 globalPicker.value = this.currentStudentId;
             }
+            if (scoresPicker) scoresPicker.value = this.currentStudentId;
         }
 
         // Also render checkboxes in scheduler logger form
@@ -1044,6 +1104,9 @@ class PinkyClassApp {
         } else if (viewId === 'view-logs') {
             titleEl.innerText = "Nhật ký Học tập";
             subtitleEl.innerText = `Theo dõi tiến độ học tập và bài tập của học sinh: ${this.getStudentName(this.currentStudentId)}`;
+        } else if (viewId === 'view-scores') {
+            titleEl.innerText = "Điểm số";
+            subtitleEl.innerText = `Điểm BTVN, kiểm tra, thái độ và biểu đồ tiến bộ của học sinh: ${this.getStudentName(this.currentStudentId)}`;
         } else if (viewId === 'view-scheduler') {
             titleEl.innerText = "Lịch dạy & Chấm công";
             subtitleEl.innerText = "Sắp xếp lịch dạy học và tính công dạy hàng tuần.";
@@ -1073,6 +1136,7 @@ class PinkyClassApp {
     updateAllViews() {
         this.renderDashboard();
         this.renderStudentLogs();
+        this.renderScores();
         this.renderWeeklyCalendar();
         this.renderTuitionOverview();
         this.renderStudentList();
@@ -1393,6 +1457,311 @@ class PinkyClassApp {
     // Escape + giữ xuống dòng khi hiển thị text thuần (không bullet)
     nl2brText(text) {
         return this.escapeHtml(text).replace(/\n/g, '<br>');
+    }
+
+    // --- VIEW 2B: SCORES MODULE (Phase 3: nhập điểm BTVN/Kiểm tra/Thái độ
+    //     + Phase 4: biểu đồ tiến bộ / so sánh / tỷ lệ hoàn thành BTVN) ---
+
+    getScoresForStudent(studentId) {
+        return (this.scores || [])
+            .filter(sc => sc.studentId === studentId)
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+    }
+
+    scoreTypeLabel(type) {
+        if (type === 'BTVN') return 'BTVN';
+        if (type === 'KiemTra') return 'Kiểm tra';
+        if (type === 'ThaiDo') return 'Thái độ';
+        return type;
+    }
+
+    scoreTypeBadgeClass(type) {
+        if (type === 'BTVN') return 'type-btvn';
+        if (type === 'KiemTra') return 'type-kiemtra';
+        if (type === 'ThaiDo') return 'type-thaido';
+        return '';
+    }
+
+    average(nums) {
+        if (!nums || !nums.length) return null;
+        return nums.reduce((a, b) => a + b, 0) / nums.length;
+    }
+
+    // Nhận xét tự động dựa trên điểm trung bình chung của học sinh đang chọn
+    getAutoComment(avg) {
+        if (avg === null) return 'Chưa có dữ liệu điểm để đưa ra nhận xét — hãy nhập điểm cho học sinh này.';
+        if (avg >= 8.5) return 'Xuất sắc! Học sinh duy trì phong độ rất tốt, tiếp tục phát huy nhé.';
+        if (avg >= 7) return 'Khá tốt. Học sinh nắm chắc kiến thức, nên chú ý thêm các dạng bài nâng cao.';
+        if (avg >= 5.5) return 'Trung bình khá. Cần luyện tập thêm để cải thiện độ chắc chắn kiến thức.';
+        if (avg >= 4) return 'Cần cố gắng hơn. Nên tăng cường ôn tập và làm bài tập đều đặn hơn.';
+        return 'Đáng lo ngại. Nên trao đổi sớm với phụ huynh và lên kế hoạch phụ đạo thêm.';
+    }
+
+    renderScores() {
+        const studentId = this.currentStudentId;
+        const studentScores = this.getScoresForStudent(studentId);
+
+        // ----- Bảng danh sách điểm (mới nhất lên đầu) -----
+        const tbody = document.getElementById('scoresTableBody');
+        if (tbody) {
+            tbody.innerHTML = '';
+            if (studentScores.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);">Chưa có điểm nào được ghi nhận cho học sinh này.</td></tr>`;
+            } else {
+                [...studentScores].reverse().forEach(sc => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${this.formatDateVN(sc.date)}</td>
+                        <td><span class="score-type-badge ${this.scoreTypeBadgeClass(sc.scoreType)}">${this.scoreTypeLabel(sc.scoreType)}</span></td>
+                        <td style="text-align:center; font-weight:700; color:var(--primary);">${sc.scoreValue}</td>
+                        <td>${sc.note ? this.escapeHtml(sc.note) : '<span style="color:var(--text-muted);">-</span>'}</td>
+                        <td class="role-restricted admin-tutor" style="text-align:center;">
+                            <button class="btn btn-secondary btn-sm" onclick="app.openEditScoreModal('${sc.id}')">Sửa</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+
+        // ----- Bảng tóm tắt trung bình theo từng loại điểm -----
+        const byType = t => studentScores.filter(s => s.scoreType === t).map(s => s.scoreValue);
+        const avgBTVN = this.average(byType('BTVN'));
+        const avgKT   = this.average(byType('KiemTra'));
+        const avgTD   = this.average(byType('ThaiDo'));
+        const avgAll  = this.average(studentScores.map(s => s.scoreValue));
+        const fmt = v => v === null ? '-' : v.toFixed(1);
+
+        const summaryGrid = document.getElementById('scoreSummaryGrid');
+        if (summaryGrid) {
+            summaryGrid.innerHTML = `
+                <div class="score-summary-card">
+                    <div class="score-summary-label">TB BTVN</div>
+                    <div class="score-summary-value">${fmt(avgBTVN)}</div>
+                </div>
+                <div class="score-summary-card">
+                    <div class="score-summary-label">TB Kiểm tra</div>
+                    <div class="score-summary-value">${fmt(avgKT)}</div>
+                </div>
+                <div class="score-summary-card">
+                    <div class="score-summary-label">TB Thái độ</div>
+                    <div class="score-summary-value">${fmt(avgTD)}</div>
+                </div>
+                <div class="score-summary-card score-summary-overall">
+                    <div class="score-summary-label">Điểm TB chung</div>
+                    <div class="score-summary-value">${fmt(avgAll)}</div>
+                </div>
+            `;
+        }
+
+        // ----- Nhận xét tự động -----
+        const commentBox = document.getElementById('scoreAutoComment');
+        if (commentBox) {
+            commentBox.style.display = 'flex';
+            commentBox.innerHTML = `<span><strong>Nhận xét tự động:</strong> ${this.getAutoComment(avgAll)}</span>`;
+        }
+
+        // ----- Biểu đồ (Phase 4) -----
+        this.renderScoreCharts(studentId, studentScores);
+
+        // Đồng bộ picker riêng của trang Điểm số với picker toàn cục
+        const scoresPicker = document.getElementById('scoresStudentPicker');
+        if (scoresPicker && scoresPicker.value !== studentId) {
+            scoresPicker.value = studentId;
+        }
+    }
+
+    // - Biểu đồ đường: tiến bộ điểm theo thời gian (1 đường / loại điểm)
+    // - Biểu đồ cột: so sánh điểm trung bình giữa 3 loại
+    // - Biểu đồ tròn: tỷ lệ hoàn thành BTVN (dựa trên Homework của SessionDetails)
+    renderScoreCharts(studentId, studentScores) {
+        if (typeof Chart === 'undefined') return; // Chart.js chưa tải xong / lỗi mạng CDN
+        this.charts = this.charts || {};
+
+        // --- LINE CHART: tiến bộ điểm theo thời gian ---
+        const lineCanvas = document.getElementById('scoreLineChart');
+        if (lineCanvas) {
+            const labels = studentScores.map(s => (this.formatDateVN(s.date).split(' - ')[1]) || s.date);
+            const dataFor = type => studentScores.map(s => s.scoreType === type ? s.scoreValue : null);
+
+            if (this.charts.line) this.charts.line.destroy();
+            this.charts.line = new Chart(lineCanvas, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        { label: 'BTVN',     data: dataFor('BTVN'),    borderColor: '#2563eb', backgroundColor: '#2563eb', spanGaps: true, tension: 0.3 },
+                        { label: 'Kiểm tra', data: dataFor('KiemTra'), borderColor: '#dc2626', backgroundColor: '#dc2626', spanGaps: true, tension: 0.3 },
+                        { label: 'Thái độ',  data: dataFor('ThaiDo'),  borderColor: '#16a34a', backgroundColor: '#16a34a', spanGaps: true, tension: 0.3 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { y: { min: 0, max: 10 } },
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } }
+                }
+            });
+        }
+
+        // --- BAR CHART: so sánh trung bình theo loại điểm ---
+        const barCanvas = document.getElementById('scoreBarChart');
+        if (barCanvas) {
+            const byTypeAvg = t => this.average(studentScores.filter(s => s.scoreType === t).map(s => s.scoreValue));
+            if (this.charts.bar) this.charts.bar.destroy();
+            this.charts.bar = new Chart(barCanvas, {
+                type: 'bar',
+                data: {
+                    labels: ['BTVN', 'Kiểm tra', 'Thái độ'],
+                    datasets: [{
+                        label: 'Điểm trung bình',
+                        data: [byTypeAvg('BTVN'), byTypeAvg('KiemTra'), byTypeAvg('ThaiDo')].map(v => v === null ? 0 : v),
+                        backgroundColor: ['#2563eb', '#dc2626', '#16a34a'],
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { y: { min: 0, max: 10 } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // --- PIE CHART: tỷ lệ hoàn thành BTVN (theo dữ liệu Homework của buổi học) ---
+        const pieCanvas = document.getElementById('homeworkPieChart');
+        if (pieCanvas) {
+            const relevantSessions = (this.sessions || []).filter(sess => sess.studentIds && sess.studentIds.includes(studentId));
+            let done = 0, pending = 0, notDone = 0;
+            relevantSessions.forEach(sess => {
+                const hw = (sess.studentDetails[studentId] || {}).homework;
+                if (hw === 'Hoàn thành') done++;
+                else if (hw === 'Chưa hoàn thành') pending++;
+                else notDone++;
+            });
+
+            if (this.charts.pie) this.charts.pie.destroy();
+            this.charts.pie = new Chart(pieCanvas, {
+                type: 'pie',
+                data: {
+                    labels: ['Hoàn thành', 'Chưa hoàn thành', 'Không hoàn thành'],
+                    datasets: [{
+                        data: [done, pending, notDone],
+                        backgroundColor: ['#16a34a', '#f59e0b', '#dc2626']
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } }
+                }
+            });
+        }
+    }
+
+    // --- SCORE CRUD (modal thêm/sửa điểm) ---
+    openAddScoreModal() {
+        if (!this.currentStudentId) {
+            this.showToast('Vui lòng chọn học sinh trước khi thêm điểm.', 'error');
+            return;
+        }
+        document.getElementById('scoreModalTitle').innerText = 'Thêm Điểm Mới';
+        document.getElementById('editScoreId').value = '';
+        document.getElementById('scoreType').value = 'BTVN';
+        document.getElementById('scoreValue').value = '';
+        document.getElementById('scoreDate').value = this.toISODateOnly(new Date());
+        document.getElementById('scoreNote').value = '';
+        document.getElementById('scoreDeleteBtn').style.display = 'none';
+        document.getElementById('scoreModalStudentLabel').innerText = `Học sinh: ${this.getStudentName(this.currentStudentId)}`;
+        this.openModal('scoreModal');
+    }
+
+    openEditScoreModal(scoreId) {
+        const sc = (this.scores || []).find(s => s.id === scoreId);
+        if (!sc) return;
+        document.getElementById('scoreModalTitle').innerText = 'Sửa Điểm';
+        document.getElementById('editScoreId').value = sc.id;
+        document.getElementById('scoreType').value = sc.scoreType;
+        document.getElementById('scoreValue').value = sc.scoreValue;
+        document.getElementById('scoreDate').value = sc.date;
+        document.getElementById('scoreNote').value = sc.note || '';
+        document.getElementById('scoreDeleteBtn').style.display = 'inline-block';
+        document.getElementById('scoreModalStudentLabel').innerText = `Học sinh: ${this.getStudentName(sc.studentId)}`;
+        this.openModal('scoreModal');
+    }
+
+    async saveScore() {
+        const id         = document.getElementById('editScoreId').value;
+        const scoreType  = document.getElementById('scoreType').value;
+        const scoreValue = document.getElementById('scoreValue').value;
+        const date       = document.getElementById('scoreDate').value;
+        const note       = document.getElementById('scoreNote').value.trim();
+
+        if (scoreValue === '' || isNaN(parseFloat(scoreValue)) || parseFloat(scoreValue) < 0 || parseFloat(scoreValue) > 10) {
+            this.showToast('Điểm số phải là số từ 0 đến 10.', 'error');
+            return;
+        }
+        if (!date) {
+            this.showToast('Vui lòng chọn ngày chấm điểm.', 'error');
+            return;
+        }
+
+        try {
+            let res;
+            if (id) {
+                res = await this.authFetch(`${API_BASE_URL}/api/scores/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ scoreType, scoreValue, date, note })
+                });
+            } else {
+                res = await this.authFetch(`${API_BASE_URL}/api/scores`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: 'sc_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                        studentId: this.currentStudentId,
+                        scoreType, scoreValue, date, note
+                    })
+                });
+            }
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(payload.error || 'Không thể lưu điểm.');
+
+            this.showToast(id ? 'Đã cập nhật điểm.' : 'Đã thêm điểm mới.', 'success');
+            this.closeModal('scoreModal');
+            await this.loadScores();
+        } catch (err) {
+            this.showToast(err.message || 'Không thể lưu điểm.', 'error');
+        }
+    }
+
+    async deleteScore() {
+        const id = document.getElementById('editScoreId').value;
+        if (!id) return;
+        if (!confirm('Xóa điểm này? Hành động không thể hoàn tác.')) return;
+        try {
+            const res = await this.authFetch(`${API_BASE_URL}/api/scores/${id}`, { method: 'DELETE' });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(payload.error || 'Không thể xóa điểm.');
+
+            this.showToast('Đã xóa điểm.', 'success');
+            this.closeModal('scoreModal');
+            await this.loadScores();
+        } catch (err) {
+            this.showToast(err.message || 'Không thể xóa điểm.', 'error');
+        }
+    }
+
+    // Tải lại riêng danh sách điểm (nhanh hơn loadData() vì không cần tải lại
+    // students/sessions), dùng ngay sau khi thêm/sửa/xóa 1 điểm.
+    async loadScores() {
+        try {
+            const url = this.currentRole === 'student' ? `${API_BASE_URL}/api/me/scores` : `${API_BASE_URL}/api/scores`;
+            const res = await this.authFetch(url);
+            this.scores = res.ok ? await res.json() : [];
+        } catch (err) {
+            console.error('[loadScores]', err.message);
+        }
+        this.renderScores();
     }
 
     // --- VIEW 3: WEEKLY CALENDAR (Lịch dạy & Chấm công) ---

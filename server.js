@@ -109,7 +109,8 @@ const COLUMN_CASE_MAP = {
     paid: 'Paid',
     sessionid: 'SessionId', studentid: 'StudentId', homework: 'Homework',
     attitude: 'Attitude', individualcomment: 'IndividualComment', note: 'Note',
-    passwordhash: 'PasswordHash', accountactive: 'AccountActive'
+    passwordhash: 'PasswordHash', accountactive: 'AccountActive',
+    scoretype: 'ScoreType', scorevalue: 'ScoreValue', scoredate: 'ScoreDate'
 };
 
 function restoreColumnCase(rows) {
@@ -215,6 +216,30 @@ let poolPromise = pgPool.query('SELECT 1')
             console.log('Đã kiểm tra/đảm bảo các cột tài khoản đăng nhập học sinh tồn tại.');
         } catch (migErr) {
             console.error('Lỗi khi tự động thêm cột tài khoản học sinh:', migErr.message);
+        }
+
+        // Self-healing migration (Phase 3): bảng Điểm số (Scores) — BTVN /
+        // Kiểm tra / Thái độ, nhập độc lập theo từng mốc thời gian, KHÔNG gắn
+        // cứng vào 1 buổi học cụ thể (SessionId) để giáo viên có thể nhập điểm
+        // kiểm tra/BTVN ngay cả khi không có buổi học tương ứng trong lịch.
+        // An toàn để chạy lại nhiều lần (IF NOT EXISTS).
+        try {
+            await pgPool.query(`CREATE TABLE IF NOT EXISTS Scores (
+                Id VARCHAR(50) PRIMARY KEY,
+                StudentId VARCHAR(50) NOT NULL,
+                TeacherId VARCHAR(50) NOT NULL,
+                ScoreType VARCHAR(20) NOT NULL,
+                ScoreValue DECIMAL(4,2) NOT NULL,
+                ScoreDate DATE NOT NULL,
+                Note VARCHAR(300),
+                CONSTRAINT FK_Scores_Student FOREIGN KEY (StudentId) REFERENCES Students(Id) ON DELETE CASCADE,
+                CONSTRAINT FK_Scores_Teacher FOREIGN KEY (TeacherId) REFERENCES Users(Id)
+            )`);
+            await pgPool.query('CREATE INDEX IF NOT EXISTS idx_scores_student ON Scores (StudentId)');
+            await pgPool.query('CREATE INDEX IF NOT EXISTS idx_scores_teacher ON Scores (TeacherId)');
+            console.log('Đã kiểm tra/đảm bảo bảng Scores (điểm số) tồn tại.');
+        } catch (migErr) {
+            console.error('Lỗi khi tự động tạo bảng Scores:', migErr.message);
         }
 
         return { request: () => new sql.Request(pgPool) };
@@ -1175,6 +1200,157 @@ app.put('/api/students/:studentId/set-paid', requireRole('teacher'), requireTeac
 });
 
 // ==========================================
+// SCORES API (Phase 3 — Điểm số: BTVN / Kiểm tra / Thái độ)
+// Chỉ giáo viên/trợ giảng được tạo/sửa/xóa; học sinh chỉ xem qua
+// /api/me/scores (route riêng ở phần STUDENT SELF-SERVICE bên dưới).
+// ==========================================
+
+const SCORE_TYPES = ['BTVN', 'KiemTra', 'ThaiDo'];
+
+// GET danh sách điểm — có thể lọc theo ?studentId=... (dùng cho trang Điểm số
+// của 1 học sinh cụ thể) hoặc bỏ trống để lấy TẤT CẢ điểm của giáo viên hiện
+// tại (dùng để tính toán/biểu đồ tổng hợp phía frontend mà không cần gọi lại
+// API nhiều lần khi đổi học sinh đang chọn).
+app.get('/api/scores', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
+    const { studentId } = req.query;
+    try {
+        const pool = await poolPromise;
+        const request = pool.request().input('teacherId', sql.VarChar, req.effectiveTeacherId);
+        let query = `SELECT Id, StudentId, ScoreType, ScoreValue, ScoreDate, Note
+                     FROM Scores WHERE TeacherId = @teacherId`;
+        if (studentId) {
+            request.input('studentId', sql.VarChar, studentId);
+            query += ' AND StudentId = @studentId';
+        }
+        query += ' ORDER BY ScoreDate DESC';
+
+        const result = await request.query(query);
+        res.json(result.recordset.map(r => ({
+            id:         r.Id,
+            studentId:  r.StudentId,
+            scoreType:  r.ScoreType,
+            scoreValue: parseFloat(r.ScoreValue),
+            date:       r.ScoreDate ? String(r.ScoreDate).slice(0, 10) : '',
+            note:       r.Note || ''
+        })));
+    } catch (err) {
+        console.error('[GET /api/scores]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST thêm 1 điểm mới cho 1 học sinh
+app.post('/api/scores', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
+    const { id, studentId, scoreType, scoreValue, date, note } = req.body || {};
+
+    if (!id || !studentId || !scoreType || scoreValue === undefined || scoreValue === null || !date) {
+        return res.status(400).json({ error: 'Thiếu thông tin bắt buộc: học sinh, loại điểm, điểm số, ngày.' });
+    }
+    if (!SCORE_TYPES.includes(scoreType)) {
+        return res.status(400).json({ error: 'Loại điểm không hợp lệ. Chọn: BTVN, KiemTra, ThaiDo.' });
+    }
+    const val = parseFloat(scoreValue);
+    if (isNaN(val) || val < 0 || val > 10) {
+        return res.status(400).json({ error: 'Điểm số phải là số từ 0 đến 10.' });
+    }
+
+    try {
+        const pool = await poolPromise;
+
+        // Chỉ được chấm điểm cho học sinh thuộc đúng giáo viên hiệu lực của mình
+        const owner = await pool.request().input('id', sql.VarChar, studentId)
+            .query('SELECT TeacherId FROM Students WHERE Id = @id');
+        if (owner.recordset.length === 0) {
+            return res.status(404).json({ error: 'Không tìm thấy học sinh.' });
+        }
+        if (owner.recordset[0].TeacherId !== req.effectiveTeacherId) {
+            return res.status(403).json({ error: 'Bạn không có quyền chấm điểm học sinh của giáo viên khác.' });
+        }
+
+        await pool.request()
+            .input('id',         sql.VarChar,  id)
+            .input('studentId',  sql.VarChar,  studentId)
+            .input('teacherId',  sql.VarChar,  req.effectiveTeacherId)
+            .input('scoreType',  sql.VarChar,  scoreType)
+            .input('scoreValue', sql.Decimal(), val)
+            .input('date',       sql.Date,     date)
+            .input('note',       sql.NVarChar, note || '')
+            .query(`INSERT INTO Scores (Id, StudentId, TeacherId, ScoreType, ScoreValue, ScoreDate, Note)
+                    VALUES (@id, @studentId, @teacherId, @scoreType, @scoreValue, @date, @note)`);
+
+        res.status(201).json({ message: 'Đã thêm điểm mới.' });
+    } catch (err) {
+        console.error('[POST /api/scores]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PUT sửa 1 điểm đã nhập
+app.put('/api/scores/:id', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
+    const { id } = req.params;
+    const { scoreType, scoreValue, date, note } = req.body || {};
+
+    if (!scoreType || scoreValue === undefined || scoreValue === null || !date) {
+        return res.status(400).json({ error: 'Thiếu thông tin bắt buộc: loại điểm, điểm số, ngày.' });
+    }
+    if (!SCORE_TYPES.includes(scoreType)) {
+        return res.status(400).json({ error: 'Loại điểm không hợp lệ. Chọn: BTVN, KiemTra, ThaiDo.' });
+    }
+    const val = parseFloat(scoreValue);
+    if (isNaN(val) || val < 0 || val > 10) {
+        return res.status(400).json({ error: 'Điểm số phải là số từ 0 đến 10.' });
+    }
+
+    try {
+        const pool = await poolPromise;
+        const owner = await pool.request().input('id', sql.VarChar, id)
+            .query('SELECT TeacherId FROM Scores WHERE Id = @id');
+        if (owner.recordset.length === 0) {
+            return res.status(404).json({ error: 'Không tìm thấy điểm cần sửa.' });
+        }
+        if (owner.recordset[0].TeacherId !== req.effectiveTeacherId) {
+            return res.status(403).json({ error: 'Bạn không có quyền sửa điểm của giáo viên khác.' });
+        }
+
+        await pool.request()
+            .input('id',         sql.VarChar,  id)
+            .input('scoreType',  sql.VarChar,  scoreType)
+            .input('scoreValue', sql.Decimal(), val)
+            .input('date',       sql.Date,     date)
+            .input('note',       sql.NVarChar, note || '')
+            .query(`UPDATE Scores
+                    SET ScoreType = @scoreType, ScoreValue = @scoreValue, ScoreDate = @date, Note = @note
+                    WHERE Id = @id`);
+
+        res.json({ message: 'Đã cập nhật điểm.' });
+    } catch (err) {
+        console.error('[PUT /api/scores/:id]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE xóa 1 điểm đã nhập
+app.delete('/api/scores/:id', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const pool = await poolPromise;
+        const owner = await pool.request().input('id', sql.VarChar, id)
+            .query('SELECT TeacherId FROM Scores WHERE Id = @id');
+        if (owner.recordset.length === 0) {
+            return res.status(404).json({ error: 'Không tìm thấy điểm cần xóa.' });
+        }
+        if (owner.recordset[0].TeacherId !== req.effectiveTeacherId) {
+            return res.status(403).json({ error: 'Bạn không có quyền xóa điểm của giáo viên khác.' });
+        }
+        await pool.request().input('id', sql.VarChar, id).query('DELETE FROM Scores WHERE Id = @id');
+        res.json({ message: 'Đã xóa điểm.' });
+    } catch (err) {
+        console.error('[DELETE /api/scores/:id]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ==========================================
 // STUDENT SELF-SERVICE API (chỉ dành cho tài khoản học sinh, chỉ đọc,
 // chỉ được xem đúng dữ liệu của chính mình — KHÔNG có route sửa/xóa nào ở đây)
 // ==========================================
@@ -1237,6 +1413,29 @@ app.get('/api/me/schedule', requireRole('student'), requireTeacherContext, async
         res.json(rows);
     } catch (err) {
         console.error('[GET /api/me/schedule]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Điểm số (BTVN/Kiểm tra/Thái độ) của CHÍNH học sinh đang đăng nhập (chỉ đọc).
+app.get('/api/me/scores', requireRole('student'), requireTeacherContext, async (req, res) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('studentId', sql.VarChar, req.authUser.userId)
+            .query(`SELECT Id, StudentId, ScoreType, ScoreValue, ScoreDate, Note
+                    FROM Scores WHERE StudentId = @studentId ORDER BY ScoreDate DESC`);
+
+        res.json(result.recordset.map(r => ({
+            id:         r.Id,
+            studentId:  r.StudentId,
+            scoreType:  r.ScoreType,
+            scoreValue: parseFloat(r.ScoreValue),
+            date:       r.ScoreDate ? String(r.ScoreDate).slice(0, 10) : '',
+            note:       r.Note || ''
+        })));
+    } catch (err) {
+        console.error('[GET /api/me/scores]', err);
         res.status(500).json({ error: err.message });
     }
 });

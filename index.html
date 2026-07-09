@@ -11,6 +11,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <!-- Chart.js (Phase 4 — biểu đồ tiến bộ điểm số, so sánh loại điểm, tỷ lệ hoàn thành BTVN) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -80,6 +82,8 @@
             <a href="#" class="menu-item active" data-target="view-dashboard" id="nav-dashboard"> <span>Tổng quan</span>
             </a>
             <a href="#" class="menu-item" data-target="view-logs" id="nav-logs"> <span>Nhật ký học tập</span>
+            </a>
+            <a href="#" class="menu-item" data-target="view-scores" id="nav-scores"> <span>Điểm số</span>
             </a>
             <a href="#" class="menu-item" data-target="view-scheduler" id="nav-scheduler"> <span>Lịch dạy & Chấm công</span>
             </a>
@@ -238,6 +242,70 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2B: SCORES MODULE (Phase 3 + Phase 4) -->
+        <section id="view-scores" class="view-section">
+            <div class="glass-card" style="padding: 20px;">
+                <div class="evaluation-header" style="margin-bottom: 15px;">
+                    <div>
+                        <h2 style="color: var(--primary); font-weight: 700;"> Quản Lý Điểm Số</h2>
+                        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+                            Theo dõi điểm BTVN, kiểm tra, thái độ học tập theo thời gian của từng học sinh.
+                        </p>
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <div class="student-context-picker">
+                            <span>Đang chọn:</span>
+                            <select id="scoresStudentPicker" class="student-select"></select>
+                        </div>
+                        <button class="btn btn-primary btn-sm role-restricted admin-tutor" id="addScoreBtn"> Thêm điểm
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Bảng tóm tắt trung bình theo từng loại điểm + nhận xét tự động -->
+                <div class="score-summary-grid" id="scoreSummaryGrid">
+                    <!-- Filled dynamically -->
+                </div>
+
+                <div class="score-auto-comment" id="scoreAutoComment" style="display:none;">
+                    <!-- Filled dynamically -->
+                </div>
+
+                <!-- Biểu đồ: đường (tiến bộ), cột (so sánh loại điểm), tròn (tỷ lệ BTVN) -->
+                <div class="charts-grid">
+                    <div class="glass-card chart-card">
+                        <h4>Tiến bộ điểm theo thời gian</h4>
+                        <div class="chart-canvas-wrap"><canvas id="scoreLineChart"></canvas></div>
+                    </div>
+                    <div class="glass-card chart-card">
+                        <h4>So sánh các loại điểm (trung bình)</h4>
+                        <div class="chart-canvas-wrap"><canvas id="scoreBarChart"></canvas></div>
+                    </div>
+                    <div class="glass-card chart-card">
+                        <h4>Tỷ lệ hoàn thành bài tập</h4>
+                        <div class="chart-canvas-wrap"><canvas id="homeworkPieChart"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="table-wrapper" style="border-radius: 16px; margin-top: 20px;">
+                    <table class="custom-table" id="scoresTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 110px;">Ngày</th>
+                                <th style="width: 130px;">Loại điểm</th>
+                                <th style="width: 90px; text-align:center;">Điểm</th>
+                                <th>Ghi chú</th>
+                                <th class="role-restricted admin-tutor" style="text-align: center; width: 110px;">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scoresTableBody">
+                            <!-- Filled dynamically -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </section>
@@ -919,6 +987,52 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="app.closeModal('userModal')">Hủy bỏ</button>
                     <button type="submit" class="btn btn-primary">Lưu tài khoản</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: THÊM / SỬA ĐIỂM SỐ (Phase 3) -->
+    <div class="modal-backdrop" id="scoreModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="modal-title" id="scoreModalTitle">Thêm Điểm Mới</h3>
+                <button class="modal-close" onclick="app.closeModal('scoreModal')">&times;</button>
+            </div>
+            <form id="scoreForm">
+                <input type="hidden" id="editScoreId">
+                <div class="modal-body">
+                    <div style="background: var(--primary-soft); border: 1px solid var(--primary-light); border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; font-weight: 600; color: var(--primary);" id="scoreModalStudentLabel">
+                        Học sinh: -
+                    </div>
+                    <div class="grid-form">
+                        <div class="form-group">
+                            <label for="scoreType">Loại điểm <span style="color:red;">*</span></label>
+                            <select id="scoreType" class="form-control" required>
+                                <option value="BTVN">Bài tập về nhà (BTVN)</option>
+                                <option value="KiemTra">Kiểm tra</option>
+                                <option value="ThaiDo">Đánh giá thái độ</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="scoreValue">Điểm (0 - 10) <span style="color:red;">*</span></label>
+                            <input type="number" id="scoreValue" class="form-control" min="0" max="10" step="0.1" placeholder="Ví dụ: 8.5" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="scoreDate">Ngày chấm <span style="color:red;">*</span></label>
+                            <input type="date" id="scoreDate" class="form-control" required>
+                        </div>
+                        <div class="form-group form-group-full">
+                            <label for="scoreNote">Ghi chú</label>
+                            <textarea id="scoreNote" class="form-control" rows="2" placeholder="Ví dụ: Kiểm tra 15 phút chương 2..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger btn-sm" id="scoreDeleteBtn" style="display:none;" onclick="app.deleteScore()">🗑️ Xóa</button>
+                    <div style="flex:1;"></div>
+                    <button type="button" class="btn btn-secondary" onclick="app.closeModal('scoreModal')">Hủy bỏ</button>
+                    <button type="submit" class="btn btn-primary">Lưu điểm</button>
                 </div>
             </form>
         </div>
