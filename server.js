@@ -1441,6 +1441,174 @@ app.get('/api/me/scores', requireRole('student'), requireTeacherContext, async (
 });
 
 // ==========================================
+// AI CHAT — trợ lý AI đọc dữ liệu thật của tài khoản đang đăng nhập
+// ==========================================
+// Khoá API của OpenAI được lưu trên server (biến môi trường OPENAI_API_KEY),
+// KHÔNG bao giờ gửi xuống trình duyệt — khác với cách làm cũ ở dự án
+// DiabetesMedicalRecord (lưu key ở localStorage phía client), vì dữ liệu ở
+// đây (lịch dạy, điểm số học sinh) nhạy cảm hơn và app đã có sẵn hệ thống
+// xác thực theo Bearer token nên tận dụng luôn để giới hạn đúng phạm vi dữ
+// liệu mà mỗi vai trò được phép đọc.
+const OPENAI_API_KEY   = process.env.OPENAI_API_KEY;
+const OPENAI_CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini';
+
+// Gom dữ liệu dạy học (học sinh / lịch dạy / điểm số) của ĐÚNG giáo viên
+// hiệu lực của người gọi, dùng lại effectiveTeacherId() ở trên để không tạo
+// đường vòng nào cho phép đọc dữ liệu ngoài phạm vi tài khoản.
+async function buildAiContext(req) {
+    const role = req.authUser.role;
+
+    // Admin không sở hữu dữ liệu dạy học nào — trả về context rỗng, trợ lý
+    // sẽ tự nói rõ là không có dữ liệu thay vì suy đoán.
+    if (role === 'admin') return '(Tài khoản Admin không có dữ liệu lớp học/lịch dạy/điểm số.)';
+
+    const teacherId = effectiveTeacherId(req);
+    if (!teacherId) return '(Tài khoản chưa được gán giáo viên nên chưa có dữ liệu để tra cứu.)';
+
+    const pool = await poolPromise;
+
+    const studentsResult = await pool.request()
+        .input('teacherId', sql.VarChar, teacherId)
+        .query(`SELECT Id, Name, Class, GradeLevel, Subject, BasePrice FROM Students WHERE TeacherId = @teacherId ORDER BY GradeLevel NULLS LAST, Name`);
+    let students = studentsResult.recordset;
+
+    // Học sinh chỉ được đọc dữ liệu của chính mình.
+    const onlyStudentId = role === 'student' ? req.authUser.userId : null;
+    if (onlyStudentId) students = students.filter(s => s.Id === onlyStudentId);
+    const studentNameMap = {};
+    students.forEach(s => { studentNameMap[s.Id] = s.Name; });
+
+    // Giới hạn lịch dạy trong khoảng 45 ngày trước -> 14 ngày sau để prompt
+    // không phình quá to (giáo viên dạy lâu năm có thể có hàng nghìn buổi).
+    const sessionsResult = await pool.request()
+        .input('teacherId', sql.VarChar, teacherId)
+        .query(`
+            SELECT s.Id, s.SessionDate, s.StartTime, s.EndTime, s.SessionType, s.SessionName, s.Completed,
+                   sd.StudentId, sd.Homework, sd.Attitude, sd.Paid
+            FROM Sessions s
+            LEFT JOIN SessionDetails sd ON s.Id = sd.SessionId
+            WHERE s.TeacherId = @teacherId
+              AND s.SessionDate >= CURRENT_DATE - INTERVAL '45 days'
+              AND s.SessionDate <= CURRENT_DATE + INTERVAL '14 days'
+            ORDER BY s.SessionDate DESC
+        `);
+
+    const scoresResult = await pool.request()
+        .input('teacherId', sql.VarChar, teacherId)
+        .query(`SELECT StudentId, ScoreType, ScoreValue, ScoreDate, Note FROM Scores WHERE TeacherId = @teacherId ORDER BY ScoreDate DESC`);
+
+    const sessionsMap = {};
+    sessionsResult.recordset.forEach(row => {
+        if (onlyStudentId && row.StudentId && row.StudentId !== onlyStudentId) return;
+        if (!sessionsMap[row.Id]) {
+            sessionsMap[row.Id] = {
+                date:      row.SessionDate ? String(row.SessionDate).slice(0, 10) : '',
+                time:      `${row.StartTime}-${row.EndTime}`,
+                type:      row.SessionType,
+                name:      row.SessionName || '',
+                completed: row.Completed === true || row.Completed === 1,
+                students:  []
+            };
+        }
+        if (row.StudentId && (!onlyStudentId || row.StudentId === onlyStudentId)) {
+            const sName = studentNameMap[row.StudentId] || row.StudentId;
+            sessionsMap[row.Id].students.push(`${sName} (BTVN: ${row.Homework || '-'}, Ý thức: ${row.Attitude || '-'}, ${row.Paid ? 'đã đóng phí' : 'chưa đóng phí'})`);
+        }
+    });
+
+    const sessionLines = Object.values(sessionsMap)
+        .filter(s => onlyStudentId ? s.students.length > 0 : true)
+        .slice(0, 80)
+        .map(s => `- ${s.date} ${s.time} [${s.type}${s.name ? ' - ' + s.name : ''}]${s.completed ? '' : ' (chưa diễn ra)'}: ${s.students.join('; ') || 'chưa có học sinh'}`)
+        .join('\n');
+
+    const scoreLines = scoresResult.recordset
+        .filter(r => !onlyStudentId || r.StudentId === onlyStudentId)
+        .slice(0, 150)
+        .map(r => `- ${studentNameMap[r.StudentId] || r.StudentId}: ${r.ScoreType} = ${r.ScoreValue} (${r.ScoreDate ? String(r.ScoreDate).slice(0, 10) : ''})${r.Note ? ' - ' + r.Note : ''}`)
+        .join('\n');
+
+    const studentLines = students
+        .map(s => `- ${s.Name} | ${s.Class || '(chưa có lớp)'} | Khối ${s.GradeLevel || '?'} | Môn: ${s.Subject || '-'} | Học phí/buổi: ${s.BasePrice != null ? s.BasePrice + 'đ' : '-'}`)
+        .join('\n');
+
+    return [
+        'DANH SÁCH HỌC SINH:',
+        studentLines || '(không có học sinh nào)',
+        '',
+        'LỊCH DẠY (45 ngày qua và 14 ngày sắp tới):',
+        sessionLines || '(không có buổi học nào trong khoảng thời gian này)',
+        '',
+        'ĐIỂM SỐ:',
+        scoreLines || '(chưa có điểm nào được ghi nhận)'
+    ].join('\n');
+}
+
+app.post('/api/ai-chat', requireAuth, async (req, res) => {
+    const { message, history } = req.body || {};
+    if (!message || typeof message !== 'string' || !message.trim()) {
+        return res.status(400).json({ error: 'Vui lòng nhập câu hỏi.' });
+    }
+    if (!OPENAI_API_KEY) {
+        return res.status(500).json({ error: 'Trợ lý AI chưa được cấu hình trên máy chủ (thiếu biến môi trường OPENAI_API_KEY).' });
+    }
+
+    try {
+        const role = req.authUser.role;
+        const roleLabel = role === 'admin' ? 'quản trị viên' : role === 'teacher' ? 'giáo viên' : role === 'assistant' ? 'trợ giảng' : 'học sinh';
+        const contextText = await buildAiContext(req);
+
+        const systemPrompt = `Bạn là trợ lý AI của ứng dụng quản lý dạy học NttClass, đang hỗ trợ một tài khoản vai trò "${roleLabel}".
+Chỉ được trả lời dựa trên DỮ LIỆU dưới đây — đây là dữ liệu thật, RIÊNG của đúng tài khoản đang hỏi, không thuộc về ai khác.
+Nếu câu hỏi cần thông tin không có trong dữ liệu, hãy nói rõ là chưa có/không tìm thấy thông tin đó, KHÔNG được bịa đặt số liệu.
+Trả lời ngắn gọn, rõ ràng, đúng trọng tâm, bằng tiếng Việt.
+
+DỮ LIỆU:
+${contextText}`;
+
+        const trimmedHistory = Array.isArray(history)
+            ? history
+                .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+                .slice(-10)
+                .map(m => ({ role: m.role, content: m.content.slice(0, 2000) }))
+            : [];
+
+        const messages = [
+            { role: 'system', content: systemPrompt },
+            ...trimmedHistory,
+            { role: 'user', content: message.trim().slice(0, 2000) }
+        ];
+
+        const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type':  'application/json',
+                'Authorization': `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model:       OPENAI_CHAT_MODEL,
+                messages,
+                temperature: 0.3,
+                max_tokens:  700
+            })
+        });
+
+        if (!aiResponse.ok) {
+            const errText = await aiResponse.text().catch(() => '');
+            console.error('[POST /api/ai-chat] Lỗi từ OpenAI:', aiResponse.status, errText);
+            return res.status(502).json({ error: 'Trợ lý AI hiện không phản hồi được. Vui lòng thử lại sau.' });
+        }
+
+        const aiData = await aiResponse.json();
+        const reply = aiData?.choices?.[0]?.message?.content?.trim() || 'Xin lỗi, tôi chưa có câu trả lời phù hợp cho câu hỏi này.';
+        res.json({ reply });
+    } catch (err) {
+        console.error('[POST /api/ai-chat]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ==========================================
 // 404 HANDLER
 // ==========================================
 app.use((req, res, next) => {

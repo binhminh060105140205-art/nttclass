@@ -85,6 +85,8 @@
             </a>
             <a href="#" class="menu-item" data-target="view-scores" id="nav-scores"> <span>Điểm số</span>
             </a>
+            <a href="#" class="menu-item" data-target="view-ai-chat" id="nav-ai-chat"> <span>Trợ lý AI</span>
+            </a>
             <a href="#" class="menu-item" data-target="view-scheduler" id="nav-scheduler"> <span>Lịch dạy & Chấm công</span>
             </a>
             <a href="#" class="menu-item" data-target="view-tuition" id="nav-tuition"> <span>Báo cáo học phí</span>
@@ -185,12 +187,12 @@
 
         <!-- SECTION 2: STUDENT LOGS -->
         <section id="view-logs" class="view-section">
-            <div class="glass-card" style="padding: 20px;">
-                <div class="evaluation-header" style="margin-bottom: 15px;">
+            <div class="glass-card" style="padding: 14px 16px;">
+                <div class="evaluation-header" style="margin-bottom: 8px;">
                     <div>
-                        <h2 style="color: var(--primary); font-weight: 700; display: inline-flex; align-items: center; gap: 8px;"> Nhật Ký Học Tập Học Sinh
+                        <h2 style="color: var(--primary); font-weight: 700; font-size: 1rem; display: inline-flex; align-items: center; gap: 8px;"> Nhật Ký Học Tập Học Sinh
                         </h2>
-                        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+                        <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
                             Theo dõi chi tiết tiến trình bài tập, ý thức học tập và nhận xét qua từng buổi học.
                         </p>
                     </div>
@@ -307,6 +309,34 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2C: TRỢ LÝ AI — khung chat kiểu GPT, đọc dữ liệu thật
+             (lịch dạy + điểm số + học sinh) của ĐÚNG giáo viên hiệu lực của
+             tài khoản đang đăng nhập (xem /api/ai-chat ở server.js). -->
+        <section id="view-ai-chat" class="view-section">
+            <div class="glass-card ai-chat-card">
+                <div class="evaluation-header" style="margin-bottom: 15px;">
+                    <div>
+                        <h2 style="color: var(--primary); font-weight: 700; display: inline-flex; align-items: center; gap: 8px;">Trợ lý AI</h2>
+                        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+                            Hỏi về lịch dạy, điểm số, học sinh — trợ lý trả lời dựa trên đúng dữ liệu của tài khoản bạn.
+                        </p>
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btnClearAiChat">Xoá hội thoại</button>
+                </div>
+
+                <div class="ai-chat-messages" id="aiChatMessages">
+                    <div class="ai-chat-msg ai-chat-msg-bot">
+                        <div class="ai-chat-bubble">Xin chào! Mình là trợ lý AI của NttClass. Bạn có thể hỏi mình về lịch dạy, điểm số hoặc thông tin học sinh — mình sẽ trả lời dựa trên dữ liệu thật trong tài khoản của bạn.</div>
+                    </div>
+                </div>
+
+                <form class="ai-chat-input-row" id="aiChatForm">
+                    <input type="text" id="aiChatInput" class="form-control" placeholder="Nhập câu hỏi, ví dụ: Tuần này có bao nhiêu buổi dạy?" autocomplete="off" required>
+                    <button type="submit" class="btn btn-primary" id="aiChatSendBtn">Gửi</button>
+                </form>
             </div>
         </section>
 

@@ -32,6 +32,7 @@ class PinkyClassApp {
         this.CAL_HOUR_END = 22;    // 22:00
         this.CAL_HOUR_HEIGHT = 52; // px, phải khớp với .week-hour-label height trong CSS
         this.calDrag = null; // Trạng thái đang kéo-thả 1 buổi học trên lịch tuần (null = không kéo)
+        this.aiChatHistory = []; // Lịch sử hội thoại Trợ lý AI (chỉ lưu ở client, gửi kèm mỗi lần hỏi để AI nhớ ngữ cảnh)
 
         // Áp dụng lại màu giao diện đã lưu (nếu có) ngay từ đầu, trước khi vẽ
         // bất cứ gì, để tránh bị "chớp" màu mặc định rồi mới đổi màu.
@@ -609,6 +610,17 @@ class PinkyClassApp {
             this.exportInvoice();
         });
 
+        // Form Submit: Trợ lý AI — gửi câu hỏi
+        document.getElementById('aiChatForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.sendAiChatMessage();
+        });
+
+        // Nút xoá hội thoại Trợ lý AI
+        document.getElementById('btnClearAiChat').addEventListener('click', () => {
+            this.clearAiChat();
+        });
+
         // Tải ảnh QR thanh toán lên phiếu học phí (tuỳ chọn) — đọc file thành
         // base64 để nhúng thẳng vào ảnh xuất ra (không cần lưu file lên server).
         document.getElementById('invoiceQrInput').addEventListener('change', (e) => {
@@ -824,10 +836,12 @@ class PinkyClassApp {
         const navScheduler = document.getElementById('nav-scheduler');
         const navStudents = document.getElementById('nav-students');
         const navUsers = document.getElementById('nav-users');
+        const navAiChat = document.getElementById('nav-ai-chat');
 
         if (role === 'admin') {
             // Admin: chỉ được quản lý tài khoản người dùng, không truy cập
-            // các chức năng dạy học khác.
+            // các chức năng dạy học khác. Admin cũng không có dữ liệu lịch
+            // dạy/điểm số nên không cần Trợ lý AI.
             navDashboard.style.display = 'none';
             navLogs.style.display = 'none';
             navScores.style.display = 'none';
@@ -835,6 +849,7 @@ class PinkyClassApp {
             navScheduler.style.display = 'none';
             navStudents.style.display = 'none';
             navUsers.style.display = 'flex';
+            navAiChat.style.display = 'none';
         } else if (role === 'assistant') {
             navDashboard.style.display = 'flex';
             navLogs.style.display = 'flex';
@@ -843,10 +858,13 @@ class PinkyClassApp {
             navScheduler.style.display = 'flex';
             navStudents.style.display = 'flex'; // TA can view classes/students of their assigned teacher
             navUsers.style.display = 'none';
+            navAiChat.style.display = 'flex';
         } else if (role === 'student') {
             // Học sinh: xem "Nhật ký học tập" + "Điểm số" của chính mình —
             // không thấy học phí, không thấy học sinh khác, không thấy lịch
-            // dạy tổng, không có quyền quản lý tài khoản.
+            // dạy tổng, không có quyền quản lý tài khoản. Vẫn được dùng Trợ
+            // lý AI nhưng chỉ đọc được đúng dữ liệu của chính mình (giới hạn
+            // ở phía server, xem /api/ai-chat).
             navDashboard.style.display = 'none';
             navLogs.style.display = 'flex';
             navScores.style.display = 'flex';
@@ -854,6 +872,7 @@ class PinkyClassApp {
             navScheduler.style.display = 'none';
             navStudents.style.display = 'none';
             navUsers.style.display = 'none';
+            navAiChat.style.display = 'flex';
         } else {
             // teacher: toàn quyền với các chức năng dạy học
             navDashboard.style.display = 'flex';
@@ -863,6 +882,7 @@ class PinkyClassApp {
             navScheduler.style.display = 'flex';
             navStudents.style.display = 'flex';
             navUsers.style.display = 'none';
+            navAiChat.style.display = 'flex';
         }
 
         // Trigger UI updates
@@ -1107,6 +1127,9 @@ class PinkyClassApp {
         } else if (viewId === 'view-scores') {
             titleEl.innerText = "Điểm số";
             subtitleEl.innerText = `Điểm BTVN, kiểm tra, thái độ và biểu đồ tiến bộ của học sinh: ${this.getStudentName(this.currentStudentId)}`;
+        } else if (viewId === 'view-ai-chat') {
+            titleEl.innerText = "Trợ lý AI";
+            subtitleEl.innerText = "Hỏi đáp dựa trên dữ liệu lịch dạy và điểm số thật trong tài khoản của bạn.";
         } else if (viewId === 'view-scheduler') {
             titleEl.innerText = "Lịch dạy & Chấm công";
             subtitleEl.innerText = "Sắp xếp lịch dạy học và tính công dạy hàng tuần.";
@@ -2147,6 +2170,78 @@ class PinkyClassApp {
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
+    }
+
+    // Thêm 1 bong bóng chat vào khung Trợ lý AI, trả về element vừa tạo (để
+    // có thể sửa nội dung sau, ví dụ thay bong bóng "Đang trả lời..." bằng
+    // câu trả lời thật khi API phản hồi xong).
+    appendAiChatBubble(role, text, extraClass = '') {
+        const wrap = document.getElementById('aiChatMessages');
+        const msgEl = document.createElement('div');
+        msgEl.className = `ai-chat-msg ${role === 'user' ? 'ai-chat-msg-user' : 'ai-chat-msg-bot'}`;
+        const bubbleEl = document.createElement('div');
+        bubbleEl.className = `ai-chat-bubble ${extraClass}`.trim();
+        bubbleEl.innerText = text;
+        msgEl.appendChild(bubbleEl);
+        wrap.appendChild(msgEl);
+        wrap.scrollTop = wrap.scrollHeight;
+        return bubbleEl;
+    }
+
+    // Gửi câu hỏi tới /api/ai-chat kèm lịch sử hội thoại gần nhất — server sẽ
+    // tự lấy đúng dữ liệu (lịch dạy/điểm số/học sinh) của giáo viên hiệu lực
+    // ứng với tài khoản đang đăng nhập rồi mới hỏi AI, nên trợ lý luôn trả
+    // lời trong đúng phạm vi dữ liệu được phép xem.
+    async sendAiChatMessage() {
+        const input = document.getElementById('aiChatInput');
+        const sendBtn = document.getElementById('aiChatSendBtn');
+        const message = input.value.trim();
+        if (!message) return;
+
+        this.appendAiChatBubble('user', message);
+        this.aiChatHistory.push({ role: 'user', content: message });
+        input.value = '';
+        input.disabled = true;
+        sendBtn.disabled = true;
+
+        const loadingBubble = this.appendAiChatBubble('bot', 'Đang trả lời...', 'ai-chat-loading');
+
+        try {
+            const res = await this.authFetch(`${API_BASE_URL}/api/ai-chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message, history: this.aiChatHistory })
+            });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(payload.error || 'Trợ lý AI hiện không phản hồi được.');
+
+            loadingBubble.innerText = payload.reply;
+            loadingBubble.classList.remove('ai-chat-loading');
+            this.aiChatHistory.push({ role: 'assistant', content: payload.reply });
+        } catch (err) {
+            loadingBubble.innerText = err.message || 'Có lỗi xảy ra, vui lòng thử lại.';
+            loadingBubble.classList.remove('ai-chat-loading');
+            loadingBubble.classList.add('ai-chat-error');
+            // Bỏ câu hỏi vừa hỏi khỏi lịch sử vì chưa có câu trả lời hợp lệ
+            // tương ứng, tránh gửi lịch sử lệch nhịp ở lần hỏi tiếp theo.
+            this.aiChatHistory.pop();
+        } finally {
+            input.disabled = false;
+            sendBtn.disabled = false;
+            input.focus();
+        }
+    }
+
+    // Xoá toàn bộ hội thoại Trợ lý AI hiện tại (chỉ ở phía client) và quay
+    // lại lời chào ban đầu.
+    clearAiChat() {
+        this.aiChatHistory = [];
+        const wrap = document.getElementById('aiChatMessages');
+        wrap.innerHTML = `
+            <div class="ai-chat-msg ai-chat-msg-bot">
+                <div class="ai-chat-bubble">Xin chào! Mình là trợ lý AI của NttClass. Bạn có thể hỏi mình về lịch dạy, điểm số hoặc thông tin học sinh — mình sẽ trả lời dựa trên dữ liệu thật trong tài khoản của bạn.</div>
+            </div>
+        `;
     }
 
     // Lưu bảng nhập nhanh: MỖI học sinh được lưu nhận xét RIÊNG của mình (đọc
