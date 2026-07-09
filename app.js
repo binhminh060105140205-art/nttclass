@@ -140,7 +140,11 @@ class PinkyClassApp {
             gradeLevel: grade,
             subject: s.Subject,
             basePrice: s.BasePrice,
-            teacherId: s.TeacherId
+            teacherId: s.TeacherId,
+            // Thông tin tài khoản đăng nhập riêng của học sinh (nếu có) — dùng
+            // để hiển thị trạng thái "Đã có tài khoản / Chưa có" cho giáo viên.
+            username: s.Username || null,
+            accountActive: s.AccountActive !== false
         };
     }
 
@@ -238,7 +242,65 @@ class PinkyClassApp {
         return Array.from(map.values());
     }
 
+    // Học sinh KHÔNG có quyền gọi /api/students hay /api/sessions (403 —
+    // các route đó chỉ dành cho teacher/assistant), nên dùng riêng 2 API
+    // chỉ-đọc /api/me + /api/me/schedule, rồi "giả lập" lại đúng hình dạng
+    // dữ liệu (this.students / this.sessions) mà các hàm render() có sẵn
+    // (renderStudentLogs, renderDashboard...) đang mong đợi — nhờ vậy không
+    // cần viết lại các hàm hiển thị riêng cho vai trò học sinh.
+    async loadStudentSelfData() {
+        try {
+            const resMe = await this.authFetch(`${API_BASE_URL}/api/me`);
+            if (!resMe.ok) {
+                const errBody = await resMe.json().catch(() => ({}));
+                throw new Error(errBody.error || `GET /api/me -> ${resMe.status}`);
+            }
+            const me = await resMe.json();
+            this.students = [this.normalizeStudent({
+                Id: me.Id, Name: me.Name, Class: me.Class,
+                GradeLevel: me.GradeLevel, Subject: me.Subject,
+                BasePrice: 0, TeacherId: this.currentUser.assignedTeacherId
+            })];
+            this.currentStudentId = me.Id;
+
+            const resSched = await this.authFetch(`${API_BASE_URL}/api/me/schedule`);
+            const rawSched = resSched.ok ? await resSched.json() : [];
+            this.sessions = rawSched.map(row => ({
+                id: row.id,
+                date: row.date,
+                startTime: row.startTime,
+                endTime: row.endTime,
+                type: row.type,
+                sessionName: row.sessionName,
+                content: row.content,
+                generalComment: row.generalComment,
+                completed: row.completed,
+                studentIds: [me.Id],
+                studentDetails: {
+                    [me.Id]: {
+                        homework: row.homework,
+                        attitude: row.attitude,
+                        individualComment: row.individualComment,
+                        note: row.note,
+                        paid: !!row.paid
+                    }
+                }
+            }));
+
+            this.computeSessionPaidFlags();
+            this.populateMonthFilterOptions();
+            this.populateStudentPickers();
+            if (this.currentUser) this.updateAllViews();
+        } catch (err) {
+            console.error('[loadStudentSelfData]', err.message);
+            this.showToast('Không tải được dữ liệu cá nhân của bạn.', 'error');
+        }
+    }
+
     async loadData() {
+        if (this.currentRole === 'student') {
+            return this.loadStudentSelfData();
+        }
         try {
             const resStud = await this.authFetch(`${API_BASE_URL}/api/students`);
             if (!resStud.ok) {
@@ -592,8 +654,14 @@ class PinkyClassApp {
             // Refresh data now that we have a valid auth token
             await this.loadData();
         }
-        this.currentStudentId = this.currentStudentId || (this.students[0] ? this.students[0].id : null);
-        const roleLabel = user.role === 'admin' ? 'Quản trị viên' : user.role === 'teacher' ? 'Giáo viên' : 'Trợ giảng';
+        // Học sinh chỉ được xem đúng hồ sơ của chính mình — khóa cứng
+        // currentStudentId về id của chính họ, không cho đổi sang bạn khác.
+        if (user.role === 'student') {
+            this.currentStudentId = user.id;
+        } else {
+            this.currentStudentId = this.currentStudentId || (this.students[0] ? this.students[0].id : null);
+        }
+        const roleLabel = user.role === 'admin' ? 'Quản trị viên' : user.role === 'teacher' ? 'Giáo viên' : user.role === 'assistant' ? 'Trợ giảng' : 'Học sinh';
         document.getElementById('sidebarUserName').innerText = user.name;
         document.getElementById('sidebarUserRole').innerText = user.role === 'assistant' && user.assignedTeacherName
             ? `${roleLabel} (của ${user.assignedTeacherName})`
@@ -602,7 +670,7 @@ class PinkyClassApp {
         if (avatarEl) avatarEl.innerText = (user.name || '?').trim().charAt(0).toUpperCase();
         this.showAppPage();
         this.switchRole(user.role);
-        this.switchView(user.role === 'admin' ? 'view-users' : 'view-dashboard');
+        this.switchView(user.role === 'admin' ? 'view-users' : user.role === 'student' ? 'view-logs' : 'view-dashboard');
         this.showToast(`Đăng nhập thành công với vai trò: ${roleLabel}`, 'success');
     }
 
@@ -689,6 +757,16 @@ class PinkyClassApp {
             navTuition.style.display = 'flex';
             navScheduler.style.display = 'flex';
             navStudents.style.display = 'flex'; // TA can view classes/students of their assigned teacher
+            navUsers.style.display = 'none';
+        } else if (role === 'student') {
+            // Học sinh: CHỈ xem "Nhật ký học tập" (lịch học + bài tập/nhận xét
+            // của chính mình) — không thấy học phí, không thấy học sinh khác,
+            // không thấy lịch dạy tổng, không có quyền quản lý tài khoản.
+            navDashboard.style.display = 'none';
+            navLogs.style.display = 'flex';
+            navTuition.style.display = 'none';
+            navScheduler.style.display = 'none';
+            navStudents.style.display = 'none';
             navUsers.style.display = 'none';
         } else {
             // teacher: toàn quyền với các chức năng dạy học
@@ -1893,8 +1971,11 @@ class PinkyClassApp {
             const tr = document.createElement('tr');
 
             const actionsHTML = `
-                <div style="display:flex; justify-content:center; gap:8px;">
+                <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
                     <button class="btn btn-secondary btn-sm" onclick="app.openEditStudentModal('${st.id}')"> Sửa
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="app.openStudentAccountModal('${st.id}')" title="Tạo/quản lý tài khoản đăng nhập cho học sinh này">
+                        🔑 ${st.username ? 'Tài khoản' : 'Tạo TK'}
                     </button>
                     <button class="btn btn-danger btn-sm" onclick="app.deleteStudent('${st.id}')"> Xóa
                     </button>
@@ -2878,6 +2959,117 @@ class PinkyClassApp {
             await this.renderUsersTable();
         } catch (err) {
             this.showToast('Không thể xóa tài khoản.', 'error');
+        }
+    }
+
+    // ==========================================
+    // TÀI KHOẢN ĐĂNG NHẬP HỌC SINH (giáo viên/trợ giảng tạo & reset mật khẩu)
+    // ==========================================
+
+    openStudentAccountModal(id) {
+        const student = this.students.find(s => s.id === id);
+        if (!student) return;
+
+        document.getElementById('accountStudentId').value = student.id;
+        document.getElementById('accountStudentName').innerText = `${student.name} - ${student.class}`;
+        document.getElementById('accountUsername').value = student.username || '';
+        document.getElementById('accountPassword').value = '';
+
+        const statusEl = document.getElementById('accountStatusText');
+        if (!student.username) {
+            statusEl.innerText = 'Học sinh này CHƯA có tài khoản đăng nhập.';
+            statusEl.style.color = 'var(--text-muted)';
+        } else {
+            statusEl.innerText = student.accountActive
+                ? `Đang hoạt động — tên đăng nhập: ${student.username}`
+                : `ĐANG BỊ KHÓA — tên đăng nhập: ${student.username}`;
+            statusEl.style.color = student.accountActive ? 'var(--success, green)' : 'var(--danger, red)';
+        }
+
+        // Nút khóa/mở khóa + xóa tài khoản: chỉ hiện khi ĐÃ có tài khoản, và
+        // chỉ Giáo viên (không phải Trợ giảng) mới được thao tác — khớp với
+        // phân quyền phía backend (requireRole('teacher') riêng cho 2 route này).
+        const toggleBtn = document.getElementById('accountToggleBtn');
+        const deleteBtn = document.getElementById('accountDeleteBtn');
+        const hasAccount = !!student.username;
+        toggleBtn.style.display = (hasAccount && this.currentRole === 'teacher') ? 'inline-flex' : 'none';
+        deleteBtn.style.display = (hasAccount && this.currentRole === 'teacher') ? 'inline-flex' : 'none';
+        toggleBtn.innerText = student.accountActive ? '🔒 Khóa tài khoản' : '🔓 Mở khóa';
+
+        this.openModal('studentAccountModal');
+    }
+
+    // Tạo tài khoản mới HOẶC ghi đè username+mật khẩu của tài khoản đã có
+    // (dùng chung 1 API cho cả 2 trường hợp — xem POST /api/students/:id/account)
+    async saveStudentAccount() {
+        const id = document.getElementById('accountStudentId').value;
+        const username = document.getElementById('accountUsername').value.trim();
+        const password = document.getElementById('accountPassword').value;
+
+        if (!username || !password) {
+            this.showToast('Vui lòng nhập tên đăng nhập và mật khẩu.', 'error');
+            return;
+        }
+        if (password.length < 4) {
+            this.showToast('Mật khẩu cần tối thiểu 4 ký tự.', 'error');
+            return;
+        }
+
+        try {
+            const res = await this.authFetch(`${API_BASE_URL}/api/students/${id}/account`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(payload.error || 'Không thể lưu tài khoản.');
+
+            this.showToast('Đã lưu tài khoản đăng nhập cho học sinh.', 'success');
+            this.closeModal('studentAccountModal');
+            await this.loadData();
+        } catch (err) {
+            this.showToast(err.message || 'Không thể lưu tài khoản.', 'error');
+        }
+    }
+
+    async toggleStudentAccountLock() {
+        const id = document.getElementById('accountStudentId').value;
+        const student = this.students.find(s => s.id === id);
+        if (!student) return;
+        const nextActive = !student.accountActive;
+
+        try {
+            const res = await this.authFetch(`${API_BASE_URL}/api/students/${id}/account/toggle`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ active: nextActive })
+            });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(payload.error || 'Không thể đổi trạng thái tài khoản.');
+
+            this.showToast(payload.message || 'Đã cập nhật trạng thái.', 'success');
+            this.closeModal('studentAccountModal');
+            await this.loadData();
+        } catch (err) {
+            this.showToast(err.message || 'Không thể đổi trạng thái tài khoản.', 'error');
+        }
+    }
+
+    async deleteStudentAccount() {
+        const id = document.getElementById('accountStudentId').value;
+        if (!confirm('Xóa tài khoản đăng nhập của học sinh này? Học sinh sẽ không còn tự đăng nhập được nữa (hồ sơ học sinh vẫn được giữ nguyên).')) {
+            return;
+        }
+        try {
+            const res = await this.authFetch(`${API_BASE_URL}/api/students/${id}/account`, { method: 'DELETE' });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(payload.error || 'Không thể xóa tài khoản.');
+
+            this.showToast('Đã xóa tài khoản đăng nhập.', 'success');
+            this.closeModal('studentAccountModal');
+            await this.loadData();
+        } catch (err) {
+            this.showToast(err.message || 'Không thể xóa tài khoản.', 'error');
         }
     }
 

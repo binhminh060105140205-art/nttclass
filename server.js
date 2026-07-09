@@ -36,6 +36,7 @@ const express = require('express');
 const { Pool, types } = require('pg');
 const cors    = require('cors');
 const path    = require('path');
+const bcrypt  = require('bcryptjs'); // Hash mật khẩu tài khoản học sinh (pure-JS, không cần build native — an toàn khi deploy Render)
 
 // ==========================================
 // FIX LỖI LỆCH NGÀY (QUAN TRỌNG)
@@ -107,7 +108,8 @@ const COLUMN_CASE_MAP = {
     content: 'Content', generalcomment: 'GeneralComment', completed: 'Completed',
     paid: 'Paid',
     sessionid: 'SessionId', studentid: 'StudentId', homework: 'Homework',
-    attitude: 'Attitude', individualcomment: 'IndividualComment', note: 'Note'
+    attitude: 'Attitude', individualcomment: 'IndividualComment', note: 'Note',
+    passwordhash: 'PasswordHash', accountactive: 'AccountActive'
 };
 
 function restoreColumnCase(rows) {
@@ -197,6 +199,24 @@ let poolPromise = pgPool.query('SELECT 1')
             console.error('Lỗi khi tự động tạo index:', migErr.message);
         }
 
+        // Self-healing migration: thêm 3 cột phục vụ TÀI KHOẢN ĐĂNG NHẬP RIÊNG
+        // cho từng học sinh (Username/PasswordHash/AccountActive), không ảnh
+        // hưởng dữ liệu học sinh hiện có, an toàn để chạy lại nhiều lần.
+        // Mật khẩu học sinh lưu dạng HASH (bcrypt) — khác với Users (plaintext,
+        // giữ nguyên như thiết kế cũ) vì học sinh là nhóm tài khoản đông hơn,
+        // ít tin cậy hơn, nên ưu tiên an toàn hơn một chút ở đây.
+        try {
+            await pgPool.query('ALTER TABLE Students ADD COLUMN IF NOT EXISTS Username VARCHAR(50)');
+            await pgPool.query('ALTER TABLE Students ADD COLUMN IF NOT EXISTS PasswordHash VARCHAR(100)');
+            await pgPool.query('ALTER TABLE Students ADD COLUMN IF NOT EXISTS AccountActive BOOLEAN DEFAULT TRUE');
+            // Unique index CHỈ áp dụng cho các dòng đã có Username (học sinh
+            // chưa có tài khoản thì Username = NULL, không đụng độ với nhau).
+            await pgPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_students_username ON Students (Username) WHERE Username IS NOT NULL');
+            console.log('Đã kiểm tra/đảm bảo các cột tài khoản đăng nhập học sinh tồn tại.');
+        } catch (migErr) {
+            console.error('Lỗi khi tự động thêm cột tài khoản học sinh:', migErr.message);
+        }
+
         return { request: () => new sql.Request(pgPool) };
     })
     .catch(err => {
@@ -255,6 +275,10 @@ function requireRole(...roles) {
 function effectiveTeacherId(req) {
     if (req.authUser.role === 'teacher') return req.authUser.userId;
     if (req.authUser.role === 'assistant') return req.authUser.assignedTeacherId;
+    // Học sinh: token mã hóa TeacherId (giáo viên sở hữu em học sinh này) vào
+    // đúng vị trí assignedTeacherId — tái dùng nguyên cơ chế của assistant,
+    // không cần đổi định dạng token hay parseToken().
+    if (req.authUser.role === 'student') return req.authUser.assignedTeacherId;
     return null;
 }
 
@@ -289,37 +313,75 @@ app.post('/api/login', async (req, res) => {
                     LEFT JOIN Users t ON t.Id = u.AssignedTeacherId
                     WHERE u.Username = @username`);
 
-        if (result.recordset.length === 0) {
+        if (result.recordset.length > 0) {
+            const user = result.recordset[0];
+            if (!user.Active) {
+                return res.status(403).json({ error: 'Tài khoản đã bị vô hiệu hóa.' });
+            }
+            if (user.Password !== password) {
+                return res.status(401).json({
+                    error: 'Tên đăng nhập hoặc mật khẩu không đúng.'
+                });
+            }
+
+            if (user.Role === 'assistant' && !user.AssignedTeacherId) {
+                return res.status(403).json({ error: 'Tài khoản trợ giảng của bạn chưa được Admin gán cho giáo viên nào. Vui lòng liên hệ Admin.' });
+            }
+
+            // Tạo token đơn giản: base64(userId:role:assignedTeacherId)
+            const token = Buffer.from(`${user.Id}:${user.Role}:${user.AssignedTeacherId || ''}`).toString('base64');
+
+            delete user.Password;
+            return res.json({
+                id:                user.Id,
+                username:          user.Username,
+                name:              user.Name,
+                role:              user.Role,
+                active:            user.Active,
+                assignedTeacherId: user.AssignedTeacherId || null,
+                assignedTeacherName: user.AssignedTeacherName || null,
+                token
+            });
+        }
+
+        // Không khớp trong Users (admin/teacher/assistant) -> thử tài khoản
+        // đăng nhập riêng của học sinh (Students.Username/PasswordHash).
+        const stuResult = await pool.request()
+            .input('username', sql.NVarChar, username.trim())
+            .query(`SELECT st.Id, st.Name, st.Username, st.PasswordHash, st.AccountActive, st.TeacherId,
+                           t.Name AS TeacherName
+                    FROM Students st
+                    LEFT JOIN Users t ON t.Id = st.TeacherId
+                    WHERE st.Username = @username`);
+
+        if (stuResult.recordset.length === 0 || !stuResult.recordset[0].PasswordHash) {
             return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng.' });
         }
 
-        const user = result.recordset[0];
-        if (!user.Active) {
-            return res.status(403).json({ error: 'Tài khoản đã bị vô hiệu hóa.' });
-        }
-if (user.Password !== password) {
-    return res.status(401).json({
-        error: 'Tên đăng nhập hoặc mật khẩu không đúng.'
-    });
-}
-
-        if (user.Role === 'assistant' && !user.AssignedTeacherId) {
-            return res.status(403).json({ error: 'Tài khoản trợ giảng của bạn chưa được Admin gán cho giáo viên nào. Vui lòng liên hệ Admin.' });
+        const student = stuResult.recordset[0];
+        if (student.AccountActive === false) {
+            return res.status(403).json({ error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ giáo viên.' });
         }
 
-        // Tạo token đơn giản: base64(userId:role:assignedTeacherId)
-        const token = Buffer.from(`${user.Id}:${user.Role}:${user.AssignedTeacherId || ''}`).toString('base64');
+        const passwordOk = await bcrypt.compare(password, student.PasswordHash);
+        if (!passwordOk) {
+            return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng.' });
+        }
 
-        delete user.Password;
+        // Token học sinh: base64(studentId:student:teacherId) — TeacherId đặt
+        // đúng vào vị trí "assignedTeacherId" để tái dùng effectiveTeacherId()/
+        // requireTeacherContext() sẵn có, không cần thêm cơ chế mới.
+        const studentToken = Buffer.from(`${student.Id}:student:${student.TeacherId}`).toString('base64');
+
         res.json({
-            id:                user.Id,
-            username:          user.Username,
-            name:              user.Name,
-            role:              user.Role,
-            active:            user.Active,
-            assignedTeacherId: user.AssignedTeacherId || null,
-            assignedTeacherName: user.AssignedTeacherName || null,
-            token
+            id:                  student.Id,
+            username:            student.Username,
+            name:                student.Name,
+            role:                'student',
+            active:              true,
+            assignedTeacherId:   student.TeacherId,
+            assignedTeacherName: student.TeacherName || null,
+            token:               studentToken
         });
     } catch (err) {
         console.error('[POST /api/login]', err);
@@ -476,7 +538,11 @@ app.get('/api/students', requireRole('teacher', 'assistant'), requireTeacherCont
         const pool    = await poolPromise;
         const request = pool.request().input('teacherId', sql.VarChar, req.effectiveTeacherId);
 
-        let query = 'SELECT * FROM Students WHERE TeacherId = @teacherId';
+        // Liệt kê cột tường minh (thay vì SELECT *) để KHÔNG bao giờ trả
+        // PasswordHash về cho trình duyệt, dù là của giáo viên sở hữu.
+        let query = `SELECT Id, Name, Class, GradeLevel, Subject, BasePrice, TeacherId,
+                            Username, AccountActive
+                     FROM Students WHERE TeacherId = @teacherId`;
         if (grade) {
             // Ưu tiên lọc theo cột GradeLevel (số nguyên, chính xác tuyệt đối).
             // Với các dòng dữ liệu cũ chưa có GradeLevel, fallback về so khớp chuỗi Class.
@@ -605,6 +671,136 @@ app.delete('/api/students/:id', requireRole('teacher'), requireTeacherContext, a
         res.json({ message: 'Đã xóa học sinh thành công.' });
     } catch (err) {
         console.error('[DELETE /api/students/:id]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ==========================================
+// STUDENT ACCOUNT MANAGEMENT API (giáo viên tạo/reset mật khẩu đăng nhập
+// cho học sinh của chính mình — admin KHÔNG tham gia, giữ đúng nguyên tắc
+// phân quyền hiện có: admin chỉ quản lý Users, không đụng vào Students)
+// ==========================================
+
+// Tạo tài khoản đăng nhập cho 1 học sinh (hoặc đổi username nếu đã có)
+app.post('/api/students/:id/account', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
+    const { id } = req.params;
+    let { username, password } = req.body || {};
+    username = (username || '').trim();
+
+    if (!username || !password || password.length < 4) {
+        return res.status(400).json({ error: 'Cần nhập tên đăng nhập và mật khẩu (tối thiểu 4 ký tự).' });
+    }
+
+    try {
+        const pool = await poolPromise;
+
+        const owner = await pool.request().input('id', sql.VarChar, id)
+            .query('SELECT TeacherId FROM Students WHERE Id = @id');
+        if (owner.recordset.length === 0) {
+            return res.status(404).json({ error: 'Không tìm thấy học sinh.' });
+        }
+        if (owner.recordset[0].TeacherId !== req.effectiveTeacherId) {
+            return res.status(403).json({ error: 'Bạn không có quyền với học sinh của giáo viên khác.' });
+        }
+
+        // Chặn trùng username với BẤT KỲ tài khoản nào khác (Users hoặc
+        // Students khác) — trừ chính học sinh đang thao tác (đổi username cũ -> cũ).
+        const dup = await pool.request().input('username', sql.NVarChar, username)
+            .query(`SELECT Id FROM Users WHERE Username = @username
+                    UNION ALL
+                    SELECT Id FROM Students WHERE Username = @username`);
+        const conflict = dup.recordset.some(r => r.Id !== id);
+        if (conflict) {
+            return res.status(409).json({ error: 'Tên đăng nhập đã được sử dụng, vui lòng chọn tên khác.' });
+        }
+
+        const hash = await bcrypt.hash(password, 10);
+        await pool.request()
+            .input('id', sql.VarChar, id)
+            .input('username', sql.NVarChar, username)
+            .input('hash', sql.VarChar, hash)
+            .query('UPDATE Students SET Username = @username, PasswordHash = @hash, AccountActive = TRUE WHERE Id = @id');
+
+        res.json({ message: 'Đã tạo tài khoản đăng nhập cho học sinh.', username });
+    } catch (err) {
+        console.error('[POST /api/students/:id/account]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Đặt lại mật khẩu (giữ nguyên username hiện có)
+app.put('/api/students/:id/account/reset-password', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
+    const { id } = req.params;
+    const { password } = req.body || {};
+    if (!password || password.length < 4) {
+        return res.status(400).json({ error: 'Mật khẩu mới cần tối thiểu 4 ký tự.' });
+    }
+
+    try {
+        const pool = await poolPromise;
+        const owner = await pool.request().input('id', sql.VarChar, id)
+            .query('SELECT TeacherId, Username FROM Students WHERE Id = @id');
+        if (owner.recordset.length === 0) {
+            return res.status(404).json({ error: 'Không tìm thấy học sinh.' });
+        }
+        if (owner.recordset[0].TeacherId !== req.effectiveTeacherId) {
+            return res.status(403).json({ error: 'Bạn không có quyền với học sinh của giáo viên khác.' });
+        }
+        if (!owner.recordset[0].Username) {
+            return res.status(400).json({ error: 'Học sinh này chưa có tài khoản đăng nhập — hãy tạo tài khoản trước.' });
+        }
+
+        const hash = await bcrypt.hash(password, 10);
+        await pool.request().input('id', sql.VarChar, id).input('hash', sql.VarChar, hash)
+            .query('UPDATE Students SET PasswordHash = @hash WHERE Id = @id');
+        res.json({ message: 'Đã đặt lại mật khẩu cho học sinh.' });
+    } catch (err) {
+        console.error('[PUT /api/students/:id/account/reset-password]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Khóa / mở khóa tài khoản (không xóa username/mật khẩu, chỉ chặn đăng nhập)
+app.put('/api/students/:id/account/toggle', requireRole('teacher'), requireTeacherContext, async (req, res) => {
+    const { id } = req.params;
+    const { active } = req.body || {};
+    try {
+        const pool = await poolPromise;
+        const owner = await pool.request().input('id', sql.VarChar, id)
+            .query('SELECT TeacherId FROM Students WHERE Id = @id');
+        if (owner.recordset.length === 0) {
+            return res.status(404).json({ error: 'Không tìm thấy học sinh.' });
+        }
+        if (owner.recordset[0].TeacherId !== req.effectiveTeacherId) {
+            return res.status(403).json({ error: 'Bạn không có quyền với học sinh của giáo viên khác.' });
+        }
+        await pool.request().input('id', sql.VarChar, id).input('active', sql.Bit, active ? 1 : 0)
+            .query('UPDATE Students SET AccountActive = @active WHERE Id = @id');
+        res.json({ message: active ? 'Đã mở khóa tài khoản.' : 'Đã khóa tài khoản.' });
+    } catch (err) {
+        console.error('[PUT /api/students/:id/account/toggle]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Xóa hẳn tài khoản đăng nhập (học sinh vẫn còn trong hệ thống, chỉ mất quyền tự đăng nhập)
+app.delete('/api/students/:id/account', requireRole('teacher'), requireTeacherContext, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const pool = await poolPromise;
+        const owner = await pool.request().input('id', sql.VarChar, id)
+            .query('SELECT TeacherId FROM Students WHERE Id = @id');
+        if (owner.recordset.length === 0) {
+            return res.status(404).json({ error: 'Không tìm thấy học sinh.' });
+        }
+        if (owner.recordset[0].TeacherId !== req.effectiveTeacherId) {
+            return res.status(403).json({ error: 'Bạn không có quyền với học sinh của giáo viên khác.' });
+        }
+        await pool.request().input('id', sql.VarChar, id)
+            .query('UPDATE Students SET Username = NULL, PasswordHash = NULL, AccountActive = TRUE WHERE Id = @id');
+        res.json({ message: 'Đã xóa tài khoản đăng nhập của học sinh.' });
+    } catch (err) {
+        console.error('[DELETE /api/students/:id/account]', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -979,6 +1175,73 @@ app.put('/api/students/:studentId/set-paid', requireRole('teacher'), requireTeac
 });
 
 // ==========================================
+// STUDENT SELF-SERVICE API (chỉ dành cho tài khoản học sinh, chỉ đọc,
+// chỉ được xem đúng dữ liệu của chính mình — KHÔNG có route sửa/xóa nào ở đây)
+// ==========================================
+
+app.get('/api/me', requireRole('student'), requireTeacherContext, async (req, res) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('id', sql.VarChar, req.authUser.userId)
+            .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+            .query(`SELECT st.Id, st.Name, st.Class, st.GradeLevel, st.Subject, t.Name AS TeacherName
+                    FROM Students st
+                    LEFT JOIN Users t ON t.Id = st.TeacherId
+                    WHERE st.Id = @id AND st.TeacherId = @teacherId`);
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: 'Không tìm thấy hồ sơ học sinh.' });
+        }
+        res.json(result.recordset[0]);
+    } catch (err) {
+        console.error('[GET /api/me]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Lịch học + bài tập/nhận xét của CHÍNH học sinh đang đăng nhập (chỉ đọc).
+// Đây cũng là nguồn dữ liệu "điểm/nhận xét" tạm thời cho tới khi module Điểm
+// số (Phase 2 — BTVN/Kiểm tra/Thái độ riêng biệt) được xây dựng.
+app.get('/api/me/schedule', requireRole('student'), requireTeacherContext, async (req, res) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('studentId', sql.VarChar, req.authUser.userId)
+            .query(`
+            SELECT s.Id, s.SessionDate, s.StartTime, s.EndTime, s.SessionType, s.SessionName,
+                   s.Content, s.GeneralComment, s.Completed,
+                   sd.Homework, sd.Attitude, sd.IndividualComment, sd.Note, sd.Paid
+            FROM SessionDetails sd
+            JOIN Sessions s ON s.Id = sd.SessionId
+            WHERE sd.StudentId = @studentId
+            ORDER BY s.SessionDate DESC, s.StartTime DESC
+        `);
+
+        const rows = result.recordset.map(row => ({
+            id:                row.Id,
+            date:              row.SessionDate ? String(row.SessionDate).slice(0, 10) : '',
+            startTime:         row.StartTime,
+            endTime:           row.EndTime,
+            type:              row.SessionType,
+            sessionName:       row.SessionName || '',
+            content:           row.Content || '',
+            generalComment:    row.GeneralComment || '',
+            completed:         row.Completed === true || row.Completed === 1,
+            homework:          row.Homework,
+            attitude:          row.Attitude,
+            individualComment: row.IndividualComment || '',
+            note:              row.Note || '',
+            paid:              row.Paid === true || row.Paid === 1
+        }));
+
+        res.json(rows);
+    } catch (err) {
+        console.error('[GET /api/me/schedule]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ==========================================
 // 404 HANDLER
 // ==========================================
 app.use((req, res, next) => {
@@ -993,5 +1256,5 @@ app.use((req, res, next) => {
 // ==========================================
 app.listen(PORT, () => {
     console.log(`🚀 Server chạy tại: http://localhost:${PORT}`);
-    console.log(`📝 Roles: admin (chỉ quản lý tài khoản) | teacher (toàn quyền dạy học) | assistant=TA (gán theo 1 giáo viên, dùng AssignedTeacherId)`);
+    console.log(`📝 Roles: admin (chỉ quản lý tài khoản) | teacher (toàn quyền dạy học) | assistant=TA (gán theo 1 giáo viên, dùng AssignedTeacherId) | student (chỉ xem dữ liệu của chính mình, tài khoản do giáo viên tạo trong Students.Username/PasswordHash)`);
 });

@@ -537,6 +537,40 @@
         </div>
     </div>
 
+    <!-- Student Account Management Modal (tạo / reset mật khẩu / khóa / xóa tài khoản đăng nhập học sinh) -->
+    <div class="modal-backdrop" id="studentAccountModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="modal-title">Tài khoản đăng nhập học sinh</h3>
+                <button class="modal-close" onclick="app.closeModal('studentAccountModal')">&times;</button>
+            </div>
+            <input type="hidden" id="accountStudentId" value="">
+            <div class="modal-body">
+                <p style="font-weight:600; margin-bottom:4px;" id="accountStudentName"></p>
+                <p id="accountStatusText" style="margin-bottom:16px; font-size:14px;"></p>
+
+                <div class="grid-form">
+                    <div class="form-group form-group-half">
+                        <label for="accountUsername">Tên đăng nhập</label>
+                        <input type="text" id="accountUsername" class="form-control" placeholder="Ví dụ: quynhanh2011" autocomplete="off">
+                    </div>
+                    <div class="form-group form-group-half">
+                        <label for="accountPassword">Mật khẩu (tối thiểu 4 ký tự)</label>
+                        <input type="text" id="accountPassword" class="form-control" placeholder="Đặt mật khẩu mới" autocomplete="off">
+                    </div>
+                </div>
+                <p style="font-size:13px; color:var(--text-muted);">Bấm "Lưu tài khoản" để tạo mới hoặc ghi đè tên đăng nhập + mật khẩu hiện có.</p>
+            </div>
+            <div class="modal-footer" style="flex-wrap:wrap; gap:8px;">
+                <button type="button" class="btn btn-danger btn-sm" id="accountDeleteBtn" style="display:none;" onclick="app.deleteStudentAccount()">🗑️ Xóa tài khoản</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="accountToggleBtn" style="display:none;" onclick="app.toggleStudentAccountLock()">🔒 Khóa tài khoản</button>
+                <div style="flex:1;"></div>
+                <button type="button" class="btn btn-secondary" onclick="app.closeModal('studentAccountModal')">Đóng</button>
+                <button type="button" class="btn btn-primary" onclick="app.saveStudentAccount()">💾 Lưu tài khoản</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL 2: UPDATE STUDY LOG DETAIL (Homework, Attitude, Comments) -->
     <div class="modal-backdrop" id="updateLogModal">
         <div class="modal-container" style="max-width: 600px;">
