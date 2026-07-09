@@ -420,6 +420,17 @@ class PinkyClassApp {
             this.handleLoginSubmit();
         });
 
+        // Nút hiện/ẩn mật khẩu ở trang đăng nhập (icon con mắt)
+        const togglePassBtn = document.getElementById('loginTogglePass');
+        if (togglePassBtn) {
+            togglePassBtn.addEventListener('click', () => {
+                const passInput = document.getElementById('loginPassword');
+                const showing = passInput.type === 'text';
+                passInput.type = showing ? 'password' : 'text';
+                togglePassBtn.innerText = showing ? '👁️' : '🙈';
+            });
+        }
+
         // Logout button
         document.getElementById('logoutBtn').addEventListener('click', () => {
             this.handleLogout();
@@ -682,6 +693,14 @@ class PinkyClassApp {
             return;
         }
 
+        const submitBtn = document.getElementById('loginSubmitBtn');
+        const submitText = document.getElementById('loginSubmitText');
+        const loginCard = document.getElementById('loginCard');
+
+        submitBtn.disabled = true;
+        submitBtn.classList.add('login-loading');
+        submitText.innerText = 'Đang đăng nhập...';
+
         try {
             const res = await fetch(`${API_BASE_URL}/api/login`, {
                 method: 'POST',
@@ -705,6 +724,19 @@ class PinkyClassApp {
             await this.onLoginSuccess(user);
         } catch (err) {
             this.showToast(err.message || 'Đăng nhập thất bại.', 'error');
+            // Hiệu ứng rung nhẹ thẻ đăng nhập khi sai thông tin — phản hồi thị
+            // giác tức thì, không chỉ dựa vào toast (dễ bị bỏ qua trên mobile).
+            if (loginCard) {
+                loginCard.classList.remove('login-shake');
+                // Buộc reflow để animation chạy lại được nếu bấm sai liên tiếp
+                void loginCard.offsetWidth;
+                loginCard.classList.add('login-shake');
+                setTimeout(() => loginCard.classList.remove('login-shake'), 400);
+            }
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('login-loading');
+            submitText.innerText = 'Đăng nhập';
         }
     }
 

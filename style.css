@@ -191,26 +191,83 @@ img, svg, video {
    (login screen, glassmorphism card, scrollbar styling)
    ========================================================================== */
 .login-screen {
+    position: relative;
     min-height: 100vh;
     width: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
     padding: 24px;
-    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.1), rgba(var(--accent-rgb), 0.1));
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--bg-grad-1) 0%, var(--bg-grad-2) 50%, var(--bg-grad-3) 100%);
+}
+
+/* Trang trí nền: 3 khối blur mềm trôi nhẹ nhàng, tạo chiều sâu phía sau thẻ
+   kính (glassmorphism) mà không gây rối mắt hay ảnh hưởng độ tương phản
+   của form. prefers-reduced-motion tắt hẳn animation cho người dùng nhạy
+   cảm chuyển động. */
+.login-bg-decor {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.login-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.35;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    animation: loginBlobFloat 16s ease-in-out infinite;
+}
+
+.login-blob-1 { width: 380px; height: 380px; top: -120px; left: -100px; animation-delay: 0s; }
+.login-blob-2 { width: 300px; height: 300px; bottom: -110px; right: -80px; animation-duration: 20s; animation-delay: -4s; }
+.login-blob-3 { width: 220px; height: 220px; top: 55%; left: 62%; animation-duration: 14s; animation-delay: -8s; opacity: 0.25; }
+
+@keyframes loginBlobFloat {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(30px, -24px) scale(1.08); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .login-blob { animation: none; }
 }
 
 .login-card {
+    position: relative;
+    z-index: 1;
     width: 100%;
     max-width: 420px;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 24px;
-    box-shadow: 0 24px 70px rgba(var(--primary-rgb), 0.14);
-    border: 1px solid rgba(var(--primary-rgb), 0.12);
-    padding: 32px;
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border-radius: 28px;
+    box-shadow: 0 24px 70px rgba(var(--primary-rgb), 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    padding: 36px 32px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 22px;
+    animation: loginCardIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes loginCardIn {
+    from { opacity: 0; transform: translateY(14px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.login-card.login-shake {
+    animation: loginShake 0.4s ease;
+}
+
+@keyframes loginShake {
+    0%, 100% { transform: translateX(0); }
+    20%      { transform: translateX(-8px); }
+    40%      { transform: translateX(7px); }
+    60%      { transform: translateX(-5px); }
+    80%      { transform: translateX(4px); }
 }
 
 .login-brand {
@@ -219,16 +276,40 @@ img, svg, video {
     gap: 16px;
 }
 
+.login-logo {
+    flex-shrink: 0;
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #fff;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    box-shadow: 0 8px 20px rgba(var(--primary-rgb), 0.35);
+}
+
 .login-brand h1 {
     margin: 0;
     font-size: 1.625rem;
-    color: var(--primary);
+    background: linear-gradient(135deg, var(--primary), var(--accent-strong));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
-.login-brand p {
-    margin: 0;
+.login-slogan {
+    margin: 2px 0 0;
     color: var(--text-muted);
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
+    font-family: 'Be Vietnam Pro', sans-serif;
+}
+
+.login-form {
+    font-family: 'Be Vietnam Pro', sans-serif;
 }
 
 .login-form .form-group {
@@ -237,20 +318,127 @@ img, svg, video {
     gap: 8px;
 }
 
-.login-form .btn-block {
+.login-input-group label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.login-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.login-input-icon {
+    position: absolute;
+    left: 14px;
+    width: 18px;
+    height: 18px;
+    color: var(--text-muted);
+    opacity: 0.6;
+    transition: color 0.2s ease, opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.login-input {
+    width: 100%;
+    padding: 12px 14px 12px 42px;
+    border-radius: 14px;
+    border: 1.5px solid rgba(var(--primary-rgb), 0.15);
+    background: rgba(255, 255, 255, 0.75);
+    font-size: 0.9375rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.login-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.14);
+}
+
+.login-input-wrap:focus-within .login-input-icon {
+    color: var(--primary);
+    opacity: 1;
+}
+
+#loginPassword {
+    padding-right: 40px;
+}
+
+.login-toggle-pass {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.95rem;
+    opacity: 0.55;
+    transition: opacity 0.2s ease, transform 0.15s ease;
+    line-height: 1;
+    padding: 4px;
+}
+
+.login-toggle-pass:hover {
+    opacity: 1;
+    transform: scale(1.08);
+}
+
+.login-submit-btn {
     width: 100%;
     display: inline-flex;
     justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+    padding: 13px;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
-.login-help {
-    font-size: 0.8125rem;
+.login-submit-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(var(--primary-rgb), 0.3);
+}
+
+.login-submit-btn:disabled {
+    opacity: 0.75;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Spinner nhỏ hiển thị khi đang gọi API đăng nhập (thêm bằng JS qua class .login-loading) */
+.login-submit-btn.login-loading #loginSubmitText::before {
+    content: '';
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-top-color: #fff;
+    border-radius: 50%;
+    vertical-align: -2px;
+    animation: loginSpin 0.7s linear infinite;
+}
+
+@keyframes loginSpin {
+    to { transform: rotate(360deg); }
+}
+
+.login-footer-note {
+    margin: 4px 0 0;
+    text-align: center;
+    font-size: 0.75rem;
     color: var(--text-muted);
-    margin-top: 8px;
+    opacity: 0.85;
 }
 
-.login-help strong {
-    color: var(--primary);
+@media (max-width: 480px) {
+    .login-card { padding: 28px 22px; border-radius: 22px; }
+    .login-brand h1 { font-size: 1.375rem; }
 }
 
 /* Custom Scrollbar */
