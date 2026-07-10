@@ -1559,8 +1559,8 @@ app.post('/api/ai-chat', requireAuth, async (req, res) => {
         const contextText = await buildAiContext(req);
 
         const systemPrompt = `Bạn là trợ lý AI của ứng dụng quản lý dạy học NttClass, đang hỗ trợ một tài khoản vai trò "${roleLabel}".
-Chỉ được trả lời dựa trên DỮ LIỆU dưới đây — đây là dữ liệu thật, RIÊNG của đúng tài khoản đang hỏi, không thuộc về ai khác.
-Nếu câu hỏi cần thông tin không có trong dữ liệu, hãy nói rõ là chưa có/không tìm thấy thông tin đó, KHÔNG được bịa đặt số liệu.
+Bạn có thể trả lời mọi câu hỏi, kể cả kiến thức chung không liên quan đến ứng dụng.
+Riêng với các câu hỏi về lịch dạy, điểm số, học sinh, học phí... của tài khoản này, hãy CHỈ dựa vào DỮ LIỆU thật dưới đây (dữ liệu riêng của đúng tài khoản đang hỏi) — nếu thông tin đó không có trong dữ liệu, hãy nói rõ là chưa có/không tìm thấy, KHÔNG được bịa đặt số liệu.
 Trả lời ngắn gọn, rõ ràng, đúng trọng tâm, bằng tiếng Việt.
 
 DỮ LIỆU:
