@@ -1443,14 +1443,14 @@ app.get('/api/me/scores', requireRole('student'), requireTeacherContext, async (
 // ==========================================
 // AI CHAT — trợ lý AI đọc dữ liệu thật của tài khoản đang đăng nhập
 // ==========================================
-// Khoá API của Gemini được lưu trên server (biến môi trường GEMINI_API_KEY),
+// Khoá API của OpenAI được lưu trên server (biến môi trường OPENAI_API_KEY),
 // KHÔNG bao giờ gửi xuống trình duyệt — khác với cách làm cũ ở dự án
 // DiabetesMedicalRecord (lưu key ở localStorage phía client), vì dữ liệu ở
 // đây (lịch dạy, điểm số học sinh) nhạy cảm hơn và app đã có sẵn hệ thống
 // xác thực theo Bearer token nên tận dụng luôn để giới hạn đúng phạm vi dữ
 // liệu mà mỗi vai trò được phép đọc.
-const GEMINI_API_KEY   = process.env.GEMINI_API_KEY;
-const GEMINI_CHAT_MODEL = process.env.GEMINI_CHAT_MODEL || 'gemini-2.0-flash';
+const OPENAI_API_KEY   = process.env.OPENAI_API_KEY;
+const OPENAI_CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini';
 
 // Gom dữ liệu dạy học (học sinh / lịch dạy / điểm số) của ĐÚNG giáo viên
 // hiệu lực của người gọi, dùng lại effectiveTeacherId() ở trên để không tạo
@@ -1549,8 +1549,8 @@ app.post('/api/ai-chat', requireAuth, async (req, res) => {
     if (!message || typeof message !== 'string' || !message.trim()) {
         return res.status(400).json({ error: 'Vui lòng nhập câu hỏi.' });
     }
-    if (!GEMINI_API_KEY) {
-        return res.status(500).json({ error: 'Trợ lý AI chưa được cấu hình trên máy chủ (thiếu biến môi trường GEMINI_API_KEY).' });
+    if (!OPENAI_API_KEY) {
+        return res.status(500).json({ error: 'Trợ lý AI chưa được cấu hình trên máy chủ (thiếu biến môi trường OPENAI_API_KEY).' });
     }
 
     try {
@@ -1566,49 +1566,41 @@ Trả lời ngắn gọn, rõ ràng, đúng trọng tâm, bằng tiếng Việt.
 DỮ LIỆU:
 ${contextText}`;
 
-        // Gemini không có role "system" trong mảng contents — lịch sử hội
-        // thoại dùng role "user" / "model" (thay cho "assistant" của OpenAI),
-        // còn phần system prompt được gửi riêng qua trường system_instruction.
         const trimmedHistory = Array.isArray(history)
             ? history
                 .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
                 .slice(-10)
-                .map(m => ({
-                    role:  m.role === 'assistant' ? 'model' : 'user',
-                    parts: [{ text: m.content.slice(0, 2000) }]
-                }))
+                .map(m => ({ role: m.role, content: m.content.slice(0, 2000) }))
             : [];
 
-        const contents = [
+        const messages = [
+            { role: 'system', content: systemPrompt },
             ...trimmedHistory,
-            { role: 'user', parts: [{ text: message.trim().slice(0, 2000) }] }
+            { role: 'user', content: message.trim().slice(0, 2000) }
         ];
 
-        const aiResponse = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_CHAT_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    system_instruction: { parts: [{ text: systemPrompt }] },
-                    contents,
-                    generationConfig: {
-                        temperature:     0.3,
-                        maxOutputTokens: 700
-                    }
-                })
-            }
-        );
+        const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type':  'application/json',
+                'Authorization': `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model:       OPENAI_CHAT_MODEL,
+                messages,
+                temperature: 0.3,
+                max_tokens:  700
+            })
+        });
 
         if (!aiResponse.ok) {
             const errText = await aiResponse.text().catch(() => '');
-            console.error('[POST /api/ai-chat] Lỗi từ Gemini:', aiResponse.status, errText);
+            console.error('[POST /api/ai-chat] Lỗi từ OpenAI:', aiResponse.status, errText);
             return res.status(502).json({ error: 'Trợ lý AI hiện không phản hồi được. Vui lòng thử lại sau.' });
         }
 
         const aiData = await aiResponse.json();
-        const reply = aiData?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim()
-            || 'Xin lỗi, tôi chưa có câu trả lời phù hợp cho câu hỏi này.';
+        const reply = aiData?.choices?.[0]?.message?.content?.trim() || 'Xin lỗi, tôi chưa có câu trả lời phù hợp cho câu hỏi này.';
         res.json({ reply });
     } catch (err) {
         console.error('[POST /api/ai-chat]', err);
