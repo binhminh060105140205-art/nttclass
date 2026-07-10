@@ -25,40 +25,106 @@
             <span class="login-blob login-blob-3"></span>
         </div>
 
-        <div class="login-card" id="loginCard">
-            <div class="login-brand">
-                <div class="login-logo" aria-hidden="true">NC</div>
-                <div>
-                    <h1>NttClass</h1>
-                    <p class="login-slogan">Đồng hành cùng từng buổi học, sát sao từng tiến bộ.</p>
+        <div class="login-wrapper">
+            <!-- Panel thương hiệu bên trái (ẩn trên màn hình nhỏ) -->
+            <div class="login-brand-panel" aria-hidden="true">
+                <div class="login-brand-top">
+                    <div class="login-logo">NC</div>
+                    <span class="login-brand-name">NttClass</span>
                 </div>
+
+                <div class="login-brand-mid">
+                    <span class="login-eyebrow">NỀN TẢNG QUẢN LÝ HỌC TẬP</span>
+                    <h1 class="login-headline">Học tập thông minh<br><span class="login-headline-accent">Tiến bộ mỗi ngày</span></h1>
+                    <p class="login-brand-desc">NttClass giúp giáo viên theo dõi, quản lý và đánh giá tiến độ học tập của học sinh một cách dễ dàng và hiệu quả.</p>
+
+                    <div class="login-illustration">
+                        <svg viewBox="0 0 320 220" xmlns="http://www.w3.org/2000/svg">
+                            <!-- Bảng biểu đồ -->
+                            <rect x="90" y="10" width="200" height="120" rx="14" fill="#ffffff" opacity="0.95"/>
+                            <rect x="90" y="10" width="200" height="120" rx="14" fill="none" stroke="#ffffff" stroke-opacity="0.6"/>
+                            <polyline points="112,95 138,75 162,85 186,55 210,65 234,40" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="255" cy="65" r="22" fill="none" stroke="var(--primary)" stroke-width="10" stroke-dasharray="70 70" stroke-linecap="round" transform="rotate(-40 255 65)"/>
+                            <circle cx="255" cy="65" r="22" fill="none" stroke="var(--accent)" stroke-width="10" stroke-dasharray="45 95" stroke-linecap="round" transform="rotate(120 255 65)"/>
+                            <rect x="112" y="110" width="40" height="6" rx="3" fill="#dbeafe"/>
+                            <rect x="160" y="110" width="26" height="6" rx="3" fill="#dbeafe"/>
+
+                            <!-- Chồng sách -->
+                            <rect x="45" y="150" width="130" height="16" rx="4" fill="#93c5fd"/>
+                            <rect x="50" y="134" width="120" height="16" rx="4" fill="#e9d5ff"/>
+                            <rect x="45" y="118" width="130" height="16" rx="4" fill="#60a5fa"/>
+
+                            <!-- Mũ cử nhân -->
+                            <path d="M110 96 L165 78 L220 96 L165 114 Z" fill="#1e293b"/>
+                            <rect x="160" y="96" width="10" height="20" fill="#1e293b"/>
+                            <circle cx="165" cy="118" r="4" fill="#f59e0b"/>
+
+                            <!-- Chậu cây nhỏ -->
+                            <path d="M20 168 L46 168 L42 190 L24 190 Z" fill="#f8fafc"/>
+                            <path d="M33 168 C 15 168 15 138 33 140 C 33 118 63 118 63 140 C 78 138 78 168 60 168 Z" fill="#34d399"/>
+
+                            <!-- Thẻ hồ sơ -->
+                            <rect x="205" y="130" width="70" height="60" rx="8" fill="#ffffff" opacity="0.95"/>
+                            <circle cx="223" cy="150" r="8" fill="var(--primary)"/>
+                            <rect x="236" y="145" width="30" height="5" rx="2.5" fill="#cbd5e1"/>
+                            <rect x="236" y="155" width="24" height="5" rx="2.5" fill="#e2e8f0"/>
+                            <rect x="213" y="168" width="54" height="5" rx="2.5" fill="#e2e8f0"/>
+                            <rect x="213" y="177" width="40" height="5" rx="2.5" fill="#e2e8f0"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <p class="login-copyright">© 2026 NttClass. Tất cả quyền được bảo lưu.</p>
             </div>
 
-            <form id="loginForm" class="login-form" autocomplete="off">
-                <div class="form-group login-input-group">
-                    <label for="loginUsername">Tên đăng nhập</label>
-                    <div class="login-input-wrap">
-                        <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12Zm0 2.4c-3.3 0-9.8 1.6-9.8 4.9v2.5h19.6v-2.5c0-3.3-6.5-4.9-9.8-4.9Z" fill="currentColor"/>
-                        </svg>
-                        <input type="text" id="loginUsername" class="form-control login-input" placeholder="Nhập tên đăng nhập" required autocomplete="username">
-                    </div>
+            <!-- Thẻ đăng nhập bên phải -->
+            <div class="login-card" id="loginCard">
+                <div class="login-card-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 3 1 8l11 5 9-4.09V17h2V8L12 3Zm0 12.5L4.6 12 12 15.5 19.4 12 12 15.5ZM5 13.18v3.6C5 19.5 8.13 21 12 21s7-1.5 7-4.22v-3.6l-7 3.18-7-3.18Z" fill="currentColor"/>
+                    </svg>
                 </div>
-                <div class="form-group login-input-group">
-                    <label for="loginPassword">Mật khẩu</label>
-                    <div class="login-input-wrap">
-                        <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6.5 10V7.8a5.5 5.5 0 1 1 11 0V10h.5a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4.5 19.5v-8A1.5 1.5 0 0 1 6 10h.5Zm2-2.2V10h7V7.8a3.5 3.5 0 1 0-7 0Z" fill="currentColor"/>
-                        </svg>
-                        <input type="password" id="loginPassword" class="form-control login-input" placeholder="Nhập mật khẩu" required autocomplete="current-password">
-                        <button type="button" class="login-toggle-pass" id="loginTogglePass" aria-label="Hiện/ẩn mật khẩu" tabindex="-1">👁️</button>
+                <h2 class="login-welcome">Chào mừng trở lại!</h2>
+                <p class="login-welcome-sub">Đăng nhập để tiếp tục sử dụng NttClass</p>
+
+                <form id="loginForm" class="login-form" autocomplete="off">
+                    <div class="form-group login-input-group">
+                        <label for="loginUsername">Tên đăng nhập</label>
+                        <div class="login-input-wrap">
+                            <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12Zm0 2.4c-3.3 0-9.8 1.6-9.8 4.9v2.5h19.6v-2.5c0-3.3-6.5-4.9-9.8-4.9Z" fill="currentColor"/>
+                            </svg>
+                            <input type="text" id="loginUsername" class="form-control login-input" placeholder="Nhập tên đăng nhập" required autocomplete="username">
+                        </div>
                     </div>
-                </div>
-                <button type="submit" class="btn btn-primary btn-block login-submit-btn" id="loginSubmitBtn">
-                    <span id="loginSubmitText">Đăng nhập</span>
-                </button>
-                <p class="login-footer-note">Tài khoản đăng nhập do giáo viên hoặc quản trị viên hệ thống cấp cho bạn.</p>
-            </form>
+                    <div class="form-group login-input-group">
+                        <label for="loginPassword">Mật khẩu</label>
+                        <div class="login-input-wrap">
+                            <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M6.5 10V7.8a5.5 5.5 0 1 1 11 0V10h.5a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4.5 19.5v-8A1.5 1.5 0 0 1 6 10h.5Zm2-2.2V10h7V7.8a3.5 3.5 0 1 0-7 0Z" fill="currentColor"/>
+                            </svg>
+                            <input type="password" id="loginPassword" class="form-control login-input" placeholder="Nhập mật khẩu" required autocomplete="current-password">
+                            <button type="button" class="login-toggle-pass" id="loginTogglePass" aria-label="Hiện/ẩn mật khẩu" tabindex="-1">👁️</button>
+                        </div>
+                    </div>
+
+                    <div class="login-options-row">
+                        <label class="login-remember">
+                            <input type="checkbox" id="loginRemember" checked>
+                            <span>Ghi nhớ đăng nhập</span>
+                        </label>
+                        <a href="#" class="login-forgot-link" id="loginForgotLink">Quên mật khẩu?</a>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block login-submit-btn" id="loginSubmitBtn">
+                        <span id="loginSubmitText">Đăng nhập</span>
+                        <svg class="login-submit-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path d="M5 12h13m0 0-5-5m5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <p class="login-footer-note">Tài khoản đăng nhập do giáo viên hoặc quản trị viên hệ thống cấp cho bạn.</p>
+                </form>
+            </div>
         </div>
     </section>
 

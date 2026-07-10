@@ -202,10 +202,9 @@ img, svg, video {
     background: linear-gradient(135deg, var(--bg-grad-1) 0%, var(--bg-grad-2) 50%, var(--bg-grad-3) 100%);
 }
 
-/* Trang trí nền: 3 khối blur mềm trôi nhẹ nhàng, tạo chiều sâu phía sau thẻ
-   kính (glassmorphism) mà không gây rối mắt hay ảnh hưởng độ tương phản
-   của form. prefers-reduced-motion tắt hẳn animation cho người dùng nhạy
-   cảm chuyển động. */
+/* Trang trí nền: 3 khối blur mềm trôi nhẹ nhàng, tạo chiều sâu phía sau khối
+   đăng nhập mà không gây rối mắt hay ảnh hưởng độ tương phản của form.
+   prefers-reduced-motion tắt hẳn animation cho người dùng nhạy cảm chuyển động. */
 .login-bg-decor {
     position: absolute;
     inset: 0;
@@ -235,27 +234,136 @@ img, svg, video {
     .login-blob { animation: none; }
 }
 
-.login-card {
+/* ---- Bố cục 2 cột: panel thương hiệu (trái) + thẻ đăng nhập (phải) ---- */
+.login-wrapper {
     position: relative;
     z-index: 1;
     width: 100%;
-    max-width: 420px;
-    background: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(22px) saturate(180%);
-    -webkit-backdrop-filter: blur(22px) saturate(180%);
-    border-radius: 28px;
-    box-shadow: 0 24px 70px rgba(var(--primary-rgb), 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.7);
-    padding: 36px 32px;
+    max-width: 1080px;
     display: flex;
-    flex-direction: column;
-    gap: 22px;
+    align-items: stretch;
+    gap: 0;
+    border-radius: 28px;
+    overflow: hidden;
+    box-shadow: 0 24px 70px rgba(var(--primary-rgb), 0.18);
     animation: loginCardIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 @keyframes loginCardIn {
     from { opacity: 0; transform: translateY(14px) scale(0.98); }
     to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Panel thương hiệu bên trái — chỉ mang tính minh hoạ, ẩn trên mobile/tablet nhỏ */
+.login-brand-panel {
+    position: relative;
+    flex: 1 1 52%;
+    min-width: 0;
+    padding: 40px 44px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 24px;
+    background:
+        radial-gradient(circle at 15% 15%, rgba(255,255,255,0.16), transparent 40%),
+        linear-gradient(150deg, var(--primary) 0%, var(--accent-strong) 55%, var(--accent) 100%);
+    color: #fff;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    overflow: hidden;
+}
+
+.login-brand-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.login-brand-panel .login-logo {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9375rem;
+    color: var(--primary);
+    background: #fff;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.login-brand-name {
+    font-weight: 700;
+    font-size: 1.0625rem;
+    letter-spacing: 0.2px;
+}
+
+.login-brand-mid {
+    position: relative;
+    z-index: 1;
+}
+
+.login-eyebrow {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 10px;
+}
+
+.login-headline {
+    margin: 0 0 12px;
+    font-size: 2rem;
+    line-height: 1.25;
+    font-weight: 700;
+    color: #fff;
+}
+
+.login-headline-accent {
+    color: #dbeafe;
+}
+
+.login-brand-desc {
+    max-width: 380px;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.88);
+    margin: 0 0 28px;
+}
+
+.login-illustration {
+    max-width: 320px;
+}
+
+.login-illustration svg {
+    width: 100%;
+    height: auto;
+    filter: drop-shadow(0 16px 26px rgba(0, 0, 0, 0.16));
+}
+
+.login-copyright {
+    position: relative;
+    z-index: 1;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+/* Thẻ đăng nhập bên phải */
+.login-card {
+    position: relative;
+    z-index: 1;
+    flex: 1 1 48%;
+    min-width: 0;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    padding: 44px 44px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .login-card.login-shake {
@@ -270,46 +378,45 @@ img, svg, video {
     80%      { transform: translateX(4px); }
 }
 
-.login-brand {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.login-logo {
-    flex-shrink: 0;
-    width: 52px;
-    height: 52px;
-    border-radius: 16px;
+.login-card-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 14px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: 'Be Vietnam Pro', sans-serif;
-    font-weight: 700;
-    font-size: 1.1rem;
-    color: #fff;
-    background: linear-gradient(135deg, var(--primary), var(--accent));
-    box-shadow: 0 8px 20px rgba(var(--primary-rgb), 0.35);
+    background: var(--primary-soft);
+    color: var(--primary);
+    box-shadow: 0 8px 20px rgba(var(--primary-rgb), 0.18);
 }
 
-.login-brand h1 {
+.login-card-icon svg {
+    width: 30px;
+    height: 30px;
+}
+
+.login-welcome {
     margin: 0;
-    font-size: 1.625rem;
-    background: linear-gradient(135deg, var(--primary), var(--accent-strong));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    text-align: center;
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: var(--text-main);
 }
 
-.login-slogan {
-    margin: 2px 0 0;
+.login-welcome-sub {
+    margin: 4px 0 22px;
+    text-align: center;
+    font-size: 0.8438rem;
     color: var(--text-muted);
-    font-size: 0.8125rem;
     font-family: 'Be Vietnam Pro', sans-serif;
 }
 
 .login-form {
     font-family: 'Be Vietnam Pro', sans-serif;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
 }
 
 .login-form .form-group {
@@ -346,7 +453,7 @@ img, svg, video {
     padding: 12px 14px 12px 42px;
     border-radius: 14px;
     border: 1.5px solid rgba(var(--primary-rgb), 0.15);
-    background: rgba(255, 255, 255, 0.75);
+    background: rgba(255, 255, 255, 0.9);
     font-size: 0.9375rem;
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
@@ -385,23 +492,70 @@ img, svg, video {
     transform: scale(1.08);
 }
 
+.login-options-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.8125rem;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    margin-top: -4px;
+}
+
+.login-remember {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+}
+
+.login-remember input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.login-forgot-link {
+    color: var(--primary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.login-forgot-link:hover {
+    text-decoration: underline;
+}
+
 .login-submit-btn {
     width: 100%;
     display: inline-flex;
     justify-content: center;
     align-items: center;
     gap: 8px;
-    margin-top: 4px;
+    margin-top: 2px;
     padding: 13px;
     font-size: 0.9375rem;
     font-weight: 700;
     letter-spacing: 0.2px;
+    background: linear-gradient(135deg, var(--primary), var(--accent-strong));
+    border: none;
     transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.login-submit-arrow {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.2s ease;
 }
 
 .login-submit-btn:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: 0 10px 24px rgba(var(--primary-rgb), 0.3);
+}
+
+.login-submit-btn:hover:not(:disabled) .login-submit-arrow {
+    transform: translateX(3px);
 }
 
 .login-submit-btn:disabled {
@@ -424,21 +578,39 @@ img, svg, video {
     animation: loginSpin 0.7s linear infinite;
 }
 
+.login-submit-btn.login-loading .login-submit-arrow {
+    display: none;
+}
+
 @keyframes loginSpin {
     to { transform: rotate(360deg); }
 }
 
 .login-footer-note {
-    margin: 4px 0 0;
+    margin: 16px 0 0;
     text-align: center;
     font-size: 0.75rem;
     color: var(--text-muted);
     opacity: 0.85;
 }
 
+/* Dưới 960px: ẩn panel thương hiệu, chỉ hiện thẻ đăng nhập căn giữa như bố
+   cục gốc (tránh vỡ layout trên tablet đứng / điện thoại). */
+@media (max-width: 960px) {
+    .login-wrapper {
+        max-width: 440px;
+        box-shadow: 0 24px 70px rgba(var(--primary-rgb), 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+    .login-brand-panel { display: none; }
+    .login-card {
+        border-radius: 28px;
+        flex: 1 1 100%;
+    }
+}
+
 @media (max-width: 480px) {
-    .login-card { padding: 28px 22px; border-radius: 22px; }
-    .login-brand h1 { font-size: 1.375rem; }
+    .login-card { padding: 32px 22px; border-radius: 22px; }
+    .login-headline { font-size: 1.625rem; }
 }
 
 /* Custom Scrollbar */

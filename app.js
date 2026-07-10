@@ -93,6 +93,17 @@ class PinkyClassApp {
             this.onLoginSuccess(savedUser, false);
         } else {
             this.showLoginPage();
+            // Điền lại tên đăng nhập đã lưu (nếu người dùng từng tick "Ghi nhớ
+            // đăng nhập") — không lưu mật khẩu vì lý do bảo mật.
+            const rememberedUsername = localStorage.getItem('nttclass_remembered_username');
+            const usernameInput = document.getElementById('loginUsername');
+            const rememberCheckbox = document.getElementById('loginRemember');
+            if (rememberedUsername && usernameInput) {
+                usernameInput.value = rememberedUsername;
+                if (rememberCheckbox) rememberCheckbox.checked = true;
+                const passwordInput = document.getElementById('loginPassword');
+                if (passwordInput) passwordInput.focus();
+            }
         }
 
         // Default date on scheduler to today
@@ -455,6 +466,17 @@ class PinkyClassApp {
             });
         }
 
+        // Link "Quên mật khẩu?" — app chưa có luồng tự khôi phục mật khẩu qua
+        // email/SMS, nên chỉ hướng dẫn liên hệ giáo viên/quản trị viên (người
+        // có quyền reset mật khẩu tài khoản) thay vì hiển thị form không hoạt động.
+        const forgotLink = document.getElementById('loginForgotLink');
+        if (forgotLink) {
+            forgotLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.showToast('Vui lòng liên hệ giáo viên hoặc quản trị viên hệ thống để được cấp lại mật khẩu.', 'info');
+            });
+        }
+
         // Logout button
         document.getElementById('logoutBtn').addEventListener('click', () => {
             this.handleLogout();
@@ -783,6 +805,12 @@ class PinkyClassApp {
             }
 
             const user = await res.json();
+            const rememberCheckbox = document.getElementById('loginRemember');
+            if (rememberCheckbox && rememberCheckbox.checked) {
+                localStorage.setItem('nttclass_remembered_username', username);
+            } else {
+                localStorage.removeItem('nttclass_remembered_username');
+            }
             await this.onLoginSuccess(user);
         } catch (err) {
             this.showToast(err.message || 'Đăng nhập thất bại.', 'error');
