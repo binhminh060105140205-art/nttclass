@@ -421,7 +421,49 @@ class PinkyClassApp {
         });
     }
 
+    initSidebarCollapse() {
+        const sidebar = document.querySelector('.sidebar');
+        const toggle = document.getElementById('sidebarCollapseToggle');
+        if (!sidebar || !toggle) return;
+
+        const icons = {
+            'view-dashboard': '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+            'view-logs': '<svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M9 11h6M9 15h6M9 7h3"/></svg>',
+            'view-scheduler': '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></svg>',
+            'view-tuition': '<svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>',
+            'view-students': '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 21c.7-4 3-6 7-6s6.3 2 7 6"/></svg>',
+            'view-users': '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="10" r="2"/><path d="M3 21c.6-4 2.6-6 6-6s5.4 2 6 6M15 15c3 0 4.8 1.7 5.4 4"/></svg>',
+            'view-scores': '<svg viewBox="0 0 24 24"><path d="m4 15 5-5 4 3 7-8"/><path d="M16 5h4v4"/><path d="M4 20h16"/></svg>',
+            'view-ai-chat': '<svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3z"/><path d="M9 10h.01M12 10h.01M15 10h.01"/></svg>'
+        };
+
+        document.querySelectorAll('.menu-item').forEach(item => {
+            if (item.querySelector('.menu-icon')) return;
+            const icon = document.createElement('span');
+            icon.className = 'menu-icon';
+            icon.setAttribute('aria-hidden', 'true');
+            icon.innerHTML = icons[item.dataset.target] || icons['view-dashboard'];
+            item.prepend(icon);
+        });
+
+        const applyState = (collapsed) => {
+            sidebar.classList.toggle('is-collapsed', collapsed);
+            toggle.setAttribute('aria-expanded', String(!collapsed));
+            const label = collapsed ? 'Mở rộng thanh điều hướng' : 'Thu gọn thanh điều hướng';
+            toggle.setAttribute('aria-label', label);
+            toggle.setAttribute('title', label);
+        };
+
+        applyState(localStorage.getItem('nttclass_sidebar_collapsed') === 'true');
+        toggle.addEventListener('click', () => {
+            const collapsed = !sidebar.classList.contains('is-collapsed');
+            applyState(collapsed);
+            localStorage.setItem('nttclass_sidebar_collapsed', String(collapsed));
+        });
+    }
+
     registerEvents() {
+        this.initSidebarCollapse();
         // Bộ chọn màu giao diện (3 chấm màu ở cuối sidebar)
         this.bindThemeSwitcher();
 
