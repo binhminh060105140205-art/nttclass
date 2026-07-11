@@ -24,14 +24,19 @@ class PinkyClassApp {
         this.currentStudentId = null; // Active student filter (chỉ dùng ở trang Nhật ký học tập)
         this.currentMonthFilter = ''; // '' = tất cả, hoặc dạng "yyyy-m" (VD "2026-7") ứng với 1 mục trong dropdown "Kỳ"
         this.currentWeekStart = this.getMonday(new Date()); // Thứ 2 đầu tuần đang xem ở Lịch dạy & Chấm công
+        this.calendarViewMode = 'week'; // 'day' | 'week' | 'month' — kiểu xem đang chọn ở Lịch dạy & Chấm công
+        this.currentDayDate = new Date(); // Ngày đang xem khi ở chế độ "Ngày"
+        this.currentMonthViewDate = new Date(); // Tháng đang xem khi ở chế độ "Tháng" (chỉ quan tâm tháng/năm)
 
-        // Hằng số lưới giờ của Lịch tuần — dùng chung giữa renderWeeklyCalendar()
+        // Hằng số lưới giờ của Lịch dạy — dùng chung giữa renderHourGridCalendar()
         // và tính năng kéo-thả đổi lịch (initCalendarDragToReschedule) để 2 bên
         // luôn quy đổi px <-> giờ:phút theo ĐÚNG 1 công thức, không thể lệch nhau.
         this.CAL_HOUR_START = 6;   // 06:00
         this.CAL_HOUR_END = 22;    // 22:00
         this.CAL_HOUR_HEIGHT = 52; // px, phải khớp với .week-hour-label height trong CSS
         this.calDrag = null; // Trạng thái đang kéo-thả 1 buổi học trên lịch tuần (null = không kéo)
+        this.calCreateDrag = null; // Trạng thái đang kéo-CHỌN 1 khung giờ trống để tạo ca học mới (null = không kéo)
+        this.repeatExtraDates = []; // Các ngày lặp lại thủ công được thêm vào form "Ghi Buổi Học Mới" (chỉ trong cùng tháng với Ngày học)
         this.aiChatHistory = []; // Lịch sử hội thoại Trợ lý AI (chỉ lưu ở client, gửi kèm mỗi lần hỏi để AI nhớ ngữ cảnh)
 
         // Áp dụng lại màu giao diện đã lưu (nếu có) ngay từ đầu, trước khi vẽ
@@ -516,22 +521,61 @@ class PinkyClassApp {
             });
         }
 
-        // Weekly calendar navigation (Lịch dạy & Chấm công)
+        // Lịch dạy & Chấm công: 3 nút điều hướng dùng chung cho cả 3 kiểu xem
+        // (Ngày/Tuần/Tháng) — mỗi lần bấm sẽ lùi/tiến đúng theo đơn vị của
+        // kiểu xem đang chọn (xem this.calendarViewMode).
         document.getElementById('prevWeekBtn').addEventListener('click', () => {
-            const d = new Date(this.currentWeekStart);
-            d.setDate(d.getDate() - 7);
-            this.currentWeekStart = d;
-            this.renderWeeklyCalendar();
+            if (this.calendarViewMode === 'day') {
+                const d = new Date(this.currentDayDate);
+                d.setDate(d.getDate() - 1);
+                this.currentDayDate = d;
+            } else if (this.calendarViewMode === 'month') {
+                const d = new Date(this.currentMonthViewDate);
+                d.setMonth(d.getMonth() - 1);
+                this.currentMonthViewDate = d;
+            } else {
+                const d = new Date(this.currentWeekStart);
+                d.setDate(d.getDate() - 7);
+                this.currentWeekStart = d;
+            }
+            this.renderCalendarView();
         });
         document.getElementById('nextWeekBtn').addEventListener('click', () => {
-            const d = new Date(this.currentWeekStart);
-            d.setDate(d.getDate() + 7);
-            this.currentWeekStart = d;
-            this.renderWeeklyCalendar();
+            if (this.calendarViewMode === 'day') {
+                const d = new Date(this.currentDayDate);
+                d.setDate(d.getDate() + 1);
+                this.currentDayDate = d;
+            } else if (this.calendarViewMode === 'month') {
+                const d = new Date(this.currentMonthViewDate);
+                d.setMonth(d.getMonth() + 1);
+                this.currentMonthViewDate = d;
+            } else {
+                const d = new Date(this.currentWeekStart);
+                d.setDate(d.getDate() + 7);
+                this.currentWeekStart = d;
+            }
+            this.renderCalendarView();
         });
         document.getElementById('todayWeekBtn').addEventListener('click', () => {
-            this.currentWeekStart = this.getMonday(new Date());
-            this.renderWeeklyCalendar();
+            if (this.calendarViewMode === 'day') {
+                this.currentDayDate = new Date();
+            } else if (this.calendarViewMode === 'month') {
+                this.currentMonthViewDate = new Date();
+            } else {
+                this.currentWeekStart = this.getMonday(new Date());
+            }
+            this.renderCalendarView();
+        });
+
+        // Bộ chuyển đổi kiểu xem lịch: Ngày / Tuần / Tháng
+        document.querySelectorAll('.cal-view-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const mode = btn.dataset.view;
+                if (mode === this.calendarViewMode) return;
+                this.calendarViewMode = mode;
+                document.querySelectorAll('.cal-view-btn').forEach(b => b.classList.toggle('active', b === btn));
+                this.renderCalendarView();
+            });
         });
 
         // Quick entry modal (nhập nhanh nội dung buổi học từ lịch tuần)
@@ -598,6 +642,10 @@ class PinkyClassApp {
             const today = this.toISODateOnly(new Date());
             document.getElementById('sessionDate').value = today;
             this.renderStudentSelectionGrid('studentsCheckboxGrid');
+            this.repeatExtraDates = [];
+            this.renderRepeatDatesChips();
+            const repeatPanelEl = document.getElementById('repeatDatesPanel');
+            if (repeatPanelEl) repeatPanelEl.style.display = 'none';
         });
 
         // Export Log Action
@@ -721,6 +769,48 @@ class PinkyClassApp {
         // Kéo-thả 1 buổi học trên Lịch tuần sang ngày/giờ khác (xem chi tiết
         // cách hoạt động trong initCalendarDragToReschedule bên dưới).
         this.initCalendarDragToReschedule();
+
+        // Kéo-CHỌN 1 khung giờ TRỐNG trên Lịch tuần để mở nhanh form tạo ca
+        // học mới, giờ được điền sẵn đúng theo khung đã kéo (xem chi tiết
+        // trong initCalendarDragToCreate bên dưới).
+        this.initCalendarDragToCreate();
+
+        // ----- Lặp lại buổi học trong tháng (chọn thêm từng ngày thủ công) -----
+        const repeatToggle = document.getElementById('sessionRepeatToggle');
+        const repeatPanel = document.getElementById('repeatDatesPanel');
+        if (repeatToggle && repeatPanel) {
+            repeatToggle.addEventListener('change', () => {
+                repeatPanel.style.display = repeatToggle.checked ? '' : 'none';
+                if (!repeatToggle.checked) {
+                    this.repeatExtraDates = [];
+                    this.renderRepeatDatesChips();
+                }
+            });
+        }
+        const addRepeatDateBtn = document.getElementById('addRepeatDateBtn');
+        if (addRepeatDateBtn) {
+            addRepeatDateBtn.addEventListener('click', () => this.handleAddRepeatDate());
+        }
+        // Đổi "Ngày học" chính -> tự loại các ngày lặp lại đã thêm nếu chúng
+        // không còn cùng tháng/năm với ngày mới chọn (quy tắc: chỉ tính theo tháng).
+        const sessionDateInput = document.getElementById('sessionDate');
+        if (sessionDateInput) {
+            sessionDateInput.addEventListener('change', () => {
+                if (!this.repeatExtraDates.length) return;
+                const main = sessionDateInput.value;
+                if (!main) return;
+                const [mainYear, mainMonth] = main.split('-');
+                const before = this.repeatExtraDates.length;
+                this.repeatExtraDates = this.repeatExtraDates.filter(d => {
+                    const [y, m] = d.split('-');
+                    return y === mainYear && m === mainMonth;
+                });
+                if (this.repeatExtraDates.length !== before) {
+                    this.showToast('Đã bỏ các ngày lặp lại không còn cùng tháng với Ngày học mới.', 'error');
+                    this.renderRepeatDatesChips();
+                }
+            });
+        }
     }
 
     showLoginPage() {
@@ -960,57 +1050,156 @@ class PinkyClassApp {
             .toLowerCase();
     }
 
-    renderStudentSelectionGrid(containerId) {
+    // Dựng lưới chọn học sinh, GOM THEO LỚP (mỗi lớp 1 khối thu gọn/mở rộng
+    // được + nút "Chọn cả lớp") thay vì 1 danh sách phẳng — để đỡ rối mắt và
+    // dễ tìm khi giáo viên dạy nhiều lớp/nhiều học sinh.
+    // preselectedIds: mảng id học sinh cần tick sẵn (dùng khi mở modal Sửa
+    // buổi học); để null/không truyền thì dùng hành vi mặc định của form tạo
+    // mới (tự tick đúng học sinh đang được lọc ở trang Nhật ký học tập, nếu có).
+    renderStudentSelectionGrid(containerId, preselectedIds = null) {
         const prefix = containerId === 'studentsCheckboxGrid' ? 'session' : 'editSession';
         const typeSelectId = prefix === 'session' ? 'sessionType' : 'editSessionType';
         const grid = document.getElementById(containerId);
+        if (!grid) return;
         grid.innerHTML = '';
+
+        const isGroupTypeNow = document.getElementById(typeSelectId).value === 'chung';
+
+        // Gom học sinh theo lớp, giữ nguyên thứ tự học sinh trong từng lớp;
+        // sắp xếp các lớp theo số lớp tăng dần (lớp không xác định được số thì xếp cuối).
+        const groupsMap = new Map();
         this.students.forEach(st => {
-            const label = document.createElement('label');
-            label.className = 'student-check-item';
+            const className = st.class || 'Chưa xếp lớp';
+            if (!groupsMap.has(className)) groupsMap.set(className, []);
+            groupsMap.get(className).push(st);
+        });
+        const classNames = Array.from(groupsMap.keys()).sort((a, b) => {
+            const numA = parseInt((a || '').replace(/\D/g, ''), 10);
+            const numB = parseInt((b || '').replace(/\D/g, ''), 10);
+            const hasA = !isNaN(numA), hasB = !isNaN(numB);
+            if (hasA && hasB) return numA - numB;
+            if (hasA) return -1;
+            if (hasB) return 1;
+            return a.localeCompare(b, 'vi');
+        });
 
-            // Chuỗi dùng để tìm kiếm/lọc: tên + lớp đầy đủ ("Lớp 6") + số lớp
-            // riêng ("6") — để gõ "6", "lớp 6" hay "Lớp 6" đều lọc ra đúng.
-            const classNumberOnly = (st.class || '').replace(/lớp/i, '').trim();
-            label.dataset.search = this.removeVietnameseTones(`${st.name} ${st.class} ${classNumberOnly}`);
+        classNames.forEach(className => {
+            const studentsInClass = groupsMap.get(className);
 
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.value = st.id;
-            checkbox.name = containerId === 'studentsCheckboxGrid' ? 'sessionStudents' : 'editSessionStudents';
-            
-            // Auto check if it's the current selected student
-            if (st.id === this.currentStudentId && containerId === 'studentsCheckboxGrid') {
-                checkbox.checked = true;
-            }
+            const groupEl = document.createElement('div');
+            groupEl.className = 'student-class-group';
 
-            // Học riêng (private) => chỉ được chọn đúng 1 học sinh: hành xử như radio.
-            // QUAN TRỌNG: đọc lại giá trị "riêng/chung" MỚI NHẤT ngay trong lúc bấm,
-            // thay vì dùng biến isPrivate đã "chốt cứng" từ lúc vẽ checkbox lần đầu.
-            // Trước đây dùng isPrivate (đọc 1 lần khi render) khiến việc đổi loại
-            // buổi học từ "riêng" sang "chung" KHÔNG cập nhật hành vi checkbox,
-            // nên vẫn bị ép chỉ chọn 1 học sinh dù đã chọn "Học chung".
-            checkbox.addEventListener('change', () => {
-                const isPrivateNow = document.getElementById(typeSelectId).value !== 'chung';
-                if (isPrivateNow && checkbox.checked) {
-                    grid.querySelectorAll('input[type="checkbox"]').forEach(other => {
-                        if (other !== checkbox) other.checked = false;
-                    });
+            const header = document.createElement('div');
+            header.className = 'student-class-group-header';
+
+            const toggleBtn = document.createElement('button');
+            toggleBtn.type = 'button';
+            toggleBtn.className = 'student-class-toggle-btn';
+            toggleBtn.innerHTML = `
+                <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span class="student-class-name">${this.escapeHtml(className)}</span>
+                <span class="student-class-count">(${studentsInClass.length})</span>
+            `;
+
+            const selectAllLabel = document.createElement('label');
+            selectAllLabel.className = 'student-class-select-all';
+            const selectAllCheckbox = document.createElement('input');
+            selectAllCheckbox.type = 'checkbox';
+            selectAllCheckbox.className = 'select-all-class-checkbox';
+            selectAllCheckbox.disabled = !isGroupTypeNow;
+            const selectAllText = document.createElement('span');
+            selectAllText.innerText = 'Chọn cả lớp';
+            selectAllLabel.appendChild(selectAllCheckbox);
+            selectAllLabel.appendChild(selectAllText);
+
+            header.appendChild(toggleBtn);
+            header.appendChild(selectAllLabel);
+
+            const body = document.createElement('div');
+            body.className = 'student-class-group-body';
+
+            let anyCheckedInGroup = false;
+
+            studentsInClass.forEach(st => {
+                const label = document.createElement('label');
+                label.className = 'student-check-item';
+
+                // Chuỗi dùng để tìm kiếm/lọc: tên + lớp đầy đủ ("Lớp 6") + số lớp
+                // riêng ("6") — để gõ "6", "lớp 6" hay "Lớp 6" đều lọc ra đúng.
+                const classNumberOnly = (st.class || '').replace(/lớp/i, '').trim();
+                label.dataset.search = this.removeVietnameseTones(`${st.name} ${st.class} ${classNumberOnly}`);
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = st.id;
+                checkbox.name = containerId === 'studentsCheckboxGrid' ? 'sessionStudents' : 'editSessionStudents';
+
+                const shouldCheck = Array.isArray(preselectedIds)
+                    ? preselectedIds.includes(st.id)
+                    : (st.id === this.currentStudentId && containerId === 'studentsCheckboxGrid');
+                if (shouldCheck) {
+                    checkbox.checked = true;
+                    anyCheckedInGroup = true;
                 }
-                // Học sinh vừa đổi -> cho phép gợi ý lại học phí cơ bản của
-                // học sinh MỚI (xóa cờ "người dùng đã tự sửa" của lần chọn trước).
+
+                // Học riêng (private) => chỉ được chọn đúng 1 học sinh: hành xử như radio.
+                // QUAN TRỌNG: đọc lại giá trị "riêng/chung" MỚI NHẤT ngay trong lúc bấm,
+                // thay vì dùng biến đã "chốt cứng" từ lúc vẽ checkbox lần đầu.
+                checkbox.addEventListener('change', () => {
+                    const isPrivateNow = document.getElementById(typeSelectId).value !== 'chung';
+                    if (isPrivateNow && checkbox.checked) {
+                        grid.querySelectorAll('input[type="checkbox"]').forEach(other => {
+                            if (other !== checkbox) other.checked = false;
+                        });
+                    }
+                    // Học sinh vừa đổi -> cho phép gợi ý lại học phí cơ bản của
+                    // học sinh MỚI (xóa cờ "người dùng đã tự sửa" của lần chọn trước).
+                    const priceInputId = prefix === 'session' ? 'sessionPrice' : 'editSessionPrice';
+                    const priceEl = document.getElementById(priceInputId);
+                    if (priceEl) delete priceEl.dataset.userEdited;
+                    this.updateSessionPricing(prefix);
+                });
+
+                const span = document.createElement('span');
+                span.innerText = `${st.name} - ${st.class}`;
+
+                label.appendChild(checkbox);
+                label.appendChild(span);
+                body.appendChild(label);
+            });
+
+            // Nhóm lớp có sẵn học sinh đang được chọn -> tự mở rộng để giáo
+            // viên thấy ngay; các nhóm khác mặc định thu gọn cho gọn màn hình.
+            const startExpanded = anyCheckedInGroup;
+            body.style.display = startExpanded ? '' : 'none';
+            groupEl.classList.toggle('is-collapsed', !startExpanded);
+            groupEl.dataset.wasExpanded = String(startExpanded);
+            toggleBtn.setAttribute('aria-expanded', String(startExpanded));
+
+            toggleBtn.addEventListener('click', () => {
+                const collapsedNow = groupEl.classList.contains('is-collapsed');
+                this.setClassGroupCollapsed(groupEl, !collapsedNow, true);
+            });
+
+            selectAllCheckbox.addEventListener('change', () => {
+                const isPrivateNow = document.getElementById(typeSelectId).value !== 'chung';
+                if (isPrivateNow) {
+                    selectAllCheckbox.checked = false;
+                    this.showToast('Học riêng (1 vs 1) chỉ được chọn 1 học sinh, không thể chọn cả lớp.', 'error');
+                    return;
+                }
+                body.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = selectAllCheckbox.checked; });
                 const priceInputId = prefix === 'session' ? 'sessionPrice' : 'editSessionPrice';
                 const priceEl = document.getElementById(priceInputId);
                 if (priceEl) delete priceEl.dataset.userEdited;
                 this.updateSessionPricing(prefix);
             });
 
-            const span = document.createElement('span');
-            span.innerText = `${st.name} - ${st.class}`;
-            
-            label.appendChild(checkbox);
-            label.appendChild(span);
-            grid.appendChild(label);
+            groupEl.appendChild(header);
+            groupEl.appendChild(body);
+            grid.appendChild(groupEl);
         });
 
         // Giữ nguyên từ khóa đang lọc (nếu có) khi lưới được vẽ lại — tránh
@@ -1022,15 +1211,44 @@ class PinkyClassApp {
         this.updateSessionPricing(prefix);
     }
 
+    // Thu gọn/mở rộng 1 nhóm lớp trong lưới chọn học sinh. remember=true khi
+    // đây là thao tác CHỦ ĐỘNG của người dùng (bấm mũi tên) — ghi nhớ lại để
+    // khôi phục đúng trạng thái này sau khi xoá từ khoá tìm kiếm; remember=false
+    // khi chỉ là tự động mở tạm để lộ kết quả tìm kiếm.
+    setClassGroupCollapsed(groupEl, collapsed, remember = false) {
+        const body = groupEl.querySelector('.student-class-group-body');
+        const btn = groupEl.querySelector('.student-class-toggle-btn');
+        if (!body || !btn) return;
+        body.style.display = collapsed ? 'none' : '';
+        btn.setAttribute('aria-expanded', String(!collapsed));
+        groupEl.classList.toggle('is-collapsed', collapsed);
+        if (remember) groupEl.dataset.wasExpanded = String(!collapsed);
+    }
+
     // Ẩn/hiện các học sinh trong lưới checkbox theo từ khóa gõ vào ô tìm kiếm
     // (so khớp theo tên HOẶC theo lớp, không phân biệt dấu/không dấu/hoa thường).
+    // Nhóm lớp không có học sinh nào khớp thì ẩn cả khối; nhóm có khớp thì tự
+    // mở ra để thấy ngay, và khi xoá hết từ khoá sẽ trả lại đúng trạng thái
+    // đóng/mở trước đó (không ép mở hết mọi lớp).
     filterStudentCheckboxGrid(gridId, keyword) {
         const grid = document.getElementById(gridId);
         if (!grid) return;
         const kw = this.removeVietnameseTones((keyword || '').trim());
-        grid.querySelectorAll('.student-check-item').forEach(label => {
-            const match = !kw || (label.dataset.search || '').includes(kw);
-            label.style.display = match ? '' : 'none';
+        grid.querySelectorAll('.student-class-group').forEach(groupEl => {
+            const items = groupEl.querySelectorAll('.student-check-item');
+            let anyMatch = false;
+            items.forEach(label => {
+                const match = !kw || (label.dataset.search || '').includes(kw);
+                label.style.display = match ? '' : 'none';
+                if (match) anyMatch = true;
+            });
+            groupEl.style.display = anyMatch ? '' : 'none';
+            if (kw) {
+                if (anyMatch) this.setClassGroupCollapsed(groupEl, false);
+            } else {
+                const wasExpanded = groupEl.dataset.wasExpanded === 'true';
+                this.setClassGroupCollapsed(groupEl, !wasExpanded);
+            }
         });
     }
 
@@ -1052,6 +1270,12 @@ class PinkyClassApp {
             const checked = document.querySelectorAll(`#${gridId} input[type="checkbox"]:checked`);
             checked.forEach((cb, idx) => { if (idx > 0) cb.checked = false; });
         }
+
+        // "Chọn cả lớp" chỉ có ý nghĩa với Học chung — khoá lại khi chuyển sang Học riêng.
+        document.querySelectorAll(`#${gridId} .select-all-class-checkbox`).forEach(cb => {
+            cb.disabled = !isGroup;
+            if (!isGroup) cb.checked = false;
+        });
 
         // Đổi loại buổi học -> cho phép gợi ý lại học phí (xóa cờ "đã tự sửa").
         const priceInputId = prefix === 'session' ? 'sessionPrice' : 'editSessionPrice';
@@ -1188,7 +1412,7 @@ class PinkyClassApp {
         this.renderDashboard();
         this.renderStudentLogs();
         this.renderScores();
-        this.renderWeeklyCalendar();
+        this.renderCalendarView();
         this.renderTuitionOverview();
         this.renderStudentList();
         if (this.currentRole === 'admin') {
@@ -1815,53 +2039,69 @@ class PinkyClassApp {
         this.renderScores();
     }
 
-    // --- VIEW 3: WEEKLY CALENDAR (Lịch dạy & Chấm công) ---
-    // Thay thế hoàn toàn "Danh sách chi tiết" (list) + "Chấm công tuần" (bảng)
-    // cũ bằng MỘT lịch xem theo tuần duy nhất (giống Google Calendar / ảnh mẫu),
-    // để dễ quan sát ca dạy theo ngày/giờ hơn.
-    renderWeeklyCalendar() {
-        const headerRow = document.getElementById('weekCalendarHeaderRow');
-        const body = document.getElementById('weekCalendarBody');
-        if (!headerRow || !body) return;
+    // --- VIEW 3: LỊCH DẠY (Lịch dạy & Chấm công) ---
+    // Có 3 kiểu xem: Ngày / Tuần (lưới giờ, dùng chung 1 hàm renderHourGridCalendar)
+    // và Tháng (lưới ô ngày truyền thống, renderMonthCalendar). renderCalendarView()
+    // là điểm vào DUY NHẤT — mọi nơi khác trong code chỉ cần gọi hàm này, không
+    // cần biết đang ở kiểu xem nào.
+    renderCalendarView() {
+        const wrapperEl = document.getElementById('weekCalendarWrapper');
+        const monthEl = document.getElementById('monthCalendarGrid');
+        const titleEl = document.getElementById('calendarSectionTitle');
 
-        const HOUR_START = this.CAL_HOUR_START;
-        const HOUR_END = this.CAL_HOUR_END;
-        const HOUR_HEIGHT = this.CAL_HOUR_HEIGHT;
+        if (this.calendarViewMode === 'month') {
+            if (wrapperEl) wrapperEl.style.display = 'none';
+            if (monthEl) monthEl.style.display = '';
+            if (titleEl) titleEl.innerText = ' Lịch Dạy Theo Tháng';
+            this.renderMonthCalendar();
+        } else {
+            if (wrapperEl) wrapperEl.style.display = '';
+            if (monthEl) monthEl.style.display = 'none';
+            if (titleEl) titleEl.innerText = this.calendarViewMode === 'day' ? ' Lịch Dạy Theo Ngày' : ' Lịch Dạy Theo Tuần';
+            const days = this.calendarViewMode === 'day'
+                ? [new Date(this.currentDayDate)]
+                : this.getWeekDays(this.currentWeekStart);
+            this.renderHourGridCalendar(days);
+        }
+        this.updateCalendarNavLabels();
+    }
 
-        const weekStart = this.currentWeekStart; // Thứ 2
-        const dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    // Trả về mảng 7 Date (Thứ 2 -> CN) của tuần bắt đầu từ weekStart.
+    getWeekDays(weekStart) {
         const days = [];
         for (let i = 0; i < 7; i++) {
             const d = new Date(weekStart);
             d.setDate(d.getDate() + i);
             days.push(d);
         }
+        return days;
+    }
 
-        // Nhãn khoảng tuần đang xem, ví dụ: "01/07 - 07/07/2026"
-        const rangeLabel = document.getElementById('weekRangeLabel');
-        if (rangeLabel) {
-            const first = days[0], last = days[6];
-            const fmt = (d) => `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`;
-            rangeLabel.innerText = `${fmt(first)} - ${fmt(last)}/${last.getFullYear()}`;
+    // Đổi nhãn 3 nút điều hướng (Trước/Hôm nay/Sau) cho khớp với kiểu xem đang chọn.
+    updateCalendarNavLabels() {
+        const prevBtn = document.getElementById('prevWeekBtn');
+        const todayBtn = document.getElementById('todayWeekBtn');
+        const nextBtn = document.getElementById('nextWeekBtn');
+        if (!prevBtn || !todayBtn || !nextBtn) return;
+        if (this.calendarViewMode === 'day') {
+            prevBtn.innerText = 'Ngày trước'; todayBtn.innerText = 'Hôm nay'; nextBtn.innerText = 'Ngày sau';
+        } else if (this.calendarViewMode === 'month') {
+            prevBtn.innerText = 'Tháng trước'; todayBtn.innerText = 'Tháng này'; nextBtn.innerText = 'Tháng sau';
+        } else {
+            prevBtn.innerText = 'Tuần trước'; todayBtn.innerText = 'Tuần này'; nextBtn.innerText = 'Tuần sau';
         }
+    }
 
-        // Lọc buổi học nằm trong tuần đang xem (bỏ qua bộ lọc Tháng toàn cục vì
-        // lịch tuần đã tự xác định phạm vi thời gian riêng của nó)
-        const todayStr = this.toISODateOnly(new Date());
-        const weekDateStrs = days.map(d => this.toISODateOnly(d));
-        let weekSessions = this.sessions.filter(s => weekDateStrs.includes(s.date));
-
-        if (this.currentRole === 'student') {
-            weekSessions = weekSessions.filter(s => s.studentIds.includes(this.currentStudentId));
-        }
-
-        // ----- Thẻ thống kê tổng quan (tính theo tuần đang xem) -----
-        const totalCount = weekSessions.length;
-        const totalHrs = weekSessions.reduce((a, b) => a + parseFloat(b.duration || 0), 0);
-        const privateCount = weekSessions.filter(s => s.type === 'riêng').length;
-        const groupCount = weekSessions.filter(s => s.type === 'chung').length;
+    // Cập nhật 4 thẻ thống kê (Tổng buổi/Tổng giờ/Riêng-chung/Tổng tiền) theo
+    // ĐÚNG danh sách buổi học đang được xem (ngày/tuần/tháng) — dùng chung cho
+    // cả renderHourGridCalendar lẫn renderMonthCalendar để khỏi lặp code.
+    updateCalendarSummaryStats(sessionsList) {
+        const totalCount = sessionsList.length;
+        const totalHrs = sessionsList.reduce((a, b) => a + parseFloat(b.duration || 0), 0);
+        const privateCount = sessionsList.filter(s => s.type === 'riêng').length;
+        const groupCount = sessionsList.filter(s => s.type === 'chung').length;
         let totalMoney = 0;
-        weekSessions.forEach(s => {
+        sessionsList.forEach(s => {
             if (this.currentRole === 'student') {
                 const payingIds = this.getPayingStudentIds(s);
                 totalMoney += payingIds.includes(this.currentStudentId) ? (s.price / (payingIds.length || 1)) : 0;
@@ -1877,19 +2117,63 @@ class PinkyClassApp {
         if (elHours) elHours.innerText = totalHrs.toFixed(1);
         if (elRatio) elRatio.innerText = `${privateCount}/${groupCount}`;
         if (elMoney) elMoney.innerText = this.formatVND(totalMoney);
+    }
 
-        // ----- Header row: 7 cột ngày -----
+    // Vẽ lưới giờ dùng chung cho kiểu xem "Ngày" (days.length === 1) và "Tuần"
+    // (days.length === 7) — cùng 1 công thức quy đổi px <-> giờ:phút, cùng 1
+    // cách vẽ khối ca học, chỉ khác số cột hiển thị.
+    renderHourGridCalendar(days) {
+        const headerRow = document.getElementById('weekCalendarHeaderRow');
+        const body = document.getElementById('weekCalendarBody');
+        if (!headerRow || !body) return;
+
+        const HOUR_START = this.CAL_HOUR_START;
+        const HOUR_END = this.CAL_HOUR_END;
+        const HOUR_HEIGHT = this.CAL_HOUR_HEIGHT;
+        const numDays = days.length;
+        // Nhãn thứ trong tuần lấy theo ĐÚNG ngày trong tháng (Date.getDay(): 0=CN)
+        // thay vì theo vị trí trong vòng lặp — để chế độ "Ngày" hiển thị đúng
+        // thứ dù xem bất kỳ ngày nào trong tuần, không chỉ riêng Thứ 2.
+        const vnDayLabels = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+
+        const todayStr = this.toISODateOnly(new Date());
+
+        // Nhãn khoảng đang xem
+        const rangeLabel = document.getElementById('weekRangeLabel');
+        if (rangeLabel) {
+            const fmt = (d) => `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+            if (numDays === 1) {
+                rangeLabel.innerText = `${vnDayLabels[days[0].getDay()]}, ${fmt(days[0])}/${days[0].getFullYear()}`;
+            } else {
+                const first = days[0], last = days[numDays - 1];
+                rangeLabel.innerText = `${fmt(first)} - ${fmt(last)}/${last.getFullYear()}`;
+            }
+        }
+
+        // Lọc buổi học nằm trong khoảng đang xem (bỏ qua bộ lọc Tháng toàn cục
+        // vì lịch ngày/tuần đã tự xác định phạm vi thời gian riêng của nó)
+        const viewDateStrs = days.map(d => this.toISODateOnly(d));
+        let viewSessions = this.sessions.filter(s => viewDateStrs.includes(s.date));
+
+        if (this.currentRole === 'student') {
+            viewSessions = viewSessions.filter(s => s.studentIds.includes(this.currentStudentId));
+        }
+
+        this.updateCalendarSummaryStats(viewSessions);
+
+        // ----- Header row: numDays cột ngày -----
+        headerRow.style.gridTemplateColumns = `56px repeat(${numDays}, 1fr)`;
         headerRow.innerHTML = '<div style="grid-column:1;"></div>' + days.map((d, i) => {
             const isToday = this.toISODateOnly(d) === todayStr;
             return `
                 <div class="week-day-header ${isToday ? 'is-today' : ''}" style="grid-column:${i + 2};">
-                    <span class="day-name">${dayLabels[i]}</span>
+                    <span class="day-name">${vnDayLabels[d.getDay()]}</span>
                     <span class="day-date">${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}</span>
                 </div>
             `;
         }).join('');
 
-        // ----- Body: nhãn giờ bên trái + đường kẻ ngang + 7 cột ngày -----
+        // ----- Body: nhãn giờ bên trái + đường kẻ ngang + numDays cột ngày -----
         // QUAN TRỌNG: nhãn giờ VÀ đường kẻ ngang được vẽ CÙNG 1 VÒNG LẶP, DÙNG
         // CHUNG 1 giá trị "top" duy nhất cho mỗi giờ — trước đây nhãn giờ định
         // vị bằng 1 công thức px (JS) còn đường kẻ vẽ bằng CSS background-image
@@ -1909,7 +2193,7 @@ class PinkyClassApp {
         let dayColumnsHTML = '';
         days.forEach((d, i) => {
             const dateStr = this.toISODateOnly(d);
-            const daySessions = weekSessions.filter(s => s.date === dateStr);
+            const daySessions = viewSessions.filter(s => s.date === dateStr);
 
             let blocksHTML = '';
             daySessions.forEach(sess => {
@@ -1949,17 +2233,109 @@ class PinkyClassApp {
             dayColumnsHTML += `<div class="week-day-column" data-date="${dateStr}" style="height:${hourCount * HOUR_HEIGHT}px; grid-column:${i + 2}; grid-row:1 / -1;">${blocksHTML}</div>`;
         });
 
-        // QUAN TRỌNG: gán grid-column CỐ ĐỊNH cho cả cột giờ (cột 1) và 7 cột
-        // ngày (cột 2..8) thay vì để CSS Grid tự động xếp (auto-placement).
+        // QUAN TRỌNG: gán grid-column CỐ ĐỊNH cho cả cột giờ (cột 1) và các cột
+        // ngày (cột 2..) thay vì để CSS Grid tự động xếp (auto-placement).
         // Trước đây không khai báo grid-column cho các phần tử này, nên thứ tự
         // hiển thị phụ thuộc vào thuật toán auto-placement của trình duyệt và
         // có thể bị đảo/lệch (cột giờ bị đẩy sang phải thay vì bên trái).
         // Các đường kẻ ngang (hourLinesHTML) được đặt NGOÀI cột ngày, trải dài
         // hết chiều rộng thật (position:absolute, left/right:0 so với chính
         // .week-calendar-body) — vẽ 1 lần duy nhất, đảm bảo luôn khớp nhãn giờ.
+        body.style.gridTemplateColumns = `56px repeat(${numDays}, 1fr)`;
         body.innerHTML = `<div class="week-hour-gutter" style="grid-column:1; grid-row:1 / -1;">${hourLabelsHTML}</div>`
             + `<div class="week-hour-lines" style="grid-column:1 / -1; grid-row:1 / -1;">${hourLinesHTML}</div>`
             + dayColumnsHTML;
+    }
+
+    // Vẽ lưới ô ngày kiểu tháng truyền thống (6 hàng x 7 cột, luôn đủ chỗ cho
+    // mọi tháng kể cả tháng cần tràn sang tuần của tháng trước/sau). Mỗi ô
+    // hiện tối đa 3 dòng ca học (giờ bắt đầu + tên/học sinh), dư ra thì gộp
+    // thành "+N buổi khác". Bấm vào 1 ô ngày -> chuyển sang chế độ xem "Ngày"
+    // của đúng ngày đó.
+    renderMonthCalendar() {
+        const container = document.getElementById('monthCalendarGrid');
+        if (!container) return;
+
+        const viewDate = this.currentMonthViewDate;
+        const year = viewDate.getFullYear();
+        const month = viewDate.getMonth(); // 0-based
+
+        const rangeLabel = document.getElementById('weekRangeLabel');
+        if (rangeLabel) rangeLabel.innerText = `Tháng ${month + 1}/${year}`;
+
+        const firstOfMonth = new Date(year, month, 1);
+        // Ô đầu tiên của lưới = Thứ 2 của tuần chứa ngày 1 trong tháng, để mỗi
+        // hàng luôn bắt đầu từ Thứ 2 và kết thúc ở Chủ nhật.
+        const firstWeekday = (firstOfMonth.getDay() + 6) % 7; // 0 = Thứ 2 ... 6 = CN
+        const gridStart = new Date(firstOfMonth);
+        gridStart.setDate(gridStart.getDate() - firstWeekday);
+
+        const totalCells = 42; // 6 tuần x 7 ngày — luôn đủ ô cho mọi tháng
+        const todayStr = this.toISODateOnly(new Date());
+
+        let monthSessions = this.sessions;
+        if (this.currentRole === 'student') {
+            monthSessions = monthSessions.filter(s => s.studentIds.includes(this.currentStudentId));
+        }
+
+        // Gom buổi học theo ngày để tra cứu nhanh khi vẽ từng ô
+        const sessionsByDate = {};
+        monthSessions.forEach(s => {
+            if (!sessionsByDate[s.date]) sessionsByDate[s.date] = [];
+            sessionsByDate[s.date].push(s);
+        });
+
+        const dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+        const headerHTML = dayLabels.map(l => `<div class="month-weekday-label">${l}</div>`).join('');
+
+        let cellsHTML = '';
+        const sessionsInMonth = []; // để tính thống kê tổng theo tháng bên dưới
+        for (let i = 0; i < totalCells; i++) {
+            const d = new Date(gridStart);
+            d.setDate(d.getDate() + i);
+            const dateStr = this.toISODateOnly(d);
+            const isCurrentMonth = d.getMonth() === month;
+            const isToday = dateStr === todayStr;
+            const daySessions = (sessionsByDate[dateStr] || []).slice().sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+            if (isCurrentMonth) sessionsInMonth.push(...daySessions);
+
+            const maxShow = 3;
+            let sessionsHTML = '';
+            daySessions.slice(0, maxShow).forEach(sess => {
+                const typeClass = sess.type === 'chung' ? 'type-chung' : 'type-rieng';
+                const names = sess.studentIds.map(id => this.getStudentName(id)).join(', ');
+                const title = sess.sessionName ? sess.sessionName : names;
+                sessionsHTML += `<div class="month-day-event ${typeClass}" title="${this.escapeHtmlAttr(`${sess.startTime}-${sess.endTime} ${title}`)}">${sess.startTime} ${this.escapeHtml(title)}</div>`;
+            });
+            if (daySessions.length > maxShow) {
+                sessionsHTML += `<div class="month-day-more">+${daySessions.length - maxShow} buổi khác</div>`;
+            }
+            const countBadge = daySessions.length > 0
+                ? `<div class="month-day-count-badge">${daySessions.length} buổi</div>`
+                : '';
+
+            cellsHTML += `
+                <div class="month-day-cell ${isCurrentMonth ? '' : 'is-outside-month'} ${isToday ? 'is-today' : ''}" data-date="${dateStr}">
+                    <div class="month-day-number">${d.getDate()}</div>
+                    <div class="month-day-events">${sessionsHTML}</div>
+                    ${countBadge}
+                </div>
+            `;
+        }
+
+        container.innerHTML = `<div class="month-weekday-row">${headerHTML}</div><div class="month-days-grid">${cellsHTML}</div>`;
+
+        container.querySelectorAll('.month-day-cell').forEach(cell => {
+            cell.addEventListener('click', () => {
+                const dateStr = cell.dataset.date;
+                this.currentDayDate = new Date(`${dateStr}T00:00:00`);
+                this.calendarViewMode = 'day';
+                document.querySelectorAll('.cal-view-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'day'));
+                this.renderCalendarView();
+            });
+        });
+
+        this.updateCalendarSummaryStats(sessionsInMonth);
     }
 
     // Mở bảng nhập nhanh khi click vào 1 ca dạy trên lịch tuần. Nếu ca đó có
@@ -2062,7 +2438,7 @@ class PinkyClassApp {
 
             const sess = this.sessions.find(s => s.id === drag.sessionId);
             if (!sess || drag.pendingDate == null) {
-                this.renderWeeklyCalendar();
+                this.renderCalendarView();
                 return;
             }
 
@@ -2081,7 +2457,7 @@ class PinkyClassApp {
 
             // Không đổi gì cả -> khỏi cần lưu
             if (newDate === sess.date && newStartTime === sess.startTime && newEndTime === sess.endTime) {
-                this.renderWeeklyCalendar();
+                this.renderCalendarView();
                 return;
             }
 
@@ -2092,7 +2468,7 @@ class PinkyClassApp {
                     `Khung giờ ${newStartTime}-${newEndTime} ngày ${this.formatDateVN(newDate)} đang trùng với buổi học khác, không thể đặt vào đây!`,
                     "error"
                 );
-                this.renderWeeklyCalendar();
+                this.renderCalendarView();
                 return;
             }
 
@@ -2677,6 +3053,246 @@ class PinkyClassApp {
     }
 
     // 2. Log Session (Add Session)
+    // ----- Lặp lại buổi học trong tháng: thêm từng ngày thủ công -----
+    // Người dùng chọn 1 ngày bất kỳ trong CÙNG THÁNG với "Ngày học" chính rồi
+    // bấm "+ Thêm ngày" -> ngày đó được thêm vào this.repeatExtraDates, hiển
+    // thị dưới dạng "chip" có thể xoá. Khi lưu buổi học, mỗi ngày trong danh
+    // sách này sẽ tự tạo thêm 1 buổi học giống hệt buổi chính (xem
+    // createRepeatedSessions bên dưới).
+    handleAddRepeatDate() {
+        const mainDate = document.getElementById('sessionDate').value;
+        const extraInput = document.getElementById('repeatExtraDateInput');
+        const extraDate = extraInput.value;
+
+        if (!mainDate) {
+            this.showToast('Vui lòng chọn "Ngày học" chính trước khi thêm ngày lặp lại.', 'error');
+            return;
+        }
+        if (!extraDate) {
+            this.showToast('Vui lòng chọn 1 ngày để thêm vào danh sách lặp lại.', 'error');
+            return;
+        }
+        const [mainYear, mainMonth] = mainDate.split('-');
+        const [extraYear, extraMonth] = extraDate.split('-');
+        if (extraYear !== mainYear || extraMonth !== mainMonth) {
+            this.showToast('Chỉ được chọn ngày lặp lại trong CÙNG THÁNG với "Ngày học" chính.', 'error');
+            return;
+        }
+        if (extraDate === mainDate) {
+            this.showToast('Ngày này trùng với "Ngày học" chính rồi, không cần thêm nữa.', 'error');
+            return;
+        }
+        if (this.repeatExtraDates.includes(extraDate)) {
+            this.showToast('Ngày này đã có trong danh sách lặp lại rồi.', 'error');
+            return;
+        }
+
+        this.repeatExtraDates.push(extraDate);
+        this.repeatExtraDates.sort();
+        this.renderRepeatDatesChips();
+        extraInput.value = '';
+    }
+
+    renderRepeatDatesChips() {
+        const list = document.getElementById('repeatDatesList');
+        if (!list) return;
+        list.innerHTML = '';
+        this.repeatExtraDates.forEach(dateStr => {
+            const chip = document.createElement('span');
+            chip.className = 'repeat-date-chip';
+            const label = document.createElement('span');
+            label.innerText = this.formatDateVN(dateStr);
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.setAttribute('aria-label', 'Xoá ngày lặp lại này');
+            removeBtn.innerText = '✕';
+            removeBtn.addEventListener('click', () => {
+                this.repeatExtraDates = this.repeatExtraDates.filter(d => d !== dateStr);
+                this.renderRepeatDatesChips();
+            });
+            chip.appendChild(label);
+            chip.appendChild(removeBtn);
+            list.appendChild(chip);
+        });
+    }
+
+    // Sau khi buổi học CHÍNH đã lưu thành công, tạo thêm 1 buổi học giống hệt
+    // cho mỗi ngày trong danh sách lặp lại thủ công. Ngày nào bị trùng lịch
+    // với 1 buổi học khác thì bỏ qua (không chặn các ngày còn lại), rồi báo
+    // cáo tổng kết cho giáo viên biết đã tạo được bao nhiêu / bỏ qua bao nhiêu.
+    async createRepeatedSessions(baseSession, extraDates) {
+        let createdCount = 0;
+        const skippedDates = [];
+
+        for (const extraDate of extraDates) {
+            const overlap = this.findOverlappingSession(extraDate, baseSession.startTime, baseSession.endTime);
+            if (overlap) {
+                skippedDates.push(extraDate);
+                continue;
+            }
+
+            const clonedStudentDetails = {};
+            Object.keys(baseSession.studentDetails || {}).forEach(stId => {
+                clonedStudentDetails[stId] = { homework: "Chưa làm", attitude: "Tốt", individualComment: "", note: "" };
+            });
+
+            const repeatedSession = {
+                ...baseSession,
+                id: "sess_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
+                date: extraDate,
+                completed: this.isSessionCompleted({ date: extraDate, endTime: baseSession.endTime }),
+                paid: false,
+                studentDetails: clonedStudentDetails
+            };
+
+            try {
+                const res = await this.authFetch(`${API_BASE_URL}/api/sessions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(repeatedSession)
+                });
+                if (!res.ok) throw new Error("Server error");
+                createdCount++;
+            } catch (err) {
+                console.warn("API lỗi khi tạo buổi lặp lại, lưu offline: ", err.message);
+                this.sessions.push(repeatedSession);
+                await this.saveData();
+                createdCount++;
+            }
+        }
+
+        await this.loadData();
+
+        if (createdCount > 0) {
+            this.showToast(`Đã tự động tạo thêm ${createdCount} buổi học lặp lại trong tháng.`, "success");
+        }
+        if (skippedDates.length > 0) {
+            const listStr = skippedDates.map(d => this.formatDateVN(d)).join(', ');
+            this.showToast(`Bỏ qua ${skippedDates.length} ngày bị trùng lịch với buổi học khác: ${listStr}`, "error");
+        }
+    }
+
+    // ----- Kéo-CHỌN 1 khung giờ TRỐNG trên Lịch tuần để tạo ca học mới -----
+    // Giữ chuột/tay vào 1 chỗ TRỐNG trên cột ngày rồi kéo từ giờ này đến giờ
+    // kia -> nhả ra sẽ tự cuộn tới form "Ghi Buổi Học Mới" ở trên, điền sẵn
+    // đúng ngày + khung giờ vừa kéo. Nếu chỉ bấm 1 cái (không kéo), mặc định
+    // tạo khối 1 tiếng bắt đầu từ đúng vị trí bấm. Dùng chung hằng số quy đổi
+    // px <-> giờ:phút với initCalendarDragToReschedule để không lệch nhau.
+    initCalendarDragToCreate() {
+        const body = document.getElementById('weekCalendarBody');
+        if (!body) return;
+
+        const DRAG_THRESHOLD = 6;
+        const SNAP_MINUTES = 30;
+
+        body.addEventListener('pointerdown', (e) => {
+            // Bấm trúng 1 ca học đã có -> để nguyên cho initCalendarDragToReschedule xử lý
+            if (e.target.closest('.week-event-block')) return;
+            const column = e.target.closest('.week-day-column');
+            if (!column) return;
+
+            const rect = column.getBoundingClientRect();
+            const startTop = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
+
+            this.calCreateDrag = {
+                pointerId: e.pointerId,
+                column,
+                startTop,
+                currentTop: startTop,
+                preview: null,
+                startClientX: e.clientX,
+                startClientY: e.clientY,
+                isDragging: false
+            };
+        });
+
+        document.addEventListener('pointermove', (e) => {
+            const drag = this.calCreateDrag;
+            if (!drag || e.pointerId !== drag.pointerId) return;
+
+            const movedX = Math.abs(e.clientX - drag.startClientX);
+            const movedY = Math.abs(e.clientY - drag.startClientY);
+            if (!drag.isDragging) {
+                if (movedX < DRAG_THRESHOLD && movedY < DRAG_THRESHOLD) return;
+                drag.isDragging = true;
+                const preview = document.createElement('div');
+                preview.className = 'week-create-preview';
+                drag.column.appendChild(preview);
+                drag.preview = preview;
+                drag.column.setPointerCapture && drag.column.setPointerCapture(drag.pointerId);
+            }
+
+            const rect = drag.column.getBoundingClientRect();
+            const currentTop = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
+            drag.currentTop = currentTop;
+
+            const top = Math.min(drag.startTop, currentTop);
+            const height = Math.max(4, Math.abs(currentTop - drag.startTop));
+            drag.preview.style.top = `${top}px`;
+            drag.preview.style.height = `${height}px`;
+        });
+
+        const endDrag = (e) => {
+            const drag = this.calCreateDrag;
+            if (!drag || e.pointerId !== drag.pointerId) return;
+            this.calCreateDrag = null;
+            if (drag.preview) drag.preview.remove();
+
+            const HOUR_START = this.CAL_HOUR_START;
+            const HOUR_HEIGHT = this.CAL_HOUR_HEIGHT;
+            const pxPerMinute = HOUR_HEIGHT / 60;
+            const snap = (px) => Math.round((px / pxPerMinute) / SNAP_MINUTES) * SNAP_MINUTES;
+
+            let startMin, endMin;
+            if (!drag.isDragging) {
+                // Chỉ bấm 1 cái, không kéo -> mặc định khối 1 tiếng từ đúng vị trí bấm
+                startMin = snap(drag.startTop);
+                endMin = startMin + 60;
+            } else {
+                startMin = snap(Math.min(drag.startTop, drag.currentTop));
+                endMin = snap(Math.max(drag.startTop, drag.currentTop));
+                if (endMin - startMin < SNAP_MINUTES) endMin = startMin + SNAP_MINUTES;
+            }
+
+            const totalMinutes = (this.CAL_HOUR_END - HOUR_START) * 60;
+            startMin = Math.max(0, Math.min(startMin, totalMinutes - SNAP_MINUTES));
+            endMin = Math.max(startMin + SNAP_MINUTES, Math.min(endMin, totalMinutes));
+
+            const toHHMM = (mins) => {
+                const h = HOUR_START + Math.floor(mins / 60);
+                const m = mins % 60;
+                return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+            };
+
+            this.openCreateSessionQuickForm(drag.column.dataset.date, toHHMM(startMin), toHHMM(endMin));
+        };
+        document.addEventListener('pointerup', endDrag);
+        document.addEventListener('pointercancel', endDrag);
+    }
+
+    // Điền sẵn ngày + khung giờ vừa kéo-chọn vào form "Ghi Buổi Học Mới", cuộn
+    // tới form đó và nhấp nháy nhẹ để giáo viên biết ngay cần hoàn tất phần
+    // học sinh/nội dung còn lại.
+    openCreateSessionQuickForm(dateStr, startTime, endTime) {
+        document.getElementById('sessionDate').value = dateStr;
+        document.getElementById('sessionStartTime').value = startTime;
+        document.getElementById('sessionEndTime').value = endTime;
+        // Kích hoạt lại đúng handler tính "Số giờ học" tự động đã gắn sẵn trên input giờ kết thúc
+        document.getElementById('sessionEndTime').dispatchEvent(new Event('change'));
+
+        const card = document.getElementById('logger-form-card');
+        if (card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            card.classList.remove('form-highlight-flash');
+            // Buộc trình duyệt tính lại style trước khi thêm class, để animation luôn chạy lại được dù bấm liên tiếp
+            void card.offsetWidth;
+            card.classList.add('form-highlight-flash');
+            setTimeout(() => card.classList.remove('form-highlight-flash'), 1400);
+        }
+        const searchInput = document.getElementById('studentsCheckboxSearch');
+        if (searchInput) setTimeout(() => searchInput.focus(), 450);
+    }
+
     async handleLogSession() {
         const type = document.getElementById('sessionType').value;
         const sessionName = document.getElementById('sessionName').value.trim();
@@ -2789,12 +3405,26 @@ class PinkyClassApp {
             this.setBtnLoading('saveSessionBtn', false);
         }
 
+        // Nếu giáo viên có bật "Lặp lại buổi học" và đã thêm ít nhất 1 ngày,
+        // tự động tạo thêm các buổi học giống hệt cho từng ngày đó.
+        const repeatToggleEl = document.getElementById('sessionRepeatToggle');
+        if (repeatToggleEl && repeatToggleEl.checked && this.repeatExtraDates.length > 0) {
+            await this.createRepeatedSessions(newSession, this.repeatExtraDates);
+        }
+
         // Reset form
         document.getElementById('sessionLoggerForm').reset();
         delete document.getElementById('sessionPrice').dataset.userEdited;
         const today = this.toISODateOnly(new Date());
         document.getElementById('sessionDate').value = today;
         this.renderStudentSelectionGrid('studentsCheckboxGrid');
+
+        // Reset trạng thái "Lặp lại buổi học"
+        this.repeatExtraDates = [];
+        this.renderRepeatDatesChips();
+        if (repeatToggleEl) repeatToggleEl.checked = false;
+        const repeatPanelEl = document.getElementById('repeatDatesPanel');
+        if (repeatPanelEl) repeatPanelEl.style.display = 'none';
 
         this.showToast("Đã ghi nhận buổi học mới thành công!", "success");
     }
@@ -2820,46 +3450,14 @@ class PinkyClassApp {
         editPriceEl.dataset.userEdited = 'true'; // giữ đúng giá đã lưu, không để bị tự động ghi đè
         document.getElementById('editSessionContent').value = sess.content || '';
 
-        // Dựng lại danh sách checkbox học sinh, đánh dấu các em đang tham gia
-        const grid = document.getElementById('editStudentsCheckboxGrid');
-        grid.innerHTML = '';
+        // Dựng lại danh sách checkbox học sinh (gom theo lớp), đánh dấu các
+        // em đang tham gia — dùng chung hàm renderStudentSelectionGrid với
+        // form tạo mới để không lặp lại logic 2 lần.
         // Reset lại ô tìm kiếm mỗi lần mở modal Sửa buổi học để luôn thấy đủ
         // danh sách học sinh trước khi lọc lại nếu cần.
         const searchInput = document.getElementById('editStudentsCheckboxSearch');
         if (searchInput) searchInput.value = '';
-        this.students.forEach(st => {
-            const label = document.createElement('label');
-            label.className = 'student-check-item';
-
-            const classNumberOnly = (st.class || '').replace(/lớp/i, '').trim();
-            label.dataset.search = this.removeVietnameseTones(`${st.name} ${st.class} ${classNumberOnly}`);
-
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.value = st.id;
-            checkbox.name = 'editSessionStudents';
-            
-            if (sess.studentIds.includes(st.id)) {
-                checkbox.checked = true;
-            }
-
-            checkbox.addEventListener('change', () => {
-                const isPrivate = document.getElementById('editSessionType').value !== 'chung';
-                if (isPrivate && checkbox.checked) {
-                    grid.querySelectorAll('input[type="checkbox"]').forEach(other => {
-                        if (other !== checkbox) other.checked = false;
-                    });
-                }
-                this.updateSessionPricing('editSession');
-            });
-
-            const span = document.createElement('span');
-            span.innerText = `${st.name} - ${st.class}`;
-            
-            label.appendChild(checkbox);
-            label.appendChild(span);
-            grid.appendChild(label);
-        });
+        this.renderStudentSelectionGrid('editStudentsCheckboxGrid', sess.studentIds);
 
         this.applySessionTypeRules('editSession');
         this.openModal('editSessionModal');

@@ -448,7 +448,7 @@ img, svg, video {
     pointer-events: none;
 }
 
-.login-input {
+.login-input-wrap .login-input {
     width: 100%;
     padding: 12px 14px 12px 42px;
     border-radius: 14px;
@@ -458,7 +458,7 @@ img, svg, video {
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
-.login-input:focus {
+.login-input-wrap .login-input:focus {
     outline: none;
     border-color: var(--primary);
     background: #fff;
@@ -1807,17 +1807,107 @@ textarea.form-control {
     margin-bottom: 8px;
 }
 
-/* Multi-select check grid for student selection in session scheduler */
+/* Khung chọn học sinh — nay là danh sách các NHÓM LỚP xếp chồng (mỗi nhóm
+   thu gọn/mở rộng được), thay vì 1 lưới phẳng toàn bộ học sinh — để đỡ rối
+   mắt và dễ tìm khi giáo viên dạy nhiều lớp/nhiều học sinh. */
 .student-check-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
     border: 1px solid rgba(var(--primary-rgb), 0.2);
     border-radius: 12px;
-    padding: 12px;
-    max-height: 150px;
+    padding: 10px;
+    max-height: 260px;
     overflow-y: auto;
     background: var(--primary-soft);
+}
+
+.student-class-group {
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.55);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.student-class-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 6px 5px 4px;
+}
+
+.student-class-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 4px;
+    font-family: inherit;
+    color: var(--text-main);
+    border-radius: 6px;
+    transition: var(--transition-fast);
+}
+
+.student-class-toggle-btn:hover {
+    background: var(--primary-light);
+}
+
+.student-class-toggle-btn .chevron-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    transition: transform 0.18s ease;
+    color: var(--primary);
+}
+
+.student-class-group.is-collapsed .student-class-toggle-btn .chevron-icon {
+    transform: rotate(-90deg);
+}
+
+.student-class-name {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.student-class-count {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.student-class-select-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.student-class-select-all input[type="checkbox"] {
+    accent-color: var(--primary);
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+}
+
+.student-class-select-all input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+}
+
+.student-class-group-body {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 6px;
+    padding: 2px 6px 8px;
 }
 
 .student-check-item {
@@ -1844,6 +1934,119 @@ textarea.form-control {
 .student-check-item span {
     font-size: 0.8125rem;
     font-weight: 500;
+}
+
+/* ---- Lặp lại buổi học trong tháng (chọn thêm từng ngày thủ công) ---- */
+.repeat-session-section {
+    border: 1px dashed rgba(var(--primary-rgb), 0.3);
+    border-radius: 12px;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.4);
+}
+
+.repeat-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8438rem;
+    font-weight: 600;
+    color: var(--text-main);
+    cursor: pointer;
+    user-select: none;
+}
+
+.repeat-toggle-label input[type="checkbox"] {
+    accent-color: var(--primary);
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.repeat-dates-panel {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(var(--primary-rgb), 0.15);
+}
+
+.repeat-dates-add-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.repeat-dates-add-row input[type="date"] {
+    max-width: 180px;
+}
+
+.repeat-dates-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.repeat-date-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary-soft);
+    color: var(--primary);
+    border: 1px solid rgba(var(--primary-rgb), 0.25);
+    border-radius: 999px;
+    padding: 5px 8px 5px 12px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.repeat-date-chip button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--primary);
+    font-size: 0.9rem;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 50%;
+    transition: var(--transition-fast);
+}
+
+.repeat-date-chip button:hover {
+    background: rgba(var(--primary-rgb), 0.18);
+}
+
+.repeat-dates-hint {
+    margin: 10px 0 0;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* ---- Kéo-chọn khung giờ trống trên Lịch tuần để tạo ca học mới ---- */
+.week-day-column {
+    cursor: crosshair;
+}
+
+.week-create-preview {
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    background: rgba(var(--primary-rgb), 0.16);
+    border: 1.5px dashed var(--primary);
+    border-radius: 8px;
+    pointer-events: none;
+    z-index: 4;
+}
+
+/* Nhấp nháy nhẹ để thu hút chú ý vào form "Ghi Buổi Học Mới" sau khi kéo-chọn
+   xong 1 khung giờ trên lịch tuần (form đã được điền sẵn ngày/giờ). */
+.form-highlight-flash {
+    animation: formHighlightPulse 1.4s ease;
+}
+
+@keyframes formHighlightPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0.55); }
+    30%  { box-shadow: 0 0 0 8px rgba(var(--primary-rgb), 0.18); }
+    100% { box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0); }
 }
 
 /* Alert Notification Banner */
@@ -1987,6 +2190,156 @@ textarea.form-control {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+/* ---- Bộ chuyển đổi kiểu xem lịch: Ngày / Tuần / Tháng ---- */
+.calendar-view-switcher {
+    display: inline-flex;
+    background: var(--primary-soft);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 2px;
+}
+
+.cal-view-btn {
+    border: none;
+    background: none;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    font-family: inherit;
+}
+
+.cal-view-btn:hover {
+    color: var(--primary);
+}
+
+.cal-view-btn.active {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: var(--shadow-sm);
+}
+
+/* ---- Chế độ xem Tháng: lưới ô ngày truyền thống ---- */
+.month-calendar-grid {
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    overflow: hidden;
+    background: white;
+}
+
+.month-weekday-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: #f8fafc;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.month-weekday-label {
+    padding: 10px 6px;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.month-days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-auto-rows: minmax(96px, auto);
+}
+
+.month-day-cell {
+    border-left: 1px solid var(--border-color);
+    border-top: 1px solid var(--border-color);
+    padding: 6px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow: hidden;
+}
+
+.month-day-cell:hover {
+    background: var(--primary-light);
+}
+
+.month-day-cell.is-outside-month {
+    background: #fafafa;
+    opacity: 0.55;
+}
+
+.month-day-cell.is-today .month-day-number {
+    background: var(--primary);
+    color: #fff;
+}
+
+.month-day-number {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-main);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.month-day-events {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+}
+
+.month-day-event {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: white;
+    padding: 2px 5px;
+    border-radius: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.month-day-event.type-rieng {
+    background: var(--primary);
+}
+
+.month-day-event.type-chung {
+    background: var(--accent-strong, var(--primary));
+}
+
+.month-day-more {
+    font-size: 0.6562rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    padding: 0 4px;
+}
+
+.month-day-count-badge {
+    display: none;
+    font-size: 0.6562rem;
+    font-weight: 700;
+    color: var(--primary);
+    background: var(--primary-soft);
+    border-radius: 999px;
+    padding: 1px 6px;
+    align-self: flex-start;
+}
+
+@media (max-width: 720px) {
+    .month-days-grid { grid-auto-rows: minmax(56px, auto); }
+    .month-day-events { display: none; }
+    .month-day-count-badge { display: inline-block; }
 }
 
 .week-range-label {

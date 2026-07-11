@@ -490,6 +490,22 @@
                         <textarea id="sessionContent" class="form-control" placeholder="Ví dụ: Ôn tam giác, luyện bài tập đại số, chữa đề...&#10;BTVN: Phiếu 8.1" rows="3"></textarea>
                     </div>
 
+                    <!-- Lặp lại buổi học trong tháng (chọn thêm từng ngày thủ công) -->
+                    <div class="form-group form-group-full repeat-session-section">
+                        <label class="repeat-toggle-label">
+                            <input type="checkbox" id="sessionRepeatToggle">
+                            <span>Lặp lại buổi học này vào (các) ngày khác trong tháng</span>
+                        </label>
+                        <div id="repeatDatesPanel" class="repeat-dates-panel" style="display:none;">
+                            <div class="repeat-dates-add-row">
+                                <input type="date" id="repeatExtraDateInput" class="form-control">
+                                <button type="button" class="btn btn-secondary btn-sm" id="addRepeatDateBtn">+ Thêm ngày</button>
+                            </div>
+                            <div id="repeatDatesList" class="repeat-dates-chips"></div>
+                            <p class="repeat-dates-hint">Chỉ thêm được các ngày trong CÙNG THÁNG với "Ngày học" ở trên. Mỗi ngày thêm vào sẽ tự tạo thêm 1 buổi học giống hệt (cùng giờ, học sinh, học phí, nội dung).</p>
+                        </div>
+                    </div>
+
                     <div class="form-group form-group-full" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
                         <button type="button" class="btn btn-secondary" id="resetLoggerFormBtn">Xóa form
                         </button>
@@ -502,8 +518,13 @@
             <!-- Weekly calendar view of scheduled sessions (Image 4 format) -->
             <div class="glass-card" style="padding: 24px;">
                 <div class="evaluation-header" style="margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                    <h3 style="color: var(--primary); font-weight: 700; display: flex; align-items: center; gap: 10px; margin: 0;"> Lịch Dạy Theo Tuần
+                    <h3 style="color: var(--primary); font-weight: 700; display: flex; align-items: center; gap: 10px; margin: 0;" id="calendarSectionTitle"> Lịch Dạy Theo Tuần
                     </h3>
+                    <div class="calendar-view-switcher" role="group" aria-label="Chọn kiểu xem lịch">
+                        <button type="button" class="cal-view-btn" data-view="day">Ngày</button>
+                        <button type="button" class="cal-view-btn active" data-view="week">Tuần</button>
+                        <button type="button" class="cal-view-btn" data-view="month">Tháng</button>
+                    </div>
                     <div class="week-nav-controls">
                         <button class="btn btn-secondary btn-sm" id="prevWeekBtn">Tuần trước</button>
                         <button class="btn btn-secondary btn-sm" id="todayWeekBtn">Tuần này</button>
@@ -512,7 +533,7 @@
                     </div>
                 </div>
 
-                <!-- mini statistics banner (tính theo tuần đang xem) -->
+                <!-- mini statistics banner (tính theo khoảng thời gian đang xem: ngày/tuần/tháng) -->
                 <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
                     <div class="glass-card" style="padding: 12px; text-align: center; border-radius: 12px;">
                         <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Tổng buổi</div>
@@ -532,13 +553,16 @@
                     </div>
                 </div>
 
-                <!-- Weekly calendar grid: filled dynamically by JS (header row + hour rows + event blocks) -->
+                <!-- Chế độ Ngày/Tuần: lưới giờ. Filled dynamically by JS (header row + hour rows + event blocks) -->
                 <div class="week-calendar-wrapper" id="weekCalendarWrapper">
                     <div class="week-calendar-scroll">
                         <div class="week-calendar-header-row" id="weekCalendarHeaderRow"></div>
                         <div class="week-calendar-body" id="weekCalendarBody"></div>
                     </div>
                 </div>
+
+                <!-- Chế độ Tháng: lưới ô ngày truyền thống. Filled dynamically by JS -->
+                <div class="month-calendar-grid" id="monthCalendarGrid" style="display:none;"></div>
             </div>
         </section>
 
