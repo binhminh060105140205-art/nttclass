@@ -1049,8 +1049,10 @@ img, svg, video {
     display: flex;
     flex-direction: row;
     overflow-x: auto;
+    overflow-y: hidden;
     gap: 8px;
     flex-grow: 1;
+    min-height: 0; /* lets the container shrink instead of forcing children to stretch */
     margin-top: 15px;
     padding-bottom: 5px;
 }
@@ -1058,6 +1060,7 @@ img, svg, video {
 .menu-item {
     display: flex;
     align-items: center;
+    justify-content: flex-start;
     gap: 14px;
     padding: 12px 16px;
     border-radius: 12px;
@@ -1067,6 +1070,7 @@ img, svg, video {
     font-size: 0.9375rem;
     cursor: pointer;
     transition: var(--transition-normal);
+    flex: 0 0 auto; /* never grow/shrink to fill leftover space in the flex row/column */
 }
 
 .menu-item i {
@@ -1077,12 +1081,25 @@ img, svg, video {
     transition: var(--transition-fast);
 }
 
+/* SVG icon used inside each nav link (replaces the old icon-font <i>).
+   flex-shrink: 0 keeps it a fixed 20x20 box no matter how the parent
+   flexbox resizes, which is what stops the item from stretching when
+   the sidebar is squeezed at in-between widths. */
+.menu-item .menu-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    color: var(--text-muted);
+    transition: var(--transition-fast);
+}
+
 .menu-item:hover {
     background: rgba(var(--primary-rgb), 0.1);
     color: var(--accent-strong);
 }
 
-.menu-item:hover i {
+.menu-item:hover i,
+.menu-item:hover .menu-icon {
     color: var(--primary);
 }
 
@@ -1092,7 +1109,8 @@ img, svg, video {
     box-shadow: 0 6px 18px rgba(var(--primary-rgb), 0.2);
 }
 
-.menu-item.active i {
+.menu-item.active i,
+.menu-item.active .menu-icon {
     color: white;
 }
 
@@ -2933,6 +2951,7 @@ textarea.form-control {
     .sidebar-menu {
         flex-direction: column;
         overflow-x: visible;
+        overflow-y: auto;
         margin-top: 0;
         padding-bottom: 0;
     }
@@ -2942,6 +2961,7 @@ textarea.form-control {
     .menu-item {
         justify-content: center;
         padding: 12px;
+        gap: 0;
     }
     .main-content {
         margin-left: 80px;
@@ -2983,6 +3003,7 @@ textarea.form-control {
     .menu-item {
         justify-content: flex-start;
         padding: 12px 16px;
+        gap: 14px;
     }
     .main-content {
         margin-left: 280px;
