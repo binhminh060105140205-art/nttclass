@@ -301,10 +301,10 @@
                                 <tr>
                                     <th style="width: 80px;">STT</th>
                                     <th style="width: 80px;">NGÀY</th>
-                                    <th class="col-content">NỘI DUNG BUỔI HỌC</th>
+                                    <th class="col-content-compact">NỘI DUNG BUỔI HỌC</th>
                                     <th style="width: 120px;">BÀI TẬP VỀ NHÀ</th>
                                     <th style="width: 100px;">Ý THỨC</th>
-                                    <th>NHẬN XÉT CỦA GIÁO VIÊN</th>
+                                    <th class="col-comment">NHẬN XÉT CỦA GIÁO VIÊN</th>
                                     <th style="width: 100px;">GHI CHÚ</th>
                                     <th style="width: 80px;" class="role-restricted admin-tutor log-export-hide">THAO TÁC</th>
                                 </tr>
@@ -799,11 +799,13 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="updateHomework">Bài tập về nhà</label>
+                        <label for="updateHomework">Bài tập về nhà — mức hoàn thành</label>
                         <select id="updateHomework" class="form-control">
-                            <option value="Chưa làm">Không hoàn thành</option>
-                            <option value="Chưa hoàn thành">Chưa hoàn thành</option>
-                            <option value="Hoàn thành">Hoàn thành</option>
+                            <option value="0%">0%</option>
+                            <option value="30%">30%</option>
+                            <option value="50%">50%</option>
+                            <option value="70%">70%</option>
+                            <option value="100%">100%</option>
                         </select>
                     </div>
 

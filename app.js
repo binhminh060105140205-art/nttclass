@@ -1716,17 +1716,15 @@ class PinkyClassApp {
         studentSessions.forEach((sess, idx) => {
             const tr = document.createElement('tr');
 
-            const detail = sess.studentDetails[studentId] || { homework: 'Chưa làm', attitude: 'Tốt', individualComment: '', note: '' };
+            const detail = sess.studentDetails[studentId] || { homework: '0%', attitude: 'Tốt', individualComment: '', note: '' };
 
             // BÀI TẬP VỀ NHÀ: chỉ HIỂN THỊ (badge tĩnh), không cho sửa trực
             // tiếp ở bảng này nữa — giá trị luôn lấy từ dữ liệu chấm công đã
             // nhập ở Lịch dạy & Chấm công (quick entry) hoặc modal "Đánh giá".
-            // Màu theo mức độ nghiêm trọng: "Không hoàn thành" (hoàn toàn chưa
-            // làm gì) dùng màu đỏ cảnh báo mạnh hơn; "Chưa hoàn thành" (làm dở/
-            // chưa xong) dùng màu xanh nhạt trung tính hơn.
-            let hwClass = 'not-done'; // mặc định ('Chưa làm' cũ / Không hoàn thành) -> đỏ
-            if (detail.homework === 'Hoàn thành') hwClass = 'done';
-            if (detail.homework === 'Chưa hoàn thành') hwClass = 'pending';
+            // Giá trị lưu là MỨC % HOÀN THÀNH (0% / 30% / 50% / 70% / 100%),
+            // màu badge đi theo mức độ: 100% xanh (done), 50-70% vàng
+            // (pending), 0-30% đỏ (not-done).
+            const hwClass = this.getHomeworkClass(detail.homework);
             const homeworkBadge = `<span class="homework-badge ${hwClass}">${this.getHomeworkLabel(detail.homework)}</span>`;
 
             // Session Date display: dòng trên "Thứ 7", dòng dưới "23/05" (không gạch ngang)
@@ -1751,7 +1749,7 @@ class PinkyClassApp {
                     <span class="session-time-val">${sess.startTime} - ${sess.endTime}</span>
                 </td>
                 <td class="session-date-cell">${dateStr}</td>
-                <td class="col-content">${contentHTML}</td>
+                <td class="col-content-compact">${contentHTML}</td>
                 <td style="text-align:center;">${homeworkBadge}</td>
                 <td><strong>${detail.attitude || 'Tập trung'}</strong></td>
                 <td>${commentHTML}</td>
@@ -1763,12 +1761,37 @@ class PinkyClassApp {
         });
     }
 
-    // Chuyển giá trị lưu trong DB (giữ nguyên để tương thích ngược) thành
-    // nhãn hiển thị đúng 3 lựa chọn cố định theo yêu cầu UI mới.
+    // Danh sách các mức hoàn thành BTVN có thể chọn.
+    getHomeworkLevels() {
+        return ['0%', '30%', '50%', '70%', '100%'];
+    }
+
+    // Chuẩn hóa giá trị BTVN lưu trong DB về đúng 1 trong 5 mức % cố định.
+    // Vẫn hiểu được dữ liệu CŨ (dạng chữ: "Chưa làm" / "Chưa hoàn thành" /
+    // "Hoàn thành") để không vỡ báo cáo của các buổi học đã nhập từ trước.
+    normalizeHomeworkValue(value) {
+        const legacyMap = {
+            'Chưa làm': '0%',
+            'Chưa hoàn thành': '50%',
+            'Hoàn thành': '100%'
+        };
+        if (legacyMap[value]) return legacyMap[value];
+        if (this.getHomeworkLevels().includes(value)) return value;
+        return '0%';
+    }
+
+    // Nhãn hiển thị = chính mức % đã chuẩn hóa.
     getHomeworkLabel(value) {
-        if (value === 'Hoàn thành') return 'Hoàn thành';
-        if (value === 'Chưa hoàn thành') return 'Chưa hoàn thành';
-        return 'Không hoàn thành'; // giá trị cũ 'Chưa làm' hoặc rỗng
+        return this.normalizeHomeworkValue(value);
+    }
+
+    // Màu badge theo mức độ hoàn thành: 100% -> xanh (done),
+    // 50%/70% -> vàng (pending), 0%/30% -> đỏ (not-done).
+    getHomeworkClass(value) {
+        const percent = parseInt(this.normalizeHomeworkValue(value), 10) || 0;
+        if (percent >= 100) return 'done';
+        if (percent >= 50) return 'pending';
+        return 'not-done';
     }
 
     // Escape + giữ xuống dòng khi hiển thị text thuần (không bullet)
@@ -1951,8 +1974,9 @@ class PinkyClassApp {
             let done = 0, pending = 0, notDone = 0;
             relevantSessions.forEach(sess => {
                 const hw = (sess.studentDetails[studentId] || {}).homework;
-                if (hw === 'Hoàn thành') done++;
-                else if (hw === 'Chưa hoàn thành') pending++;
+                const hwClass = this.getHomeworkClass(hw);
+                if (hwClass === 'done') done++;
+                else if (hwClass === 'pending') pending++;
                 else notDone++;
             });
 
@@ -1960,7 +1984,7 @@ class PinkyClassApp {
             this.charts.pie = new Chart(pieCanvas, {
                 type: 'pie',
                 data: {
-                    labels: ['Hoàn thành', 'Chưa hoàn thành', 'Không hoàn thành'],
+                    labels: ['Hoàn thành (100%)', 'Đang làm (50-70%)', 'Chưa làm (0-30%)'],
                     datasets: [{
                         data: [done, pending, notDone],
                         backgroundColor: ['#16a34a', '#f59e0b', '#dc2626']
@@ -2566,20 +2590,21 @@ class PinkyClassApp {
         // tạo lấy từ studentDetails hiện có của đúng em đó (nếu có).
         const listWrap = document.getElementById('quickEntryStudentsList');
         listWrap.innerHTML = sess.studentIds.map(stId => {
-            const detail = sess.studentDetails[stId] || { homework: 'Chưa làm', attitude: '', individualComment: '', note: '' };
+            const detail = sess.studentDetails[stId] || { homework: '0%', attitude: '', individualComment: '', note: '' };
             const name = this.getStudentName(stId);
-            const homeworkVal = detail.homework || 'Chưa làm';
+            const homeworkVal = this.normalizeHomeworkValue(detail.homework);
             const attitude = detail.attitude === 'Tốt' ? '' : (detail.attitude || '');
+            const homeworkOptionsHTML = this.getHomeworkLevels().map(level =>
+                `<option value="${level}" ${homeworkVal === level ? 'selected' : ''}>${level}</option>`
+            ).join('');
             return `
                 <div class="qe-student-card" data-student-id="${stId}">
                     <div class="qe-student-name">${this.escapeHtml(name)}</div>
                     <div class="qe-field-grid">
                         <div>
-                            <label>Bài tập về nhà (BTVN)</label>
+                            <label>Bài tập về nhà (BTVN) — mức hoàn thành</label>
                             <select class="qe-homework">
-                                <option value="Chưa làm" ${homeworkVal === 'Chưa làm' ? 'selected' : ''}>Không hoàn thành</option>
-                                <option value="Chưa hoàn thành" ${homeworkVal === 'Chưa hoàn thành' ? 'selected' : ''}>Chưa hoàn thành</option>
-                                <option value="Hoàn thành" ${homeworkVal === 'Hoàn thành' ? 'selected' : ''}>Hoàn thành</option>
+                                ${homeworkOptionsHTML}
                             </select>
                         </div>
                         <div>
@@ -2705,7 +2730,7 @@ class PinkyClassApp {
         const newStudentDetails = {};
         document.querySelectorAll('#quickEntryStudentsList .qe-student-card').forEach(card => {
             const stId = card.getAttribute('data-student-id');
-            const homework = card.querySelector('.qe-homework').value.trim() || 'Chưa làm';
+            const homework = card.querySelector('.qe-homework').value.trim() || '0%';
             const attitude = card.querySelector('.qe-attitude').value.trim() || 'Tốt';
             const individualComment = card.querySelector('.qe-comment').value.trim();
             const note = card.querySelector('.qe-note').value.trim();
@@ -3175,7 +3200,7 @@ class PinkyClassApp {
 
             const clonedStudentDetails = {};
             Object.keys(baseSession.studentDetails || {}).forEach(stId => {
-                clonedStudentDetails[stId] = { homework: "Chưa làm", attitude: "Tốt", individualComment: "", note: "" };
+                clonedStudentDetails[stId] = { homework: "0%", attitude: "Tốt", individualComment: "", note: "" };
             });
 
             const repeatedSession = {
@@ -3403,7 +3428,7 @@ class PinkyClassApp {
         const studentDetails = {};
         studentIds.forEach(stId => {
             studentDetails[stId] = {
-                homework: "Chưa làm",
+                homework: "0%",
                 attitude: "Tốt",
                 individualComment: "",
                 note: ""
@@ -3574,7 +3599,7 @@ class PinkyClassApp {
                 newStudentDetails[stId] = sess.studentDetails[stId];
             } else {
                 newStudentDetails[stId] = {
-                    homework: "Chưa làm",
+                    homework: "0%",
                     attitude: "Tốt",
                     individualComment: "",
                     note: ""
@@ -3660,7 +3685,7 @@ class PinkyClassApp {
         document.getElementById('updateLogStudentMeta').innerText = `Học sinh: ${this.getStudentName(studentId)} (${this.getStudentClass(studentId)})`;
         document.getElementById('updateLogSessionMeta').innerText = `Buổi ngày ${this.formatDateVN(sess.date)} | Ca ${sess.startTime} - ${sess.endTime}`;
 
-        document.getElementById('updateHomework').value = detail.homework || 'Chưa làm';
+        document.getElementById('updateHomework').value = this.normalizeHomeworkValue(detail.homework);
         document.getElementById('updateAttitude').value = detail.attitude || 'Tốt';
         document.getElementById('updateGeneralComment').value = sess.generalComment || '';
         document.getElementById('updateIndividualComment').value = detail.individualComment || '';
@@ -3795,14 +3820,52 @@ class PinkyClassApp {
         }
 
         const captureEl = document.getElementById('logExportCapture');
+        const tableWrapperEl = captureEl.querySelector('.table-wrapper');
+
         this.setBtnLoading('btnExportLogImage', true, 'Đang tạo ảnh...');
         captureEl.classList.add('is-exporting');
+
+        // FIX: trước đây khi màn hình không đủ rộng để hiển thị hết bảng
+        // (bảng phải cuộn ngang trong .table-wrapper, hoặc trang đang cuộn
+        // dọc dở), html2canvas chỉ chụp đúng phần đang HIỂN THỊ trên màn
+        // hình (theo scroll hiện tại) => ảnh xuất ra bị cắt/thiếu y hệt
+        // những gì đang bị che trên UI. Cách khắc phục: tạm thời ép khung
+        // chụp hiển thị TOÀN BỘ nội dung (không giới hạn theo viewport hay
+        // vị trí cuộn), chụp xong thì khôi phục lại giao diện như cũ.
+        const prevWrapperStyleAttr = tableWrapperEl ? tableWrapperEl.getAttribute('style') : null;
+        const prevWrapperScrollLeft = tableWrapperEl ? tableWrapperEl.scrollLeft : 0;
+        const prevWindowScrollX = window.scrollX;
+        const prevWindowScrollY = window.scrollY;
+
+        if (tableWrapperEl) {
+            tableWrapperEl.scrollLeft = 0;
+            tableWrapperEl.style.overflow = 'visible';
+            tableWrapperEl.style.width = 'max-content';
+            tableWrapperEl.style.maxWidth = 'none';
+        }
+        // Cuộn trang về đầu để html2canvas không lấy nhầm gốc tọa độ theo
+        // vị trí cuộn dọc hiện tại của trang.
+        window.scrollTo(0, 0);
+
         try {
             const html2canvas = await this.ensureHtml2Canvas();
+
+            // Đo lại kích thước ĐẦY ĐỦ của khung sau khi đã bỏ giới hạn cuộn,
+            // rồi truyền thẳng cho html2canvas để nó render đúng toàn bộ nội
+            // dung (không cắt theo clientWidth/clientHeight của khung).
+            const fullWidth = Math.ceil(captureEl.scrollWidth);
+            const fullHeight = Math.ceil(captureEl.scrollHeight);
+
             const canvas = await html2canvas(captureEl, {
                 scale: 2,
                 backgroundColor: '#ffffff',
-                useCORS: true
+                useCORS: true,
+                width: fullWidth,
+                height: fullHeight,
+                windowWidth: fullWidth,
+                windowHeight: fullHeight,
+                scrollX: 0,
+                scrollY: 0
             });
 
             const todayStr = this.toISODateOnly(new Date());
@@ -3816,6 +3879,16 @@ class PinkyClassApp {
             console.error('Lỗi xuất ảnh:', err);
             this.showToast(err.message || "Xuất ảnh thất bại, vui lòng thử lại.", "error");
         } finally {
+            // Khôi phục lại giao diện cuộn ngang/dọc như trước khi chụp.
+            if (tableWrapperEl) {
+                if (prevWrapperStyleAttr === null) {
+                    tableWrapperEl.removeAttribute('style');
+                } else {
+                    tableWrapperEl.setAttribute('style', prevWrapperStyleAttr);
+                }
+                tableWrapperEl.scrollLeft = prevWrapperScrollLeft;
+            }
+            window.scrollTo(prevWindowScrollX, prevWindowScrollY);
             captureEl.classList.remove('is-exporting');
             this.setBtnLoading('btnExportLogImage', false);
         }
