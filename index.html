@@ -687,6 +687,7 @@
                                 <th>Họ và Tên</th>
                                 <th>Lớp học</th>
                                 <th>Môn học</th>
+                                <th style="text-align: center; width: 120px;">Ngày sinh</th>
                                 <th class="role-restricted admin-only" style="text-align: right;">Học phí cơ bản / buổi</th>
                                 <th style="text-align: center; width: 180px;">Thao tác</th>
                             </tr>
@@ -760,6 +761,10 @@
                         <div class="form-group">
                             <label for="studentSubject">Môn học <span style="color:red;">*</span></label>
                             <input type="text" id="studentSubject" class="form-control" placeholder="Ví dụ: Toán" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="studentDob">Ngày sinh</label>
+                            <input type="date" id="studentDob" class="form-control">
                         </div>
                         <div class="form-group form-group-half">
                             <label for="studentBasePrice">Đơn giá học phí/buổi (VNĐ) <span style="color:red;">*</span></label>

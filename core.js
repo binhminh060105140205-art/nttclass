@@ -160,6 +160,9 @@ class PinkyClassApp {
             subject: s.Subject,
             basePrice: s.BasePrice,
             teacherId: s.TeacherId,
+            // Ngày sinh (yyyy-mm-dd, khớp trực tiếp với <input type="date">) —
+            // có thể null với học sinh cũ chưa nhập.
+            dob: s.DateOfBirth || null,
             // Thông tin tài khoản đăng nhập riêng của học sinh (nếu có) — dùng
             // để hiển thị trạng thái "Đã có tài khoản / Chưa có" cho giáo viên.
             username: s.Username || null,

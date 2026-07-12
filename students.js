@@ -17,7 +17,7 @@ Object.assign(PinkyClassApp.prototype, {
         if (list.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6" style="text-align: center; padding: 30px; color: var(--text-muted);">
+                    <td colspan="7" style="text-align: center; padding: 30px; color: var(--text-muted);">
                         Chưa có học sinh nào${gradeFilter ? ' trong khối lớp này' : ''}. Bấm nút phía trên để thêm mới!
                     </td>
                 </tr>
@@ -39,7 +39,7 @@ Object.assign(PinkyClassApp.prototype, {
                 lastGrade = st.gradeLevel;
                 const groupRow = document.createElement('tr');
                 groupRow.innerHTML = `
-                    <td colspan="6" style="background:var(--primary-soft); color:var(--primary); font-weight:700; padding:8px 14px; font-size:13px;"> ${st.gradeLevel ? 'Lớp ' + st.gradeLevel : 'Chưa xác định khối lớp'}
+                    <td colspan="7" style="background:var(--primary-soft); color:var(--primary); font-weight:700; padding:8px 14px; font-size:13px;"> ${st.gradeLevel ? 'Lớp ' + st.gradeLevel : 'Chưa xác định khối lớp'}
                     </td>`;
                 tbody.appendChild(groupRow);
             }
@@ -58,11 +58,20 @@ Object.assign(PinkyClassApp.prototype, {
                 </div>
             `;
 
+            // Hiển thị ngày sinh dạng dd/mm/yyyy (dễ đọc) — "-" nếu chưa nhập
+            // (học sinh cũ trước khi có tính năng này).
+            const dobLabel = (() => {
+                if (!st.dob) return '-';
+                const [y, m, d] = st.dob.split('-');
+                return `${d}/${m}/${y}`;
+            })();
+
             tr.innerHTML = `
                 <td style="text-align:center; font-weight:700; color:var(--text-muted);">${idx + 1}</td>
                 <td><strong>${st.name}</strong></td>
                 <td>${st.class}</td>
                 <td><span class="badge" style="background:var(--primary-soft); color:var(--primary); border-color:var(--primary-light);">${st.subject}</span></td>
+                <td style="text-align:center;">${dobLabel}</td>
                 <td class="role-restricted admin-only" style="text-align:right; font-weight:700;">${this.formatVND(st.basePrice)}</td>
                 <td style="text-align:center;">${actionsHTML}</td>
             `;
@@ -99,6 +108,7 @@ Object.assign(PinkyClassApp.prototype, {
         document.getElementById('studentName').value = student.name;
         document.getElementById('studentGrade').value = student.gradeLevel || 8;
         document.getElementById('studentSubject').value = student.subject;
+        document.getElementById('studentDob').value = student.dob || '';
         document.getElementById('studentBasePrice').value = student.basePrice;
         this.openModal('addStudentModal');
     },
@@ -145,6 +155,9 @@ Object.assign(PinkyClassApp.prototype, {
         const gradeLevel = parseInt(document.getElementById('studentGrade').value);
         const sClass = `Lớp ${gradeLevel}`;
         const subject = document.getElementById('studentSubject').value.trim();
+        // Ngày sinh — không bắt buộc, để trống nếu chưa muốn nhập. Giá trị
+        // input[type=date] đã sẵn ở dạng "yyyy-mm-dd" nên gửi thẳng lên API.
+        const dob = document.getElementById('studentDob').value || null;
         const basePrice = parseInt(document.getElementById('studentBasePrice').value);
 
         if (!name || !gradeLevel || !subject) return;
@@ -156,7 +169,7 @@ Object.assign(PinkyClassApp.prototype, {
             return;
         }
 
-        const payload = { name, class: sClass, gradeLevel, subject, basePrice };
+        const payload = { name, class: sClass, gradeLevel, subject, basePrice, dateOfBirth: dob };
 
         this.setBtnLoading('saveStudentBtn', true, editId ? 'Đang cập nhật...' : 'Đang thêm...');
         try {
@@ -182,11 +195,17 @@ Object.assign(PinkyClassApp.prototype, {
             await this.loadData();
         } catch (err) {
             console.warn("API lỗi, cập nhật offline: ", err.message);
+            // payload dùng key "dateOfBirth" để khớp với API, nhưng phần còn lại
+            // của app (openEditStudentModal, renderStudentList...) đọc theo key
+            // "dob" (do normalizeStudent quy ước) — ánh xạ lại cho khớp khi lưu
+            // offline (không qua normalizeStudent vì không gọi API).
+            const offlinePatch = { ...payload, dob: payload.dateOfBirth };
+            delete offlinePatch.dateOfBirth;
             if (editId) {
                 const student = this.students.find(s => s.id === editId);
-                if (student) Object.assign(student, payload);
+                if (student) Object.assign(student, offlinePatch);
             } else {
-                this.students.push({ ...payload, id: payload.id || ("hs_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8)) });
+                this.students.push({ ...offlinePatch, id: payload.id || ("hs_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8)) });
             }
             await this.saveData();
         } finally {

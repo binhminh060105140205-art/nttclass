@@ -170,6 +170,30 @@ Object.assign(PinkyClassApp.prototype, {
         htmlEl.style.overflow = 'visible';
         document.body.style.overflow = 'visible';
 
+        // FIX (nguyên nhân còn sót lại): không chỉ <html>/<body> mới cắt nội
+        // dung. Nhật ký học tập thường nằm trong modal/card có overflow-y:auto
+        // + max-height theo viewport (để cuộn được trên màn hình nhỏ) — CHÍNH
+        // các thẻ cha đó (chứ không phải #logExportCapture hay .table-wrapper)
+        // mới là nơi đang "giam" phần nội dung vượt khung nhìn, nên khi thu
+        // nhỏ màn hình, phần bị che theo overflow của modal sẽ KHÔNG có mặt
+        // trong ảnh xuất ra dù .table-wrapper đã mở overflow. Cách khắc phục:
+        // duyệt ngược TẤT CẢ các phần tử cha từ #logExportCapture lên tới
+        // <body>, lưu lại style cũ của từng cha, rồi tạm gỡ overflow/max-height
+        // của toàn bộ chuỗi cha đó trong lúc chụp — chụp xong khôi phục lại
+        // y nguyên như trước.
+        const ancestors = [];
+        for (let el = captureEl.parentElement; el && el !== document.documentElement; el = el.parentElement) {
+            ancestors.push(el);
+        }
+        const prevAncestorStyleAttrs = ancestors.map(el => el.getAttribute('style'));
+        ancestors.forEach(el => {
+            el.style.overflow = 'visible';
+            el.style.overflowX = 'visible';
+            el.style.overflowY = 'visible';
+            el.style.maxHeight = 'none';
+            el.style.maxWidth = 'none';
+        });
+
         if (tableWrapperEl) {
             tableWrapperEl.scrollLeft = 0;
             tableWrapperEl.style.overflow = 'visible';
@@ -225,6 +249,16 @@ Object.assign(PinkyClassApp.prototype, {
             // để chụp đủ ảnh trên màn hình nhỏ).
             htmlEl.style.overflow = prevHtmlOverflow;
             document.body.style.overflow = prevBodyOverflow;
+            // Khôi phục lại style gốc của toàn bộ chuỗi thẻ cha (modal/card...)
+            // đã tạm gỡ overflow/max-height ở trên.
+            ancestors.forEach((el, i) => {
+                const prevAttr = prevAncestorStyleAttrs[i];
+                if (prevAttr === null) {
+                    el.removeAttribute('style');
+                } else {
+                    el.setAttribute('style', prevAttr);
+                }
+            });
             window.scrollTo(prevWindowScrollX, prevWindowScrollY);
             captureEl.classList.remove('is-exporting');
             this.setBtnLoading('btnExportLogImage', false);

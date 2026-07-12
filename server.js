@@ -102,6 +102,7 @@ const COLUMN_CASE_MAP = {
     role: 'Role', active: 'Active', assignedteacherid: 'AssignedTeacherId',
     assignedteachername: 'AssignedTeacherName', teacherid: 'TeacherId',
     class: 'Class', gradelevel: 'GradeLevel', subject: 'Subject', baseprice: 'BasePrice',
+    dateofbirth: 'DateOfBirth',
     sessiondate: 'SessionDate', starttime: 'StartTime', endtime: 'EndTime',
     sessiontype: 'SessionType', price: 'Price', duration: 'Duration',
     sessionname: 'SessionName',
@@ -174,6 +175,17 @@ const sql = {
 let poolPromise = pgPool.query('SELECT 1')
     .then(async () => {
         console.log('Đã kết nối thành công với PostgreSQL (Aiven)!');
+
+        // Self-healing migration (Ngày sinh học sinh): thêm cột DateOfBirth vào
+        // bảng Students nếu database cũ chưa có cột này, để không cần chạy lại
+        // schema-postgres.sql (sẽ xóa hết dữ liệu học sinh/buổi học hiện có).
+        // Học sinh cũ chưa có ngày sinh sẽ có giá trị NULL — không lỗi.
+        try {
+            await pgPool.query('ALTER TABLE Students ADD COLUMN IF NOT EXISTS DateOfBirth DATE');
+            console.log('Đã kiểm tra/đảm bảo cột Students.DateOfBirth tồn tại.');
+        } catch (migErr) {
+            console.error('Lỗi khi tự động thêm cột DateOfBirth:', migErr.message);
+        }
 
         // Self-healing migration: thêm cột SessionName vào bảng Sessions nếu
         // database cũ (tạo trước khi có tính năng "Tên ca học") chưa có cột
@@ -566,7 +578,7 @@ app.get('/api/students', requireRole('teacher', 'assistant'), requireTeacherCont
         // Liệt kê cột tường minh (thay vì SELECT *) để KHÔNG bao giờ trả
         // PasswordHash về cho trình duyệt, dù là của giáo viên sở hữu.
         let query = `SELECT Id, Name, Class, GradeLevel, Subject, BasePrice, TeacherId,
-                            Username, AccountActive
+                            Username, AccountActive, DateOfBirth
                      FROM Students WHERE TeacherId = @teacherId`;
         if (grade) {
             // Ưu tiên lọc theo cột GradeLevel (số nguyên, chính xác tuyệt đối).
@@ -587,7 +599,7 @@ app.get('/api/students', requireRole('teacher', 'assistant'), requireTeacherCont
 });
 
 app.post('/api/students', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
-    let { id, name, class: sClass, subject, basePrice, gradeLevel } = req.body || {};
+    let { id, name, class: sClass, subject, basePrice, gradeLevel, dateOfBirth } = req.body || {};
     console.log('[POST /api/students] body nhận được:', req.body);
 
     // Trim chuỗi để tránh lưu khoảng trắng thừa đầu/cuối (dễ gây ra 2 học
@@ -598,6 +610,14 @@ app.post('/api/students', requireRole('teacher', 'assistant'), requireTeacherCon
 
     if (!id || !name || !sClass || !subject) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
+    }
+
+    // Ngày sinh là trường TÙY CHỌN — cho phép để trống (NULL). Nếu có nhập,
+    // phải đúng định dạng "yyyy-mm-dd" (giống hệt giá trị <input type="date">
+    // trả về) để không lưu nhầm chuỗi rác vào cột DATE.
+    dateOfBirth = (dateOfBirth || '').trim() || null;
+    if (dateOfBirth && !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) {
+        return res.status(400).json({ error: 'Ngày sinh không hợp lệ.' });
     }
 
     // Học phí/buổi bắt buộc phải là số nguyên KHÔNG ÂM (>= 0, cho phép 0) —
@@ -611,14 +631,15 @@ app.post('/api/students', requireRole('teacher', 'assistant'), requireTeacherCon
     try {
         const pool = await poolPromise;
         await pool.request()
-            .input('id',         sql.VarChar,  id)
-            .input('name',       sql.NVarChar, name)
-            .input('class',      sql.NVarChar, sClass)
-            .input('gradeLevel', sql.Int,      gradeLevel ? parseInt(gradeLevel) : null)
-            .input('subject',    sql.NVarChar, subject)
-            .input('basePrice',  sql.Int,      parsedBasePrice)
-            .input('teacherId',  sql.VarChar,  req.effectiveTeacherId)
-            .query('INSERT INTO Students (Id, Name, Class, GradeLevel, Subject, BasePrice, TeacherId) VALUES (@id, @name, @class, @gradeLevel, @subject, @basePrice, @teacherId)');
+            .input('id',          sql.VarChar,  id)
+            .input('name',        sql.NVarChar, name)
+            .input('class',       sql.NVarChar, sClass)
+            .input('gradeLevel',  sql.Int,      gradeLevel ? parseInt(gradeLevel) : null)
+            .input('subject',     sql.NVarChar, subject)
+            .input('basePrice',   sql.Int,      parsedBasePrice)
+            .input('teacherId',   sql.VarChar,  req.effectiveTeacherId)
+            .input('dateOfBirth', sql.Date,     dateOfBirth)
+            .query('INSERT INTO Students (Id, Name, Class, GradeLevel, Subject, BasePrice, TeacherId, DateOfBirth) VALUES (@id, @name, @class, @gradeLevel, @subject, @basePrice, @teacherId, @dateOfBirth)');
 
         res.status(201).json({ message: 'Đã thêm học sinh mới thành công.' });
     } catch (err) {
@@ -630,7 +651,7 @@ app.post('/api/students', requireRole('teacher', 'assistant'), requireTeacherCon
 // PUT cập nhật học sinh — FIX: thay vì delete+post hack ở frontend
 app.put('/api/students/:id', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     const { id } = req.params;
-    let { name, class: sClass, subject, basePrice, gradeLevel } = req.body || {};
+    let { name, class: sClass, subject, basePrice, gradeLevel, dateOfBirth } = req.body || {};
 
     name = (name || '').trim();
     sClass = (sClass || '').trim();
@@ -638,6 +659,13 @@ app.put('/api/students/:id', requireRole('teacher', 'assistant'), requireTeacher
 
     if (!name || !sClass || !subject) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
+    }
+
+    // Ngày sinh là trường TÙY CHỌN — cho phép để trống/xóa (NULL). Nếu có
+    // nhập, phải đúng định dạng "yyyy-mm-dd".
+    dateOfBirth = (dateOfBirth || '').trim() || null;
+    if (dateOfBirth && !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) {
+        return res.status(400).json({ error: 'Ngày sinh không hợp lệ.' });
     }
 
     const parsedBasePrice = parseInt(basePrice);
@@ -660,14 +688,15 @@ app.put('/api/students/:id', requireRole('teacher', 'assistant'), requireTeacher
         }
 
         await pool.request()
-            .input('id',         sql.VarChar,  id)
-            .input('name',       sql.NVarChar, name)
-            .input('class',      sql.NVarChar, sClass)
-            .input('gradeLevel', sql.Int,      gradeLevel ? parseInt(gradeLevel) : null)
-            .input('subject',    sql.NVarChar, subject)
-            .input('basePrice',  sql.Int,      parsedBasePrice)
+            .input('id',          sql.VarChar,  id)
+            .input('name',        sql.NVarChar, name)
+            .input('class',       sql.NVarChar, sClass)
+            .input('gradeLevel',  sql.Int,      gradeLevel ? parseInt(gradeLevel) : null)
+            .input('subject',     sql.NVarChar, subject)
+            .input('basePrice',   sql.Int,      parsedBasePrice)
+            .input('dateOfBirth', sql.Date,     dateOfBirth)
             .query(`UPDATE Students
-                    SET Name = @name, Class = @class, GradeLevel = @gradeLevel, Subject = @subject, BasePrice = @basePrice
+                    SET Name = @name, Class = @class, GradeLevel = @gradeLevel, Subject = @subject, BasePrice = @basePrice, DateOfBirth = @dateOfBirth
                     WHERE Id = @id`);
 
         res.json({ message: 'Đã cập nhật thông tin học sinh.' });
