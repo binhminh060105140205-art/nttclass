@@ -111,7 +111,7 @@ Object.assign(PinkyClassApp.prototype, {
         daySessions.forEach(sess => {
             const item = document.createElement('div');
             item.style.padding = '12px';
-            item.style.background = 'white';
+            item.style.background = 'var(--card-bg)';
             item.style.border = '1px solid var(--border-color)';
             item.style.borderRadius = '10px';
             item.style.marginBottom = '8px';
