@@ -412,112 +412,6 @@
 
         <!-- SECTION 3: SESSION SCHEDULER & LOGGER -->
         <section id="view-scheduler" class="view-section">
-            
-            <!-- Logger Form Component (Matching Ghi buổi học in Image 2) -->
-            <div class="glass-card" style="padding: 24px;" id="logger-form-card">
-                <h3 style="color: var(--primary); margin-bottom: 20px; font-weight: 700; display: flex; align-items: center; gap: 10px;"> Ghi Buổi Học Mới
-                </h3>
-                
-
-                <form id="sessionLoggerForm" class="grid-form">
-                    <!-- Session Type (1-on-1 vs Group) -->
-                    <div class="form-group">
-                        <label for="sessionType">Loại buổi học <span style="color:red;">*</span></label>
-                        <select id="sessionType" class="form-control" required>
-                            <option value="riêng">Học riêng (1 vs 1)</option>
-                            <option value="chung">Học chung (Dạy nhóm)</option>
-                        </select>
-                    </div>
-
-                    <!-- Students selection grid -->
-                    <div class="form-group form-group-half">
-                        <label>Chọn học sinh tham gia <span style="color:red;">*</span></label>
-                        <input type="text" id="studentsCheckboxSearch" class="form-control student-check-search"
-                               placeholder="Tìm theo tên hoặc lớp (VD: Lớp 6, 6, Khánh Hà...)">
-                        <div class="student-check-grid" id="studentsCheckboxGrid">
-                            <!-- Filled dynamically with checkboxes -->
-                        </div>
-                    </div>
-
-                    <!-- Tên ca học -->
-                    <div class="form-group">
-                        <label for="sessionName">Tên ca học</label>
-                        <input type="text" id="sessionName" class="form-control" placeholder="Ví dụ: Ca sáng, Ôn thi giữa kỳ...">
-                    </div>
-
-                    <!-- Date picker -->
-                    <div class="form-group">
-                        <label for="sessionDate">Ngày học <span style="color:red;">*</span></label>
-                        <input type="date" id="sessionDate" class="form-control" required>
-                    </div>
-
-                    <!-- Start time -->
-                    <div class="form-group">
-                        <label for="sessionStartTime">Giờ bắt đầu <span style="color:red;">*</span></label>
-                        <input type="time" id="sessionStartTime" class="form-control" value="16:00" required>
-                    </div>
-
-                    <!-- End time -->
-                    <div class="form-group">
-                        <label for="sessionEndTime">Giờ kết thúc <span style="color:red;">*</span></label>
-                        <input type="time" id="sessionEndTime" class="form-control" value="18:00" required>
-                    </div>
-
-                    <!-- Calculated Hours -->
-                    <div class="form-group">
-                        <label for="sessionHours">Số giờ học</label>
-                        <input type="number" id="sessionHours" class="form-control" step="0.1" value="2.0" placeholder="Tự động tính...">
-                    </div>
-
-                    <!-- Unit price -->
-                    <div class="form-group">
-                        <label for="sessionPrice" id="sessionPriceLabel">Đơn giá buổi học (VNĐ/học sinh)</label>
-                        <input type="text" inputmode="numeric" id="sessionPrice" class="form-control" list="sessionPriceOptions" value="250.000 ₫">
-                        <datalist id="sessionPriceOptions">
-                            <option value="100.000 ₫"></option>
-                            <option value="120.000 ₫"></option>
-                            <option value="150.000 ₫"></option>
-                            <option value="180.000 ₫"></option>
-                            <option value="200.000 ₫"></option>
-                            <option value="250.000 ₫"></option>
-                        </datalist>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Tổng thu buổi học</label>
-                        <div id="sessionTotalPriceDisplay" class="form-control" style="background:var(--primary-soft); border:none; font-weight:700; color:var(--primary); display:flex; align-items:center;">0 ₫</div>
-                    </div>
-
-                    <!-- Note / Course contents -->
-                    <div class="form-group form-group-full">
-                        <label for="sessionContent">Nội dung học / ghi chú buổi học</label>
-                        <textarea id="sessionContent" class="form-control" placeholder="Ví dụ: Ôn tam giác, luyện bài tập đại số, chữa đề...&#10;BTVN: Phiếu 8.1" rows="3"></textarea>
-                    </div>
-
-                    <!-- Lặp lại buổi học trong tháng (chọn thêm từng ngày thủ công) -->
-                    <div class="form-group form-group-full repeat-session-section">
-                        <label class="repeat-toggle-label">
-                            <input type="checkbox" id="sessionRepeatToggle">
-                            <span>Lặp lại buổi học này vào (các) ngày khác trong tháng</span>
-                        </label>
-                        <div id="repeatDatesPanel" class="repeat-dates-panel" style="display:none;">
-                            <div class="repeat-dates-add-row">
-                                <input type="date" id="repeatExtraDateInput" class="form-control">
-                                <button type="button" class="btn btn-secondary btn-sm" id="addRepeatDateBtn">+ Thêm ngày</button>
-                            </div>
-                            <div id="repeatDatesList" class="repeat-dates-chips"></div>
-                            <p class="repeat-dates-hint">Chỉ thêm được các ngày trong CÙNG THÁNG với "Ngày học" ở trên. Mỗi ngày thêm vào sẽ tự tạo thêm 1 buổi học giống hệt (cùng giờ, học sinh, học phí, nội dung).</p>
-                        </div>
-                    </div>
-
-                    <div class="form-group form-group-full" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
-                        <button type="button" class="btn btn-secondary" id="resetLoggerFormBtn">Xóa form
-                        </button>
-                        <button type="submit" class="btn btn-primary" id="saveSessionBtn">Lưu buổi học
-                        </button>
-                    </div>
-                </form>
-            </div>
 
             <!-- Weekly calendar view of scheduled sessions (Image 4 format) -->
             <div class="glass-card" style="padding: 24px;">
@@ -535,7 +429,14 @@
                         <span id="weekRangeLabel" class="week-range-label">--</span>
                         <button class="btn btn-secondary btn-sm" id="nextWeekBtn">Tuần sau</button>
                     </div>
+                    <button type="button" class="btn btn-primary btn-sm" id="btnOpenCreateSession">+ Ghi buổi học mới</button>
                 </div>
+
+                <!-- Gợi ý thao tác nhanh trên lịch tuần: bấm-kéo trên 1 khung giờ
+                     TRỐNG để mở form tạo buổi học mới đã điền sẵn đúng ngày/giờ. -->
+                <p style="font-size: 12px; color: var(--text-muted); margin: -6px 0 14px;">
+                     Mẹo: giữ chuột/tay và kéo trên 1 khung giờ trống trong lịch bên dưới để tạo buổi học mới với ngày/giờ điền sẵn.
+                </p>
 
                 <!-- mini statistics banner (tính theo khoảng thời gian đang xem: ngày/tuần/tháng) -->
                 <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
@@ -569,6 +470,117 @@
                 <div class="month-calendar-grid" id="monthCalendarGrid" style="display:none;"></div>
             </div>
         </section>
+
+        <!-- MODAL: GHI BUỔI HỌC MỚI — mở bằng nút "+ Ghi buổi học mới" hoặc khi
+             bấm-kéo chọn 1 khung giờ trống trên Lịch tuần (thay cho việc tự
+             cuộn trang lên form như trước, gây khó chịu vì "nhảy" màn hình). -->
+        <div class="modal-backdrop" id="createSessionModal">
+            <div class="modal-container" style="max-width: 760px; max-height: 90vh; display: flex; flex-direction: column;">
+                <div class="modal-header">
+                    <h3 class="modal-title"> Ghi Buổi Học Mới</h3>
+                    <button class="modal-close" onclick="app.closeModal('createSessionModal')">&times;</button>
+                </div>
+                <form id="sessionLoggerForm" style="display: flex; flex-direction: column; min-height: 0;">
+                    <div class="modal-body" style="overflow-y: auto; min-height: 0;">
+                        <div class="grid-form">
+                            <!-- Session Type (1-on-1 vs Group) -->
+                            <div class="form-group">
+                                <label for="sessionType">Loại buổi học <span style="color:red;">*</span></label>
+                                <select id="sessionType" class="form-control" required>
+                                    <option value="riêng">Học riêng (1 vs 1)</option>
+                                    <option value="chung">Học chung (Dạy nhóm)</option>
+                                </select>
+                            </div>
+
+                            <!-- Students selection grid -->
+                            <div class="form-group form-group-half">
+                                <label>Chọn học sinh tham gia <span style="color:red;">*</span></label>
+                                <input type="text" id="studentsCheckboxSearch" class="form-control student-check-search"
+                                       placeholder="Tìm theo tên hoặc lớp (VD: Lớp 6, 6, Khánh Hà...)">
+                                <div class="student-check-grid" id="studentsCheckboxGrid">
+                                    <!-- Filled dynamically -->
+                                </div>
+                            </div>
+
+                            <!-- Tên ca học -->
+                            <div class="form-group">
+                                <label for="sessionName">Tên ca học</label>
+                                <input type="text" id="sessionName" class="form-control" placeholder="Ví dụ: Ca sáng, Ôn thi giữa kỳ...">
+                            </div>
+
+                            <!-- Date picker -->
+                            <div class="form-group">
+                                <label for="sessionDate">Ngày học <span style="color:red;">*</span></label>
+                                <input type="date" id="sessionDate" class="form-control" required>
+                            </div>
+
+                            <!-- Start time -->
+                            <div class="form-group">
+                                <label for="sessionStartTime">Giờ bắt đầu <span style="color:red;">*</span></label>
+                                <input type="time" id="sessionStartTime" class="form-control" value="16:00" required>
+                            </div>
+
+                            <!-- End time -->
+                            <div class="form-group">
+                                <label for="sessionEndTime">Giờ kết thúc <span style="color:red;">*</span></label>
+                                <input type="time" id="sessionEndTime" class="form-control" value="18:00" required>
+                            </div>
+
+                            <!-- Calculated Hours -->
+                            <div class="form-group">
+                                <label for="sessionHours">Số giờ học</label>
+                                <input type="number" id="sessionHours" class="form-control" step="0.1" value="2.0" placeholder="Tự động tính...">
+                            </div>
+
+                            <!-- Unit price -->
+                            <div class="form-group">
+                                <label for="sessionPrice" id="sessionPriceLabel">Đơn giá buổi học (VNĐ/học sinh)</label>
+                                <input type="text" inputmode="numeric" id="sessionPrice" class="form-control" list="sessionPriceOptions" value="250.000 ₫">
+                                <datalist id="sessionPriceOptions">
+                                    <option value="100.000 ₫"></option>
+                                    <option value="120.000 ₫"></option>
+                                    <option value="150.000 ₫"></option>
+                                    <option value="180.000 ₫"></option>
+                                    <option value="200.000 ₫"></option>
+                                    <option value="250.000 ₫"></option>
+                                </datalist>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Tổng thu buổi học</label>
+                                <div id="sessionTotalPriceDisplay" class="form-control" style="background:var(--primary-soft); border:none; font-weight:700; color:var(--primary); display:flex; align-items:center;">0 ₫</div>
+                            </div>
+
+                            <!-- Note / Course contents -->
+                            <div class="form-group form-group-full">
+                                <label for="sessionContent">Nội dung học / ghi chú buổi học</label>
+                                <textarea id="sessionContent" class="form-control" placeholder="Ví dụ: Ôn tam giác, luyện bài tập đại số, chữa đề...&#10;BTVN: Phiếu 8.1" rows="3"></textarea>
+                            </div>
+
+                            <!-- Lặp lại buổi học trong tháng (chọn thêm từng ngày thủ công) -->
+                            <div class="form-group form-group-full repeat-session-section">
+                                <label class="repeat-toggle-label">
+                                    <input type="checkbox" id="sessionRepeatToggle">
+                                    <span>Lặp lại buổi học này vào (các) ngày khác trong tháng</span>
+                                </label>
+                                <div id="repeatDatesPanel" class="repeat-dates-panel" style="display:none;">
+                                    <div class="repeat-dates-add-row">
+                                        <input type="date" id="repeatExtraDateInput" class="form-control">
+                                        <button type="button" class="btn btn-secondary btn-sm" id="addRepeatDateBtn">+ Thêm ngày</button>
+                                    </div>
+                                    <div id="repeatDatesList" class="repeat-dates-chips"></div>
+                                    <p class="repeat-dates-hint">Chỉ thêm được các ngày trong CÙNG THÁNG với "Ngày học" ở trên. Mỗi ngày thêm vào sẽ tự tạo thêm 1 buổi học giống hệt (cùng giờ, học sinh, học phí, nội dung).</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="resetLoggerFormBtn">Xóa form</button>
+                        <button type="submit" class="btn btn-primary" id="saveSessionBtn">Lưu buổi học</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
         <!-- SECTION 4: TUITION & PAYMENTS -->
         <section id="view-tuition" class="view-section">

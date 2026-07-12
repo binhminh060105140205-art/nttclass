@@ -679,16 +679,17 @@ class PinkyClassApp {
 
         // Form Reset Button
         document.getElementById('resetLoggerFormBtn').addEventListener('click', () => {
-            document.getElementById('sessionLoggerForm').reset();
-            delete document.getElementById('sessionPrice').dataset.userEdited;
-            const today = this.toISODateOnly(new Date());
-            document.getElementById('sessionDate').value = today;
-            this.renderStudentSelectionGrid('studentsCheckboxGrid');
-            this.repeatExtraDates = [];
-            this.renderRepeatDatesChips();
-            const repeatPanelEl = document.getElementById('repeatDatesPanel');
-            if (repeatPanelEl) repeatPanelEl.style.display = 'none';
+            this.resetSessionLoggerForm();
         });
+
+        // Nút "+ Ghi buổi học mới" — mở modal tạo buổi học ở trạng thái sạch
+        // (không cần kéo-chọn trên lịch tuần).
+        const btnOpenCreateSession = document.getElementById('btnOpenCreateSession');
+        if (btnOpenCreateSession) {
+            btnOpenCreateSession.addEventListener('click', () => {
+                this.openCreateSessionModal();
+            });
+        }
 
         // Export Log Action
         document.getElementById('btnExportLog').addEventListener('click', () => {
@@ -1485,8 +1486,8 @@ class PinkyClassApp {
             if (priceCard) priceCard.style.display = 'block';
             
             // Show add/edit forms
-            const formCard = document.getElementById('logger-form-card');
-            if (formCard) formCard.style.display = 'block';
+            const formCard = document.getElementById('btnOpenCreateSession');
+            if (formCard) formCard.style.display = '';
         } else if (this.currentRole === 'assistant') {
             // Assistant: show teaching controls but hide pricing/admin-only fields
             document.querySelectorAll('.admin-tutor').forEach(el => {
@@ -1504,8 +1505,8 @@ class PinkyClassApp {
             if (priceCard) priceCard.style.display = 'none';
             
             // Show logger form but hide pricing inputs inside form
-            const formCard = document.getElementById('logger-form-card');
-            if (formCard) formCard.style.display = 'block';
+            const formCard = document.getElementById('btnOpenCreateSession');
+            if (formCard) formCard.style.display = '';
             
             const priceFormGroup = document.getElementById('sessionPrice').parentElement;
             if (priceFormGroup) priceFormGroup.style.display = 'none';
@@ -1514,7 +1515,7 @@ class PinkyClassApp {
             document.querySelectorAll('.admin-tutor, .admin-only').forEach(el => {
                 el.style.display = 'none';
             });
-            const formCard = document.getElementById('logger-form-card');
+            const formCard = document.getElementById('btnOpenCreateSession');
             if (formCard) formCard.style.display = 'none';
         }
     }
@@ -3241,10 +3242,11 @@ class PinkyClassApp {
 
     // ----- Kéo-CHỌN 1 khung giờ TRỐNG trên Lịch tuần để tạo ca học mới -----
     // Giữ chuột/tay vào 1 chỗ TRỐNG trên cột ngày rồi kéo từ giờ này đến giờ
-    // kia -> nhả ra sẽ tự cuộn tới form "Ghi Buổi Học Mới" ở trên, điền sẵn
-    // đúng ngày + khung giờ vừa kéo. Nếu chỉ bấm 1 cái (không kéo), mặc định
-    // tạo khối 1 tiếng bắt đầu từ đúng vị trí bấm. Dùng chung hằng số quy đổi
-    // px <-> giờ:phút với initCalendarDragToReschedule để không lệch nhau.
+    // kia -> nhả ra sẽ MỞ MODAL "Ghi Buổi Học Mới" (không cuộn/nhảy trang),
+    // điền sẵn đúng ngày + khung giờ vừa kéo. Nếu chỉ bấm 1 cái (không kéo)
+    // vào chỗ trống thì KHÔNG làm gì cả — tránh việc lỡ tay bấm nhầm cũng bị
+    // "nhảy" màn hình như trước đây. Dùng chung hằng số quy đổi px <-> giờ:phút
+    // với initCalendarDragToReschedule để không lệch nhau.
     initCalendarDragToCreate() {
         const body = document.getElementById('weekCalendarBody');
         if (!body) return;
@@ -3253,6 +3255,8 @@ class PinkyClassApp {
         const SNAP_MINUTES = 30;
 
         body.addEventListener('pointerdown', (e) => {
+            // Học sinh chỉ được XEM lịch, không có quyền tạo buổi học mới.
+            if (this.currentRole === 'student') return;
             // Bấm trúng 1 ca học đã có -> để nguyên cho initCalendarDragToReschedule xử lý
             if (e.target.closest('.week-event-block')) return;
             const column = e.target.closest('.week-day-column');
@@ -3305,21 +3309,19 @@ class PinkyClassApp {
             this.calCreateDrag = null;
             if (drag.preview) drag.preview.remove();
 
+            // Chỉ bấm 1 cái, KHÔNG kéo -> coi như bấm nhầm vào chỗ trống trên
+            // lịch, không mở form/modal gì cả (trước đây tự tạo khối 1 tiếng
+            // rồi cuộn/nhảy lên form ở đầu trang, gây khó chịu).
+            if (!drag.isDragging) return;
+
             const HOUR_START = this.CAL_HOUR_START;
             const HOUR_HEIGHT = this.CAL_HOUR_HEIGHT;
             const pxPerMinute = HOUR_HEIGHT / 60;
             const snap = (px) => Math.round((px / pxPerMinute) / SNAP_MINUTES) * SNAP_MINUTES;
 
-            let startMin, endMin;
-            if (!drag.isDragging) {
-                // Chỉ bấm 1 cái, không kéo -> mặc định khối 1 tiếng từ đúng vị trí bấm
-                startMin = snap(drag.startTop);
-                endMin = startMin + 60;
-            } else {
-                startMin = snap(Math.min(drag.startTop, drag.currentTop));
-                endMin = snap(Math.max(drag.startTop, drag.currentTop));
-                if (endMin - startMin < SNAP_MINUTES) endMin = startMin + SNAP_MINUTES;
-            }
+            let startMin = snap(Math.min(drag.startTop, drag.currentTop));
+            let endMin = snap(Math.max(drag.startTop, drag.currentTop));
+            if (endMin - startMin < SNAP_MINUTES) endMin = startMin + SNAP_MINUTES;
 
             const totalMinutes = (this.CAL_HOUR_END - HOUR_START) * 60;
             startMin = Math.max(0, Math.min(startMin, totalMinutes - SNAP_MINUTES));
@@ -3337,9 +3339,18 @@ class PinkyClassApp {
         document.addEventListener('pointercancel', endDrag);
     }
 
-    // Điền sẵn ngày + khung giờ vừa kéo-chọn vào form "Ghi Buổi Học Mới", cuộn
-    // tới form đó và nhấp nháy nhẹ để giáo viên biết ngay cần hoàn tất phần
-    // học sinh/nội dung còn lại.
+    // Mở modal "Ghi Buổi Học Mới" ở TRẠNG THÁI SẠCH (reset toàn bộ), dùng cho
+    // nút "+ Ghi buổi học mới" bấm thủ công (không xuất phát từ kéo-chọn trên
+    // lịch) — mặc định điền sẵn ngày hôm nay.
+    openCreateSessionModal() {
+        this.resetSessionLoggerForm();
+        this.openModal('createSessionModal');
+        const searchInput = document.getElementById('studentsCheckboxSearch');
+        if (searchInput) setTimeout(() => searchInput.focus(), 200);
+    }
+
+    // Điền sẵn ngày + khung giờ vừa kéo-chọn trên lịch tuần vào form "Ghi Buổi
+    // Học Mới", rồi MỞ MODAL ngay tại chỗ (không cuộn/nhảy trang như trước).
     openCreateSessionQuickForm(dateStr, startTime, endTime) {
         document.getElementById('sessionDate').value = dateStr;
         document.getElementById('sessionStartTime').value = startTime;
@@ -3347,17 +3358,10 @@ class PinkyClassApp {
         // Kích hoạt lại đúng handler tính "Số giờ học" tự động đã gắn sẵn trên input giờ kết thúc
         document.getElementById('sessionEndTime').dispatchEvent(new Event('change'));
 
-        const card = document.getElementById('logger-form-card');
-        if (card) {
-            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            card.classList.remove('form-highlight-flash');
-            // Buộc trình duyệt tính lại style trước khi thêm class, để animation luôn chạy lại được dù bấm liên tiếp
-            void card.offsetWidth;
-            card.classList.add('form-highlight-flash');
-            setTimeout(() => card.classList.remove('form-highlight-flash'), 1400);
-        }
+        this.openModal('createSessionModal');
+
         const searchInput = document.getElementById('studentsCheckboxSearch');
-        if (searchInput) setTimeout(() => searchInput.focus(), 450);
+        if (searchInput) setTimeout(() => searchInput.focus(), 300);
     }
 
     async handleLogSession() {
@@ -3480,6 +3484,17 @@ class PinkyClassApp {
         }
 
         // Reset form
+        this.resetSessionLoggerForm();
+
+        this.closeModal('createSessionModal');
+        this.showToast("Đã ghi nhận buổi học mới thành công!", "success");
+    }
+
+    // Đưa form "Ghi Buổi Học Mới" về trạng thái mặc định ban đầu (ngày = hôm
+    // nay, giá tiền mặc định, bỏ chọn học sinh, xoá danh sách ngày lặp lại...).
+    // Dùng chung sau khi lưu thành công VÀ khi mở modal thủ công bằng nút
+    // "+ Ghi buổi học mới" để luôn bắt đầu từ 1 form sạch.
+    resetSessionLoggerForm() {
         document.getElementById('sessionLoggerForm').reset();
         delete document.getElementById('sessionPrice').dataset.userEdited;
         const today = this.toISODateOnly(new Date());
@@ -3489,11 +3504,10 @@ class PinkyClassApp {
         // Reset trạng thái "Lặp lại buổi học"
         this.repeatExtraDates = [];
         this.renderRepeatDatesChips();
+        const repeatToggleEl = document.getElementById('sessionRepeatToggle');
         if (repeatToggleEl) repeatToggleEl.checked = false;
         const repeatPanelEl = document.getElementById('repeatDatesPanel');
         if (repeatPanelEl) repeatPanelEl.style.display = 'none';
-
-        this.showToast("Đã ghi nhận buổi học mới thành công!", "success");
     }
 
     // 3. Edit Session Modal triggers
