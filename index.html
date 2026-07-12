@@ -1183,7 +1183,24 @@
     </div>
 
     <!-- Script execution -->
-    <script src="app.js"></script>
+    <!-- QUAN TRỌNG: app.js (1 file ~4400 dòng) đã được tách thành các file
+         nhỏ theo từng khu vực chức năng để dễ đọc / dễ sửa hơn. core.js định
+         nghĩa class PinkyClassApp; các file còn lại (trừ main.js) chỉ gắn
+         thêm method vào PinkyClassApp.prototype — nên BẮT BUỘC core.js phải
+         load đầu tiên, và main.js (khởi tạo app) phải load SAU CÙNG. Các
+         file ở giữa (app-shell, users, dashboard...) load trước/sau nhau
+         thoải mái, không phụ thuộc lẫn nhau. -->
+    <script src="core.js"></script>
+    <script src="app-shell.js"></script>
+    <script src="users.js"></script>
+    <script src="dashboard.js"></script>
+    <script src="student-logs.js"></script>
+    <script src="scores.js"></script>
+    <script src="calendar.js"></script>
+    <script src="tuition-export.js"></script>
+    <script src="students.js"></script>
+    <script src="ai-chat.js"></script>
+    <script src="main.js"></script>
     <script src="invoice-export.js"></script>
 </body>
 </html>
