@@ -1249,6 +1249,13 @@ img, svg, video {
     font-size: 0.875rem;
     cursor: pointer;
     outline: none;
+    /* Nếu không có 2 dòng này, một số trình duyệt (đặc biệt Safari/Chrome
+       trên mobile) vẫn tự vẽ khung/nền viên nang trắng mặc định của thẻ
+       <select> đè lên phần style ở trên -> chính là viền trắng bị "lộ" ra
+       ngoài khung bo tròn (.student-context-picker). */
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
 }
 
 /* Role Badges */
@@ -1478,6 +1485,7 @@ img, svg, video {
 .log-export-capture {
     background: #fff;
     border-radius: 16px;
+    overflow: hidden;
 }
 
 /* Ẩn cột "Thao tác" (nút Đánh giá) khi đang chụp xuất ảnh — cột này chỉ có
@@ -3975,4 +3983,69 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
 [data-theme-mode="dark"] .role-box {
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), var(--primary-soft)) !important;
     border-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-theme-mode="dark"] .student-context-picker {
+    background: #0f172a !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-theme-mode="dark"] .student-context-picker span {
+    color: #cbd5e1 !important;
+}
+[data-theme-mode="dark"] .student-select {
+    background: transparent !important;
+    color: #f8fafc !important;
+    border: none !important;
+}
+[data-theme-mode="dark"] ::-webkit-scrollbar-track {
+    background: #0b0f19 !important;
+}
+[data-theme-mode="dark"] ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.16) !important;
+}
+[data-theme-mode="dark"] ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Báo cho trình duyệt biết đang ở dark mode để nó tự vẽ lại
+   các control gốc (native <select>, thanh cuộn overlay trên
+   mobile, checkbox...) theo tông tối thay vì viền/nền trắng mặc định */
+[data-theme-mode="dark"] {
+    color-scheme: dark;
+}
+:root,
+[data-theme-mode="light"] {
+    color-scheme: light;
+}
+[data-theme-mode="dark"] .log-export-capture {
+    background: #0f172a !important;
+}
+.log-export-capture.is-exporting,
+[data-theme-mode="dark"] .log-export-capture.is-exporting {
+    background: #fff !important;
+}
+.log-export-capture.is-exporting .student-log-header,
+[data-theme-mode="dark"] .log-export-capture.is-exporting .student-log-header {
+    background: linear-gradient(118deg,#1d4ed8,#0284c7) !important;
+}
+.log-export-capture.is-exporting .table-wrapper,
+[data-theme-mode="dark"] .log-export-capture.is-exporting .table-wrapper {
+    background: #fff !important;
+    border-color: var(--border-color) !important;
+}
+.log-export-capture.is-exporting .custom-table th,
+[data-theme-mode="dark"] .log-export-capture.is-exporting .custom-table th {
+    background: #dbeafe !important;
+    color: #1e3a8a !important;
+    border-color: #bfdbfe !important;
+}
+.log-export-capture.is-exporting .custom-table td,
+[data-theme-mode="dark"] .log-export-capture.is-exporting .custom-table td {
+    background: transparent !important;
+    border-color: #e2e8f0 !important;
+    color: var(--text-main) !important;
+}
+.log-export-capture.is-exporting .session-number-cell,
+[data-theme-mode="dark"] .log-export-capture.is-exporting .session-number-cell {
+    background: #f8fafc !important;
+    color: var(--text-main) !important;
 }
