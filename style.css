@@ -3366,7 +3366,86 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
 .table-wrapper { border:1px solid #e4ebf3; border-radius:14px; box-shadow:none; }.custom-table th { background:#f1f6fc; color:#49627f; border-color:#e0eaf4; font-size:.68rem; letter-spacing:.07em; }.custom-table td { border-color:#edf1f5; color:#334155; }.custom-table tbody tr { transition:background-color .16s ease; }.custom-table tbody tr:hover { background:#f8fbff; }
 .student-log-header { padding:18px 22px; border-radius:14px 14px 0 0; background:linear-gradient(118deg,#1d4ed8,#0284c7); }.homework-badge { border-radius:8px; font-weight:700; }.ai-chat-card { background:rgba(255,255,255,.94); border-radius:18px; }.ai-chat-bubble { border-radius:14px; }.ai-chat-msg-bot .ai-chat-bubble { background:#f3f7fc; border-color:#e3ebf4; }.ai-chat-input-row { margin:4px -4px -4px; padding:14px 4px 4px; border-color:#edf1f5; }.notification { border-radius:14px; box-shadow:0 18px 45px rgba(15,23,42,.18); }.modal-container { border-radius:20px; border:1px solid rgba(226,232,240,.9); box-shadow:0 24px 70px rgba(15,23,42,.22); }.modal-header { background:linear-gradient(135deg,#f8fbff,#eff6ff); border-bottom-color:#e3ebf4; }.modal-footer { border-top-color:#edf1f5; background:#fbfdff; }
 @media (min-width:1024px) { .sidebar { padding:22px 16px; } .main-content { padding:26px 30px 34px; } .sidebar.is-collapsed { padding:20px 10px; } }
-@media (max-width:767px) { body { background:#f6f9fd; } .sidebar { padding:12px; } .logo-container { margin-bottom:12px; } .user-box { margin-bottom:12px; } .top-header { min-height:auto; border-radius:14px; padding:15px; } .header-actions { align-items:stretch; } .role-badge,.student-context-picker,#logoutBtn { width:100%; justify-content:center; } .stats-grid { gap:12px; } .stat-card { min-height:112px; padding:18px; } .glass-card { border-radius:14px; } .evaluation-header { align-items:flex-start; } .evaluation-header > div:last-child { flex-wrap:wrap; } .btn { min-height:38px; } }
+@media (max-width:767px) {
+    body {
+        flex-direction: column !important;
+        background: #f6f9fd;
+    }
+    .sidebar {
+        padding: 12px;
+        width: 100%;
+        height: auto;
+        position: relative;
+    }
+    .logo-container {
+        margin-bottom: 12px;
+    }
+    .user-box {
+        margin-bottom: 12px;
+    }
+    .top-header {
+        min-height: auto;
+        border-radius: 14px;
+        padding: 15px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    .header-actions {
+        align-items: center;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-start;
+    }
+    .role-badge, .student-context-picker, #logoutBtn {
+        width: auto !important;
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+    .stats-grid {
+        gap: 12px;
+    }
+    .stat-card {
+        min-height: 112px;
+        padding: 18px;
+    }
+    .glass-card {
+        border-radius: 14px;
+    }
+    .evaluation-header {
+        align-items: flex-start;
+    }
+    .evaluation-header > div:last-child {
+        flex-wrap: wrap;
+    }
+    .btn {
+        min-height: 38px;
+    }
+    
+    /* Weekly calendar scroll styling on mobile */
+    .week-calendar-scroll {
+        overflow-x: auto !important;
+    }
+    .week-calendar-header-row,
+    .week-calendar-body {
+        min-width: 760px;
+    }
+    
+    /* Monthly calendar scroll styling on mobile */
+    .month-calendar-grid {
+        overflow-x: auto !important;
+    }
+    .month-weekday-row,
+    .month-days-grid {
+        min-width: 760px;
+    }
+    
+    /* Score summary list view */
+    .score-summary-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
 
 /* Login: quieter, more trustworthy and product-focused. */
 .login-screen {
