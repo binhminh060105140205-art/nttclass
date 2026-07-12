@@ -3943,3 +3943,36 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
 [data-theme-mode="dark"] .channel-option-card .channel-info strong {
     color: #f8fafc !important;
 }
+[data-theme-mode="dark"] .score-summary-card {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), var(--primary-soft)) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-theme-mode="dark"] .student-check-grid {
+    background: #0f172a !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-theme-mode="dark"] .student-class-group {
+    background: rgba(30, 41, 59, 0.6) !important;
+}
+[data-theme-mode="dark"] .student-class-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+[data-theme-mode="dark"] .student-check-grid span {
+    color: #e2e8f0 !important;
+}
+[data-theme-mode="dark"] .student-check-item:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+[data-theme-mode="dark"] .session-number-cell {
+    background: #1e293b !important;
+    color: #cbd5e1 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-theme-mode="dark"] .repeat-session-section {
+    background: rgba(15, 23, 42, 0.4) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+[data-theme-mode="dark"] .role-box {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), var(--primary-soft)) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
