@@ -184,16 +184,12 @@
         </nav>
 
         <div class="sidebar-footer">
-            <div class="theme-switcher-wrapper" style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 12px;">
-                <div class="theme-switcher" id="themeSwitcher" role="group" aria-label="Chọn màu giao diện" style="margin-bottom: 0;">
-                    <button type="button" class="theme-swatch" data-theme-value="blue" title="Xanh dương (mặc định)" aria-label="Giao diện xanh dương"></button>
-                    <button type="button" class="theme-swatch" data-theme-value="violet" title="Tím" aria-label="Giao diện tím"></button>
-                    <button type="button" class="theme-swatch" data-theme-value="pink" title="Hồng" aria-label="Giao diện hồng"></button>
-                </div>
-                <button type="button" class="sidebar-settings-btn" id="sidebarSettingsBtn" title="Cài đặt bảo mật tài khoản" aria-label="Cài đặt bảo mật tài khoản" style="background: transparent; border: none; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; justify-content: center; padding: 4px; transition: var(--transition-fast);">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="settings-icon-svg" style="transition: transform 0.3s ease;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                </button>
-            </div>
+            <button type="button" class="sidebar-settings-btn" id="sidebarSettingsBtn" title="Cài đặt tài khoản" aria-label="Nút cài đặt tài khoản">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+            </button>
             <p>NttClass</p>
         </div>
     </aside>
@@ -1210,6 +1206,35 @@
                 <button class="modal-close" onclick="app.closeModal('accountSettingsModal')">&times;</button>
             </div>
             <div class="modal-body" style="overflow-y: auto; padding: 20px;">
+                <!-- Section: Giao diện hệ thống -->
+                <div class="settings-section" style="margin-bottom: 20px;">
+                    <h4 class="settings-section-title">🎨 Giao Diện Hệ Thống</h4>
+                    <p class="settings-section-desc">Thay đổi màu sắc chủ đạo và chế độ hiển thị (Sáng/Tối).</p>
+                    
+                    <div style="display: flex; gap: 20px; align-items: center; margin-top: 12px; flex-wrap: wrap;">
+                        <!-- Màu chủ đạo -->
+                        <div style="flex: 1; min-width: 180px;">
+                            <label style="font-weight: 600; margin-bottom: 8px; display: block; font-size: 13.5px; color: var(--text-main);">Màu sắc chủ đạo:</label>
+                            <div class="theme-switcher" id="modalThemeSwitcher" role="group" aria-label="Chọn màu giao diện" style="margin-bottom: 0;">
+                                <button type="button" class="theme-swatch" data-theme-value="blue" title="Xanh dương (mặc định)" aria-label="Giao diện xanh dương"></button>
+                                <button type="button" class="theme-swatch" data-theme-value="violet" title="Tím" aria-label="Giao diện tím"></button>
+                                <button type="button" class="theme-swatch" data-theme-value="pink" title="Hồng" aria-label="Giao diện hồng"></button>
+                            </div>
+                        </div>
+
+                        <!-- Chế độ hiển thị -->
+                        <div style="flex: 1; min-width: 180px;">
+                            <label style="font-weight: 600; margin-bottom: 8px; display: block; font-size: 13.5px; color: var(--text-main);">Chế độ hiển thị:</label>
+                            <div class="darkmode-toggle-group" style="display: flex; gap: 8px;">
+                                <button type="button" class="btn btn-secondary btn-sm" id="btnThemeLight" onclick="app.setThemeMode('light')" style="flex: 1; justify-content: center; border-radius: 8px;">☀️ Sáng</button>
+                                <button type="button" class="btn btn-secondary btn-sm" id="btnThemeDark" onclick="app.setThemeMode('dark')" style="flex: 1; justify-content: center; border-radius: 8px;">🌙 Tối</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;">
+
                 <!-- Section 1: Thông tin liên hệ -->
                 <div class="settings-section">
                     <h4 class="settings-section-title">📧 Thông Tin Liên Hệ & Xác Minh</h4>

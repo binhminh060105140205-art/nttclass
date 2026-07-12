@@ -62,6 +62,7 @@ Object.assign(PinkyClassApp.prototype, {
                 btnVerifyPhone.style.display = 'none';
             }
 
+            this.updateThemeModeActiveButtons();
             this.openModal('accountSettingsModal');
         } catch (err) {
             this.showToast(err.message || 'Lỗi khi kết nối máy chủ.', 'error');
@@ -383,6 +384,35 @@ Object.assign(PinkyClassApp.prototype, {
         } finally {
             resetBtn.disabled = false;
             resetBtn.innerText = 'Đặt lại mật khẩu';
+        }
+    },
+
+    setThemeMode(mode) {
+        document.documentElement.setAttribute('data-theme-mode', mode);
+        localStorage.setItem('nttclass_theme_mode', mode);
+        this.updateThemeModeActiveButtons();
+        this.showToast(`Đã chuyển sang giao diện ${mode === 'dark' ? 'Tối' : 'Sáng'}!`, 'success');
+    },
+
+    updateThemeModeActiveButtons() {
+        const mode = localStorage.getItem('nttclass_theme_mode') || 'light';
+        const btnLight = document.getElementById('btnThemeLight');
+        const btnDark = document.getElementById('btnThemeDark');
+        if (btnLight && btnDark) {
+            btnLight.classList.toggle('btn-primary', mode === 'light');
+            btnLight.classList.toggle('btn-secondary', mode !== 'light');
+            btnDark.classList.toggle('btn-primary', mode === 'dark');
+            btnDark.classList.toggle('btn-secondary', mode !== 'dark');
+        }
+
+        // Đồng bộ chấm chọn màu chủ đạo trong modal Settings
+        const switcher = document.getElementById('modalThemeSwitcher');
+        if (switcher) {
+            const current = localStorage.getItem('nttclass_theme') || 'blue';
+            const swatches = switcher.querySelectorAll('.theme-swatch');
+            swatches.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.themeValue === current);
+            });
         }
     }
 });

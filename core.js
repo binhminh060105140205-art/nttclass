@@ -60,12 +60,15 @@ class PinkyClassApp {
             localStorage.setItem('nttclass_theme', saved);
         }
         document.documentElement.setAttribute('data-theme', saved);
+
+        // Khởi tạo chế độ sáng/tối
+        const mode = localStorage.getItem('nttclass_theme_mode') || 'light';
+        document.documentElement.setAttribute('data-theme-mode', mode);
     }
 
-    // Gắn sự kiện click cho 3 chấm màu ở cuối sidebar: đổi data-theme + lưu
-    // lại lựa chọn + tô sáng chấm đang được chọn.
+    // Gắn sự kiện click cho bộ chọn màu (trong modal)
     bindThemeSwitcher() {
-        const switcher = document.getElementById('themeSwitcher');
+        const switcher = document.getElementById('modalThemeSwitcher');
         if (!switcher) return;
         const current = localStorage.getItem('nttclass_theme') || 'blue';
         const swatches = switcher.querySelectorAll('.theme-swatch');
@@ -79,6 +82,9 @@ class PinkyClassApp {
                 this.showToast('Đã đổi màu giao diện!', 'success');
             });
         });
+
+        // Cập nhật trạng thái các nút Sáng/Tối
+        this.updateThemeModeActiveButtons();
     }
 
     async init() {

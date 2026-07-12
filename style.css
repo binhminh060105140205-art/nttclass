@@ -3729,3 +3729,189 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     font-size: 0.75rem;
     font-weight: 700;
 }
+
+/* ==========================================================================
+   DARK MODE STYLES
+   ========================================================================== */
+[data-theme-mode="dark"] {
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --background: #0b0f19;
+    --card-bg: rgba(15, 23, 42, 0.82);
+    --border-color: rgba(255, 255, 255, 0.08);
+    --bg-grad-1: #0f172a;
+    --bg-grad-2: #0b0f19;
+    --bg-grad-3: #0b0f19;
+    --shadow-sm: 0 4px 18px rgba(0, 0, 0, 0.28);
+    --shadow-md: 0 10px 28px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 16px 42px rgba(0, 0, 0, 0.45);
+
+    /* Session type colors in dark mode */
+    --badge-private-bg: rgba(37, 99, 235, 0.18);
+    --badge-private-text: #60a5fa;
+    --badge-private-border: rgba(37, 99, 235, 0.35);
+
+    --badge-group-bg: rgba(14, 165, 233, 0.18);
+    --badge-group-text: #38bdf8;
+    --badge-group-border: rgba(14, 165, 233, 0.35);
+
+    /* Homework status colors in dark mode */
+    --hw-done-bg: rgba(22, 101, 52, 0.2);
+    --hw-done-text: #4ade80;
+    --hw-done-border: rgba(34, 197, 94, 0.35);
+
+    --hw-not-done-bg: rgba(153, 27, 27, 0.2);
+    --hw-not-done-text: #f87171;
+    --hw-not-done-border: rgba(239, 68, 68, 0.35);
+
+    --hw-pending-bg: rgba(3, 105, 161, 0.18);
+    --hw-pending-text: #38bdf8;
+    --hw-pending-border: rgba(14, 165, 233, 0.35);
+
+    --primary-light: rgba(37, 99, 235, 0.22);
+    --primary-soft: rgba(37, 99, 235, 0.12);
+
+    /* Calendar events in dark mode */
+    --event-rieng-a: #1e3a8a;
+    --event-rieng-b: #1d4ed8;
+    --event-rieng-text: #f8fafc;
+    --event-chung-a: #0369a1;
+    --event-chung-b: #0284c7;
+    --event-border: rgba(255, 255, 255, 0.1);
+    --event-border-strong: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme-mode="dark"][data-theme="violet"] {
+    --primary: #a78bfa;
+    --primary-light: rgba(124, 58, 237, 0.22);
+    --primary-soft: rgba(124, 58, 237, 0.12);
+    --accent: #c084fc;
+    --accent-strong: #a855f7;
+    --border-color: rgba(168, 85, 247, 0.16);
+
+    --badge-private-bg: rgba(124, 58, 237, 0.18);
+    --badge-private-text: #c084fc;
+    --badge-private-border: rgba(124, 58, 237, 0.35);
+
+    --badge-group-bg: rgba(168, 85, 247, 0.18);
+    --badge-group-text: #d8b4fe;
+    --badge-group-border: rgba(168, 85, 247, 0.35);
+
+    --event-rieng-a: #5b21b6;
+    --event-rieng-b: #4c1d95;
+    --event-rieng-text: #f8fafc;
+    --event-chung-a: #7e22ce;
+    --event-chung-b: #6b21a8;
+}
+
+[data-theme-mode="dark"][data-theme="pink"] {
+    --primary: #f472b6;
+    --primary-light: rgba(219, 39, 119, 0.22);
+    --primary-soft: rgba(219, 39, 119, 0.12);
+    --accent: #f472b6;
+    --accent-strong: #db2777;
+    --border-color: rgba(236, 72, 153, 0.16);
+
+    --badge-private-bg: rgba(219, 39, 119, 0.18);
+    --badge-private-text: #f472b6;
+    --badge-private-border: rgba(219, 39, 119, 0.35);
+
+    --badge-group-bg: rgba(236, 72, 153, 0.18);
+    --badge-group-text: #fbcfe8;
+    --badge-group-border: rgba(236, 72, 153, 0.35);
+
+    --event-rieng-a: #9d174d;
+    --event-rieng-b: #831843;
+    --event-rieng-text: #f8fafc;
+    --event-chung-a: #be185d;
+    --event-chung-b: #9d174d;
+}
+
+/* Specific component overrides in dark mode */
+[data-theme-mode="dark"] body {
+    color: #f8fafc;
+}
+[data-theme-mode="dark"] .sidebar {
+    background: rgba(15, 23, 42, 0.95);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme-mode="dark"] .top-header {
+    background: rgba(30, 41, 59, 0.85);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme-mode="dark"] .user-box {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme-mode="dark"] .custom-table th {
+    background: #1e293b;
+    color: #cbd5e1;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme-mode="dark"] .custom-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+[data-theme-mode="dark"] .menu-item:not(.active):hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+[data-theme-mode="dark"] .form-control, 
+[data-theme-mode="dark"] .form-select, 
+[data-theme-mode="dark"] .role-selector {
+    background: #0f172a;
+    color: #f8fafc;
+    border-color: rgba(255, 255, 255, 0.12);
+}
+[data-theme-mode="dark"] .btn-secondary {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #f8fafc;
+}
+[data-theme-mode="dark"] .btn-secondary:hover {
+    background: #334155;
+    color: #fff;
+}
+[data-theme-mode="dark"] .week-calendar-wrapper,
+[data-theme-mode="dark"] .month-calendar-grid {
+    background: #0f172a;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme-mode="dark"] .week-calendar-header-row {
+    background: #1e293b;
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme-mode="dark"] .month-weekday-row {
+    background: #1e293b;
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme-mode="dark"] .month-day-cell.is-outside-month {
+    background: rgba(0, 0, 0, 0.15);
+}
+[data-theme-mode="dark"] .modal-container {
+    background: #0f172a;
+}
+[data-theme-mode="dark"] .modal-header {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme-mode="dark"] .modal-footer {
+    background: #0f172a;
+    border-top-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme-mode="dark"] .ai-chat-card {
+    background: rgba(30, 41, 59, 0.95);
+}
+[data-theme-mode="dark"] .ai-chat-msg-bot .ai-chat-bubble {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme-mode="dark"] .channel-option-card {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme-mode="dark"] .channel-option-card:hover {
+    background: #334155;
+    border-color: rgba(255, 255, 255, 0.16);
+}
+[data-theme-mode="dark"] .channel-option-card .channel-info strong {
+    color: #f8fafc;
+}
