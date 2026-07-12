@@ -65,6 +65,7 @@ Object.assign(PinkyClassApp.prototype, {
         tbody.innerHTML = '';
         this.users.forEach(u => {
             const tr = document.createElement('tr');
+            const isProtected = u.Id === 'u_teacher';
             const activeBadge = u.Active
                 ? `<span class="badge" style="background: var(--hw-done-bg); color: var(--hw-done-text); border: 1px solid var(--hw-done-border);">Đang hoạt động</span>`
                 : `<span class="badge" style="background: var(--hw-not-done-bg); color: var(--hw-not-done-text); border: 1px solid var(--hw-not-done-border);">Đã vô hiệu hóa</span>`;
@@ -84,6 +85,15 @@ Object.assign(PinkyClassApp.prototype, {
                     </button>
                 </td>
             `;
+            if (isProtected) {
+                tr.querySelectorAll('button').forEach(btn => {
+                    btn.disabled = true;
+                    btn.title = 'Tài khoản chủ sở hữu được bảo vệ';
+                    btn.style.display = 'none';
+                });
+                const actionCell = tr.lastElementChild;
+                actionCell.innerHTML = '<span class="protected-account-badge">🔒 Tài khoản chủ</span>';
+            }
             tbody.appendChild(tr);
         });
     },
@@ -101,6 +111,10 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     openEditUserModal(id) {
+        if (id === 'u_teacher') {
+            this.showToast('Tài khoản Nguyễn Thanh Thúy là tài khoản chủ sở hữu, không thể chỉnh sửa.', 'error');
+            return;
+        }
         const user = (this.users || []).find(u => u.Id === id);
         if (!user) return;
 
@@ -179,6 +193,10 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     async toggleUserActive(id, makeActive) {
+        if (id === 'u_teacher') {
+            this.showToast('Không thể khóa tài khoản chủ sở hữu.', 'error');
+            return;
+        }
         try {
             const res = await this.authFetch(`${API_BASE_URL}/api/users/${id}`, {
                 method: 'PUT',
@@ -194,6 +212,20 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     async deleteUser(id) {
+        if (id === 'u_teacher') {
+            this.showToast('Không thể xóa tài khoản chủ sở hữu.', 'error');
+            return;
+        }
+        if (!this._committingDeletion) {
+            if (!confirm('Xóa tài khoản này? Bạn có 7 giây để hoàn tác.')) return;
+            this.queueDeletion('Tài khoản', async () => {
+                const originalConfirm = window.confirm;
+                this._committingDeletion = true;
+                window.confirm = () => true;
+                try { await this.deleteUser(id); } finally { window.confirm = originalConfirm; this._committingDeletion = false; }
+            });
+            return;
+        }
         if (this.currentUser && this.currentUser.Id === id) {
             this.showToast('Bạn không thể tự xóa tài khoản đang đăng nhập!', 'error');
             return;

@@ -552,6 +552,30 @@ Object.assign(PinkyClassApp.prototype, {
         return end.getTime() <= Date.now();
     },
 
+    queueDeletion(label, commit) {
+        if (this._pendingDeletion) clearTimeout(this._pendingDeletion.timer);
+        const toast = document.getElementById('toastNotification');
+        const msg = document.getElementById('toastMessage');
+        const undoBtn = document.getElementById('undoDeleteBtn');
+        const pending = { cancelled: false, timer: null };
+        this._pendingDeletion = pending;
+
+        msg.innerText = `${label} sẽ bị xóa sau 7 giây.`;
+        toast.className = 'notification show warning undo-toast';
+        undoBtn.hidden = false;
+        undoBtn.onclick = () => {
+            pending.cancelled = true;
+            clearTimeout(pending.timer);
+            undoBtn.hidden = true;
+            toast.classList.remove('show');
+            this.showToast('Đã hoàn tác. Dữ liệu vẫn được giữ nguyên.', 'success');
+        };
+        pending.timer = setTimeout(async () => {
+            undoBtn.hidden = true;
+            if (!pending.cancelled) await commit();
+        }, 7000);
+    },
+
     // Toast Alert Helper
     showToast(message, type = "success") {
         const toast = document.getElementById('toastNotification');
@@ -560,6 +584,8 @@ Object.assign(PinkyClassApp.prototype, {
 
         msg.innerText = message;
         toast.className = 'notification show ' + type;
+        const undoBtn = document.getElementById('undoDeleteBtn');
+        if (undoBtn) undoBtn.hidden = true;
 
         if (type === 'success') {
             icon.innerHTML = ' ';

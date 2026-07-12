@@ -241,6 +241,17 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     async deleteScore() {
+        if (!this._committingDeletion) {
+            const scoreId = document.getElementById('editScoreId').value;
+            if (!scoreId || !confirm('Xóa điểm này? Bạn có 7 giây để hoàn tác.')) return;
+            this.queueDeletion('Điểm số', async () => {
+                const originalConfirm = window.confirm;
+                this._committingDeletion = true;
+                window.confirm = () => true;
+                try { await this.deleteScore(); } finally { window.confirm = originalConfirm; this._committingDeletion = false; }
+            });
+            return;
+        }
         const id = document.getElementById('editScoreId').value;
         if (!id) return;
         if (!confirm('Xóa điểm này? Hành động không thể hoàn tác.')) return;

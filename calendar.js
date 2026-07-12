@@ -1159,6 +1159,16 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     async deleteSession(id) {
+        if (!this._committingDeletion) {
+            if (!confirm('Xóa buổi học này? Bạn có 7 giây để hoàn tác.')) return;
+            this.queueDeletion('Buổi học', async () => {
+                const originalConfirm = window.confirm;
+                this._committingDeletion = true;
+                window.confirm = () => true;
+                try { await this.deleteSession(id); } finally { window.confirm = originalConfirm; this._committingDeletion = false; }
+            });
+            return;
+        }
         if (this.currentRole !== 'teacher') {
             this.showToast("Chỉ Giáo viên mới có quyền xóa buổi học!", "error");
             return;

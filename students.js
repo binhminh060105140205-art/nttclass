@@ -219,6 +219,16 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     async deleteStudent(id) {
+        if (!this._committingDeletion) {
+            if (!confirm('Xóa học sinh này? Bạn có 7 giây để hoàn tác.')) return;
+            this.queueDeletion('Học sinh', async () => {
+                const originalConfirm = window.confirm;
+                this._committingDeletion = true;
+                window.confirm = () => true;
+                try { await this.deleteStudent(id); } finally { window.confirm = originalConfirm; this._committingDeletion = false; }
+            });
+            return;
+        }
         if (this.currentRole !== 'teacher') {
             this.showToast("Chỉ Giáo viên mới có quyền xóa học sinh!", "error");
             return;

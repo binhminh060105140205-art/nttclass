@@ -13,6 +13,12 @@ Object.assign(PinkyClassApp.prototype, {
         // Bộ chọn màu giao diện (3 chấm màu ở cuối sidebar)
         this.bindThemeSwitcher();
 
+        // Nút Cài đặt bảo mật tài khoản
+        const settingsBtn = document.getElementById('sidebarSettingsBtn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', () => this.openSettingsModal());
+        }
+
         // Lọc học sinh theo lớp (Lớp 6 -> Lớp 12)
         const gradeFilterEl = document.getElementById('studentGradeFilter');
         if (gradeFilterEl) {
@@ -59,14 +65,12 @@ Object.assign(PinkyClassApp.prototype, {
             });
         }
 
-        // Link "Quên mật khẩu?" — app chưa có luồng tự khôi phục mật khẩu qua
-        // email/SMS, nên chỉ hướng dẫn liên hệ giáo viên/quản trị viên (người
-        // có quyền reset mật khẩu tài khoản) thay vì hiển thị form không hoạt động.
+        // Link "Quên mật khẩu?" — khôi phục mật khẩu qua mã OTP
         const forgotLink = document.getElementById('loginForgotLink');
         if (forgotLink) {
             forgotLink.addEventListener('click', (e) => {
                 e.preventDefault();
-                this.showToast('Vui lòng liên hệ giáo viên hoặc quản trị viên hệ thống để được cấp lại mật khẩu.', 'info');
+                this.openForgotPasswordModal();
             });
         }
 
