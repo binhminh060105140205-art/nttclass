@@ -1,6 +1,6 @@
 // ================================================================
 // STUDENTS.JS — Trang "Hồ sơ học sinh": danh sách, thêm/sửa/xoá học sinh.
-// ================================================================
+// a================================================================
 Object.assign(PinkyClassApp.prototype, {
     renderStudentList() {
         const tbody = document.getElementById('studentsTableBody');
