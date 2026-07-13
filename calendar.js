@@ -489,7 +489,7 @@ Object.assign(PinkyClassApp.prototype, {
         // tạo lấy từ studentDetails hiện có của đúng em đó (nếu có).
         const listWrap = document.getElementById('quickEntryStudentsList');
         listWrap.innerHTML = sess.studentIds.map(stId => {
-            const detail = sess.studentDetails[stId] || { homework: '0%', attitude: '', individualComment: '', note: '' };
+            const detail = sess.studentDetails[stId] || { homework: null, attitude: '', individualComment: '', note: '' };
             const name = this.getStudentName(stId);
             const homeworkVal = this.normalizeHomeworkValue(detail.homework);
             const attitude = detail.attitude === 'Tốt' ? '' : (detail.attitude || '');
@@ -564,7 +564,7 @@ Object.assign(PinkyClassApp.prototype, {
         const newStudentDetails = {};
         document.querySelectorAll('#quickEntryStudentsList .qe-student-card').forEach(card => {
             const stId = card.getAttribute('data-student-id');
-            const homework = card.querySelector('.qe-homework').value.trim() || '0%';
+            const homework = card.querySelector('.qe-homework').value.trim() || null;
             const attitude = card.querySelector('.qe-attitude').value.trim() || 'Tốt';
             const individualComment = card.querySelector('.qe-comment').value.trim();
             const note = card.querySelector('.qe-note').value.trim();
@@ -694,7 +694,7 @@ Object.assign(PinkyClassApp.prototype, {
 
             const clonedStudentDetails = {};
             Object.keys(baseSession.studentDetails || {}).forEach(stId => {
-                clonedStudentDetails[stId] = { homework: "0%", attitude: "Tốt", individualComment: "", note: "" };
+                clonedStudentDetails[stId] = { homework: null, attitude: "Tốt", individualComment: "", note: "" };
             });
 
             const repeatedSession = {
@@ -925,7 +925,7 @@ Object.assign(PinkyClassApp.prototype, {
         const studentDetails = {};
         studentIds.forEach(stId => {
             studentDetails[stId] = {
-                homework: "0%",
+                homework: null,
                 attitude: "Tốt",
                 individualComment: "",
                 note: ""
@@ -1106,7 +1106,7 @@ Object.assign(PinkyClassApp.prototype, {
                 newStudentDetails[stId] = sess.studentDetails[stId];
             } else {
                 newStudentDetails[stId] = {
-                    homework: "0%",
+                    homework: null,
                     attitude: "Tốt",
                     individualComment: "",
                     note: ""
