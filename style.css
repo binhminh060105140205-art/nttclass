@@ -4049,3 +4049,15 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     background: #f8fafc !important;
     color: var(--text-main) !important;
 }
+/* --- Xóa icon góc phải trên 4 thẻ thống kê Tổng quan (●, ◷, ↗, ₫) ---
+   Đặt cuối file để ghi đè chắc chắn mọi định nghĩa ::after trùng lặp
+   ở trên (kể cả bản theme sáng/tối), không cần dò sửa từng chỗ. */
+.stat-card::after,
+.stats-grid .stat-card:nth-child(1)::after,
+.stats-grid .stat-card:nth-child(2)::after,
+.stats-grid .stat-card:nth-child(3)::after,
+.stats-grid .stat-card:nth-child(4)::after,
+[data-theme-mode="dark"] .stat-card::after {
+    content: none !important;
+    display: none !important;
+}
