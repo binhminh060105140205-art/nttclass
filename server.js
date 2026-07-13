@@ -1230,11 +1230,11 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
                     VALUES (@id, @date, @startTime, @endTime, @type, @sessionName, @price, @duration, @content, @generalComment, @completed, @teacherId)`);
 
         for (const stId of studentIds) {
-            const detail = (studentDetails && studentDetails[stId]) || { homework: 'Chưa làm', attitude: 'Tốt', individualComment: '', note: '' };
+            const detail = (studentDetails && studentDetails[stId]) || { homework: null, attitude: 'Tốt', individualComment: '', note: '' };
             await new sql.Request(transaction)
                 .input('sessionId',        sql.VarChar,  id)
                 .input('studentId',        sql.VarChar,  stId)
-                .input('homework',         sql.NVarChar, detail.homework         || 'Chưa làm')
+                .input('homework',         sql.NVarChar, detail.homework         || null)
                 .input('attitude',         sql.NVarChar, detail.attitude         || 'Tốt')
                 .input('individualComment',sql.NVarChar, detail.individualComment|| '')
                 .input('note',             sql.NVarChar, detail.note             || '')
@@ -1327,12 +1327,12 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
             .query('DELETE FROM SessionDetails WHERE SessionId = @sessionId');
 
         for (const stId of studentIds) {
-            const detail = (studentDetails && studentDetails[stId]) || { homework: 'Chưa làm', attitude: 'Tốt', individualComment: '', note: '' };
+            const detail = (studentDetails && studentDetails[stId]) || { homework: null, attitude: 'Tốt', individualComment: '', note: '' };
             const keepPaid = (detail.paid !== undefined) ? !!detail.paid : !!existingPaidMap[stId];
             await new sql.Request(transaction)
                 .input('sessionId',        sql.VarChar,  id)
                 .input('studentId',        sql.VarChar,  stId)
-                .input('homework',         sql.NVarChar, detail.homework          || 'Chưa làm')
+                .input('homework',         sql.NVarChar, detail.homework          || null)
                 .input('attitude',         sql.NVarChar, detail.attitude          || 'Tốt')
                 .input('individualComment',sql.NVarChar, detail.individualComment || '')
                 .input('note',             sql.NVarChar, detail.note              || '')
@@ -1405,7 +1405,7 @@ app.put('/api/session-details/:sessionId/:studentId', requireRole('teacher', 'as
         await new sql.Request(transaction)
             .input('sessionId',        sql.VarChar,  sessionId)
             .input('studentId',        sql.VarChar,  studentId)
-            .input('homework',         sql.NVarChar, homework         || 'Chưa làm')
+            .input('homework',         sql.NVarChar, homework         || null)
             .input('attitude',         sql.NVarChar, attitude         || 'Tốt')
             .input('individualComment',sql.NVarChar, individualComment|| '')
             .input('note',             sql.NVarChar, note             || '')
