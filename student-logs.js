@@ -34,7 +34,7 @@ Object.assign(PinkyClassApp.prototype, {
         studentSessions.forEach((sess, idx) => {
             const tr = document.createElement('tr');
 
-            const detail = sess.studentDetails[studentId] || { homework: '0%', attitude: 'Tốt', individualComment: '', note: '' };
+            const detail = sess.studentDetails[studentId] || { homework: null, attitude: 'Tốt', individualComment: '', note: '' };
 
             // BÀI TẬP VỀ NHÀ: chỉ HIỂN THỊ (badge tĩnh), không cho sửa trực
             // tiếp ở bảng này nữa — giá trị luôn lấy từ dữ liệu chấm công đã
@@ -43,7 +43,8 @@ Object.assign(PinkyClassApp.prototype, {
             // màu badge đi theo mức độ: 100% xanh (done), 50-70% vàng
             // (pending), 0-30% đỏ (not-done).
             const hwClass = this.getHomeworkClass(detail.homework);
-            const homeworkBadge = `<span class="homework-badge ${hwClass}">${this.getHomeworkLabel(detail.homework)}</span>`;
+            const hwInlineStyle = hwClass === 'no-data' ? ' style="background:transparent;color:var(--text-muted);"' : '';
+            const homeworkBadge = `<span class="homework-badge ${hwClass}"${hwInlineStyle}>${this.getHomeworkLabel(detail.homework)}</span>`;
 
             // Session Date display: dòng trên "Thứ 7", dòng dưới "23/05" (không gạch ngang)
             const dateStr = this.formatDateVNSplit(sess.date);
@@ -87,26 +88,33 @@ Object.assign(PinkyClassApp.prototype, {
     // Chuẩn hóa giá trị BTVN lưu trong DB về đúng 1 trong 5 mức % cố định.
     // Vẫn hiểu được dữ liệu CŨ (dạng chữ: "Chưa làm" / "Chưa hoàn thành" /
     // "Hoàn thành") để không vỡ báo cáo của các buổi học đã nhập từ trước.
+    // Trả về null nếu chưa nhập (giá trị rỗng/undefined/không hợp lệ),
+    // để phân biệt với trường hợp đã nhập rõ ràng là '0%'.
     normalizeHomeworkValue(value) {
         const legacyMap = {
             'Chưa làm': '0%',
             'Chưa hoàn thành': '50%',
             'Hoàn thành': '100%'
         };
+        if (value === null || value === undefined || value === '') return null;
         if (legacyMap[value]) return legacyMap[value];
         if (this.getHomeworkLevels().includes(value)) return value;
-        return '0%';
+        return null;
     },
 
-    // Nhãn hiển thị = chính mức % đã chuẩn hóa.
+    // Nhãn hiển thị = chính mức % đã chuẩn hóa, hoặc "-" nếu chưa nhập.
     getHomeworkLabel(value) {
-        return this.normalizeHomeworkValue(value);
+        const normalized = this.normalizeHomeworkValue(value);
+        return normalized === null ? '-' : normalized;
     },
 
     // Màu badge theo mức độ hoàn thành: 100% -> xanh (done),
-    // 50%/70% -> vàng (pending), 0%/30% -> đỏ (not-done).
+    // 50%/70% -> vàng (pending), 0%/30% -> đỏ (not-done),
+    // chưa nhập -> xám trung tính (no-data).
     getHomeworkClass(value) {
-        const percent = parseInt(this.normalizeHomeworkValue(value), 10) || 0;
+        const normalized = this.normalizeHomeworkValue(value);
+        if (normalized === null) return 'no-data';
+        const percent = parseInt(normalized, 10) || 0;
         if (percent >= 100) return 'done';
         if (percent >= 50) return 'pending';
         return 'not-done';
