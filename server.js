@@ -1592,9 +1592,10 @@ app.post('/api/students/:studentId/monthly-payments', requireRole('teacher'), re
         return res.status(400).json({ error: 'Ngày thanh toán không hợp lệ.' });
     }
     const [year, monthNumber] = month.split('-').map(Number);
-    const nextMonth = new Date(year, monthNumber, 1);
+    const nextYear = monthNumber === 12 ? year + 1 : year;
+    const nextMonthNumber = monthNumber === 12 ? 1 : monthNumber + 1;
     const fromDate = `${month}-01`;
-    const toDate = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-01`;
+    const toDate = `${nextYear}-${String(nextMonthNumber).padStart(2, '0')}-01`;
     const paymentMethod = ['Tiền mặt', 'Chuyển khoản', 'Ví điện tử', 'Khác'].includes(method) ? method : 'Tiền mặt';
     let transaction;
     try {
@@ -1618,7 +1619,8 @@ app.post('/api/students/:studentId/monthly-payments', requireRole('teacher'), re
                 WHERE sd.StudentId = @studentId AND s.TeacherId = @teacherId
                   AND s.SessionDate >= @fromDate AND s.SessionDate < @toDate
                   AND sd.Paid = 0 AND sd.FeeAmount > 0
-                  AND (s.SessionDate < CURRENT_DATE OR (s.SessionDate = CURRENT_DATE
+                  AND (s.SessionDate < (NOW() AT TIME ZONE 'Asia/Bangkok')::date
+                       OR (s.SessionDate = (NOW() AT TIME ZONE 'Asia/Bangkok')::date
                        AND s.EndTime <= TO_CHAR(NOW() AT TIME ZONE 'Asia/Bangkok', 'HH24:MI')))`);
         const due = dueRows.recordset || [];
         const dueAmount = due.reduce((sum, row) => sum + Number(row.FeeAmount || 0), 0);
@@ -1981,8 +1983,8 @@ async function buildAiContext(req) {
             FROM Sessions s
             LEFT JOIN SessionDetails sd ON s.Id = sd.SessionId
             WHERE s.TeacherId = @teacherId
-              AND s.SessionDate >= CURRENT_DATE - INTERVAL '45 days'
-              AND s.SessionDate <= CURRENT_DATE + INTERVAL '14 days'
+              AND s.SessionDate >= (NOW() AT TIME ZONE 'Asia/Bangkok')::date - INTERVAL '45 days'
+              AND s.SessionDate <= (NOW() AT TIME ZONE 'Asia/Bangkok')::date + INTERVAL '14 days'
             ORDER BY s.SessionDate DESC
         `);
 

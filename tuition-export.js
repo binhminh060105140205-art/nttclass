@@ -294,7 +294,7 @@ Object.assign(PinkyClassApp.prototype, {
         // để số liệu xuất ra khớp 100% với những gì giáo viên đang xem.
         const studentSessions = this.filterByMonth(this.sessions)
             .filter(sess => sess.studentIds.includes(studentId))
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
+            .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
 
         if (studentSessions.length === 0) {
             this.showToast("Không có dữ liệu nhật ký để xuất!", "error");

@@ -567,7 +567,8 @@ Object.assign(PinkyClassApp.prototype, {
     isSessionCompleted(sess) {
         if (!sess || !sess.date) return false;
         const [eh, em] = (sess.endTime || '23:59').split(':').map(Number);
-        const end = new Date(sess.date);
+        const end = this.parseLocalDate(sess.date);
+        if (!end) return false;
         end.setHours(eh || 0, em || 0, 0, 0);
         return end.getTime() <= Date.now();
     },

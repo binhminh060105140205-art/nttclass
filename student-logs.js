@@ -15,7 +15,7 @@ Object.assign(PinkyClassApp.prototype, {
         // Find all sessions involving this student, sorted chronologically
         const studentSessions = this.filterByMonth(this.sessions)
             .filter(sess => sess.studentIds.includes(studentId))
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
+            .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
 
         const tbody = document.getElementById('studentLogsTableBody');
         tbody.innerHTML = '';
@@ -131,7 +131,7 @@ Object.assign(PinkyClassApp.prototype, {
     getScoresForStudent(studentId) {
         return (this.scores || [])
             .filter(sc => sc.studentId === studentId)
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
+            .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
     },
 
     scoreTypeLabel(type) {

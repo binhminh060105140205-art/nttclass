@@ -38,7 +38,7 @@ Object.assign(PinkyClassApp.prototype, {
         this._invoiceStudentId = studentId;
         this._invoiceAllSessions = this.sessions
             .filter(sess => sess.studentIds.includes(studentId))
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
+            .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
 
         document.getElementById('invoiceStudentId').value = studentId;
         document.getElementById('invoiceStudentName').innerText = st.name;

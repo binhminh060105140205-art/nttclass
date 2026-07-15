@@ -2847,7 +2847,8 @@ textarea.form-control {
 }
 
 .qe-student-card input,
-.qe-student-card textarea {
+.qe-student-card textarea,
+.qe-student-card select {
     width: 100%;
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -2858,7 +2859,8 @@ textarea.form-control {
 }
 
 .qe-student-card input:focus,
-.qe-student-card textarea:focus {
+.qe-student-card textarea:focus,
+.qe-student-card select:focus {
     border-color: var(--primary);
 }
 
@@ -4072,4 +4074,116 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
 [data-theme-mode="dark"] .stat-card::after {
     content: none !important;
     display: none !important;
+}
+
+/* Complete dark-mode coverage for components that still use fixed light colors. */
+[data-theme-mode="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+[data-theme-mode="dark"] select,
+[data-theme-mode="dark"] textarea {
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
+    border-color: rgba(255, 255, 255, 0.14) !important;
+    caret-color: #f8fafc;
+}
+
+[data-theme-mode="dark"] input::placeholder,
+[data-theme-mode="dark"] textarea::placeholder {
+    color: #64748b !important;
+    opacity: 1;
+}
+
+[data-theme-mode="dark"] input:disabled,
+[data-theme-mode="dark"] select:disabled,
+[data-theme-mode="dark"] textarea:disabled {
+    background-color: #111827 !important;
+    color: #64748b !important;
+    opacity: 1;
+}
+
+[data-theme-mode="dark"] .qe-student-card,
+[data-theme-mode="dark"] .remarks-editor-box {
+    background: #111c30 !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme-mode="dark"] .qe-student-card select {
+    min-height: 36px;
+    padding: 7px 30px 7px 10px;
+}
+
+[data-theme-mode="dark"] .month-day-cell,
+[data-theme-mode="dark"] .week-time-cell,
+[data-theme-mode="dark"] .week-day-column,
+[data-theme-mode="dark"] .week-day-header,
+[data-theme-mode="dark"] .week-time-header {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme-mode="dark"] .month-day-cell:hover,
+[data-theme-mode="dark"] .week-time-cell:hover {
+    background: rgba(255, 255, 255, 0.04) !important;
+}
+
+[data-theme-mode="dark"] .sidebar-collapse-toggle {
+    background: #1e293b !important;
+    color: var(--primary) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+[data-theme-mode="dark"] .sidebar-collapse-toggle:hover {
+    background: var(--primary) !important;
+    color: #fff !important;
+}
+
+[data-theme-mode="dark"] .tuition-status-select.status-paid {
+    background: rgba(22, 101, 52, 0.28) !important;
+    color: #86efac !important;
+    border-color: rgba(74, 222, 128, 0.35) !important;
+}
+
+[data-theme-mode="dark"] .tuition-status-select.status-unpaid {
+    background: rgba(153, 27, 27, 0.28) !important;
+    color: #fca5a5 !important;
+    border-color: rgba(248, 113, 113, 0.35) !important;
+}
+
+[data-theme-mode="dark"] .login-screen {
+    background: #080d17 !important;
+}
+
+[data-theme-mode="dark"] .login-wrapper,
+[data-theme-mode="dark"] .login-card {
+    background: #0f172a !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme-mode="dark"] .login-welcome,
+[data-theme-mode="dark"] .login-input-group label {
+    color: #f8fafc !important;
+}
+
+[data-theme-mode="dark"] .login-welcome-sub,
+[data-theme-mode="dark"] .login-remember {
+    color: #94a3b8 !important;
+}
+
+[data-theme-mode="dark"] .login-card-icon {
+    background: rgba(37, 99, 235, 0.18) !important;
+    color: #60a5fa !important;
+}
+
+[data-theme-mode="dark"] .form-group label,
+[data-theme-mode="dark"] .filter-group label {
+    color: #cbd5e1 !important;
+}
+
+[data-theme-mode="dark"] .btn-danger {
+    background: rgba(153, 27, 27, 0.3) !important;
+    color: #fca5a5 !important;
+    border-color: rgba(248, 113, 113, 0.35) !important;
+}
+
+[data-theme-mode="dark"] .btn-danger:hover {
+    background: rgba(185, 28, 28, 0.45) !important;
+    color: #fee2e2 !important;
 }
