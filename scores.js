@@ -30,10 +30,10 @@ Object.assign(PinkyClassApp.prototype, {
         }
 
         // ----- Bảng tóm tắt trung bình theo từng loại điểm -----
-        const byType = t => studentScores.filter(s => s.scoreType === t).map(s => s.scoreValue);
-        const avgBTVN = this.average(byType('BTVN'));
-        const avgKT   = this.average(byType('KiemTra'));
-        const avgTD   = this.average(byType('ThaiDo'));
+        const byTypes = (...types) => studentScores.filter(s => types.includes(s.scoreType)).map(s => s.scoreValue);
+        const avgBTVN = this.average(byTypes('BTVN'));
+        const avgKTTX = this.average(byTypes('KTTX', 'KiemTra'));
+        const avgCC   = this.average(byTypes('CuoiChuong'));
         const avgAll  = this.average(studentScores.map(s => s.scoreValue));
         const fmt = v => v === null ? '-' : v.toFixed(1);
 
@@ -45,12 +45,12 @@ Object.assign(PinkyClassApp.prototype, {
                     <div class="score-summary-value">${fmt(avgBTVN)}</div>
                 </div>
                 <div class="score-summary-card">
-                    <div class="score-summary-label">TB Kiểm tra</div>
-                    <div class="score-summary-value">${fmt(avgKT)}</div>
+                    <div class="score-summary-label">TB kiểm tra thường xuyên</div>
+                    <div class="score-summary-value">${fmt(avgKTTX)}</div>
                 </div>
                 <div class="score-summary-card">
-                    <div class="score-summary-label">TB Thái độ</div>
-                    <div class="score-summary-value">${fmt(avgTD)}</div>
+                    <div class="score-summary-label">TB kiểm tra cuối chương</div>
+                    <div class="score-summary-value">${fmt(avgCC)}</div>
                 </div>
                 <div class="score-summary-card score-summary-overall">
                     <div class="score-summary-label">Điểm TB chung</div>
@@ -96,8 +96,8 @@ Object.assign(PinkyClassApp.prototype, {
                     labels,
                     datasets: [
                         { label: 'BTVN',     data: dataFor('BTVN'),    borderColor: '#2563eb', backgroundColor: '#2563eb', spanGaps: true, tension: 0.3 },
-                        { label: 'Kiểm tra', data: dataFor('KiemTra'), borderColor: '#dc2626', backgroundColor: '#dc2626', spanGaps: true, tension: 0.3 },
-                        { label: 'Thái độ',  data: dataFor('ThaiDo'),  borderColor: '#16a34a', backgroundColor: '#16a34a', spanGaps: true, tension: 0.3 }
+                        { label: 'Kiểm tra thường xuyên', data: studentScores.map(s => ['KTTX', 'KiemTra'].includes(s.scoreType) ? s.scoreValue : null), borderColor: '#dc2626', backgroundColor: '#dc2626', spanGaps: true, tension: 0.3 },
+                        { label: 'Kiểm tra cuối chương', data: dataFor('CuoiChuong'), borderColor: '#16a34a', backgroundColor: '#16a34a', spanGaps: true, tension: 0.3 }
                     ]
                 },
                 options: {
@@ -116,10 +116,10 @@ Object.assign(PinkyClassApp.prototype, {
             this.charts.bar = new Chart(barCanvas, {
                 type: 'bar',
                 data: {
-                    labels: ['BTVN', 'Kiểm tra', 'Thái độ'],
+                    labels: ['BTVN', 'Kiểm tra thường xuyên', 'Kiểm tra cuối chương'],
                     datasets: [{
                         label: 'Điểm trung bình',
-                        data: [byTypeAvg('BTVN'), byTypeAvg('KiemTra'), byTypeAvg('ThaiDo')].map(v => v === null ? 0 : v),
+                        data: [byTypeAvg('BTVN'), this.average(studentScores.filter(s => ['KTTX', 'KiemTra'].includes(s.scoreType)).map(s => s.scoreValue)), byTypeAvg('CuoiChuong')].map(v => v === null ? 0 : v),
                         backgroundColor: ['#2563eb', '#dc2626', '#16a34a'],
                         borderRadius: 6
                     }]
@@ -185,7 +185,11 @@ Object.assign(PinkyClassApp.prototype, {
         if (!sc) return;
         document.getElementById('scoreModalTitle').innerText = 'Sửa Điểm';
         document.getElementById('editScoreId').value = sc.id;
-        document.getElementById('scoreType').value = sc.scoreType;
+        const scoreTypeEl = document.getElementById('scoreType');
+        if (![...scoreTypeEl.options].some(option => option.value === sc.scoreType)) {
+            scoreTypeEl.add(new Option(this.scoreTypeLabel(sc.scoreType), sc.scoreType));
+        }
+        scoreTypeEl.value = sc.scoreType;
         document.getElementById('scoreValue').value = sc.scoreValue;
         document.getElementById('scoreDate').value = sc.date;
         document.getElementById('scoreNote').value = sc.note || '';

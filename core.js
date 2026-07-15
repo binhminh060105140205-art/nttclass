@@ -22,7 +22,8 @@ class PinkyClassApp {
         this.currentUser = null;
         this.currentRole = null; // admin or teacher
         this.currentStudentId = null; // Active student filter (chỉ dùng ở trang Nhật ký học tập)
-        this.currentMonthFilter = ''; // '' = tất cả, hoặc dạng "yyyy-m" (VD "2026-7") ứng với 1 mục trong dropdown "Kỳ"
+        const currentDate = new Date();
+        this.currentMonthFilter = `${currentDate.getFullYear()}-${currentDate.getMonth() + 1}`;
         this.currentWeekStart = this.getMonday(new Date()); // Thứ 2 đầu tuần đang xem ở Lịch dạy & Chấm công
         this.calendarViewMode = 'week'; // 'day' | 'week' | 'month' — kiểu xem đang chọn ở Lịch dạy & Chấm công
         this.currentDayDate = new Date(); // Ngày đang xem khi ở chế độ "Ngày"

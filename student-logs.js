@@ -11,6 +11,11 @@ Object.assign(PinkyClassApp.prototype, {
 
         // Header mapping
         document.getElementById('logStudentNameHeader').innerText = `${studentName} ${studentSubject} ${studentClass}`.toUpperCase();
+        const monthHeader = document.getElementById('logStudentYearHeader');
+        if (monthHeader) {
+            const [year, month] = String(this.currentMonthFilter || '').split('-');
+            monthHeader.innerText = year && month ? `THÁNG ${Number(month)}/${year}` : 'TẤT CẢ THÁNG';
+        }
         
         // Find all sessions involving this student, sorted chronologically
         const studentSessions = this.filterByMonth(this.sessions)
@@ -59,7 +64,7 @@ Object.assign(PinkyClassApp.prototype, {
 
             // Actions for edit
             const actionsHTML = `
-                <button class="btn btn-secondary btn-sm" onclick="app.openUpdateLogModal('${sess.id}', '${studentId}')">Đánh giá</button>
+                <button class="btn btn-secondary btn-sm" onclick="app.openUpdateLogModal('${sess.id}', '${studentId}')">Chỉnh sửa</button>
             `;
 
             tr.innerHTML = `
@@ -70,9 +75,9 @@ Object.assign(PinkyClassApp.prototype, {
                 <td class="session-date-cell">${dateStr}</td>
                 <td class="col-content-compact">${contentHTML}</td>
                 <td style="text-align:center;">${homeworkBadge}</td>
-                <td><strong>${detail.attitude || 'Tập trung'}</strong></td>
+                <td>${detail.attitude || 'Tập trung'}</td>
                 <td>${commentHTML}</td>
-                <td><span style="font-size:14.5px; color:var(--text-muted);">${detail.note || '-'}</span></td>
+                <td class="student-log-note">${detail.note || '-'}</td>
                 <td class="role-restricted admin-tutor log-export-hide">${actionsHTML}</td>
             `;
 
@@ -125,7 +130,7 @@ Object.assign(PinkyClassApp.prototype, {
         return this.escapeHtml(text).replace(/\n/g, '<br>');
     },
 
-    // --- VIEW 2B: SCORES MODULE (Phase 3: nhập điểm BTVN/Kiểm tra/Thái độ
+    // --- VIEW 2B: SCORES MODULE (BTVN/KTTX/Kiểm tra cuối chương
     //     + Phase 4: biểu đồ tiến bộ / so sánh / tỷ lệ hoàn thành BTVN) ---
 
     getScoresForStudent(studentId) {
@@ -136,14 +141,16 @@ Object.assign(PinkyClassApp.prototype, {
 
     scoreTypeLabel(type) {
         if (type === 'BTVN') return 'BTVN';
-        if (type === 'KiemTra') return 'Kiểm tra';
-        if (type === 'ThaiDo') return 'Thái độ';
+        if (type === 'KTTX' || type === 'KiemTra') return 'Kiểm tra thường xuyên';
+        if (type === 'CuoiChuong') return 'Kiểm tra cuối chương';
+        if (type === 'ThaiDo') return 'Thái độ (dữ liệu cũ)';
         return type;
     },
 
     scoreTypeBadgeClass(type) {
         if (type === 'BTVN') return 'type-btvn';
-        if (type === 'KiemTra') return 'type-kiemtra';
+        if (type === 'KTTX' || type === 'KiemTra') return 'type-kiemtra';
+        if (type === 'CuoiChuong') return 'type-cuoichuong';
         if (type === 'ThaiDo') return 'type-thaido';
         return '';
     },

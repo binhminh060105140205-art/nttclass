@@ -1496,10 +1496,11 @@ img, svg, video {
 }
 
 .student-log-title {
-    font-weight: 700;
-    font-size: 1.125rem;
+    font-weight: 800;
+    font-size: 1.35rem;
     letter-spacing: 0.5px;
     text-transform: uppercase;
+    color: #0f172a;
 }
 
 .student-log-subtitle {
@@ -1577,7 +1578,7 @@ img, svg, video {
 }
 
 .session-time-val {
-    font-size: 0.6875rem;
+    font-size: 0.8125rem;
     color: var(--text-muted);
 }
 
@@ -1595,7 +1596,7 @@ img, svg, video {
 
 .session-date-dm {
     display: block;
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     font-weight: 500;
     color: var(--text-muted);
     margin-top: 2px;
@@ -1643,8 +1644,9 @@ img, svg, video {
 }
 
 .col-content-compact .session-content-text {
-    font-size: 0.8125rem;
-    line-height: 1.5;
+    font-size: 0.9062rem;
+    line-height: 1.65;
+    font-weight: 400;
 }
 
 /* Cột "NHẬN XÉT CỦA GIÁO VIÊN" — phóng to theo yêu cầu để nhận xét dễ đọc,
@@ -1712,9 +1714,33 @@ img, svg, video {
 
 .comment-text {
     white-space: pre-line;
-    font-size: 1.0625rem;
-    line-height: 1.75;
-    font-weight: 500;
+    font-size: 0.9062rem;
+    line-height: 1.65;
+    font-weight: 400;
+}
+
+.student-log-note {
+    color: var(--text-main);
+    text-align: center;
+    vertical-align: middle !important;
+    font-weight: 400;
+}
+
+.log-student-picker {
+    min-width: 230px;
+}
+
+.log-student-picker .student-select {
+    width: 100%;
+}
+
+.log-export-btn,
+.role-badge {
+    white-space: nowrap;
+}
+
+.role-badge {
+    text-transform: uppercase;
 }
 
 .comment-divider {
@@ -2864,6 +2890,32 @@ textarea.form-control {
     border-color: var(--primary);
 }
 
+.qe-score-section {
+    margin-top: 4px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+}
+
+.qe-score-heading {
+    color: var(--text-main);
+    font-size: 0.8125rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+}
+
+.qe-score-heading span {
+    color: var(--text-muted);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    margin-left: 6px;
+}
+
+.qe-score-grid {
+    display: grid;
+    grid-template-columns: 1.25fr 0.7fr 1.4fr;
+    gap: 10px;
+}
+
 /* ==========================================================================
    6. RESPONSIVE / MEDIA QUERIES (mobile-first)
    The structural rules for .app-container / .sidebar / .sidebar-menu /
@@ -3229,6 +3281,22 @@ textarea.form-control {
 .score-type-badge.type-thaido {
     background: #dcfce7;
     color: #15803d;
+}
+
+.score-type-badge.type-cuoichuong {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+@media (max-width: 720px) {
+    .qe-score-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .qe-score-heading span {
+        display: block;
+        margin: 3px 0 0;
+    }
 }
 
 @media (max-width: 1024px) {

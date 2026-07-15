@@ -83,6 +83,10 @@ Object.assign(PinkyClassApp.prototype, {
         document.getElementById('globalStudentPicker').addEventListener('change', (e) => {
             this.currentStudentId = e.target.value;
             this.updateAllViews();
+            const subtitle = document.getElementById('view-subtitle');
+            if (subtitle && document.getElementById('view-logs').classList.contains('active-view')) {
+                subtitle.innerText = `Theo dõi chi tiết tiến trình bài tập, ý thức học tập và nhận xét qua từng buổi học của ${this.getStudentName(this.currentStudentId)}.`;
+            }
             this.showToast("Đã chuyển sang học sinh: " + this.getStudentName(this.currentStudentId), "success");
         });
 
@@ -94,6 +98,8 @@ Object.assign(PinkyClassApp.prototype, {
                 this.currentStudentId = e.target.value;
                 document.getElementById('globalStudentPicker').value = this.currentStudentId;
                 this.updateAllViews();
+                const subtitle = document.getElementById('view-subtitle');
+                if (subtitle) subtitle.innerText = `Điểm BTVN, kiểm tra thường xuyên, kiểm tra cuối chương và biểu đồ tiến bộ của ${this.getStudentName(this.currentStudentId)}.`;
                 this.showToast("Đã chuyển sang học sinh: " + this.getStudentName(this.currentStudentId), "success");
             });
         }
@@ -641,11 +647,11 @@ Object.assign(PinkyClassApp.prototype, {
             titleEl.innerText = "Tổng quan hệ thống";
             subtitleEl.innerText = "Bảng điều khiển học tập và lịch dạy cá nhân.";
         } else if (viewId === 'view-logs') {
-            titleEl.innerText = "Nhật ký Học tập";
-            subtitleEl.innerText = `Theo dõi tiến độ học tập và bài tập của học sinh: ${this.getStudentName(this.currentStudentId)}`;
+            titleEl.innerText = "NHẬT KÝ HỌC TẬP";
+            subtitleEl.innerText = `Theo dõi chi tiết tiến trình bài tập, ý thức học tập và nhận xét qua từng buổi học của ${this.getStudentName(this.currentStudentId)}.`;
         } else if (viewId === 'view-scores') {
             titleEl.innerText = "Điểm số";
-            subtitleEl.innerText = `Điểm BTVN, kiểm tra, thái độ và biểu đồ tiến bộ của học sinh: ${this.getStudentName(this.currentStudentId)}`;
+            subtitleEl.innerText = `Điểm BTVN, kiểm tra thường xuyên, kiểm tra cuối chương và biểu đồ tiến bộ của ${this.getStudentName(this.currentStudentId)}.`;
         } else if (viewId === 'view-ai-chat') {
             titleEl.innerText = "Trợ lý AI";
             subtitleEl.innerText = "Hỏi đáp dựa trên dữ liệu lịch dạy và điểm số thật trong tài khoản của bạn.";

@@ -12,17 +12,14 @@ Object.assign(PinkyClassApp.prototype, {
     renderCalendarView() {
         const wrapperEl = document.getElementById('weekCalendarWrapper');
         const monthEl = document.getElementById('monthCalendarGrid');
-        const titleEl = document.getElementById('calendarSectionTitle');
 
         if (this.calendarViewMode === 'month') {
             if (wrapperEl) wrapperEl.style.display = 'none';
             if (monthEl) monthEl.style.display = '';
-            if (titleEl) titleEl.innerText = ' Lịch Dạy Theo Tháng';
             this.renderMonthCalendar();
         } else {
             if (wrapperEl) wrapperEl.style.display = '';
             if (monthEl) monthEl.style.display = 'none';
-            if (titleEl) titleEl.innerText = this.calendarViewMode === 'day' ? ' Lịch Dạy Theo Ngày' : ' Lịch Dạy Theo Tuần';
             const days = this.calendarViewMode === 'day'
                 ? [new Date(this.currentDayDate)]
                 : this.getWeekDays(this.currentWeekStart);
@@ -491,9 +488,11 @@ Object.assign(PinkyClassApp.prototype, {
             const name = this.getStudentName(stId);
             const homeworkVal = this.normalizeHomeworkValue(detail.homework);
             const attitude = detail.attitude === 'Tốt' ? '' : (detail.attitude || '');
+            const linkedScore = (this.scores || []).find(score => score.sessionId === sess.id && score.studentId === stId);
             const homeworkOptionsHTML = this.getHomeworkLevels().map(level =>
                 `<option value="${level}" ${homeworkVal === level ? 'selected' : ''}>${level}</option>`
             ).join('');
+            const scoreType = linkedScore ? linkedScore.scoreType : '';
             return `
                 <div class="qe-student-card" data-student-id="${stId}">
                     <div class="qe-student-name">${this.escapeHtml(name)}</div>
@@ -501,6 +500,7 @@ Object.assign(PinkyClassApp.prototype, {
                         <div>
                             <label>Bài tập về nhà (BTVN) — mức hoàn thành</label>
                             <select class="qe-homework">
+                                <option value="" ${homeworkVal === null ? 'selected' : ''}>-</option>
                                 ${homeworkOptionsHTML}
                             </select>
                         </div>
@@ -515,6 +515,25 @@ Object.assign(PinkyClassApp.prototype, {
                         <div class="full-span">
                             <label>Ghi chú (Minitest,...)</label>
                             <input type="text" class="qe-note" placeholder="Ghi chú thêm..." value="${this.escapeHtmlAttr(detail.note || '')}">
+                        </div>
+                        <div class="full-span qe-score-section">
+                            <div class="qe-score-heading">Nhập điểm <span>Để trống nếu buổi này không chấm điểm</span></div>
+                            <div class="qe-score-grid">
+                                <label>Loại điểm
+                                    <select class="qe-score-type">
+                                        <option value="">Chưa nhập điểm</option>
+                                        <option value="BTVN" ${scoreType === 'BTVN' ? 'selected' : ''}>BTVN</option>
+                                        <option value="KTTX" ${['KTTX', 'KiemTra'].includes(scoreType) ? 'selected' : ''}>Kiểm tra thường xuyên</option>
+                                        <option value="CuoiChuong" ${scoreType === 'CuoiChuong' ? 'selected' : ''}>Kiểm tra cuối chương</option>
+                                    </select>
+                                </label>
+                                <label>Điểm (0–10)
+                                    <input type="number" class="qe-score-value" min="0" max="10" step="0.1" placeholder="Ví dụ: 8.5" value="${linkedScore ? linkedScore.scoreValue : ''}">
+                                </label>
+                                <label>Ghi chú điểm
+                                    <input type="text" class="qe-score-note" placeholder="Ví dụ: Minitest chương 2" value="${this.escapeHtmlAttr(linkedScore ? linkedScore.note : '')}">
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -560,6 +579,8 @@ Object.assign(PinkyClassApp.prototype, {
         const completed = this.isSessionCompleted(sess);
 
         const newStudentDetails = {};
+        const scoreEntries = [];
+        let scoreValidationError = '';
         document.querySelectorAll('#quickEntryStudentsList .qe-student-card').forEach(card => {
             const stId = card.getAttribute('data-student-id');
             const oldDetail = (sess.studentDetails && sess.studentDetails[stId]) || {};
@@ -575,7 +596,25 @@ Object.assign(PinkyClassApp.prototype, {
                 feeAmount: oldDetail.feeAmount,
                 paid: !!oldDetail.paid
             };
+
+            const scoreType = card.querySelector('.qe-score-type').value;
+            const scoreValueRaw = card.querySelector('.qe-score-value').value.trim();
+            const scoreNote = card.querySelector('.qe-score-note').value.trim();
+            if (scoreType || scoreValueRaw !== '') {
+                const scoreValue = Number(scoreValueRaw);
+                if (!scoreType) scoreValidationError = `Vui lòng chọn loại điểm cho ${this.getStudentName(stId)}.`;
+                else if (scoreValueRaw === '' || !Number.isFinite(scoreValue) || scoreValue < 0 || scoreValue > 10) {
+                    scoreValidationError = `Điểm của ${this.getStudentName(stId)} phải từ 0 đến 10.`;
+                } else {
+                    scoreEntries.push({ studentId: stId, scoreType, scoreValue, note: scoreNote });
+                }
+            }
         });
+
+        if (scoreValidationError) {
+            this.showToast(scoreValidationError, 'error');
+            return;
+        }
 
         // Đã bỏ ô "Nhận xét chung cho cả lớp" khỏi form nhập nhanh (chỉ còn
         // nhận xét RIÊNG cho từng học sinh). Với buổi học riêng (1 học sinh),
@@ -606,6 +645,22 @@ Object.assign(PinkyClassApp.prototype, {
                 body: JSON.stringify(updatedSession)
             });
             await this.requireApiSuccess(res, 'Không thể lưu nội dung và nhận xét buổi học.');
+            for (const entry of scoreEntries) {
+                const scoreRes = await this.authFetch(`${API_BASE_URL}/api/scores`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: `sc_${Date.now()}_${entry.studentId}_${Math.floor(Math.random() * 1000)}`,
+                        sessionId: id,
+                        studentId: entry.studentId,
+                        scoreType: entry.scoreType,
+                        scoreValue: entry.scoreValue,
+                        date: sess.date,
+                        note: entry.note
+                    })
+                });
+                await this.requireApiSuccess(scoreRes, `Không thể lưu điểm của ${this.getStudentName(entry.studentId)}.`);
+            }
             await this.loadData();
         } catch (err) {
             this.showToast(err.message || 'Không thể lưu nội dung và nhận xét buổi học.', 'error');
@@ -616,7 +671,9 @@ Object.assign(PinkyClassApp.prototype, {
 
         this.closeModal('quickSessionEntryModal');
         this.updateAllViews();
-        this.showToast("Đã lưu nhận xét riêng cho từng học sinh và đồng bộ sang Nhật ký học tập!", "success");
+        this.showToast(scoreEntries.length
+            ? "Đã lưu nhận xét và đồng bộ điểm sang mục Điểm số!"
+            : "Đã lưu nhận xét riêng cho từng học sinh và đồng bộ sang Nhật ký học tập!", "success");
     },
 
 

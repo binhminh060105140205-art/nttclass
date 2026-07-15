@@ -276,25 +276,16 @@
         <section id="view-logs" class="view-section">
             <div class="glass-card" style="padding: 14px 16px;">
                 <div class="evaluation-header" style="margin-bottom: 8px;">
-                    <div>
-                        <h2 style="color: var(--primary); font-weight: 700; font-size: 1rem; display: inline-flex; align-items: center; gap: 8px;"> Nhật Ký Học Tập Học Sinh
-                        </h2>
-                        <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
-                            Theo dõi chi tiết tiến trình bài tập, ý thức học tập và nhận xét qua từng buổi học.
-                        </p>
+                    <div class="student-context-picker log-student-picker" id="studentContextPicker">
+                        <select id="globalStudentPicker" class="student-select" aria-label="Chọn học sinh">
+                            <!-- Filled dynamically -->
+                        </select>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
-                        <!-- Student picker: chỉ dùng riêng ở trang Nhật ký học tập -->
-                        <div class="student-context-picker" id="studentContextPicker">
-                            <span>Đang chọn:</span>
-                            <select id="globalStudentPicker" class="student-select">
-                                <!-- Filled dynamically -->
-                            </select>
-                        </div>
                         <div class="role-restricted admin-tutor" style="display: flex; gap: 8px;">
-                            <button class="btn btn-secondary btn-sm" id="btnExportLogImage">Xuất ảnh
+                            <button class="btn btn-primary btn-sm log-export-btn" id="btnExportLogImage">Xuất ảnh
                             </button>
-                            <button class="btn btn-secondary btn-sm" id="btnExportLog">Xuất file Excel
+                            <button class="btn btn-secondary btn-sm log-export-btn" id="btnExportLog">Xuất Excel
                             </button>
                         </div>
                     </div>
@@ -308,7 +299,7 @@
                         <div>
                             <span class="student-log-title" id="logStudentNameHeader">QUỲNH ANH TOÁN 8</span>
                             <span style="margin: 0 8px; opacity: 0.7;">|</span>
-                            <span class="student-log-subtitle" id="logStudentYearHeader">(2026-2027)</span>
+                            <span class="student-log-subtitle" id="logStudentYearHeader">THÁNG/NĂM</span>
                         </div>
                     </div>
 
@@ -318,12 +309,12 @@
                                 <tr>
                                     <th style="width: 80px;">STT</th>
                                     <th style="width: 80px;">NGÀY</th>
-                                    <th class="col-content-compact">NỘI DUNG BUỔI HỌC</th>
-                                    <th style="width: 120px;">BÀI TẬP VỀ NHÀ</th>
+                                    <th class="col-content-compact">NỘI DUNG</th>
+                                    <th style="width: 120px;">BTVN</th>
                                     <th style="width: 100px;">Ý THỨC</th>
-                                    <th class="col-comment">NHẬN XÉT CỦA GIÁO VIÊN</th>
+                                    <th class="col-comment">NHẬN XÉT</th>
                                     <th style="width: 100px;">GHI CHÚ</th>
-                                    <th style="width: 80px;" class="role-restricted admin-tutor log-export-hide">THAO TÁC</th>
+                                    <th style="width: 90px;" class="role-restricted admin-tutor log-export-hide">CHỈNH SỬA</th>
                                 </tr>
                             </thead>
                             <tbody id="studentLogsTableBody">
@@ -342,12 +333,11 @@
                     <div>
                         <h2 style="color: var(--primary); font-weight: 700;"> Quản Lý Điểm Số</h2>
                         <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
-                            Theo dõi điểm BTVN, kiểm tra, thái độ học tập theo thời gian của từng học sinh.
+                            Theo dõi điểm BTVN, kiểm tra thường xuyên và kiểm tra cuối chương của từng học sinh.
                         </p>
                     </div>
                     <div style="display:flex; gap:8px; align-items:center;">
                         <div class="student-context-picker">
-                            <span>Đang chọn:</span>
                             <select id="scoresStudentPicker" class="student-select"></select>
                         </div>
                         <button class="btn btn-primary btn-sm role-restricted admin-tutor" id="addScoreBtn"> Thêm điểm
@@ -433,8 +423,6 @@
             <!-- Weekly calendar view of scheduled sessions (Image 4 format) -->
             <div class="glass-card" style="padding: 24px;">
                 <div class="evaluation-header" style="margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                    <h3 style="color: var(--primary); font-weight: 700; display: flex; align-items: center; gap: 10px; margin: 0;" id="calendarSectionTitle"> Lịch Dạy Theo Tuần
-                    </h3>
                     <div class="calendar-view-switcher" role="group" aria-label="Chọn kiểu xem lịch">
                         <button type="button" class="cal-view-btn" data-view="day">Ngày</button>
                         <button type="button" class="cal-view-btn active" data-view="week">Tuần</button>
@@ -1217,8 +1205,8 @@
                             <label for="scoreType">Loại điểm <span style="color:red;">*</span></label>
                             <select id="scoreType" class="form-control" required>
                                 <option value="BTVN">Bài tập về nhà (BTVN)</option>
-                                <option value="KiemTra">Kiểm tra</option>
-                                <option value="ThaiDo">Đánh giá thái độ</option>
+                                <option value="KTTX">Kiểm tra thường xuyên</option>
+                                <option value="CuoiChuong">Kiểm tra cuối chương</option>
                             </select>
                         </div>
                         <div class="form-group">
