@@ -273,6 +273,11 @@ Object.assign(PinkyClassApp.prototype, {
             this.exportInvoice();
         });
 
+        document.getElementById('monthlyPaymentForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.submitMonthlyPayment();
+        });
+
         // Form Submit: Trợ lý AI — gửi câu hỏi
         document.getElementById('aiChatForm').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -767,6 +772,18 @@ Object.assign(PinkyClassApp.prototype, {
             const student = this.students.find(s => s.id === sid);
             return student && Number(student.basePrice) > 0;
         });
+    },
+
+    // Số tiền này được chốt tại lúc tạo buổi học. Dữ liệu cũ chưa có snapshot
+    // vẫn dùng công thức cũ để tương thích cho tới khi server hoàn tất backfill.
+    getStudentSessionFee(sess, studentId) {
+        const detail = sess.studentDetails && sess.studentDetails[studentId];
+        if (detail && detail.feeAmount !== undefined && detail.feeAmount !== null) {
+            const amount = Number(detail.feeAmount);
+            return Number.isFinite(amount) && amount >= 0 ? amount : 0;
+        }
+        const payingIds = this.getPayingStudentIds(sess);
+        return payingIds.includes(studentId) ? Number(sess.price || 0) / (payingIds.length || 1) : 0;
     }
 
     // --- VIEW 1: DASHBOARD ---

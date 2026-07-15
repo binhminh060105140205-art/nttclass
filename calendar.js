@@ -694,7 +694,15 @@ Object.assign(PinkyClassApp.prototype, {
 
             const clonedStudentDetails = {};
             Object.keys(baseSession.studentDetails || {}).forEach(stId => {
-                clonedStudentDetails[stId] = { homework: null, attitude: "Tốt", individualComment: "", note: "" };
+                const baseDetail = baseSession.studentDetails[stId] || {};
+                clonedStudentDetails[stId] = {
+                    homework: null,
+                    attitude: "Tốt",
+                    individualComment: "",
+                    note: "",
+                    feeAmount: Number(baseDetail.feeAmount || 0),
+                    paid: false
+                };
             });
 
             const repeatedSession = {
@@ -915,22 +923,20 @@ Object.assign(PinkyClassApp.prototype, {
         // Học chung: tổng thu = đơn giá/học sinh x SỐ HỌC SINH CÓ ĐÓNG HỌC PHÍ
         // (loại trừ học sinh học phí cơ bản = 0đ khỏi phép nhân). Học riêng:
         // giữ nguyên đơn giá đã nhập (đã tự = 0 nếu học sinh đó học phí 0đ).
-        const payingCount = studentIds.filter(stId => {
-            const student = this.students.find(s => s.id === stId);
-            return student && Number(student.basePrice) > 0;
-        }).length;
-        const price = type === 'chung' ? unitPrice * payingCount : unitPrice;
-
-        // Create studentDetails map
+        // Chốt số tiền từng học sinh ngay khi tạo buổi. BasePrice chỉ quyết định
+        // buổi MỚI có thu hay miễn phí, không được dùng để tính lại buổi cũ.
         const studentDetails = {};
         studentIds.forEach(stId => {
+            const student = this.students.find(s => s.id === stId);
             studentDetails[stId] = {
                 homework: null,
                 attitude: "Tốt",
                 individualComment: "",
-                note: ""
+                note: "",
+                feeAmount: student && Number(student.basePrice) > 0 ? unitPrice : 0
             };
         });
+        const price = Object.values(studentDetails).reduce((sum, detail) => sum + Number(detail.feeAmount || 0), 0);
 
         const newSession = {
             // ID sinh từ Date.now() có thể trùng nếu 2 request được gửi trong
@@ -1018,9 +1024,13 @@ Object.assign(PinkyClassApp.prototype, {
         // sess.price được lưu là TỔNG thu của buổi học (đã loại trừ học sinh 0đ);
         // với học chung cần chia lại theo SỐ HỌC SINH CÓ ĐÓNG HỌC PHÍ để ra đúng
         // đơn giá/học sinh hiển thị trong ô nhập liệu.
-        const payingCount = Math.max(this.getPayingStudentIds(sess).length, 1);
         const editPriceEl = document.getElementById('editSessionPrice');
-        this.setPriceSelectValue(editPriceEl, sess.type === 'chung' ? Math.round(sess.price / payingCount) : sess.price);
+        const snapshottedFee = Object.values(sess.studentDetails || {})
+            .map(detail => Number(detail.feeAmount))
+            .find(amount => Number.isFinite(amount) && amount > 0);
+        const payingCount = Math.max(this.getPayingStudentIds(sess).length, 1);
+        this.setPriceSelectValue(editPriceEl, snapshottedFee || (sess.type === 'chung' ? Math.round(sess.price / payingCount) : sess.price));
+        editPriceEl.dataset.originalUnitPrice = String(this.parsePriceValue(editPriceEl.value));
         editPriceEl.dataset.userEdited = 'true'; // giữ đúng giá đã lưu, không để bị tự động ghi đè
         document.getElementById('editSessionContent').value = sess.content || '';
 
@@ -1049,6 +1059,8 @@ Object.assign(PinkyClassApp.prototype, {
         const endTime = document.getElementById('editSessionEndTime').value;
         const duration = parseFloat(document.getElementById('editSessionHours').value) || 2.0;
         const unitPrice = this.parsePriceValue(document.getElementById('editSessionPrice').value);
+        const originalUnitPrice = Number(document.getElementById('editSessionPrice').dataset.originalUnitPrice);
+        const priceWasChanged = Number.isFinite(originalUnitPrice) && unitPrice !== originalUnitPrice;
         const content = document.getElementById('editSessionContent').value.trim();
 
         if (!date || !startTime || !endTime) {
@@ -1093,26 +1105,25 @@ Object.assign(PinkyClassApp.prototype, {
 
         // Học chung: tổng thu = đơn giá/học sinh x SỐ HỌC SINH CÓ ĐÓNG HỌC PHÍ
         // (loại trừ học sinh học phí cơ bản = 0đ khỏi phép nhân), giống lúc tạo mới.
-        const payingCount = studentIds.filter(stId => {
-            const student = this.students.find(s => s.id === stId);
-            return student && Number(student.basePrice) > 0;
-        }).length;
-        const price = type === 'chung' ? unitPrice * payingCount : unitPrice;
-
-        // Sync studentDetails map (preserve existing if student already in class)
+        // Sửa một buổi học chỉ cập nhật tiền của các khoản CHƯA thu. Khoản đã thu
+        // giữ nguyên snapshot để khớp với chứng từ thanh toán đã tạo.
         const newStudentDetails = {};
         studentIds.forEach(stId => {
-            if (sess.studentDetails[stId]) {
-                newStudentDetails[stId] = sess.studentDetails[stId];
-            } else {
-                newStudentDetails[stId] = {
-                    homework: null,
-                    attitude: "Tốt",
-                    individualComment: "",
-                    note: ""
-                };
-            }
+            const oldDetail = sess.studentDetails[stId] || {};
+            const student = this.students.find(s => s.id === stId);
+            const oldFee = Number(oldDetail.feeAmount);
+            newStudentDetails[stId] = {
+                homework: oldDetail.homework ?? null,
+                attitude: oldDetail.attitude || "Tốt",
+                individualComment: oldDetail.individualComment || "",
+                note: oldDetail.note || "",
+                paid: !!oldDetail.paid,
+                feeAmount: Number.isFinite(oldFee) && (oldDetail.paid || !priceWasChanged)
+                    ? oldFee
+                    : (student && Number(student.basePrice) > 0 ? unitPrice : 0)
+            };
         });
+        const price = Object.values(newStudentDetails).reduce((sum, detail) => sum + Number(detail.feeAmount || 0), 0);
 
         const updatedSession = {
             ...sess,
@@ -1271,12 +1282,90 @@ Object.assign(PinkyClassApp.prototype, {
     // Chuyển trạng thái học phí (Đã thanh toán <-> Chưa thanh toán) cho TẤT CẢ
     // buổi học của 1 học sinh. Hoàn toàn tách biệt với trạng thái "đã dạy" —
     // dùng field Paid riêng, không còn dùng chung với Completed nữa.
+    openMonthlyPaymentModal(studentId) {
+        if (this.currentRole !== 'teacher' || !this.currentMonthFilter) {
+            this.showToast('Hãy chọn đúng kỳ học phí trước khi thanh toán.', 'error');
+            return;
+        }
+        const student = this.students.find(s => s.id === studentId);
+        if (!student) return;
+        const dueAmount = this.filterByMonth(this.sessions)
+            .filter(sess => sess.studentIds.includes(studentId) && this.isSessionCompleted(sess))
+            .reduce((sum, sess) => {
+                const detail = sess.studentDetails && sess.studentDetails[studentId];
+                return sum + (!detail || detail.paid ? 0 : this.getStudentSessionFee(sess, studentId));
+            }, 0);
+        if (dueAmount <= 0) {
+            this.showToast('Kỳ này không còn học phí cần thu.', 'info');
+            return;
+        }
+        const [year, month] = this.currentMonthFilter.split('-');
+        const period = `${year}-${String(month).padStart(2, '0')}`;
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        document.getElementById('monthlyPaymentStudentId').value = studentId;
+        document.getElementById('monthlyPaymentMonth').value = period;
+        document.getElementById('monthlyPaymentAmountRaw').value = String(Math.round(dueAmount));
+        document.getElementById('monthlyPaymentStudentName').innerText = `${student.name} — tháng ${Number(month)}/${year}`;
+        document.getElementById('monthlyPaymentAmount').innerText = this.formatVND(dueAmount);
+        document.getElementById('monthlyPaymentDate').value = today;
+        document.getElementById('monthlyPaymentMethod').value = 'Tiền mặt';
+        document.getElementById('monthlyPaymentNote').value = '';
+        this.openModal('monthlyPaymentModal');
+    },
+
+    async submitMonthlyPayment() {
+        const studentId = document.getElementById('monthlyPaymentStudentId').value;
+        const month = document.getElementById('monthlyPaymentMonth').value;
+        const amount = Number(document.getElementById('monthlyPaymentAmountRaw').value);
+        const paymentDate = document.getElementById('monthlyPaymentDate').value;
+        const method = document.getElementById('monthlyPaymentMethod').value;
+        const note = document.getElementById('monthlyPaymentNote').value.trim();
+        if (!studentId || !month || !paymentDate || !Number.isFinite(amount) || amount <= 0) {
+            this.showToast('Thiếu thông tin thanh toán.', 'error');
+            return;
+        }
+        this.setBtnLoading('monthlyPaymentSubmitBtn', true, 'Đang lưu...');
+        try {
+            const res = await this.authFetch(`${API_BASE_URL}/api/students/${studentId}/monthly-payments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ month, amount, paymentDate, method, note })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Không thể lưu thanh toán.');
+            this.closeModal('monthlyPaymentModal');
+            await this.loadData();
+            this.showToast(`Đã ghi nhận ${this.formatVND(data.amount || amount)} cho kỳ ${month}.`, 'success');
+        } catch (err) {
+            this.showToast(err.message || 'Không thể lưu thanh toán.', 'error');
+        } finally {
+            this.setBtnLoading('monthlyPaymentSubmitBtn', false);
+        }
+    },
+
     async setStudentPaidStatus(studentId, paid) {
         if (this.currentRole !== 'teacher') {
             this.showToast("Chỉ Giáo viên mới có quyền cập nhật học phí!", "error");
             this.renderTuitionOverview();
             return;
         }
+
+        // Không còn cho phép cập nhật hàng loạt tất cả tháng. Dropdown cũ chỉ
+        // là lối vào tương thích: chọn "Đã thanh toán" sẽ mở phiếu thu của kỳ
+        // đang lọc; chọn ngược lại không xóa chứng từ đã tạo.
+        if (!this.currentMonthFilter) {
+            this.showToast('Hãy chọn một kỳ học phí trước khi thanh toán.', 'error');
+            this.renderTuitionOverview();
+            return;
+        }
+        if (paid) {
+            this.openMonthlyPaymentModal(studentId);
+        } else {
+            this.showToast('Không thể bỏ trạng thái bằng thao tác nhanh vì cần giữ lịch sử đối soát.', 'info');
+        }
+        this.renderTuitionOverview();
+        return;
 
         const studentSessions = this.sessions.filter(sess => sess.studentIds.includes(studentId));
         if (studentSessions.length === 0) return;

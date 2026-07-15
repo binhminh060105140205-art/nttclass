@@ -24,13 +24,11 @@ Object.assign(PinkyClassApp.prototype, {
             // các bạn học chung buổi khác). Nếu chính học sinh này học phí 0đ
             // thì không bao giờ bị tính là "chưa đóng" (vì không có gì để đóng).
             studentSessions.forEach(sess => {
-                const payingIds = this.getPayingStudentIds(sess);
-                if (!payingIds.includes(this.currentStudentId)) return;
+                const feeAmount = this.getStudentSessionFee(sess, this.currentStudentId);
+                if (feeAmount <= 0) return;
                 const detail = sess.studentDetails && sess.studentDetails[this.currentStudentId];
                 if (!detail || !detail.paid) {
-                    // Price divided by number of PAYING participants if it's a shared session, or full price
-                    const partCount = payingIds.length || 1;
-                    unpaidTuition += sess.price / partCount;
+                    unpaidTuition += feeAmount;
                 }
             });
         } else {
@@ -45,10 +43,9 @@ Object.assign(PinkyClassApp.prototype, {
             // học phí 0đ được loại trừ hoàn toàn khỏi phép chia lẫn khỏi vòng
             // lặp tính "chưa đóng" (không đóng tiền thì không thể "nợ" học phí).
             monthSessions.forEach(sess => {
-                const payingIds = this.getPayingStudentIds(sess);
-                const partCount = payingIds.length || 1;
-                const portion = sess.price / partCount;
-                payingIds.forEach(sid => {
+                (sess.studentIds || []).forEach(sid => {
+                    const portion = this.getStudentSessionFee(sess, sid);
+                    if (portion <= 0) return;
                     const detail = sess.studentDetails && sess.studentDetails[sid];
                     if (!detail || !detail.paid) {
                         unpaidTuition += portion;

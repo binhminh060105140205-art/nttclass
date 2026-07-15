@@ -872,6 +872,53 @@
         </div>
     </div>
 
+    <!-- MODAL: XÁC NHẬN THU HỌC PHÍ THEO THÁNG -->
+    <div class="modal-backdrop" id="monthlyPaymentModal">
+        <div class="modal-container" style="max-width: 520px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Xác nhận thanh toán học phí</h3>
+                <button type="button" class="modal-close" onclick="app.closeModal('monthlyPaymentModal')">&times;</button>
+            </div>
+            <form id="monthlyPaymentForm">
+                <input type="hidden" id="monthlyPaymentStudentId">
+                <input type="hidden" id="monthlyPaymentMonth">
+                <input type="hidden" id="monthlyPaymentAmountRaw">
+                <div class="modal-body" style="display:flex; flex-direction:column; gap:15px;">
+                    <div style="padding:14px 16px; border-radius:12px; background:var(--primary-soft); border:1px solid var(--primary-light);">
+                        <div style="font-size:12px; color:var(--text-muted);">Học sinh / kỳ thanh toán</div>
+                        <strong id="monthlyPaymentStudentName">-</strong>
+                        <div style="margin-top:10px; font-size:12px; color:var(--text-muted);">Số tiền thu cho kỳ này</div>
+                        <strong id="monthlyPaymentAmount" style="font-size:22px; color:var(--primary);">0đ</strong>
+                    </div>
+                    <div class="grid-form">
+                        <div class="form-group">
+                            <label for="monthlyPaymentDate">Ngày thanh toán</label>
+                            <input id="monthlyPaymentDate" class="form-control" type="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="monthlyPaymentMethod">Phương thức</label>
+                            <select id="monthlyPaymentMethod" class="form-control">
+                                <option>Tiền mặt</option>
+                                <option>Chuyển khoản</option>
+                                <option>Ví điện tử</option>
+                                <option>Khác</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="monthlyPaymentNote">Ghi chú đối soát</label>
+                        <textarea id="monthlyPaymentNote" class="form-control" rows="3" maxlength="1000" placeholder="Ví dụ: PH Nguyễn Văn A chuyển khoản, mã giao dịch..."></textarea>
+                    </div>
+                    <p style="margin:0; font-size:12px; color:var(--text-muted);">Chỉ các buổi đã kết thúc trong đúng kỳ này được đánh dấu đã thanh toán. Các tháng khác không bị ảnh hưởng.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="app.closeModal('monthlyPaymentModal')">Hủy</button>
+                    <button type="submit" class="btn btn-primary" id="monthlyPaymentSubmitBtn">Xác nhận đã thu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- MODAL: XUẤT PHIẾU HỌC PHÍ (tự động điền sẵn từ nút "Xuất phiếu" ở bảng Học phí) -->
     <div class="modal-backdrop" id="invoiceModal">
         <div class="modal-container" style="max-width: 700px;">

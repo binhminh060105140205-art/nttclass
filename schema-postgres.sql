@@ -72,10 +72,30 @@ CREATE TABLE SessionDetails (
     Attitude VARCHAR(150) NOT NULL DEFAULT 'Tốt',
     IndividualComment TEXT NULL,
     Note VARCHAR(200) NULL,
+    -- Số tiền phải thu của RIÊNG học sinh này trong buổi học, được chốt ngay
+    -- khi tạo buổi để việc đổi học phí cơ bản sau này không sửa nợ lịch sử.
+    FeeAmount INTEGER NOT NULL DEFAULT 0,
     Paid SMALLINT NOT NULL DEFAULT 0,
     CONSTRAINT PK_SessionDetails PRIMARY KEY (SessionId, StudentId),
     CONSTRAINT FK_SessionDetails_Sessions FOREIGN KEY (SessionId) REFERENCES Sessions(Id) ON DELETE CASCADE,
     CONSTRAINT FK_SessionDetails_Students FOREIGN KEY (StudentId) REFERENCES Students(Id) ON DELETE CASCADE
+);
+
+-- 5B. LỊCH SỬ THU HỌC PHÍ THEO THÁNG
+-- Mỗi lần xác nhận đã thu tạo một dòng đối soát độc lập: ngày thu, số tiền,
+-- phương thức và ghi chú. Không dùng bảng này để tính lại số tiền buổi học.
+CREATE TABLE TuitionPayments (
+    Id VARCHAR(60) PRIMARY KEY,
+    TeacherId VARCHAR(50) NOT NULL,
+    StudentId VARCHAR(50) NOT NULL,
+    PeriodMonth CHAR(7) NOT NULL,
+    Amount INTEGER NOT NULL CHECK (Amount >= 0),
+    PaymentDate DATE NOT NULL,
+    PaymentMethod VARCHAR(30) NOT NULL DEFAULT 'Tiền mặt',
+    Note TEXT NULL,
+    CreatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT FK_TuitionPayments_Teacher FOREIGN KEY (TeacherId) REFERENCES Users(Id),
+    CONSTRAINT FK_TuitionPayments_Student FOREIGN KEY (StudentId) REFERENCES Students(Id)
 );
 
 -- 6. TÀI KHOẢN NGƯỜI DÙNG

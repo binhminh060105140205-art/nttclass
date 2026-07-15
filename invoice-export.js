@@ -144,9 +144,8 @@ Object.assign(PinkyClassApp.prototype, {
         sessions.forEach(sess => {
             totalHours += parseFloat(sess.duration) || 0;
             // Học sinh học phí 0đ không đóng góp gì vào tổng học phí của phiếu.
-            const payingIds = this.getPayingStudentIds(sess);
-            if (!payingIds.includes(studentId)) return;
-            const portion = sess.price / (payingIds.length || 1);
+            const portion = this.getStudentSessionFee(sess, studentId);
+            if (portion <= 0) return;
             totalFee += portion;
             const detail = sess.studentDetails && sess.studentDetails[studentId];
             if (detail && detail.paid) paidFee += portion;
@@ -185,9 +184,8 @@ Object.assign(PinkyClassApp.prototype, {
         sessions.forEach(sess => {
             totalHours += parseFloat(sess.duration) || 0;
             // Học sinh học phí 0đ không đóng góp gì vào tổng học phí của phiếu.
-            const payingIds = this.getPayingStudentIds(sess);
-            if (!payingIds.includes(studentId)) return;
-            const portion = sess.price / (payingIds.length || 1);
+            const portion = this.getStudentSessionFee(sess, studentId);
+            if (portion <= 0) return;
             totalFee += portion;
             const detail = sess.studentDetails && sess.studentDetails[studentId];
             if (detail && detail.paid) paidFee += portion;

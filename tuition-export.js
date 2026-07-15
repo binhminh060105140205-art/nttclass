@@ -34,11 +34,10 @@ Object.assign(PinkyClassApp.prototype, {
             studentSessions.forEach(sess => {
                 // Học sinh học phí 0đ không đóng góp gì vào tổng thu/đã đóng/chưa
                 // đóng của chính mình — bỏ qua buổi này hoàn toàn cho em đó.
-                const payingIds = this.getPayingStudentIds(sess);
-                if (!payingIds.includes(st.id)) return;
+                const sessionPricePortion = this.getStudentSessionFee(sess, st.id);
+                if (sessionPricePortion <= 0) return;
                 // Nếu là buổi học chung, chia đều theo SỐ HỌC SINH THỰC SỰ ĐÓNG
                 // HỌC PHÍ trong buổi (không tính các bạn học phí 0đ vào mẫu số).
-                const sessionPricePortion = sess.price / (payingIds.length || 1);
                 totalTuitionEarned += sessionPricePortion;
                 // Dùng field Paid RIÊNG của chính học sinh này trong buổi học đó
                 // (sess.studentDetails[st.id].paid) — KHÔNG dùng cờ paid cấp cả

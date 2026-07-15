@@ -110,7 +110,7 @@ const COLUMN_CASE_MAP = {
     sessiontype: 'SessionType', price: 'Price', duration: 'Duration',
     sessionname: 'SessionName',
     content: 'Content', generalcomment: 'GeneralComment', completed: 'Completed',
-    paid: 'Paid',
+    paid: 'Paid', feeamount: 'FeeAmount',
     sessionid: 'SessionId', studentid: 'StudentId', homework: 'Homework',
     attitude: 'Attitude', individualcomment: 'IndividualComment', note: 'Note',
     passwordhash: 'PasswordHash', accountactive: 'AccountActive',
@@ -269,6 +269,42 @@ let poolPromise = pgPool.query('SELECT 1')
             await pgPool.query('ALTER TABLE Students ADD COLUMN IF NOT EXISTS PhoneVerified BOOLEAN DEFAULT FALSE');
         } catch (migErr) {
             console.error('Lỗi khi thêm trường bảo mật tài khoản:', migErr.message);
+        }
+        // Snapshot học phí từng học sinh/buổi và lịch sử thu theo tháng.
+        // Các buổi cũ chỉ được backfill một lần, sau đó không còn phụ thuộc BasePrice.
+        try {
+            await pgPool.query('ALTER TABLE SessionDetails ADD COLUMN IF NOT EXISTS FeeAmount INTEGER');
+            await pgPool.query(`UPDATE SessionDetails sd
+                SET FeeAmount = CASE
+                    WHEN st.BasePrice <= 0 THEN 0
+                    WHEN s.SessionType = 'chung' THEN s.Price / NULLIF((
+                        SELECT COUNT(*) FROM SessionDetails sd2
+                        JOIN Students st2 ON st2.Id = sd2.StudentId
+                        WHERE sd2.SessionId = sd.SessionId AND st2.BasePrice > 0
+                    ), 0)
+                    ELSE s.Price
+                END
+                FROM Sessions s, Students st
+                WHERE sd.SessionId = s.Id
+                  AND st.Id = sd.StudentId
+                  AND sd.FeeAmount IS NULL`);
+            await pgPool.query('UPDATE SessionDetails SET FeeAmount = 0 WHERE FeeAmount IS NULL');
+            await pgPool.query('ALTER TABLE SessionDetails ALTER COLUMN FeeAmount SET DEFAULT 0');
+            await pgPool.query('ALTER TABLE SessionDetails ALTER COLUMN FeeAmount SET NOT NULL');
+            await pgPool.query(`CREATE TABLE IF NOT EXISTS TuitionPayments (
+                Id VARCHAR(60) PRIMARY KEY,
+                TeacherId VARCHAR(50) NOT NULL REFERENCES Users(Id),
+                StudentId VARCHAR(50) NOT NULL REFERENCES Students(Id),
+                PeriodMonth CHAR(7) NOT NULL,
+                Amount INTEGER NOT NULL CHECK (Amount >= 0),
+                PaymentDate DATE NOT NULL,
+                PaymentMethod VARCHAR(30) NOT NULL DEFAULT 'Tiền mặt',
+                Note TEXT NULL,
+                CreatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )`);
+            await pgPool.query('CREATE INDEX IF NOT EXISTS idx_tuitionpayments_student_month ON TuitionPayments (StudentId, PeriodMonth)');
+        } catch (migErr) {
+            console.error('Tuition migration error:', migErr.message);
         }
         return { request: () => new sql.Request(pgPool) };
     })
@@ -1113,7 +1149,7 @@ app.get('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCont
             SELECT
                 s.Id, s.SessionDate, s.StartTime, s.EndTime, s.SessionType, s.SessionName,
                 s.Price, s.Duration, s.Content, s.GeneralComment, s.Completed,
-                sd.StudentId, sd.Homework, sd.Attitude, sd.IndividualComment, sd.Note, sd.Paid
+                sd.StudentId, sd.Homework, sd.Attitude, sd.IndividualComment, sd.Note, sd.FeeAmount, sd.Paid
             FROM Sessions s
             LEFT JOIN SessionDetails sd ON s.Id = sd.SessionId
             WHERE s.TeacherId = @teacherId
@@ -1161,6 +1197,7 @@ app.get('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCont
                     attitude:          row.Attitude,
                     individualComment: row.IndividualComment || '',
                     note:              row.Note              || '',
+                    feeAmount:         row.FeeAmount === null || row.FeeAmount === undefined ? null : Number(row.FeeAmount),
                     // Trạng thái đóng học phí RIÊNG của từng học sinh trong buổi
                     // học này (cột SessionDetails.Paid) — độc lập hoàn toàn với
                     // các học sinh khác cùng học chung buổi.
@@ -1231,6 +1268,8 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
 
         for (const stId of studentIds) {
             const detail = (studentDetails && studentDetails[stId]) || { homework: null, attitude: 'Tốt', individualComment: '', note: '' };
+            const feeAmount = Number.isFinite(Number(detail.feeAmount)) && Number(detail.feeAmount) >= 0
+                ? Math.round(Number(detail.feeAmount)) : 0;
             await new sql.Request(transaction)
                 .input('sessionId',        sql.VarChar,  id)
                 .input('studentId',        sql.VarChar,  stId)
@@ -1238,13 +1277,14 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
                 .input('attitude',         sql.NVarChar, detail.attitude         || 'Tốt')
                 .input('individualComment',sql.NVarChar, detail.individualComment|| '')
                 .input('note',             sql.NVarChar, detail.note             || '')
+                .input('feeAmount',         sql.Int,      feeAmount)
                 // Học phí LUÔN mặc định "chưa thanh toán" khi tạo buổi học mới,
                 // và được lưu RIÊNG cho từng học sinh (không còn dùng chung cấp
                 // buổi học nữa) — đây chính là điểm sửa lỗi "chọn 1 học sinh đã
                 // thanh toán thì cả buổi/cả lớp đều bị đổi theo".
                 .input('paid',              sql.Bit,      detail.paid ? 1 : 0)
-                .query(`INSERT INTO SessionDetails (SessionId, StudentId, Homework, Attitude, IndividualComment, Note, Paid)
-                        VALUES (@sessionId, @studentId, @homework, @attitude, @individualComment, @note, @paid)`);
+                .query(`INSERT INTO SessionDetails (SessionId, StudentId, Homework, Attitude, IndividualComment, Note, FeeAmount, Paid)
+                        VALUES (@sessionId, @studentId, @homework, @attitude, @individualComment, @note, @feeAmount, @paid)`);
         }
 
         await transaction.commit();
@@ -1318,9 +1358,13 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
         // hết trạng thái đã đóng học phí của mọi học sinh về "chưa đóng".
         const existingPaid = await new sql.Request(transaction)
             .input('sessionId', sql.VarChar, id)
-            .query('SELECT StudentId, Paid FROM SessionDetails WHERE SessionId = @sessionId');
+            .query('SELECT StudentId, Paid, FeeAmount FROM SessionDetails WHERE SessionId = @sessionId');
         const existingPaidMap = {};
-        (existingPaid.recordset || []).forEach(r => { existingPaidMap[r.StudentId] = r.Paid === true || r.Paid === 1; });
+        const existingFeeMap = {};
+        (existingPaid.recordset || []).forEach(r => {
+            existingPaidMap[r.StudentId] = r.Paid === true || r.Paid === 1;
+            existingFeeMap[r.StudentId] = Number(r.FeeAmount || 0);
+        });
 
         await new sql.Request(transaction)
             .input('sessionId', sql.VarChar, id)
@@ -1329,6 +1373,9 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
         for (const stId of studentIds) {
             const detail = (studentDetails && studentDetails[stId]) || { homework: null, attitude: 'Tốt', individualComment: '', note: '' };
             const keepPaid = (detail.paid !== undefined) ? !!detail.paid : !!existingPaidMap[stId];
+            const feeAmount = keepPaid && existingFeeMap[stId] !== undefined
+                ? existingFeeMap[stId]
+                : (Number.isFinite(Number(detail.feeAmount)) && Number(detail.feeAmount) >= 0 ? Math.round(Number(detail.feeAmount)) : 0);
             await new sql.Request(transaction)
                 .input('sessionId',        sql.VarChar,  id)
                 .input('studentId',        sql.VarChar,  stId)
@@ -1336,9 +1383,10 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
                 .input('attitude',         sql.NVarChar, detail.attitude          || 'Tốt')
                 .input('individualComment',sql.NVarChar, detail.individualComment || '')
                 .input('note',             sql.NVarChar, detail.note              || '')
+                .input('feeAmount',         sql.Int,      feeAmount)
                 .input('paid',             sql.Bit,      keepPaid ? 1 : 0)
-                .query(`INSERT INTO SessionDetails (SessionId, StudentId, Homework, Attitude, IndividualComment, Note, Paid)
-                        VALUES (@sessionId, @studentId, @homework, @attitude, @individualComment, @note, @paid)`);
+                .query(`INSERT INTO SessionDetails (SessionId, StudentId, Homework, Attitude, IndividualComment, Note, FeeAmount, Paid)
+                        VALUES (@sessionId, @studentId, @homework, @attitude, @individualComment, @note, @feeAmount, @paid)`);
         }
 
         await transaction.commit();
@@ -1435,9 +1483,85 @@ app.put('/api/session-details/:sessionId/:studentId', requireRole('teacher', 'as
 // buổi học của một học sinh. Cột Paid hoàn toàn tách biệt với Completed (trạng
 // thái "đã dạy/chưa dạy"), để tránh lỗi tự động coi buổi học mới lên lịch là
 // đã đóng tiền.
+app.post('/api/students/:studentId/monthly-payments', requireRole('teacher'), requireTeacherContext, async (req, res) => {
+    const { studentId } = req.params;
+    const { month, paymentDate, amount, method, note } = req.body || {};
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(month || ''))) {
+        return res.status(400).json({ error: 'Kỳ thanh toán phải có dạng YYYY-MM.' });
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(paymentDate || ''))) {
+        return res.status(400).json({ error: 'Ngày thanh toán không hợp lệ.' });
+    }
+    const [year, monthNumber] = month.split('-').map(Number);
+    const nextMonth = new Date(year, monthNumber, 1);
+    const fromDate = `${month}-01`;
+    const toDate = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-01`;
+    const paymentMethod = ['Tiền mặt', 'Chuyển khoản', 'Ví điện tử', 'Khác'].includes(method) ? method : 'Tiền mặt';
+    let transaction;
+    try {
+        const pool = await poolPromise;
+        const owner = await pool.request()
+            .input('id', sql.VarChar, studentId)
+            .query('SELECT TeacherId FROM Students WHERE Id = @id');
+        if (owner.recordset.length === 0) return res.status(404).json({ error: 'Không tìm thấy học sinh.' });
+        if (owner.recordset[0].TeacherId !== req.effectiveTeacherId) return res.status(403).json({ error: 'Bạn không có quyền với học sinh này.' });
+
+        transaction = new sql.Transaction(pool);
+        await transaction.begin();
+        const dueRows = await new sql.Request(transaction)
+            .input('studentId', sql.VarChar, studentId)
+            .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+            .input('fromDate', sql.Date, fromDate)
+            .input('toDate', sql.Date, toDate)
+            .query(`SELECT sd.SessionId, sd.FeeAmount
+                FROM SessionDetails sd
+                JOIN Sessions s ON s.Id = sd.SessionId
+                WHERE sd.StudentId = @studentId AND s.TeacherId = @teacherId
+                  AND s.SessionDate >= @fromDate AND s.SessionDate < @toDate
+                  AND sd.Paid = 0 AND sd.FeeAmount > 0
+                  AND (s.SessionDate < CURRENT_DATE OR (s.SessionDate = CURRENT_DATE
+                       AND s.EndTime <= TO_CHAR(NOW() AT TIME ZONE 'Asia/Bangkok', 'HH24:MI')))`);
+        const due = dueRows.recordset || [];
+        const dueAmount = due.reduce((sum, row) => sum + Number(row.FeeAmount || 0), 0);
+        if (due.length === 0) {
+            await transaction.rollback();
+            return res.status(400).json({ error: 'Kỳ này không còn buổi học chưa thanh toán.' });
+        }
+        if (Number(amount) !== dueAmount) {
+            await transaction.rollback();
+            return res.status(409).json({ error: 'Số tiền đã thay đổi. Vui lòng tải lại báo cáo trước khi thu.' });
+        }
+        const paymentId = `pay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        await new sql.Request(transaction)
+            .input('id', sql.VarChar, paymentId)
+            .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+            .input('studentId', sql.VarChar, studentId)
+            .input('periodMonth', sql.VarChar, month)
+            .input('amount', sql.Int, dueAmount)
+            .input('paymentDate', sql.Date, paymentDate)
+            .input('method', sql.NVarChar, paymentMethod)
+            .input('note', sql.NVarChar, String(note || '').trim().slice(0, 1000))
+            .query(`INSERT INTO TuitionPayments (Id, TeacherId, StudentId, PeriodMonth, Amount, PaymentDate, PaymentMethod, Note)
+                    VALUES (@id, @teacherId, @studentId, @periodMonth, @amount, @paymentDate, @method, @note)`);
+        for (const row of due) {
+            await new sql.Request(transaction)
+                .input('sessionId', sql.VarChar, row.SessionId)
+                .input('studentId', sql.VarChar, studentId)
+                .query('UPDATE SessionDetails SET Paid = 1 WHERE SessionId = @sessionId AND StudentId = @studentId');
+        }
+        await transaction.commit();
+        res.status(201).json({ message: 'Đã ghi nhận thanh toán theo tháng.', amount: dueAmount, sessionCount: due.length, paymentId });
+    } catch (err) {
+        if (transaction) { try { await transaction.rollback(); } catch (_) {} }
+        console.error('[POST /api/students/:studentId/monthly-payments]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.put('/api/students/:studentId/set-paid', requireRole('teacher'), requireTeacherContext, async (req, res) => {
     const { studentId } = req.params;
     const { paid } = req.body || {};
+    return res.status(410).json({ error: 'Thao tác thanh toán tất cả các tháng đã bị tắt. Hãy dùng thanh toán theo kỳ.' });
     try {
         const pool = await poolPromise;
         const owner = await pool.request()
