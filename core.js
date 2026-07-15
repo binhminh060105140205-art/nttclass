@@ -143,6 +143,20 @@ class PinkyClassApp {
         return fetch(url, opts);
     }
 
+    // Mọi thao tác ghi dữ liệu phải đi qua hàm này. Trước đây nhiều màn hình
+    // chỉ kiểm tra res.ok rồi nuốt nội dung lỗi, sau đó lưu tạm localStorage và
+    // vẫn báo thành công. Kết quả là người dùng tưởng đã lưu nhưng tải lại thì
+    // dữ liệu biến mất. Hàm chung này giữ đúng thông báo từ server và tuyệt đối
+    // không biến một request lỗi thành một lần lưu thành công giả.
+    async requireApiSuccess(response, fallbackMessage = 'Không thể lưu dữ liệu.') {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            const message = payload && (payload.error || payload.message);
+            throw new Error(message || fallbackMessage);
+        }
+        return payload;
+    }
+
     // Server trả về tên cột SQL Server gốc (PascalCase: Id, Name, SessionDate...),
     // trong khi toàn bộ phần còn lại của app dùng camelCase (id, name, date,
     // studentIds, studentDetails...). Hai hàm dưới đây chuyển đổi dữ liệu thô

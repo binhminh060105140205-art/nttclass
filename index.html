@@ -522,7 +522,7 @@
                             <!-- Tên ca học -->
                             <div class="form-group">
                                 <label for="sessionName">Tên ca học</label>
-                                <input type="text" id="sessionName" class="form-control" placeholder="Ví dụ: Ca sáng, Ôn thi giữa kỳ...">
+                                <input type="text" id="sessionName" class="form-control" maxlength="100" placeholder="Ví dụ: Ca sáng, Ôn thi giữa kỳ...">
                             </div>
 
                             <!-- Date picker -->
@@ -866,7 +866,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="app.closeModal('updateLogModal')">Hủy bỏ</button>
-                    <button type="submit" class="btn btn-primary">Cập nhật</button>
+                    <button type="submit" class="btn btn-primary" id="saveUpdateLogBtn">Cập nhật</button>
                 </div>
             </form>
         </div>
@@ -1042,7 +1042,7 @@
 
                     <div class="form-group">
                         <label for="quickEntrySessionName">Tên ca học</label>
-                        <input type="text" id="quickEntrySessionName" class="form-control" placeholder="Ví dụ: Ca sáng, Ôn thi giữa kỳ...">
+                        <input type="text" id="quickEntrySessionName" class="form-control" maxlength="100" placeholder="Ví dụ: Ca sáng, Ôn thi giữa kỳ...">
                     </div>
 
                     <div class="form-group">
@@ -1105,7 +1105,7 @@
 
                         <div class="form-group">
                             <label for="editSessionName">Tên ca học</label>
-                            <input type="text" id="editSessionName" class="form-control" placeholder="Ví dụ: Ca sáng, Ôn thi giữa kỳ...">
+                            <input type="text" id="editSessionName" class="form-control" maxlength="100" placeholder="Ví dụ: Ca sáng, Ôn thi giữa kỳ...">
                         </div>
 
                         <div class="form-group">

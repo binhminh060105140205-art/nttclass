@@ -456,14 +456,12 @@ Object.assign(PinkyClassApp.prototype, {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedSession)
             });
-            if (!res.ok) throw new Error("Server error");
+            await this.requireApiSuccess(res, 'Không thể cập nhật lịch học.');
             await this.loadData();
         } catch (err) {
-            console.warn("API lỗi, lưu offline: ", err.message);
-            sess.date = newDate;
-            sess.startTime = newStartTime;
-            sess.endTime = newEndTime;
-            await this.saveData();
+            this.renderCalendarView();
+            this.showToast(err.message || 'Không thể cập nhật lịch học.', 'error');
+            return;
         }
         this.showToast("Đã cập nhật lịch học!", "success");
     },
@@ -564,11 +562,19 @@ Object.assign(PinkyClassApp.prototype, {
         const newStudentDetails = {};
         document.querySelectorAll('#quickEntryStudentsList .qe-student-card').forEach(card => {
             const stId = card.getAttribute('data-student-id');
+            const oldDetail = (sess.studentDetails && sess.studentDetails[stId]) || {};
             const homework = card.querySelector('.qe-homework').value.trim() || null;
             const attitude = card.querySelector('.qe-attitude').value.trim() || 'Tốt';
             const individualComment = card.querySelector('.qe-comment').value.trim();
             const note = card.querySelector('.qe-note').value.trim();
-            newStudentDetails[stId] = { homework, attitude, individualComment, note };
+            newStudentDetails[stId] = {
+                homework,
+                attitude,
+                individualComment,
+                note,
+                feeAmount: oldDetail.feeAmount,
+                paid: !!oldDetail.paid
+            };
         });
 
         // Đã bỏ ô "Nhận xét chung cho cả lớp" khỏi form nhập nhanh (chỉ còn
@@ -599,16 +605,11 @@ Object.assign(PinkyClassApp.prototype, {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedSession)
             });
-            if (!res.ok) throw new Error("Server error");
+            await this.requireApiSuccess(res, 'Không thể lưu nội dung và nhận xét buổi học.');
             await this.loadData();
         } catch (err) {
-            console.warn("API lỗi, lưu offline: ", err.message);
-            sess.content = content;
-            sess.sessionName = sessionName;
-            sess.generalComment = finalGeneralComment;
-            sess.completed = completed;
-            sess.studentDetails = newStudentDetails;
-            await this.saveData();
+            this.showToast(err.message || 'Không thể lưu nội dung và nhận xét buổi học.', 'error');
+            return;
         } finally {
             this.setBtnLoading('saveQuickEntryBtn', false);
         }
@@ -684,6 +685,7 @@ Object.assign(PinkyClassApp.prototype, {
     async createRepeatedSessions(baseSession, extraDates) {
         let createdCount = 0;
         const skippedDates = [];
+        const failedDates = [];
 
         for (const extraDate of extraDates) {
             const overlap = this.findOverlappingSession(extraDate, baseSession.startTime, baseSession.endTime);
@@ -720,13 +722,10 @@ Object.assign(PinkyClassApp.prototype, {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(repeatedSession)
                 });
-                if (!res.ok) throw new Error("Server error");
+                await this.requireApiSuccess(res, `Không thể tạo buổi lặp ngày ${this.formatDateVN(extraDate)}.`);
                 createdCount++;
             } catch (err) {
-                console.warn("API lỗi khi tạo buổi lặp lại, lưu offline: ", err.message);
-                this.sessions.push(repeatedSession);
-                await this.saveData();
-                createdCount++;
+                failedDates.push({ date: extraDate, message: err.message });
             }
         }
 
@@ -738,6 +737,10 @@ Object.assign(PinkyClassApp.prototype, {
         if (skippedDates.length > 0) {
             const listStr = skippedDates.map(d => this.formatDateVN(d)).join(', ');
             this.showToast(`Bỏ qua ${skippedDates.length} ngày bị trùng lịch với buổi học khác: ${listStr}`, "error");
+        }
+        if (failedDates.length > 0) {
+            const listStr = failedDates.map(item => this.formatDateVN(item.date)).join(', ');
+            this.showToast(`Không lưu được ${failedDates.length} buổi lặp lại: ${listStr}. Dữ liệu chưa được ghi lên máy chủ.`, "error");
         }
     },
 
@@ -965,12 +968,11 @@ Object.assign(PinkyClassApp.prototype, {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newSession)
             });
-            if (!res.ok) throw new Error("Server error");
+            await this.requireApiSuccess(res, 'Không thể tạo buổi học mới.');
             await this.loadData();
         } catch (err) {
-            console.warn("API lỗi, lưu offline: ", err.message);
-            this.sessions.push(newSession);
-            await this.saveData();
+            this.showToast(err.message || 'Không thể tạo buổi học mới.', 'error');
+            return;
         } finally {
             this.setBtnLoading('saveSessionBtn', false);
         }
@@ -1102,6 +1104,11 @@ Object.assign(PinkyClassApp.prototype, {
 
         const studentIds = [];
         checkedBoxes.forEach(cb => studentIds.push(cb.value));
+        const originalStudentIds = [...(sess.studentIds || [])].sort();
+        const editedStudentIds = [...studentIds].sort();
+        const rosterWasChanged = originalStudentIds.length !== editedStudentIds.length
+            || originalStudentIds.some((studentId, index) => studentId !== editedStudentIds[index]);
+        const pricingChanged = priceWasChanged || rosterWasChanged || type !== sess.type;
 
         // Học chung: tổng thu = đơn giá/học sinh x SỐ HỌC SINH CÓ ĐÓNG HỌC PHÍ
         // (loại trừ học sinh học phí cơ bản = 0đ khỏi phép nhân), giống lúc tạo mới.
@@ -1136,6 +1143,8 @@ Object.assign(PinkyClassApp.prototype, {
             price,
             content,
             studentIds,
+            pricingChanged,
+            repriceExistingFees: priceWasChanged,
             studentDetails: newStudentDetails
         };
 
@@ -1146,21 +1155,11 @@ Object.assign(PinkyClassApp.prototype, {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedSession)
             });
-            if (!res.ok) throw new Error("Server error");
+            await this.requireApiSuccess(res, 'Không thể sửa buổi học.');
             await this.loadData();
         } catch (err) {
-            console.warn("API lỗi, lưu offline: ", err.message);
-            sess.type = type;
-            sess.sessionName = sessionName;
-            sess.date = date;
-            sess.startTime = startTime;
-            sess.endTime = endTime;
-            sess.duration = duration;
-            sess.price = price;
-            sess.content = content;
-            sess.studentIds = studentIds;
-            sess.studentDetails = newStudentDetails;
-            await this.saveData();
+            this.showToast(err.message || 'Không thể sửa buổi học.', 'error');
+            return;
         } finally {
             this.setBtnLoading('saveEditSessionBtn', false);
         }
@@ -1188,12 +1187,11 @@ Object.assign(PinkyClassApp.prototype, {
         if (confirm("Bạn có chắc muốn xóa ca dạy này khỏi lịch học?")) {
             try {
                 const res = await this.authFetch(`${API_BASE_URL}/api/sessions/${id}`, { method: 'DELETE' });
-                if (!res.ok) throw new Error("Server error");
+                await this.requireApiSuccess(res, 'Không thể xóa buổi học.');
                 await this.loadData();
             } catch (err) {
-                console.warn("API lỗi, lưu offline: ", err.message);
-                this.sessions = this.sessions.filter(s => s.id !== id);
-                await this.saveData();
+                this.showToast(err.message || 'Không thể xóa buổi học.', 'error');
+                return;
             }
             this.showToast("Đã xóa buổi học thành công.", "success");
         }
@@ -1253,26 +1251,20 @@ Object.assign(PinkyClassApp.prototype, {
             generalComment = individualComment;
         }
 
+        this.setBtnLoading('saveUpdateLogBtn', true, 'Đang lưu...');
         try {
             const res = await this.authFetch(`${API_BASE_URL}/api/session-details/${sessionId}/${studentId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ homework, attitude, individualComment, note, generalComment })
             });
-            if (!res.ok) throw new Error("Server error");
+            await this.requireApiSuccess(res, 'Không thể lưu nhận xét học sinh.');
             await this.loadData();
         } catch (err) {
-            console.warn("API lỗi, lưu offline: ", err.message);
-            detail.homework = homework;
-            detail.attitude = attitude;
-            detail.individualComment = individualComment;
-            detail.note = note;
-            if (sess.type === 'chung') {
-                sess.generalComment = generalComment;
-            } else {
-                sess.generalComment = individualComment;
-            }
-            await this.saveData();
+            this.showToast(err.message || 'Không thể lưu nhận xét học sinh.', 'error');
+            return;
+        } finally {
+            this.setBtnLoading('saveUpdateLogBtn', false);
         }
 
         this.closeModal('updateLogModal');
@@ -1366,32 +1358,6 @@ Object.assign(PinkyClassApp.prototype, {
         }
         this.renderTuitionOverview();
         return;
-
-        const studentSessions = this.sessions.filter(sess => sess.studentIds.includes(studentId));
-        if (studentSessions.length === 0) return;
-
-        try {
-            const res = await this.authFetch(`${API_BASE_URL}/api/students/${studentId}/set-paid`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ paid })
-            });
-            if (!res.ok) throw new Error("Server error");
-            await this.loadData();
-        } catch (err) {
-            console.warn("API lỗi, cập nhật offline: ", err.message);
-            // QUAN TRỌNG: chỉ set cờ Paid của ĐÚNG học sinh này trong từng buổi
-            // học (sess.studentDetails[studentId].paid) — TUYỆT ĐỐI không set
-            // sess.paid (cấp cả buổi), nếu không buổi học chung sẽ bị đổi trạng
-            // thái of TẤT CẢ học sinh khác học cùng buổi theo em này.
-            studentSessions.forEach(sess => {
-                if (sess.studentDetails && sess.studentDetails[studentId]) {
-                    sess.studentDetails[studentId].paid = paid;
-                }
-            });
-            await this.saveData();
-        }
-        this.showToast(paid ? "Đã đánh dấu học phí: Đã thanh toán" : "Đã đánh dấu học phí: Chưa thanh toán", "success");
     }
 });
 

@@ -69,9 +69,9 @@ CREATE TABLE SessionDetails (
     SessionId VARCHAR(50) NOT NULL,
     StudentId VARCHAR(50) NOT NULL,
     Homework VARCHAR(50) NOT NULL DEFAULT 'Chưa làm',
-    Attitude VARCHAR(150) NOT NULL DEFAULT 'Tốt',
+    Attitude TEXT NOT NULL DEFAULT 'Tốt',
     IndividualComment TEXT NULL,
-    Note VARCHAR(200) NULL,
+    Note TEXT NULL,
     -- Số tiền phải thu của RIÊNG học sinh này trong buổi học, được chốt ngay
     -- khi tạo buổi để việc đổi học phí cơ bản sau này không sửa nợ lịch sử.
     FeeAmount INTEGER NOT NULL DEFAULT 0,

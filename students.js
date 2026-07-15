@@ -179,7 +179,7 @@ Object.assign(PinkyClassApp.prototype, {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                if (!res.ok) throw new Error("Server error");
+                await this.requireApiSuccess(res, 'Không thể cập nhật học sinh.');
             } else {
                 // ID sinh từ Date.now() có thể trùng nếu 2 request được gửi
                 // trong cùng 1 mili-giây (double-click, mạng lag khiến bấm 2
@@ -190,24 +190,12 @@ Object.assign(PinkyClassApp.prototype, {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                if (!res.ok) throw new Error("Server error");
+                await this.requireApiSuccess(res, 'Không thể thêm học sinh.');
             }
             await this.loadData();
         } catch (err) {
-            console.warn("API lỗi, cập nhật offline: ", err.message);
-            // payload dùng key "dateOfBirth" để khớp với API, nhưng phần còn lại
-            // của app (openEditStudentModal, renderStudentList...) đọc theo key
-            // "dob" (do normalizeStudent quy ước) — ánh xạ lại cho khớp khi lưu
-            // offline (không qua normalizeStudent vì không gọi API).
-            const offlinePatch = { ...payload, dob: payload.dateOfBirth };
-            delete offlinePatch.dateOfBirth;
-            if (editId) {
-                const student = this.students.find(s => s.id === editId);
-                if (student) Object.assign(student, offlinePatch);
-            } else {
-                this.students.push({ ...offlinePatch, id: payload.id || ("hs_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8)) });
-            }
-            await this.saveData();
+            this.showToast(err.message || (editId ? 'Không thể cập nhật học sinh.' : 'Không thể thêm học sinh.'), 'error');
+            return;
         } finally {
             this.setBtnLoading('saveStudentBtn', false);
         }
@@ -237,19 +225,11 @@ Object.assign(PinkyClassApp.prototype, {
         if (confirm("Bạn có chắc chắn muốn xóa học sinh này? Tất cả các ca học và nhật ký liên quan sẽ bị xóa!")) {
             try {
                 const res = await this.authFetch(`${API_BASE_URL}/api/students/${id}`, { method: 'DELETE' });
-                if (!res.ok) throw new Error("Server error");
+                await this.requireApiSuccess(res, 'Không thể xóa học sinh.');
                 await this.loadData();
             } catch (err) {
-                console.warn("API lỗi, cập nhật offline: ", err.message);
-                this.students = this.students.filter(s => s.id !== id);
-                this.sessions.forEach(sess => {
-                    sess.studentIds = sess.studentIds.filter(x => x !== id);
-                    if (sess.studentDetails[id]) {
-                        delete sess.studentDetails[id];
-                    }
-                });
-                this.sessions = this.sessions.filter(sess => sess.studentIds.length > 0);
-                await this.saveData();
+                this.showToast(err.message || 'Không thể xóa học sinh.', 'error');
+                return;
             }
 
             this.populateStudentPickers();

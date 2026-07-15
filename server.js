@@ -155,7 +155,14 @@ const sql = {
                 return `$${values.length}`;
             });
             const result = await this.client.query(converted, values);
-            return { recordset: restoreColumnCase(result.rows) };
+            const rowCount = Number(result.rowCount || 0);
+            return {
+                recordset: restoreColumnCase(result.rows),
+                rowCount,
+                // Giữ thêm dạng tương thích với thư viện mssql cũ để các route
+                // có thể xác minh UPDATE/DELETE thật sự đã tác động dữ liệu.
+                rowsAffected: [rowCount]
+            };
         }
     },
 
@@ -274,6 +281,10 @@ let poolPromise = pgPool.query('SELECT 1')
         // Các buổi cũ chỉ được backfill một lần, sau đó không còn phụ thuộc BasePrice.
         try {
             await pgPool.query('ALTER TABLE SessionDetails ADD COLUMN IF NOT EXISTS FeeAmount INTEGER');
+            // Nội dung nhật ký là văn bản tự do. Giới hạn VARCHAR cũ khiến chỉ
+            // một ô Ghi chú/Ý thức dài cũng rollback toàn bộ lần lưu nhận xét.
+            await pgPool.query('ALTER TABLE SessionDetails ALTER COLUMN Attitude TYPE TEXT');
+            await pgPool.query('ALTER TABLE SessionDetails ALTER COLUMN Note TYPE TEXT');
             await pgPool.query(`UPDATE SessionDetails sd
                 SET FeeAmount = CASE
                     WHEN st.BasePrice <= 0 THEN 0
@@ -1241,11 +1252,37 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
         // Chặn việc ghi buổi học cho học sinh không thuộc giáo viên hiệu lực của người gọi
         const ownershipCheck = await pool.request()
             .input('teacherId', sql.VarChar, req.effectiveTeacherId)
-            .query('SELECT Id FROM Students WHERE TeacherId = @teacherId');
+            .query('SELECT Id, BasePrice FROM Students WHERE TeacherId = @teacherId');
         const ownedIds = new Set(ownershipCheck.recordset.map(r => r.Id));
         if (studentIds.some(sid => !ownedIds.has(sid))) {
             return res.status(403).json({ error: 'Một hoặc nhiều học sinh không thuộc quyền quản lý của bạn.' });
         }
+
+        // Client cũ hoặc tab chưa Ctrl+F5 có thể chưa gửi studentDetails.feeAmount.
+        // Không được mặc định 0đ vì sẽ làm tổng ca và tổng nợ lệch nhau. Server
+        // tự chốt snapshot dự phòng từ tổng tiền của ca, đồng thời học sinh có
+        // BasePrice = 0 vẫn luôn được miễn phí.
+        const basePriceByStudent = Object.fromEntries(
+            ownershipCheck.recordset.map(row => [row.Id, Number(row.BasePrice || 0)])
+        );
+        const payingStudentIds = studentIds.filter(studentId => basePriceByStudent[studentId] > 0);
+        const fallbackFee = type === 'chung'
+            ? (payingStudentIds.length > 0 ? Math.round(parsedPrice / payingStudentIds.length) : 0)
+            : parsedPrice;
+        const preparedDetails = {};
+        for (const studentId of studentIds) {
+            const detail = (studentDetails && studentDetails[studentId]) || {};
+            const hasExplicitFee = detail.feeAmount !== undefined && detail.feeAmount !== null
+                && Number.isFinite(Number(detail.feeAmount)) && Number(detail.feeAmount) >= 0;
+            preparedDetails[studentId] = {
+                ...detail,
+                feeAmount: basePriceByStudent[studentId] > 0
+                    ? (hasExplicitFee ? Math.round(Number(detail.feeAmount)) : fallbackFee)
+                    : 0
+            };
+        }
+        const snapshottedSessionPrice = Object.values(preparedDetails)
+            .reduce((sum, detail) => sum + Number(detail.feeAmount || 0), 0);
 
         transaction = new sql.Transaction(pool);
         await transaction.begin();
@@ -1258,7 +1295,7 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
             .input('endTime',        sql.VarChar,       endTime)
             .input('type',           sql.VarChar,       type)
             .input('sessionName',    sql.NVarChar,      sessionName    || '')
-            .input('price',          sql.Int,           parsedPrice)
+            .input('price',          sql.Int,           snapshottedSessionPrice)
             .input('duration',       sql.Decimal(4, 2), parseFloat(duration) || 2.0)
             .input('content',        sql.NVarChar,      content        || '')
             .input('generalComment', sql.NVarChar,      generalComment || '')
@@ -1267,9 +1304,8 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
                     VALUES (@id, @date, @startTime, @endTime, @type, @sessionName, @price, @duration, @content, @generalComment, @completed, @teacherId)`);
 
         for (const stId of studentIds) {
-            const detail = (studentDetails && studentDetails[stId]) || { homework: null, attitude: 'Tốt', individualComment: '', note: '' };
-            const feeAmount = Number.isFinite(Number(detail.feeAmount)) && Number(detail.feeAmount) >= 0
-                ? Math.round(Number(detail.feeAmount)) : 0;
+            const detail = preparedDetails[stId];
+            const feeAmount = detail.feeAmount;
             await new sql.Request(transaction)
                 .input('sessionId',        sql.VarChar,  id)
                 .input('studentId',        sql.VarChar,  stId)
@@ -1299,7 +1335,7 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
 
 app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     const { id } = req.params;
-    const { date, startTime, endTime, type, sessionName, studentIds, duration, price, content, generalComment, completed, paid, studentDetails } = req.body || {};
+    const { date, startTime, endTime, type, sessionName, studentIds, duration, price, content, generalComment, completed, paid, studentDetails, pricingChanged, repriceExistingFees } = req.body || {};
 
     if (!date || !startTime || !endTime || !type || !Array.isArray(studentIds) || studentIds.length === 0) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
@@ -1322,13 +1358,14 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
 
         const owner = await pool.request()
             .input('id', sql.VarChar, id)
-            .query('SELECT TeacherId FROM Sessions WHERE Id = @id');
+            .query('SELECT TeacherId, Price FROM Sessions WHERE Id = @id');
         if (owner.recordset.length === 0) {
             return res.status(404).json({ error: 'Không tìm thấy buổi học.' });
         }
         if (owner.recordset[0].TeacherId !== req.effectiveTeacherId) {
             return res.status(403).json({ error: 'Bạn không có quyền chỉnh sửa buổi học của giáo viên khác.' });
         }
+        const effectivePrice = pricingChanged ? parsedPrice : Number(owner.recordset[0].Price || 0);
 
         transaction = new sql.Transaction(pool);
         await transaction.begin();
@@ -1340,7 +1377,7 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
             .input('endTime',        sql.VarChar,       endTime)
             .input('type',           sql.VarChar,       type)
             .input('sessionName',    sql.NVarChar,      sessionName    || '')
-            .input('price',          sql.Int,           parsedPrice)
+            .input('price',          sql.Int,           effectivePrice)
             .input('duration',       sql.Decimal(4, 2), parseFloat(duration) || 2.0)
             .input('content',        sql.NVarChar,      content        || '')
             .input('generalComment', sql.NVarChar,      generalComment || '')
@@ -1373,9 +1410,12 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
         for (const stId of studentIds) {
             const detail = (studentDetails && studentDetails[stId]) || { homework: null, attitude: 'Tốt', individualComment: '', note: '' };
             const keepPaid = (detail.paid !== undefined) ? !!detail.paid : !!existingPaidMap[stId];
-            const feeAmount = keepPaid && existingFeeMap[stId] !== undefined
+            const hasExistingFee = Object.prototype.hasOwnProperty.call(existingFeeMap, stId);
+            const hasIncomingFee = detail.feeAmount !== undefined && detail.feeAmount !== null
+                && Number.isFinite(Number(detail.feeAmount)) && Number(detail.feeAmount) >= 0;
+            const feeAmount = hasExistingFee && (keepPaid || !repriceExistingFees || !hasIncomingFee)
                 ? existingFeeMap[stId]
-                : (Number.isFinite(Number(detail.feeAmount)) && Number(detail.feeAmount) >= 0 ? Math.round(Number(detail.feeAmount)) : 0);
+                : (hasIncomingFee ? Math.round(Number(detail.feeAmount)) : 0);
             await new sql.Request(transaction)
                 .input('sessionId',        sql.VarChar,  id)
                 .input('studentId',        sql.VarChar,  stId)
@@ -1450,17 +1490,23 @@ app.put('/api/session-details/:sessionId/:studentId', requireRole('teacher', 'as
         transaction = new sql.Transaction(pool);
         await transaction.begin();
 
-        await new sql.Request(transaction)
+        const detailUpdate = await new sql.Request(transaction)
             .input('sessionId',        sql.VarChar,  sessionId)
             .input('studentId',        sql.VarChar,  studentId)
-            .input('homework',         sql.NVarChar, homework         || '')
-            .input('attitude',         sql.NVarChar, attitude         || 'Tốt')
-            .input('individualComment',sql.NVarChar, individualComment|| '')
-            .input('note',             sql.NVarChar, note             || '')
+            .input('homework',         sql.NVarChar, String(homework ?? ''))
+            .input('attitude',         sql.NVarChar, String(attitude ?? ''))
+            .input('individualComment',sql.NVarChar, String(individualComment ?? ''))
+            .input('note',             sql.NVarChar, String(note ?? ''))
             .query(`UPDATE SessionDetails
                     SET Homework = @homework, Attitude = @attitude,
                         IndividualComment = @individualComment, Note = @note
                     WHERE SessionId = @sessionId AND StudentId = @studentId`);
+
+        if (detailUpdate.rowCount !== 1) {
+            await transaction.rollback();
+            transaction = null;
+            return res.status(404).json({ error: 'Không tìm thấy nhật ký của học sinh trong buổi học này. Hãy tải lại trang rồi thử lại.' });
+        }
 
         if (generalComment !== undefined) {
             await new sql.Request(transaction)
