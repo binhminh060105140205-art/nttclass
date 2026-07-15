@@ -3996,6 +3996,18 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     color: #f8fafc !important;
     border: none !important;
 }
+/* Chrome/Edge trên Windows mở danh sách <option> bằng popup native. Nếu chỉ
+   tô màu thẻ select thì popup vẫn nền trắng nhưng chữ lại kế thừa màu trắng,
+   khiến cả bộ lọc Tháng và chọn Học sinh trông như bị mất dữ liệu. */
+[data-theme-mode="dark"] select option,
+[data-theme-mode="dark"] select optgroup {
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
+}
+[data-theme-mode="dark"] select option:checked {
+    background-color: #2563eb !important;
+    color: #ffffff !important;
+}
 [data-theme-mode="dark"] ::-webkit-scrollbar-track {
     background: #0b0f19 !important;
 }

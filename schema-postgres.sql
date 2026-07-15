@@ -24,8 +24,8 @@ DROP TABLE IF EXISTS Users CASCADE;
 CREATE TABLE Users (
     Id VARCHAR(50) PRIMARY KEY,
     Username VARCHAR(50) NOT NULL,
-    Password VARCHAR(200) NOT NULL,
-    Name VARCHAR(100) NOT NULL,
+    Password TEXT NOT NULL,
+    Name TEXT NOT NULL,
     Role VARCHAR(20) NOT NULL, -- 'admin' | 'teacher' | 'assistant'
     Active SMALLINT NOT NULL DEFAULT 1,
     AssignedTeacherId VARCHAR(50) NULL, -- chỉ dùng khi Role = 'assistant'
@@ -36,10 +36,10 @@ CREATE TABLE Users (
 -- 3. BẢNG HỌC SINH (Students)
 CREATE TABLE Students (
     Id VARCHAR(50) PRIMARY KEY,
-    Name VARCHAR(100) NOT NULL,
-    Class VARCHAR(50) NOT NULL,
+    Name TEXT NOT NULL,
+    Class TEXT NOT NULL,
     GradeLevel INT NULL,
-    Subject VARCHAR(50) NOT NULL,
+    Subject TEXT NOT NULL,
     BasePrice INT NOT NULL DEFAULT 250000,
     TeacherId VARCHAR(50) NOT NULL,
     CONSTRAINT FK_Students_Teacher FOREIGN KEY (TeacherId) REFERENCES Users(Id)
@@ -52,7 +52,7 @@ CREATE TABLE Sessions (
     StartTime VARCHAR(10) NOT NULL,
     EndTime VARCHAR(10) NOT NULL,
     SessionType VARCHAR(20) NOT NULL, -- 'riêng' hoặc 'chung'
-    SessionName VARCHAR(100) NULL, -- Tên ca học / tên buổi học (tùy chọn, VD: "Ca sáng", "Ôn thi giữa kỳ")
+    SessionName TEXT NULL, -- Tên ca học / tên buổi học (tùy chọn, VD: "Ca sáng", "Ôn thi giữa kỳ")
     Price INT NOT NULL DEFAULT 250000,
     Duration DECIMAL(4,2) NOT NULL DEFAULT 2.0,
     Content TEXT NULL,
@@ -68,7 +68,7 @@ CREATE TABLE Sessions (
 CREATE TABLE SessionDetails (
     SessionId VARCHAR(50) NOT NULL,
     StudentId VARCHAR(50) NOT NULL,
-    Homework VARCHAR(50) NOT NULL DEFAULT 'Chưa làm',
+    Homework TEXT NOT NULL DEFAULT 'Chưa làm',
     Attitude TEXT NOT NULL DEFAULT 'Tốt',
     IndividualComment TEXT NULL,
     Note TEXT NULL,

@@ -1276,7 +1276,7 @@ Object.assign(PinkyClassApp.prototype, {
     // dùng field Paid riêng, không còn dùng chung với Completed nữa.
     openMonthlyPaymentModal(studentId) {
         if (this.currentRole !== 'teacher' || !this.currentMonthFilter) {
-            this.showToast('Hãy chọn đúng kỳ học phí trước khi thanh toán.', 'error');
+            this.showToast('Hãy chọn đúng tháng học phí trước khi thanh toán.', 'error');
             return;
         }
         const student = this.students.find(s => s.id === studentId);
@@ -1288,7 +1288,7 @@ Object.assign(PinkyClassApp.prototype, {
                 return sum + (!detail || detail.paid ? 0 : this.getStudentSessionFee(sess, studentId));
             }, 0);
         if (dueAmount <= 0) {
-            this.showToast('Kỳ này không còn học phí cần thu.', 'info');
+            this.showToast('Tháng này không còn học phí cần thu.', 'info');
             return;
         }
         const [year, month] = this.currentMonthFilter.split('-');
@@ -1328,7 +1328,7 @@ Object.assign(PinkyClassApp.prototype, {
             if (!res.ok) throw new Error(data.error || 'Không thể lưu thanh toán.');
             this.closeModal('monthlyPaymentModal');
             await this.loadData();
-            this.showToast(`Đã ghi nhận ${this.formatVND(data.amount || amount)} cho kỳ ${month}.`, 'success');
+            this.showToast(`Đã ghi nhận ${this.formatVND(data.amount || amount)} cho tháng ${month}.`, 'success');
         } catch (err) {
             this.showToast(err.message || 'Không thể lưu thanh toán.', 'error');
         } finally {
@@ -1347,7 +1347,7 @@ Object.assign(PinkyClassApp.prototype, {
         // là lối vào tương thích: chọn "Đã thanh toán" sẽ mở phiếu thu của kỳ
         // đang lọc; chọn ngược lại không xóa chứng từ đã tạo.
         if (!this.currentMonthFilter) {
-            this.showToast('Hãy chọn một kỳ học phí trước khi thanh toán.', 'error');
+            this.showToast('Hãy chọn một tháng học phí trước khi thanh toán.', 'error');
             this.renderTuitionOverview();
             return;
         }

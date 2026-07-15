@@ -211,7 +211,7 @@
                      "yyyy-m"), danh sách được sinh tự động từ dữ liệu buổi học
                      thực tế — không cần 2 ô chọn riêng (tháng/năm) nữa. -->
                 <div class="student-context-picker" id="monthFilterPicker">
-                    <span>Kỳ:</span>
+                    <span>Tháng:</span>
                     <select id="globalMonthFilter" class="student-select">
                         <option value="">Tất cả</option>
                     </select>
@@ -745,7 +745,7 @@
                     <div class="grid-form">
                         <div class="form-group form-group-half">
                             <label for="studentName">Họ và Tên học sinh <span style="color:red;">*</span></label>
-                            <input type="text" id="studentName" class="form-control" placeholder="Ví dụ: Quỳnh Anh" required>
+                            <input type="text" id="studentName" class="form-control" maxlength="200" placeholder="Ví dụ: Quỳnh Anh" required>
                         </div>
                         <div class="form-group">
                             <label for="studentGrade">Khối lớp <span style="color:red;">*</span></label>
@@ -761,7 +761,7 @@
                         </div>
                         <div class="form-group">
                             <label for="studentSubject">Môn học <span style="color:red;">*</span></label>
-                            <input type="text" id="studentSubject" class="form-control" placeholder="Ví dụ: Toán" required>
+                            <input type="text" id="studentSubject" class="form-control" maxlength="200" placeholder="Ví dụ: Toán" required>
                         </div>
                         <div class="form-group">
                             <label for="studentDob">Ngày sinh</label>
@@ -796,11 +796,11 @@
                 <div class="grid-form">
                     <div class="form-group form-group-half">
                         <label for="accountUsername">Tên đăng nhập</label>
-                        <input type="text" id="accountUsername" class="form-control" placeholder="Ví dụ: quynhanh2011" autocomplete="off">
+                        <input type="text" id="accountUsername" class="form-control" maxlength="50" placeholder="Ví dụ: quynhanh2011" autocomplete="off">
                     </div>
                     <div class="form-group form-group-half">
                         <label for="accountPassword">Mật khẩu (tối thiểu 4 ký tự)</label>
-                        <input type="text" id="accountPassword" class="form-control" placeholder="Đặt mật khẩu mới" autocomplete="off">
+                        <input type="text" id="accountPassword" class="form-control" minlength="4" maxlength="200" placeholder="Đặt mật khẩu mới" autocomplete="off">
                     </div>
                 </div>
                 <p style="font-size:13px; color:var(--text-muted);">Bấm "Lưu tài khoản" để tạo mới hoặc ghi đè tên đăng nhập + mật khẩu hiện có.</p>
@@ -885,9 +885,9 @@
                 <input type="hidden" id="monthlyPaymentAmountRaw">
                 <div class="modal-body" style="display:flex; flex-direction:column; gap:15px;">
                     <div style="padding:14px 16px; border-radius:12px; background:var(--primary-soft); border:1px solid var(--primary-light);">
-                        <div style="font-size:12px; color:var(--text-muted);">Học sinh / kỳ thanh toán</div>
+                        <div style="font-size:12px; color:var(--text-muted);">Học sinh / tháng thanh toán</div>
                         <strong id="monthlyPaymentStudentName">-</strong>
-                        <div style="margin-top:10px; font-size:12px; color:var(--text-muted);">Số tiền thu cho kỳ này</div>
+                        <div style="margin-top:10px; font-size:12px; color:var(--text-muted);">Số tiền thu cho tháng này</div>
                         <strong id="monthlyPaymentAmount" style="font-size:22px; color:var(--primary);">0đ</strong>
                     </div>
                     <div class="grid-form">
@@ -909,7 +909,7 @@
                         <label for="monthlyPaymentNote">Ghi chú đối soát</label>
                         <textarea id="monthlyPaymentNote" class="form-control" rows="3" maxlength="1000" placeholder="Ví dụ: PH Nguyễn Văn A chuyển khoản, mã giao dịch..."></textarea>
                     </div>
-                    <p style="margin:0; font-size:12px; color:var(--text-muted);">Chỉ các buổi đã kết thúc trong đúng kỳ này được đánh dấu đã thanh toán. Các tháng khác không bị ảnh hưởng.</p>
+                    <p style="margin:0; font-size:12px; color:var(--text-muted);">Chỉ các buổi đã kết thúc trong đúng tháng này được đánh dấu đã thanh toán. Các tháng khác không bị ảnh hưởng.</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="app.closeModal('monthlyPaymentModal')">Hủy</button>
@@ -1165,11 +1165,11 @@
                     <div class="grid-form">
                         <div class="form-group form-group-half">
                             <label for="userName">Họ và tên <span style="color:red;">*</span></label>
-                            <input type="text" id="userName" class="form-control" placeholder="Ví dụ: Nguyễn Văn A" required>
+                            <input type="text" id="userName" class="form-control" maxlength="200" placeholder="Ví dụ: Nguyễn Văn A" required>
                         </div>
                         <div class="form-group">
                             <label for="userUsername">Tên đăng nhập <span style="color:red;">*</span></label>
-                            <input type="text" id="userUsername" class="form-control" placeholder="username" required>
+                            <input type="text" id="userUsername" class="form-control" maxlength="50" placeholder="username" required>
                         </div>
                         <div class="form-group">
                             <label for="userRole">Vai trò <span style="color:red;">*</span></label>
@@ -1187,7 +1187,7 @@
                         </div>
                         <div class="form-group form-group-half">
                             <label for="userPassword">Mật khẩu</label>
-                            <input type="password" id="userPassword" class="form-control" placeholder="Bắt buộc khi tạo mới">
+                            <input type="password" id="userPassword" class="form-control" minlength="4" maxlength="200" placeholder="Bắt buộc khi tạo mới">
                         </div>
                     </div>
                 </div>
@@ -1290,7 +1290,7 @@
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label for="settingsEmail" style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13.5px; color: var(--text-main);">Địa chỉ Email</label>
                         <div style="display: flex; gap: 10px; align-items: center;">
-                            <input type="email" id="settingsEmail" class="form-control" placeholder="Nhập địa chỉ email của bạn" style="flex: 1;">
+                            <input type="email" id="settingsEmail" class="form-control" maxlength="254" placeholder="Nhập địa chỉ email của bạn" style="flex: 1;">
                             <span id="settingsEmailStatus"></span>
                             <button type="button" class="btn btn-secondary btn-sm" id="btnVerifyEmail" onclick="app.requestVerificationCode('email')" style="display: none;">Xác minh</button>
                         </div>
@@ -1298,7 +1298,7 @@
                         <div id="emailOtpSection" class="otp-verification-panel" style="display: none; margin-top: 10px; padding: 12px; background: var(--primary-soft); border-radius: 10px;">
                             <label for="emailOtpInput" style="font-size: 12.5px; font-weight: 600; color: var(--accent-strong); margin-bottom: 6px; display: block;">Nhập mã xác minh Email:</label>
                             <div style="display: flex; gap: 8px;">
-                                <input type="text" id="emailOtpInput" class="form-control form-control-sm" placeholder="Mã 6 số" style="width: 120px; text-align: center; letter-spacing: 2px; font-weight: 700;">
+                                <input type="text" id="emailOtpInput" class="form-control form-control-sm" inputmode="numeric" maxlength="6" placeholder="Mã 6 số" style="width: 120px; text-align: center; letter-spacing: 2px; font-weight: 700;">
                                 <button type="button" class="btn btn-primary btn-sm" onclick="app.confirmVerificationCode('email')">Xác nhận</button>
                             </div>
                         </div>
@@ -1307,7 +1307,7 @@
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label for="settingsPhone" style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13.5px; color: var(--text-main);">Số điện thoại</label>
                         <div style="display: flex; gap: 10px; align-items: center;">
-                            <input type="text" id="settingsPhone" class="form-control" placeholder="Nhập số điện thoại của bạn" style="flex: 1;">
+                            <input type="text" id="settingsPhone" class="form-control" maxlength="20" placeholder="Nhập số điện thoại của bạn" style="flex: 1;">
                             <span id="settingsPhoneStatus"></span>
                             <button type="button" class="btn btn-secondary btn-sm" id="btnVerifyPhone" onclick="app.requestVerificationCode('phone')" style="display: none;">Xác minh</button>
                         </div>
@@ -1315,7 +1315,7 @@
                         <div id="phoneOtpSection" class="otp-verification-panel" style="display: none; margin-top: 10px; padding: 12px; background: var(--primary-soft); border-radius: 10px;">
                             <label for="phoneOtpInput" style="font-size: 12.5px; font-weight: 600; color: var(--accent-strong); margin-bottom: 6px; display: block;">Nhập mã xác minh SĐT:</label>
                             <div style="display: flex; gap: 8px;">
-                                <input type="text" id="phoneOtpInput" class="form-control form-control-sm" placeholder="Mã 6 số" style="width: 120px; text-align: center; letter-spacing: 2px; font-weight: 700;">
+                                <input type="text" id="phoneOtpInput" class="form-control form-control-sm" inputmode="numeric" maxlength="6" placeholder="Mã 6 số" style="width: 120px; text-align: center; letter-spacing: 2px; font-weight: 700;">
                                 <button type="button" class="btn btn-primary btn-sm" onclick="app.confirmVerificationCode('phone')">Xác nhận</button>
                             </div>
                         </div>
@@ -1333,12 +1333,12 @@
                     
                     <div class="form-group" style="margin-bottom: 12px;">
                         <label for="settingsNewPassword" style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13.5px; color: var(--text-main);">Mật khẩu mới</label>
-                        <input type="password" id="settingsNewPassword" class="form-control" placeholder="Tối thiểu 4 ký tự">
+                        <input type="password" id="settingsNewPassword" class="form-control" minlength="4" maxlength="200" placeholder="Tối thiểu 4 ký tự">
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label for="settingsConfirmPassword" style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13.5px; color: var(--text-main);">Nhập lại mật khẩu mới</label>
-                        <input type="password" id="settingsConfirmPassword" class="form-control" placeholder="Trùng khớp với mật khẩu mới ở trên">
+                        <input type="password" id="settingsConfirmPassword" class="form-control" minlength="4" maxlength="200" placeholder="Trùng khớp với mật khẩu mới ở trên">
                     </div>
 
                     <button type="button" class="btn btn-primary btn-sm" onclick="app.changePassword()" style="width: 100%; justify-content: center; height: 42px; border-radius: 10px;">Đổi mật khẩu</button>
@@ -1360,7 +1360,7 @@
                     <p style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 15px; line-height: 1.5;">Vui lòng nhập tên đăng nhập của tài khoản cần khôi phục mật khẩu.</p>
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label for="forgotUsername" style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13.5px; color: var(--text-main);">Tên đăng nhập</label>
-                        <input type="text" id="forgotUsername" class="form-control" placeholder="Nhập tên đăng nhập của bạn">
+                        <input type="text" id="forgotUsername" class="form-control" maxlength="50" placeholder="Nhập tên đăng nhập của bạn">
                     </div>
                     <button type="button" class="btn btn-primary" id="btnForgotRequest" onclick="app.handleForgotRequest()" style="width: 100%; justify-content: center; height: 44px; border-radius: 10px;">Tiếp tục</button>
                 </div>
@@ -1379,17 +1379,17 @@
                     
                     <div class="form-group" style="margin-bottom: 12px;">
                         <label for="forgotOtp" style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13.5px; color: var(--text-main);">Mã OTP (6 chữ số)</label>
-                        <input type="text" id="forgotOtp" class="form-control" placeholder="Nhập mã OTP nhận được" style="text-align: center; letter-spacing: 2px; font-weight: 700;">
+                        <input type="text" id="forgotOtp" class="form-control" inputmode="numeric" maxlength="6" placeholder="Nhập mã OTP nhận được" style="text-align: center; letter-spacing: 2px; font-weight: 700;">
                     </div>
 
                     <div class="form-group" style="margin-bottom: 12px;">
                         <label for="forgotNewPassword" style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13.5px; color: var(--text-main);">Mật khẩu mới</label>
-                        <input type="password" id="forgotNewPassword" class="form-control" placeholder="Tối thiểu 4 ký tự">
+                        <input type="password" id="forgotNewPassword" class="form-control" minlength="4" maxlength="200" placeholder="Tối thiểu 4 ký tự">
                     </div>
 
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label for="forgotConfirmPassword" style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13.5px; color: var(--text-main);">Nhập lại mật khẩu mới</label>
-                        <input type="password" id="forgotConfirmPassword" class="form-control" placeholder="Nhập lại mật khẩu mới">
+                        <input type="password" id="forgotConfirmPassword" class="form-control" minlength="4" maxlength="200" placeholder="Nhập lại mật khẩu mới">
                     </div>
 
                     <button type="button" class="btn btn-primary" id="btnForgotReset" onclick="app.handleForgotReset()" style="width: 100%; justify-content: center; height: 44px; border-radius: 10px;">Đặt lại mật khẩu</button>

@@ -203,11 +203,11 @@ Object.assign(PinkyClassApp.prototype, {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ active: makeActive })
             });
-            if (!res.ok) throw new Error('Server error');
+            await this.requireApiSuccess(res, 'Không thể cập nhật trạng thái tài khoản.');
             this.showToast(makeActive ? 'Đã mở khóa tài khoản.' : 'Đã khóa tài khoản.', 'success');
             await this.renderUsersTable();
         } catch (err) {
-            this.showToast('Không thể cập nhật trạng thái tài khoản.', 'error');
+            this.showToast(err.message || 'Không thể cập nhật trạng thái tài khoản.', 'error');
         }
     },
 
@@ -226,7 +226,7 @@ Object.assign(PinkyClassApp.prototype, {
             });
             return;
         }
-        if (this.currentUser && this.currentUser.Id === id) {
+        if (this.currentUser && (this.currentUser.id || this.currentUser.Id) === id) {
             this.showToast('Bạn không thể tự xóa tài khoản đang đăng nhập!', 'error');
             return;
         }
@@ -234,11 +234,11 @@ Object.assign(PinkyClassApp.prototype, {
 
         try {
             const res = await this.authFetch(`${API_BASE_URL}/api/users/${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error('Server error');
+            await this.requireApiSuccess(res, 'Không thể xóa tài khoản.');
             this.showToast('Đã xóa tài khoản.', 'success');
             await this.renderUsersTable();
         } catch (err) {
-            this.showToast('Không thể xóa tài khoản.', 'error');
+            this.showToast(err.message || 'Không thể xóa tài khoản.', 'error');
         }
     },
 

@@ -62,6 +62,8 @@ const PORT = process.env.PORT || 3000;
 // Tài khoản giáo viên sở hữu hệ thống: không một tài khoản admin nào được
 // phép sửa, khoá hay xoá qua API. Bảo vệ ở server để không thể vượt qua UI.
 const PROTECTED_OWNER_USER_ID = 'u_teacher';
+const MAX_USERNAME_LENGTH = 50;
+const MAX_PASSWORD_LENGTH = 200;
 
 // ==========================================
 // MIDDLEWARE
@@ -202,6 +204,7 @@ let poolPromise = pgPool.query('SELECT 1')
         // này, để không cần chạy lại schema-postgres.sql (sẽ xóa hết dữ liệu).
         try {
             await pgPool.query('ALTER TABLE Sessions ADD COLUMN IF NOT EXISTS SessionName VARCHAR(100)');
+            await pgPool.query('ALTER TABLE Sessions ALTER COLUMN SessionName TYPE TEXT');
             console.log('Đã kiểm tra/đảm bảo cột Sessions.SessionName tồn tại.');
         } catch (migErr) {
             console.error('Lỗi khi tự động thêm cột SessionName:', migErr.message);
@@ -253,12 +256,13 @@ let poolPromise = pgPool.query('SELECT 1')
                 ScoreType VARCHAR(20) NOT NULL,
                 ScoreValue DECIMAL(4,2) NOT NULL,
                 ScoreDate DATE NOT NULL,
-                Note VARCHAR(300),
+                Note TEXT,
                 CONSTRAINT FK_Scores_Student FOREIGN KEY (StudentId) REFERENCES Students(Id) ON DELETE CASCADE,
                 CONSTRAINT FK_Scores_Teacher FOREIGN KEY (TeacherId) REFERENCES Users(Id)
             )`);
             await pgPool.query('CREATE INDEX IF NOT EXISTS idx_scores_student ON Scores (StudentId)');
             await pgPool.query('CREATE INDEX IF NOT EXISTS idx_scores_teacher ON Scores (TeacherId)');
+            await pgPool.query('ALTER TABLE Scores ALTER COLUMN Note TYPE TEXT');
             console.log('Đã kiểm tra/đảm bảo bảng Scores (điểm số) tồn tại.');
         } catch (migErr) {
             console.error('Lỗi khi tự động tạo bảng Scores:', migErr.message);
@@ -274,6 +278,16 @@ let poolPromise = pgPool.query('SELECT 1')
             await pgPool.query('ALTER TABLE Students ADD COLUMN IF NOT EXISTS Phone VARCHAR(30)');
             await pgPool.query('ALTER TABLE Students ADD COLUMN IF NOT EXISTS EmailVerified BOOLEAN DEFAULT FALSE');
             await pgPool.query('ALTER TABLE Students ADD COLUMN IF NOT EXISTS PhoneVerified BOOLEAN DEFAULT FALSE');
+            // Các trường văn bản tự do không nên làm hỏng toàn bộ thao tác lưu
+            // chỉ vì client cũ chưa có maxlength. Username/Role/Phone vẫn giữ
+            // giới hạn nghiệp vụ và được validate riêng ở API.
+            await pgPool.query('ALTER TABLE Users ALTER COLUMN Password TYPE TEXT');
+            await pgPool.query('ALTER TABLE Users ALTER COLUMN Name TYPE TEXT');
+            await pgPool.query('ALTER TABLE Users ALTER COLUMN Email TYPE TEXT');
+            await pgPool.query('ALTER TABLE Students ALTER COLUMN Name TYPE TEXT');
+            await pgPool.query('ALTER TABLE Students ALTER COLUMN Class TYPE TEXT');
+            await pgPool.query('ALTER TABLE Students ALTER COLUMN Subject TYPE TEXT');
+            await pgPool.query('ALTER TABLE Students ALTER COLUMN Email TYPE TEXT');
         } catch (migErr) {
             console.error('Lỗi khi thêm trường bảo mật tài khoản:', migErr.message);
         }
@@ -284,6 +298,7 @@ let poolPromise = pgPool.query('SELECT 1')
             // Nội dung nhật ký là văn bản tự do. Giới hạn VARCHAR cũ khiến chỉ
             // một ô Ghi chú/Ý thức dài cũng rollback toàn bộ lần lưu nhận xét.
             await pgPool.query('ALTER TABLE SessionDetails ALTER COLUMN Attitude TYPE TEXT');
+            await pgPool.query('ALTER TABLE SessionDetails ALTER COLUMN Homework TYPE TEXT');
             await pgPool.query('ALTER TABLE SessionDetails ALTER COLUMN Note TYPE TEXT');
             await pgPool.query(`UPDATE SessionDetails sd
                 SET FeeAmount = CASE
@@ -518,11 +533,13 @@ app.get('/api/account/security', requireAuth, async (req, res) => {
 app.put('/api/account/security/contact', requireAuth, async (req, res) => {
     const email = String(req.body?.email || '').trim().toLowerCase();
     const phone = String(req.body?.phone || '').trim();
+    if (email.length > 254) return res.status(400).json({ error: 'Email không được vượt quá 254 ký tự.' });
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Email không hợp lệ.' });
     if (phone && !/^[0-9+()\-\s]{8,20}$/.test(phone)) return res.status(400).json({ error: 'Số điện thoại không hợp lệ.' });
     try {
         const table = accountTableFor(req.authUser.role);
-        await pgPool.query(`UPDATE ${table} SET Email = $1, Phone = $2, EmailVerified = FALSE, PhoneVerified = FALSE WHERE Id = $3`, [email || null, phone || null, req.authUser.userId]);
+        const result = await pgPool.query(`UPDATE ${table} SET Email = $1, Phone = $2, EmailVerified = FALSE, PhoneVerified = FALSE WHERE Id = $3`, [email || null, phone || null, req.authUser.userId]);
+        if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy tài khoản cần cập nhật.' });
         res.json({ message: 'Đã lưu thông tin liên hệ. Hãy xác minh để dùng khôi phục mật khẩu.' });
     } catch (err) {
         res.status(500).json({ error: 'Không thể lưu thông tin liên hệ.' });
@@ -568,14 +585,19 @@ app.put('/api/account/security/password', requireAuth, async (req, res) => {
     if (!password || password.length < 4) {
         return res.status(400).json({ error: 'Mật khẩu cần tối thiểu 4 ký tự.' });
     }
+    if (password.length > MAX_PASSWORD_LENGTH) {
+        return res.status(400).json({ error: `Mật khẩu không được vượt quá ${MAX_PASSWORD_LENGTH} ký tự.` });
+    }
     try {
         const userId = req.authUser.userId;
         const role = req.authUser.role;
         if (role === 'student') {
             const hash = await bcrypt.hash(password, 10);
-            await pgPool.query('UPDATE Students SET PasswordHash = $1 WHERE Id = $2', [hash, userId]);
+            const result = await pgPool.query('UPDATE Students SET PasswordHash = $1 WHERE Id = $2', [hash, userId]);
+            if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy tài khoản.' });
         } else {
-            await pgPool.query('UPDATE Users SET Password = $1 WHERE Id = $2', [password, userId]);
+            const result = await pgPool.query('UPDATE Users SET Password = $1 WHERE Id = $2', [password, userId]);
+            if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy tài khoản.' });
         }
         res.json({ message: 'Đổi mật khẩu thành công.' });
     } catch (err) {
@@ -678,6 +700,7 @@ app.post('/api/forgot-password/reset', async (req, res) => {
     const { username, code, newPassword } = req.body || {};
     if (!username || !code || !newPassword) return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
     if (newPassword.length < 4) return res.status(400).json({ error: 'Mật khẩu phải từ 4 ký tự trở lên.' });
+    if (newPassword.length > MAX_PASSWORD_LENGTH) return res.status(400).json({ error: `Mật khẩu không được vượt quá ${MAX_PASSWORD_LENGTH} ký tự.` });
 
     const key = username.trim().toLowerCase();
     const record = forgotPasswordCodes.get(key);
@@ -730,6 +753,12 @@ app.post('/api/users', requireRole('admin'), async (req, res) => {
     if (!username || !password || !name || !role) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc: username, password, name, role.' });
     }
+    if (username.trim().length > MAX_USERNAME_LENGTH) {
+        return res.status(400).json({ error: `Tên đăng nhập không được vượt quá ${MAX_USERNAME_LENGTH} ký tự.` });
+    }
+    if (password.length < 4 || password.length > MAX_PASSWORD_LENGTH) {
+        return res.status(400).json({ error: `Mật khẩu phải từ 4 đến ${MAX_PASSWORD_LENGTH} ký tự.` });
+    }
     if (!['admin', 'teacher', 'assistant'].includes(role)) {
         return res.status(400).json({ error: 'Vai trò không hợp lệ. Chọn: admin, teacher, assistant.' });
     }
@@ -740,10 +769,14 @@ app.post('/api/users', requireRole('admin'), async (req, res) => {
     try {
         const pool = await poolPromise;
 
-        // Kiểm tra username đã tồn tại chưa
+        // Username dùng chung một không gian đăng nhập cho Users và Students.
+        // Nếu chỉ kiểm tra Users, tài khoản admin mới có thể "đè" username của
+        // học sinh khiến học sinh đó không đăng nhập được dù dữ liệu vẫn còn.
         const existing = await pool.request()
             .input('username', sql.NVarChar, username.trim())
-            .query('SELECT Id FROM Users WHERE Username = @username');
+            .query(`SELECT Id FROM Users WHERE Username = @username
+                    UNION ALL
+                    SELECT Id FROM Students WHERE Username = @username`);
         if (existing.recordset.length > 0) {
             return res.status(409).json({ error: 'Tên đăng nhập đã tồn tại.' });
         }
@@ -789,6 +822,12 @@ app.put('/api/users/:id', requireRole('admin'), async (req, res) => {
     if (role && !['admin', 'teacher', 'assistant'].includes(role)) {
         return res.status(400).json({ error: 'Vai trò không hợp lệ.' });
     }
+    if (name !== undefined && !String(name).trim()) {
+        return res.status(400).json({ error: 'Tên tài khoản không được để trống.' });
+    }
+    if (password && (password.length < 4 || password.length > MAX_PASSWORD_LENGTH)) {
+        return res.status(400).json({ error: `Mật khẩu phải từ 4 đến ${MAX_PASSWORD_LENGTH} ký tự.` });
+    }
     if (role === 'assistant' && assignedTeacherId === undefined) {
         return res.status(400).json({ error: 'Trợ giảng (assistant) bắt buộc phải được gán cho một giáo viên (assignedTeacherId).' });
     }
@@ -825,7 +864,8 @@ app.put('/api/users/:id', requireRole('admin'), async (req, res) => {
 
         if (sets.length === 0) return res.status(400).json({ error: 'Không có trường nào để cập nhật.' });
 
-        await request.query(`UPDATE Users SET ${sets.join(', ')} WHERE Id = @id`);
+        const updateResult = await request.query(`UPDATE Users SET ${sets.join(', ')} WHERE Id = @id`);
+        if (updateResult.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy tài khoản cần cập nhật.' });
         res.json({ message: 'Cập nhật tài khoản thành công.' });
     } catch (err) {
         console.error('[PUT /api/users/:id]', err);
@@ -836,14 +876,18 @@ app.put('/api/users/:id', requireRole('admin'), async (req, res) => {
 // DELETE user
 app.delete('/api/users/:id', requireRole('admin'), async (req, res) => {
     const { id } = req.params;
+    if (req.authUser.userId === id) {
+        return res.status(400).json({ error: 'Bạn không thể tự xóa tài khoản đang đăng nhập.' });
+    }
     if (id === PROTECTED_OWNER_USER_ID) {
         return res.status(403).json({ error: 'Tài khoản Nguyễn Thanh Thúy được bảo vệ và không thể xóa.' });
     }
     try {
         const pool = await poolPromise;
-        await pool.request()
+        const deleteResult = await pool.request()
             .input('id', sql.VarChar, id)
             .query('DELETE FROM Users WHERE Id = @id');
+        if (deleteResult.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy tài khoản cần xóa.' });
         res.json({ message: 'Đã xóa tài khoản.' });
     } catch (err) {
         console.error('[DELETE /api/users/:id]', err);
@@ -1032,6 +1076,12 @@ app.post('/api/students/:id/account', requireRole('teacher', 'assistant'), requi
     if (!username || !password || password.length < 4) {
         return res.status(400).json({ error: 'Cần nhập tên đăng nhập và mật khẩu (tối thiểu 4 ký tự).' });
     }
+    if (username.length > MAX_USERNAME_LENGTH) {
+        return res.status(400).json({ error: `Tên đăng nhập không được vượt quá ${MAX_USERNAME_LENGTH} ký tự.` });
+    }
+    if (password.length > MAX_PASSWORD_LENGTH) {
+        return res.status(400).json({ error: `Mật khẩu không được vượt quá ${MAX_PASSWORD_LENGTH} ký tự.` });
+    }
 
     try {
         const pool = await poolPromise;
@@ -1076,6 +1126,9 @@ app.put('/api/students/:id/account/reset-password', requireRole('teacher', 'assi
     const { password } = req.body || {};
     if (!password || password.length < 4) {
         return res.status(400).json({ error: 'Mật khẩu mới cần tối thiểu 4 ký tự.' });
+    }
+    if (password.length > MAX_PASSWORD_LENGTH) {
+        return res.status(400).json({ error: `Mật khẩu không được vượt quá ${MAX_PASSWORD_LENGTH} ký tự.` });
     }
 
     try {
@@ -1533,7 +1586,7 @@ app.post('/api/students/:studentId/monthly-payments', requireRole('teacher'), re
     const { studentId } = req.params;
     const { month, paymentDate, amount, method, note } = req.body || {};
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(month || ''))) {
-        return res.status(400).json({ error: 'Kỳ thanh toán phải có dạng YYYY-MM.' });
+        return res.status(400).json({ error: 'Tháng thanh toán phải có dạng YYYY-MM.' });
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(paymentDate || ''))) {
         return res.status(400).json({ error: 'Ngày thanh toán không hợp lệ.' });
@@ -1571,7 +1624,7 @@ app.post('/api/students/:studentId/monthly-payments', requireRole('teacher'), re
         const dueAmount = due.reduce((sum, row) => sum + Number(row.FeeAmount || 0), 0);
         if (due.length === 0) {
             await transaction.rollback();
-            return res.status(400).json({ error: 'Kỳ này không còn buổi học chưa thanh toán.' });
+            return res.status(400).json({ error: 'Tháng này không còn buổi học chưa thanh toán.' });
         }
         if (Number(amount) !== dueAmount) {
             await transaction.rollback();
@@ -1607,7 +1660,7 @@ app.post('/api/students/:studentId/monthly-payments', requireRole('teacher'), re
 app.put('/api/students/:studentId/set-paid', requireRole('teacher'), requireTeacherContext, async (req, res) => {
     const { studentId } = req.params;
     const { paid } = req.body || {};
-    return res.status(410).json({ error: 'Thao tác thanh toán tất cả các tháng đã bị tắt. Hãy dùng thanh toán theo kỳ.' });
+    return res.status(410).json({ error: 'Thao tác thanh toán tất cả các tháng đã bị tắt. Hãy dùng thanh toán theo từng tháng.' });
     try {
         const pool = await poolPromise;
         const owner = await pool.request()
