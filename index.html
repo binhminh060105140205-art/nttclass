@@ -1338,21 +1338,11 @@
                 <!-- Section: Giao diện hệ thống -->
                 <div class="settings-section" style="margin-bottom: 20px;">
                     <h4 class="settings-section-title">🎨 Giao Diện Hệ Thống</h4>
-                    <p class="settings-section-desc">Thay đổi màu sắc chủ đạo và chế độ hiển thị (Sáng/Tối).</p>
+                    <p class="settings-section-desc">Chọn chế độ hiển thị Sáng hoặc Tối.</p>
                     
                     <div style="display: flex; gap: 20px; align-items: center; margin-top: 12px; flex-wrap: wrap;">
-                        <!-- Màu chủ đạo -->
-                        <div style="flex: 1; min-width: 180px;">
-                            <label style="font-weight: 600; margin-bottom: 8px; display: block; font-size: 13.5px; color: var(--text-main);">Màu sắc chủ đạo:</label>
-                            <div class="theme-switcher" id="modalThemeSwitcher" role="group" aria-label="Chọn màu giao diện" style="margin-bottom: 0;">
-                                <button type="button" class="theme-swatch" data-theme-value="blue" title="Xanh dương (mặc định)" aria-label="Giao diện xanh dương"></button>
-                                <button type="button" class="theme-swatch" data-theme-value="violet" title="Tím" aria-label="Giao diện tím"></button>
-                                <button type="button" class="theme-swatch" data-theme-value="pink" title="Hồng" aria-label="Giao diện hồng"></button>
-                            </div>
-                        </div>
-
                         <!-- Chế độ hiển thị -->
-                        <div style="flex: 1; min-width: 180px;">
+                        <div style="width: 100%;">
                             <label style="font-weight: 600; margin-bottom: 8px; display: block; font-size: 13.5px; color: var(--text-main);">Chế độ hiển thị:</label>
                             <div class="darkmode-toggle-group" style="display: flex; gap: 8px;">
                                 <button type="button" class="btn btn-secondary btn-sm" id="btnThemeLight" onclick="app.setThemeMode('light')" style="flex: 1; justify-content: center; border-radius: 8px;">☀️ Sáng</button>

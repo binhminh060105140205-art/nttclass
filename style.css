@@ -273,73 +273,6 @@ body {
 }
 
 /* ==========================================================================
-   THEME PALETTES
-   3 bảng màu cho cả trang, chuyển đổi bằng cách gán data-theme="..." lên
-   thẻ <html> (xem bộ chọn màu trong sidebar + theme.js ở cuối app.js).
-   "blue" là màu mặc định hiện tại (khai báo trong :root ở trên), 2 bảng dưới
-   đây ghi đè lại đúng các biến màu cốt lõi để toàn bộ nút bấm/badge/sidebar/
-   tiêu đề/nền trang/khối ca học trên lịch tuần... tự động đổi theo mà không
-   cần sửa từng chỗ.
-   ========================================================================== */
-[data-theme="violet"] {
-    --primary: #7c3aed;
-    --primary-rgb: 124, 58, 237;
-    --primary-light: #ede9fe;
-    --primary-soft: #f5f3ff;
-    --accent: #a855f7;
-    --accent-rgb: 168, 85, 247;
-    --accent-strong: #9333ea;
-    --border-color: rgba(168, 85, 247, 0.24);
-    --bg-grad-1: #f3ecff;
-    --bg-grad-2: #ede4ff;
-    --bg-grad-3: #fbf8ff;
-
-    --event-rieng-a: #ddd6fe;
-    --event-rieng-b: #c4b5fd;
-    --event-rieng-text: #4c1d95;
-    --event-chung-a: #a78bfa;
-    --event-chung-b: #8b5cf6;
-    --event-border: rgba(76, 29, 149, 0.3);
-    --event-border-strong: rgba(76, 29, 149, 0.35);
-
-    --badge-private-bg: #ede9fe;
-    --badge-private-text: #5b21b6;
-    --badge-private-border: #c4b5fd;
-    --badge-group-bg: #f5f3ff;
-    --badge-group-text: #7e22ce;
-    --badge-group-border: #d8b4fe;
-}
-
-[data-theme="pink"] {
-    --primary: #db2777;
-    --primary-rgb: 219, 39, 119;
-    --primary-light: #fce7f3;
-    --primary-soft: #fdf2f8;
-    --accent: #ec4899;
-    --accent-rgb: 236, 72, 153;
-    --accent-strong: #be185d;
-    --border-color: rgba(236, 72, 153, 0.24);
-    --bg-grad-1: #fff0f6;
-    --bg-grad-2: #ffe4ef;
-    --bg-grad-3: #fffafc;
-
-    --event-rieng-a: #fbcfe8;
-    --event-rieng-b: #f9a8d4;
-    --event-rieng-text: #831843;
-    --event-chung-a: #f472b6;
-    --event-chung-b: #ec4899;
-    --event-border: rgba(131, 24, 67, 0.3);
-    --event-border-strong: rgba(131, 24, 67, 0.35);
-
-    --badge-private-bg: #fce7f3;
-    --badge-private-text: #9d174d;
-    --badge-private-border: #f9a8d4;
-    --badge-group-bg: #fdf2f8;
-    --badge-group-text: #a21caf;
-    --badge-group-border: #f0abfc;
-}
-
-/* ==========================================================================
    2. RESET / BASE ELEMENTS
    ========================================================================== */
 * {
@@ -1114,45 +1047,6 @@ img, svg, video {
     font-size: 0.75rem;
     color: var(--text-muted);
     text-align: center;
-}
-
-/* Bộ chọn màu giao diện (3 chấm tròn màu) ở cuối sidebar */
-.theme-switcher {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 12px;
-}
-
-.theme-swatch {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.9);
-    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.12);
-    cursor: pointer;
-    padding: 0;
-    transition: var(--transition-fast);
-}
-
-.theme-swatch:hover {
-    transform: scale(1.12);
-}
-
-.theme-swatch.active {
-    box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--primary);
-}
-
-.theme-swatch[data-theme-value="blue"] {
-    background: linear-gradient(135deg, #2563eb, #0ea5e9);
-}
-
-.theme-swatch[data-theme-value="violet"] {
-    background: linear-gradient(135deg, #7c3aed, #a855f7);
-}
-
-.theme-swatch[data-theme-value="pink"] {
-    background: linear-gradient(135deg, #db2777, #ec4899);
 }
 
 /* Main Content Area — mobile default: full width, no sidebar offset.
@@ -3641,13 +3535,6 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     .sidebar-footer p {
         display: none !important;
     }
-    .theme-switcher-wrapper {
-        margin-bottom: 0 !important;
-        gap: 0 !important;
-    }
-    .theme-switcher {
-        display: none !important;
-    }
     .sidebar-settings-btn {
         padding: 6px !important;
     }
@@ -3992,52 +3879,6 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     --event-chung-b: #0284c7;
     --event-border: rgba(255, 255, 255, 0.1);
     --event-border-strong: rgba(255, 255, 255, 0.15);
-}
-
-[data-theme-mode="dark"][data-theme="violet"] {
-    --primary: #a78bfa;
-    --primary-light: rgba(124, 58, 237, 0.22);
-    --primary-soft: rgba(124, 58, 237, 0.12);
-    --accent: #c084fc;
-    --accent-strong: #a855f7;
-    --border-color: rgba(168, 85, 247, 0.16);
-
-    --badge-private-bg: rgba(124, 58, 237, 0.18);
-    --badge-private-text: #c084fc;
-    --badge-private-border: rgba(124, 58, 237, 0.35);
-
-    --badge-group-bg: rgba(168, 85, 247, 0.18);
-    --badge-group-text: #d8b4fe;
-    --badge-group-border: rgba(168, 85, 247, 0.35);
-
-    --event-rieng-a: #5b21b6;
-    --event-rieng-b: #4c1d95;
-    --event-rieng-text: #f8fafc;
-    --event-chung-a: #7e22ce;
-    --event-chung-b: #6b21a8;
-}
-
-[data-theme-mode="dark"][data-theme="pink"] {
-    --primary: #f472b6;
-    --primary-light: rgba(219, 39, 119, 0.22);
-    --primary-soft: rgba(219, 39, 119, 0.12);
-    --accent: #f472b6;
-    --accent-strong: #db2777;
-    --border-color: rgba(236, 72, 153, 0.16);
-
-    --badge-private-bg: rgba(219, 39, 119, 0.18);
-    --badge-private-text: #f472b6;
-    --badge-private-border: rgba(219, 39, 119, 0.35);
-
-    --badge-group-bg: rgba(236, 72, 153, 0.18);
-    --badge-group-text: #fbcfe8;
-    --badge-group-border: rgba(236, 72, 153, 0.35);
-
-    --event-rieng-a: #9d174d;
-    --event-rieng-b: #831843;
-    --event-rieng-text: #f8fafc;
-    --event-chung-a: #be185d;
-    --event-chung-b: #9d174d;
 }
 
 /* Specific component overrides in dark mode */
@@ -4766,4 +4607,163 @@ body.request-image-viewer-open { overflow: hidden; }
 [data-theme-mode="dark"] .btn-danger:hover {
     background: rgba(185, 28, 28, 0.45) !important;
     color: #fee2e2 !important;
+}
+
+/* ========================================================================
+   DARK UI PALETTE — một thang nền và chữ thống nhất, đủ tương phản
+   ======================================================================== */
+[data-theme-mode="dark"] {
+    --dark-page: #080f1d;
+    --dark-sidebar: #0d1728;
+    --dark-surface: #162235;
+    --dark-surface-raised: #1b293d;
+    --dark-surface-inset: #101a2d;
+    --dark-border: #2b3a50;
+    --dark-text: #e8eef7;
+    --dark-text-muted: #a8b4c5;
+    --dark-text-subtle: #7f8da3;
+    --text-main: var(--dark-text);
+    --text-muted: var(--dark-text-muted);
+    --background: var(--dark-page);
+    --card-bg: var(--dark-surface);
+    --border-color: var(--dark-border);
+}
+
+[data-theme-mode="dark"] body {
+    background: var(--dark-page) !important;
+    color: var(--dark-text) !important;
+}
+
+[data-theme-mode="dark"] .sidebar {
+    background: var(--dark-sidebar) !important;
+    border-color: var(--dark-border) !important;
+}
+
+[data-theme-mode="dark"] .month-day-cell { background: var(--dark-surface-inset) !important; }
+[data-theme-mode="dark"] .month-day-cell:hover,
+[data-theme-mode="dark"] .week-time-cell:hover { background: var(--dark-surface-raised) !important; }
+
+[data-theme-mode="dark"] .top-header,
+[data-theme-mode="dark"] .glass-card,
+[data-theme-mode="dark"] .modal-container,
+[data-theme-mode="dark"] .ai-chat-card,
+[data-theme-mode="dark"] .request-item {
+    background: var(--dark-surface) !important;
+    border-color: var(--dark-border) !important;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .22) !important;
+}
+
+[data-theme-mode="dark"] .glass-card .glass-card,
+[data-theme-mode="dark"] .user-box,
+[data-theme-mode="dark"] .session-item,
+[data-theme-mode="dark"] .qe-student-card,
+[data-theme-mode="dark"] .remarks-editor-box,
+[data-theme-mode="dark"] .channel-option-card,
+[data-theme-mode="dark"] .repeat-session-section,
+[data-theme-mode="dark"] .requests-card .request-composer,
+[data-theme-mode="dark"] .request-tabs {
+    background: var(--dark-surface-raised) !important;
+    border-color: var(--dark-border) !important;
+}
+
+[data-theme-mode="dark"] .table-wrapper,
+[data-theme-mode="dark"] .week-calendar-wrapper,
+[data-theme-mode="dark"] .month-calendar-grid,
+[data-theme-mode="dark"] .week-calendar-body,
+[data-theme-mode="dark"] .student-check-grid,
+[data-theme-mode="dark"] .student-context-picker,
+[data-theme-mode="dark"] .score-batch-table-wrap,
+[data-theme-mode="dark"] .custom-table td,
+[data-theme-mode="dark"] .score-batch-table td {
+    background: var(--dark-surface-inset) !important;
+    border-color: var(--dark-border) !important;
+    color: var(--dark-text) !important;
+}
+
+[data-theme-mode="dark"] .custom-table th,
+[data-theme-mode="dark"] .week-calendar-header-row,
+[data-theme-mode="dark"] .month-weekday-row,
+[data-theme-mode="dark"] .modal-header,
+[data-theme-mode="dark"] .modal-footer,
+[data-theme-mode="dark"] .session-number-cell {
+    background: var(--dark-surface-raised) !important;
+    border-color: var(--dark-border) !important;
+    color: var(--dark-text-muted) !important;
+}
+
+[data-theme-mode="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+[data-theme-mode="dark"] select,
+[data-theme-mode="dark"] textarea,
+[data-theme-mode="dark"] .form-control,
+[data-theme-mode="dark"] .form-select,
+[data-theme-mode="dark"] .role-selector {
+    background: var(--dark-surface-inset) !important;
+    border-color: #34445c !important;
+    color: var(--dark-text) !important;
+    caret-color: var(--dark-text);
+}
+
+[data-theme-mode="dark"] input::placeholder,
+[data-theme-mode="dark"] textarea::placeholder {
+    color: var(--dark-text-subtle) !important;
+    opacity: 1;
+}
+
+[data-theme-mode="dark"] .menu-item { color: #8d9bb0 !important; }
+[data-theme-mode="dark"] .menu-item:hover { color: #c8d5e6 !important; background: var(--dark-surface) !important; }
+[data-theme-mode="dark"] .menu-item.active { color: #fff !important; }
+
+[data-theme-mode="dark"] .header-title-box h1,
+[data-theme-mode="dark"] .evaluation-header h2,
+[data-theme-mode="dark"] .glass-card h3,
+[data-theme-mode="dark"] .modal-title,
+[data-theme-mode="dark"] .settings-section-title {
+    color: #60a5fa !important;
+}
+
+[data-theme-mode="dark"] .header-title-box p,
+[data-theme-mode="dark"] .stat-label,
+[data-theme-mode="dark"] .week-hour-label,
+[data-theme-mode="dark"] .week-day-header .day-date,
+[data-theme-mode="dark"] .request-item-meta,
+[data-theme-mode="dark"] .settings-section-desc {
+    color: var(--dark-text-muted) !important;
+}
+
+[data-theme-mode="dark"] .btn-secondary,
+[data-theme-mode="dark"] .cal-view-btn:not(.active) {
+    background: var(--dark-surface-raised) !important;
+    border-color: #34445c !important;
+    color: #d5deea !important;
+}
+
+[data-theme-mode="dark"] .btn-secondary:hover,
+[data-theme-mode="dark"] .cal-view-btn:not(.active):hover {
+    background: #24354d !important;
+    border-color: #49617f !important;
+    color: #fff !important;
+}
+
+[data-theme-mode="dark"] .week-time-cell,
+[data-theme-mode="dark"] .week-day-column,
+[data-theme-mode="dark"] .week-day-header,
+[data-theme-mode="dark"] .week-time-header,
+[data-theme-mode="dark"] .month-day-cell {
+    border-color: var(--dark-border) !important;
+}
+
+[data-theme-mode="dark"] ::-webkit-scrollbar-track { background: var(--dark-surface-inset) !important; }
+[data-theme-mode="dark"] ::-webkit-scrollbar-thumb { background: #52627a !important; }
+
+/* Ảnh xuất nhật ký luôn giữ nền sáng, không nhận bảng màu giao diện tối. */
+[data-theme-mode="dark"] .log-export-capture.is-exporting,
+[data-theme-mode="dark"] .log-export-capture.is-exporting .table-wrapper,
+[data-theme-mode="dark"] .log-export-capture.is-exporting .custom-table td {
+    background: #fff !important;
+    color: #334155 !important;
+}
+[data-theme-mode="dark"] .log-export-capture.is-exporting .custom-table th {
+    background: #dbeafe !important;
+    color: #1e3a8a !important;
+    border-color: #bfdbfe !important;
 }

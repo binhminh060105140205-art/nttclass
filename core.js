@@ -51,44 +51,18 @@ class PinkyClassApp {
         this.init();
     }
 
-    // Đọc màu giao diện đã lưu trong localStorage (mặc định "blue" nếu chưa
-    // từng chọn) và gán vào thuộc tính data-theme của <html> — toàn bộ màu
-    // sắc của trang được định nghĩa bằng CSS variable theo data-theme này
-    // (xem khối "THEME PALETTES" trong style.css).
+    // Hệ thống chỉ dùng một bảng màu xanh; xóa lựa chọn màu cũ đã lưu.
     initTheme() {
-        let saved = localStorage.getItem('nttclass_theme') || 'blue';
-        // Trước đây có bảng màu "emerald" (xanh lá), nay đã thay bằng "pink"
-        // (hồng) — tự động chuyển những ai đã lỡ chọn xanh lá sang hồng để
-        // không bị rơi về màu mặc định một cách khó hiểu.
-        if (saved === 'emerald') {
-            saved = 'pink';
-            localStorage.setItem('nttclass_theme', saved);
-        }
-        document.documentElement.setAttribute('data-theme', saved);
+        localStorage.removeItem('nttclass_theme');
+        document.documentElement.removeAttribute('data-theme');
 
         // Khởi tạo chế độ sáng/tối
         const mode = localStorage.getItem('nttclass_theme_mode') || 'light';
         document.documentElement.setAttribute('data-theme-mode', mode);
     }
 
-    // Gắn sự kiện click cho bộ chọn màu (trong modal)
+    // Đồng bộ trạng thái nút Sáng/Tối trong modal.
     bindThemeSwitcher() {
-        const switcher = document.getElementById('modalThemeSwitcher');
-        if (!switcher) return;
-        const current = localStorage.getItem('nttclass_theme') || 'blue';
-        const swatches = switcher.querySelectorAll('.theme-swatch');
-        swatches.forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.themeValue === current);
-            btn.addEventListener('click', () => {
-                const theme = btn.dataset.themeValue;
-                document.documentElement.setAttribute('data-theme', theme);
-                localStorage.setItem('nttclass_theme', theme);
-                swatches.forEach(b => b.classList.toggle('active', b === btn));
-                this.showToast('Đã đổi màu giao diện!', 'success');
-            });
-        });
-
-        // Cập nhật trạng thái các nút Sáng/Tối
         this.updateThemeModeActiveButtons();
     }
 

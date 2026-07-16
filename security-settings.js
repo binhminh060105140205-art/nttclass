@@ -412,14 +412,5 @@ Object.assign(PinkyClassApp.prototype, {
             btnDark.classList.toggle('btn-secondary', mode !== 'dark');
         }
 
-        // Đồng bộ chấm chọn màu chủ đạo trong modal Settings
-        const switcher = document.getElementById('modalThemeSwitcher');
-        if (switcher) {
-            const current = localStorage.getItem('nttclass_theme') || 'blue';
-            const swatches = switcher.querySelectorAll('.theme-swatch');
-            swatches.forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.themeValue === current);
-            });
-        }
     }
 });
