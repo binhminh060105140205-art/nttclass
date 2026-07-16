@@ -887,8 +887,8 @@
                         <input type="text" id="accountUsername" class="form-control" maxlength="50" placeholder="Ví dụ: quynhanh2011" autocomplete="off">
                     </div>
                     <div class="form-group form-group-half">
-                        <label for="accountPassword">Mật khẩu (tối thiểu 4 ký tự)</label>
-                        <input type="text" id="accountPassword" class="form-control" minlength="4" maxlength="200" placeholder="Đặt mật khẩu mới" autocomplete="off">
+                        <label for="accountPassword">Mật khẩu (tối thiểu 8 ký tự)</label>
+                        <input type="password" id="accountPassword" class="form-control" minlength="8" maxlength="200" placeholder="Đặt mật khẩu mới, tối thiểu 8 ký tự" autocomplete="new-password">
                     </div>
                 </div>
                 <p style="font-size:13px; color:var(--text-muted);">Bấm "Lưu tài khoản" để tạo mới hoặc ghi đè tên đăng nhập + mật khẩu hiện có.</p>
@@ -1271,7 +1271,7 @@
                         </div>
                         <div class="form-group form-group-half">
                             <label for="userPassword">Mật khẩu</label>
-                            <input type="password" id="userPassword" class="form-control" minlength="4" maxlength="200" placeholder="Bắt buộc khi tạo mới">
+                            <input type="password" id="userPassword" class="form-control" minlength="8" maxlength="200" placeholder="Bắt buộc khi tạo mới, tối thiểu 8 ký tự">
                         </div>
                     </div>
                 </div>
@@ -1416,13 +1416,18 @@
                     <p class="settings-section-desc">Tạo mật khẩu mới cho tài khoản của bạn.</p>
                     
                     <div class="form-group" style="margin-bottom: 12px;">
+                        <label for="settingsCurrentPassword" style="font-weight: 600; margin-bottom: 6px; display: block;">Mật khẩu hiện tại</label>
+                        <input type="password" id="settingsCurrentPassword" class="form-control" maxlength="200" autocomplete="current-password" placeholder="Nhập mật khẩu hiện tại">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 12px;">
                         <label for="settingsNewPassword" style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13.5px; color: var(--text-main);">Mật khẩu mới</label>
-                        <input type="password" id="settingsNewPassword" class="form-control" minlength="4" maxlength="200" placeholder="Tối thiểu 4 ký tự">
+                        <input type="password" id="settingsNewPassword" class="form-control" minlength="8" maxlength="200" autocomplete="new-password" placeholder="Tối thiểu 8 ký tự">
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label for="settingsConfirmPassword" style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13.5px; color: var(--text-main);">Nhập lại mật khẩu mới</label>
-                        <input type="password" id="settingsConfirmPassword" class="form-control" minlength="4" maxlength="200" placeholder="Trùng khớp với mật khẩu mới ở trên">
+                        <input type="password" id="settingsConfirmPassword" class="form-control" minlength="8" maxlength="200" autocomplete="new-password" placeholder="Trùng khớp với mật khẩu mới ở trên">
                     </div>
 
                     <button type="button" class="btn btn-primary btn-sm" onclick="app.changePassword()" style="width: 100%; justify-content: center; height: 42px; border-radius: 10px;">Đổi mật khẩu</button>
@@ -1441,10 +1446,10 @@
             <div class="modal-body" style="padding: 24px; overflow-y: auto;">
                 <!-- Bước 1: Nhập tên đăng nhập -->
                 <div id="forgotStep1">
-                    <p style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 15px; line-height: 1.5;">Vui lòng nhập tên đăng nhập của tài khoản cần khôi phục mật khẩu.</p>
+                    <p style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 15px; line-height: 1.5;">Nhập tên đăng nhập hoặc email đã xác minh của tài khoản.</p>
                     <div class="form-group" style="margin-bottom: 20px;">
-                        <label for="forgotUsername" style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13.5px; color: var(--text-main);">Tên đăng nhập</label>
-                        <input type="text" id="forgotUsername" class="form-control" maxlength="50" placeholder="Nhập tên đăng nhập của bạn">
+                        <label for="forgotUsername" style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13.5px; color: var(--text-main);">Tên đăng nhập hoặc email</label>
+                        <input type="text" id="forgotUsername" class="form-control" maxlength="254" autocomplete="username" placeholder="Tên đăng nhập hoặc email đã xác minh">
                     </div>
                     <button type="button" class="btn btn-primary" id="btnForgotRequest" onclick="app.handleForgotRequest()" style="width: 100%; justify-content: center; height: 44px; border-radius: 10px;">Tiếp tục</button>
                 </div>
@@ -1468,12 +1473,12 @@
 
                     <div class="form-group" style="margin-bottom: 12px;">
                         <label for="forgotNewPassword" style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13.5px; color: var(--text-main);">Mật khẩu mới</label>
-                        <input type="password" id="forgotNewPassword" class="form-control" minlength="4" maxlength="200" placeholder="Tối thiểu 4 ký tự">
+                        <input type="password" id="forgotNewPassword" class="form-control" minlength="8" maxlength="200" autocomplete="new-password" placeholder="Tối thiểu 8 ký tự">
                     </div>
 
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label for="forgotConfirmPassword" style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13.5px; color: var(--text-main);">Nhập lại mật khẩu mới</label>
-                        <input type="password" id="forgotConfirmPassword" class="form-control" minlength="4" maxlength="200" placeholder="Nhập lại mật khẩu mới">
+                        <input type="password" id="forgotConfirmPassword" class="form-control" minlength="8" maxlength="200" autocomplete="new-password" placeholder="Nhập lại mật khẩu mới">
                     </div>
 
                     <button type="button" class="btn btn-primary" id="btnForgotReset" onclick="app.handleForgotReset()" style="width: 100%; justify-content: center; height: 44px; border-radius: 10px;">Đặt lại mật khẩu</button>

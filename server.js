@@ -24,8 +24,8 @@
  *                phí, không quản lý tài khoản, không truy cập dữ liệu của giáo
  *                viên khác.
  *
- * Mật khẩu được lưu dưới dạng văn bản thuần (plain text) vì đây là đồ án
- * sinh viên quy mô nhỏ — ưu tiên đơn giản, dễ hiểu hơn là bảo mật doanh nghiệp.
+ * Mật khẩu mới được băm bằng bcrypt. Mật khẩu Users cũ dạng thường sẽ được
+ * tự động nâng cấp sang bcrypt sau lần đăng nhập hợp lệ đầu tiên.
  */
 
 // Đọc file .env khi chạy ở máy local (trên Render, biến môi trường được Render
@@ -37,6 +37,7 @@ const { Pool, types } = require('pg');
 const cors    = require('cors');
 const path    = require('path');
 const bcrypt  = require('bcryptjs'); // Hash mật khẩu tài khoản học sinh (pure-JS, không cần build native — an toàn khi deploy Render)
+const crypto  = require('crypto');
 
 // ==========================================
 // FIX LỖI LỆCH NGÀY (QUAN TRỌNG)
@@ -64,6 +65,53 @@ const PORT = process.env.PORT || 3000;
 const PROTECTED_OWNER_USER_ID = 'u_teacher';
 const MAX_USERNAME_LENGTH = 50;
 const MAX_PASSWORD_LENGTH = 200;
+const MIN_PASSWORD_LENGTH = 8;
+
+function createOtpCode() {
+    return String(crypto.randomInt(100000, 1000000));
+}
+
+function hashOtp(code) {
+    return crypto.createHash('sha256').update(String(code)).digest('hex');
+}
+
+async function sendOtpEmail(to, code, purpose) {
+    const apiKey = process.env.RESEND_API_KEY;
+    const from = process.env.EMAIL_FROM;
+    if (!apiKey || !from) {
+        if (process.env.ALLOW_DEV_OTP === 'true' && process.env.NODE_ENV !== 'production') return false;
+        throw new Error('Dịch vụ gửi email chưa được cấu hình.');
+    }
+    const title = purpose === 'reset' ? 'Khôi phục mật khẩu NttClass' : 'Xác minh email NttClass';
+    const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            from,
+            to: [to],
+            subject: title,
+            html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#172033"><h2>${title}</h2><p>Mã xác nhận của bạn là:</p><div style="font-size:32px;font-weight:700;letter-spacing:8px;padding:18px;background:#eff6ff;border-radius:12px;text-align:center">${code}</div><p>Mã có hiệu lực trong 10 phút. Không cung cấp mã này cho bất kỳ ai.</p><p>Nếu bạn không thực hiện yêu cầu này, hãy bỏ qua email.</p></div>`
+        })
+    });
+    if (!response.ok) {
+        const detail = await response.text();
+        console.error('[EMAIL]', response.status, detail.slice(0, 500));
+        throw new Error('Không thể gửi email xác nhận lúc này.');
+    }
+    return true;
+}
+
+function canIssueOtp(existing) {
+    return !existing?.sentAt || Date.now() - existing.sentAt >= 60 * 1000;
+}
+
+async function passwordMatches(password, stored) {
+    if (!stored) return false;
+    if (stored.startsWith('$2')) return bcrypt.compare(password, stored);
+    const supplied = Buffer.from(String(password));
+    const expected = Buffer.from(String(stored));
+    return supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected);
+}
 
 // ==========================================
 // MIDDLEWARE
@@ -460,10 +508,16 @@ app.post('/api/login', async (req, res) => {
             if (!user.Active) {
                 return res.status(403).json({ error: 'Tài khoản đã bị vô hiệu hóa.' });
             }
-            if (user.Password !== password) {
+            if (!(await passwordMatches(password, user.Password))) {
                 return res.status(401).json({
                     error: 'Tên đăng nhập hoặc mật khẩu không đúng.'
                 });
+            }
+
+            // Nâng cấp trong suốt mật khẩu cũ dạng thường sang bcrypt sau lần đăng nhập đúng.
+            if (!String(user.Password).startsWith('$2')) {
+                const upgradedHash = await bcrypt.hash(password, 12);
+                await pgPool.query('UPDATE Users SET Password = $1 WHERE Id = $2', [upgradedHash, user.Id]);
             }
 
             if (user.Role === 'assistant' && !user.AssignedTeacherId) {
@@ -565,7 +619,19 @@ app.put('/api/account/security/contact', requireAuth, async (req, res) => {
     if (phone && !/^[0-9+()\-\s]{8,20}$/.test(phone)) return res.status(400).json({ error: 'Số điện thoại không hợp lệ.' });
     try {
         const table = accountTableFor(req.authUser.role);
-        const result = await pgPool.query(`UPDATE ${table} SET Email = $1, Phone = $2, EmailVerified = FALSE, PhoneVerified = FALSE WHERE Id = $3`, [email || null, phone || null, req.authUser.userId]);
+        if (email) {
+            const duplicate = await pgPool.query(
+                `SELECT 1 FROM Users WHERE LOWER(Email) = LOWER($1) AND Id <> $2 UNION ALL SELECT 1 FROM Students WHERE LOWER(Email) = LOWER($1) AND Id <> $2 LIMIT 1`,
+                [email, req.authUser.userId]
+            );
+            if (duplicate.rowCount) return res.status(409).json({ error: 'Email này đã được dùng cho một tài khoản khác.' });
+        }
+        const current = await pgPool.query(`SELECT Email, Phone, EmailVerified, PhoneVerified FROM ${table} WHERE Id = $1`, [req.authUser.userId]);
+        if (!current.rowCount) return res.status(404).json({ error: 'Không tìm thấy tài khoản cần cập nhật.' });
+        const old = current.rows[0];
+        const keepEmailVerified = !!old.emailverified && String(old.email || '').toLowerCase() === email;
+        const keepPhoneVerified = !!old.phoneverified && String(old.phone || '') === phone;
+        const result = await pgPool.query(`UPDATE ${table} SET Email = $1, Phone = $2, EmailVerified = $3, PhoneVerified = $4 WHERE Id = $5`, [email || null, phone || null, keepEmailVerified, keepPhoneVerified, req.authUser.userId]);
         if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy tài khoản cần cập nhật.' });
         res.json({ message: 'Đã lưu thông tin liên hệ. Hãy xác minh để dùng khôi phục mật khẩu.' });
     } catch (err) {
@@ -580,13 +646,18 @@ app.post('/api/account/security/request-code', requireAuth, async (req, res) => 
         const result = await pgPool.query(`SELECT ${channel === 'email' ? 'Email' : 'Phone'} AS contact FROM ${table} WHERE Id = $1`, [req.authUser.userId]);
         const contact = result.rows[0]?.contact;
         if (!contact) return res.status(400).json({ error: `Hãy lưu ${channel === 'email' ? 'email' : 'số điện thoại'} trước.` });
-        const code = String(Math.floor(100000 + Math.random() * 900000));
-        verificationCodes.set(`${req.authUser.userId}:${channel}`, { code, expiresAt: Date.now() + 10 * 60 * 1000 });
-        // Không trả mã ở production. Cấu hình RESEND_API_KEY/nhà cung cấp SMS để gửi mã thật.
-        const devCode = process.env.NODE_ENV === 'production' ? undefined : code;
-        res.json({ message: `Đã tạo mã xác minh ${channel === 'email' ? 'email' : 'số điện thoại'}.`, devCode });
+        if (channel !== 'email') return res.status(501).json({ error: 'Xác minh số điện thoại chưa được cấu hình. Hãy dùng email.' });
+        const key = `${req.authUser.userId}:${channel}`;
+        const existing = verificationCodes.get(key);
+        if (!canIssueOtp(existing)) return res.status(429).json({ error: 'Vui lòng đợi 60 giây trước khi gửi lại mã.' });
+        const code = createOtpCode();
+        await sendOtpEmail(contact, code, 'verify');
+        verificationCodes.set(key, { codeHash: hashOtp(code), contact: String(contact).toLowerCase(), expiresAt: Date.now() + 10 * 60 * 1000, sentAt: Date.now(), attempts: 0 });
+        const devCode = process.env.ALLOW_DEV_OTP === 'true' && process.env.NODE_ENV !== 'production' ? code : undefined;
+        res.json({ message: 'Mã xác minh đã được gửi tới email của bạn.', devCode });
     } catch (err) {
-        res.status(500).json({ error: 'Không thể tạo mã xác minh.' });
+        console.error('[POST /api/account/security/request-code]', err.message);
+        res.status(500).json({ error: err.message || 'Không thể gửi mã xác minh.' });
     }
 });
 
@@ -595,9 +666,20 @@ app.post('/api/account/security/confirm-code', requireAuth, async (req, res) => 
     const code = String(req.body?.code || '').trim();
     const key = `${req.authUser.userId}:${channel}`;
     const record = verificationCodes.get(key);
-    if (!record || record.expiresAt < Date.now() || record.code !== code) return res.status(400).json({ error: 'Mã xác minh không đúng hoặc đã hết hạn.' });
+    if (!record || record.expiresAt < Date.now()) return res.status(400).json({ error: 'Mã xác minh không đúng hoặc đã hết hạn.' });
+    if (record.attempts >= 5) {
+        verificationCodes.delete(key);
+        return res.status(429).json({ error: 'Bạn đã nhập sai quá nhiều lần. Hãy yêu cầu mã mới.' });
+    }
+    record.attempts++;
+    if (record.codeHash !== hashOtp(code)) return res.status(400).json({ error: 'Mã xác minh không đúng hoặc đã hết hạn.' });
     try {
         const table = accountTableFor(req.authUser.role);
+        const contactResult = await pgPool.query(`SELECT Email FROM ${table} WHERE Id = $1`, [req.authUser.userId]);
+        if (String(contactResult.rows[0]?.email || '').toLowerCase() !== record.contact) {
+            verificationCodes.delete(key);
+            return res.status(400).json({ error: 'Email đã thay đổi. Hãy yêu cầu mã xác minh mới.' });
+        }
         const field = channel === 'email' ? 'EmailVerified' : 'PhoneVerified';
         await pgPool.query(`UPDATE ${table} SET ${field} = TRUE WHERE Id = $1`, [req.authUser.userId]);
         verificationCodes.delete(key);
@@ -608,9 +690,10 @@ app.post('/api/account/security/confirm-code', requireAuth, async (req, res) => 
 });
 
 app.put('/api/account/security/password', requireAuth, async (req, res) => {
-    const { password } = req.body || {};
-    if (!password || password.length < 4) {
-        return res.status(400).json({ error: 'Mật khẩu cần tối thiểu 4 ký tự.' });
+    const { currentPassword, password } = req.body || {};
+    if (!currentPassword) return res.status(400).json({ error: 'Hãy nhập mật khẩu hiện tại.' });
+    if (!password || password.length < MIN_PASSWORD_LENGTH) {
+        return res.status(400).json({ error: `Mật khẩu mới cần tối thiểu ${MIN_PASSWORD_LENGTH} ký tự.` });
     }
     if (password.length > MAX_PASSWORD_LENGTH) {
         return res.status(400).json({ error: `Mật khẩu không được vượt quá ${MAX_PASSWORD_LENGTH} ký tự.` });
@@ -619,11 +702,20 @@ app.put('/api/account/security/password', requireAuth, async (req, res) => {
         const userId = req.authUser.userId;
         const role = req.authUser.role;
         if (role === 'student') {
+            const account = await pgPool.query('SELECT PasswordHash FROM Students WHERE Id = $1', [userId]);
+            if (!account.rowCount || !(await bcrypt.compare(currentPassword, account.rows[0].passwordhash || ''))) {
+                return res.status(401).json({ error: 'Mật khẩu hiện tại không đúng.' });
+            }
             const hash = await bcrypt.hash(password, 10);
             const result = await pgPool.query('UPDATE Students SET PasswordHash = $1 WHERE Id = $2', [hash, userId]);
             if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy tài khoản.' });
         } else {
-            const result = await pgPool.query('UPDATE Users SET Password = $1 WHERE Id = $2', [password, userId]);
+            const account = await pgPool.query('SELECT Password FROM Users WHERE Id = $1', [userId]);
+            if (!account.rowCount || !(await passwordMatches(currentPassword, account.rows[0].password))) {
+                return res.status(401).json({ error: 'Mật khẩu hiện tại không đúng.' });
+            }
+            const hash = await bcrypt.hash(password, 12);
+            const result = await pgPool.query('UPDATE Users SET Password = $1 WHERE Id = $2', [hash, userId]);
             if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy tài khoản.' });
         }
         res.json({ message: 'Đổi mật khẩu thành công.' });
@@ -639,11 +731,11 @@ app.post('/api/forgot-password/request', async (req, res) => {
     const { username } = req.body || {};
     if (!username) return res.status(400).json({ error: 'Tên đăng nhập là bắt buộc.' });
     try {
-        let result = await pgPool.query('SELECT Id, Email, Phone, EmailVerified, PhoneVerified FROM Users WHERE Username = $1', [username.trim()]);
+        let result = await pgPool.query('SELECT Id, Username, Email, Phone, EmailVerified, PhoneVerified FROM Users WHERE Username = $1 OR LOWER(Email) = LOWER($1)', [username.trim()]);
         let user = result.rows[0];
         
         if (!user) {
-            result = await pgPool.query('SELECT Id, Email, Phone, EmailVerified, PhoneVerified FROM Students WHERE Username = $1', [username.trim()]);
+            result = await pgPool.query('SELECT Id, Username, Email, Phone, EmailVerified, PhoneVerified FROM Students WHERE Username = $1 OR LOWER(Email) = LOWER($1)', [username.trim()]);
             user = result.rows[0];
         }
         
@@ -691,11 +783,13 @@ app.post('/api/forgot-password/send-code', async (req, res) => {
     if (!username || !channel) return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
     
     try {
-        let result = await pgPool.query('SELECT Id, Email, Phone, EmailVerified, PhoneVerified FROM Users WHERE Username = $1', [username.trim()]);
+        let accountType = 'user';
+        let result = await pgPool.query('SELECT Id, Username, Email, Phone, EmailVerified, PhoneVerified FROM Users WHERE Username = $1 OR LOWER(Email) = LOWER($1)', [username.trim()]);
         let user = result.rows[0];
         
         if (!user) {
-            result = await pgPool.query('SELECT Id, Email, Phone, EmailVerified, PhoneVerified FROM Students WHERE Username = $1', [username.trim()]);
+            accountType = 'student';
+            result = await pgPool.query('SELECT Id, Username, Email, Phone, EmailVerified, PhoneVerified FROM Students WHERE Username = $1 OR LOWER(Email) = LOWER($1)', [username.trim()]);
             user = result.rows[0];
         }
 
@@ -707,49 +801,60 @@ app.post('/api/forgot-password/send-code', async (req, res) => {
         if (!contact || !verified) {
             return res.status(400).json({ error: `Kênh khôi phục ${channel === 'email' ? 'Email' : 'Số điện thoại'} chưa được xác minh.` });
         }
+        if (channel !== 'email') return res.status(501).json({ error: 'Khôi phục qua số điện thoại chưa được cấu hình. Hãy dùng email.' });
 
-        const code = String(Math.floor(100000 + Math.random() * 900000));
-        forgotPasswordCodes.set(username.trim().toLowerCase(), {
-            code,
+        const key = username.trim().toLowerCase();
+        const existing = forgotPasswordCodes.get(key);
+        if (!canIssueOtp(existing)) return res.status(429).json({ error: 'Vui lòng đợi 60 giây trước khi gửi lại mã.' });
+        const code = createOtpCode();
+        await sendOtpEmail(contact, code, 'reset');
+        forgotPasswordCodes.set(key, {
+            codeHash: hashOtp(code),
             channel,
-            expiresAt: Date.now() + 10 * 60 * 1000
+            accountType,
+            accountId: user.id,
+            expiresAt: Date.now() + 10 * 60 * 1000,
+            sentAt: Date.now(),
+            attempts: 0
         });
 
-        const devCode = process.env.NODE_ENV === 'production' ? undefined : code;
-        res.json({ message: `Mã OTP đã được tạo cho ${channel === 'email' ? 'Email' : 'SĐT'}.`, devCode });
+        const devCode = process.env.ALLOW_DEV_OTP === 'true' && process.env.NODE_ENV !== 'production' ? code : undefined;
+        res.json({ message: 'Mã OTP đã được gửi tới email khôi phục.', devCode });
     } catch (err) {
         console.error('[POST /api/forgot-password/send-code]', err);
-        res.status(500).json({ error: 'Lỗi hệ thống khi gửi mã.' });
+        res.status(500).json({ error: err.message || 'Lỗi hệ thống khi gửi mã.' });
     }
 });
 
 app.post('/api/forgot-password/reset', async (req, res) => {
     const { username, code, newPassword } = req.body || {};
     if (!username || !code || !newPassword) return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
-    if (newPassword.length < 4) return res.status(400).json({ error: 'Mật khẩu phải từ 4 ký tự trở lên.' });
+    if (newPassword.length < MIN_PASSWORD_LENGTH) return res.status(400).json({ error: `Mật khẩu phải từ ${MIN_PASSWORD_LENGTH} ký tự trở lên.` });
     if (newPassword.length > MAX_PASSWORD_LENGTH) return res.status(400).json({ error: `Mật khẩu không được vượt quá ${MAX_PASSWORD_LENGTH} ký tự.` });
 
     const key = username.trim().toLowerCase();
     const record = forgotPasswordCodes.get(key);
 
-    if (!record || record.expiresAt < Date.now() || record.code !== code) {
+    if (!record || record.expiresAt < Date.now()) {
         return res.status(400).json({ error: 'Mã OTP không đúng hoặc đã hết hạn.' });
     }
+    if (record.attempts >= 5) {
+        forgotPasswordCodes.delete(key);
+        return res.status(429).json({ error: 'Bạn đã nhập sai quá nhiều lần. Hãy yêu cầu mã mới.' });
+    }
+    record.attempts++;
+    if (record.codeHash !== hashOtp(code)) return res.status(400).json({ error: 'Mã OTP không đúng hoặc đã hết hạn.' });
 
     try {
-        let result = await pgPool.query('SELECT Id FROM Users WHERE Username = $1', [username.trim()]);
-        if (result.rows.length > 0) {
-            const user = result.rows[0];
-            await pgPool.query('UPDATE Users SET Password = $1 WHERE Id = $2', [newPassword, user.id]);
+        if (record.accountType === 'user') {
+            const hash = await bcrypt.hash(newPassword, 12);
+            await pgPool.query('UPDATE Users SET Password = $1 WHERE Id = $2', [hash, record.accountId]);
             forgotPasswordCodes.delete(key);
             return res.json({ message: 'Đặt lại mật khẩu thành công.' });
         }
-
-        result = await pgPool.query('SELECT Id FROM Students WHERE Username = $1', [username.trim()]);
-        if (result.rows.length > 0) {
-            const student = result.rows[0];
+        if (record.accountType === 'student') {
             const hash = await bcrypt.hash(newPassword, 10);
-            await pgPool.query('UPDATE Students SET PasswordHash = $1 WHERE Id = $2', [hash, student.id]);
+            await pgPool.query('UPDATE Students SET PasswordHash = $1 WHERE Id = $2', [hash, record.accountId]);
             forgotPasswordCodes.delete(key);
             return res.json({ message: 'Đặt lại mật khẩu thành công.' });
         }
@@ -783,8 +888,8 @@ app.post('/api/users', requireRole('admin'), async (req, res) => {
     if (username.trim().length > MAX_USERNAME_LENGTH) {
         return res.status(400).json({ error: `Tên đăng nhập không được vượt quá ${MAX_USERNAME_LENGTH} ký tự.` });
     }
-    if (password.length < 4 || password.length > MAX_PASSWORD_LENGTH) {
-        return res.status(400).json({ error: `Mật khẩu phải từ 4 đến ${MAX_PASSWORD_LENGTH} ký tự.` });
+    if (password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH) {
+        return res.status(400).json({ error: `Mật khẩu phải từ ${MIN_PASSWORD_LENGTH} đến ${MAX_PASSWORD_LENGTH} ký tự.` });
     }
     if (!['admin', 'teacher', 'assistant'].includes(role)) {
         return res.status(400).json({ error: 'Vai trò không hợp lệ. Chọn: admin, teacher, assistant.' });
@@ -819,11 +924,12 @@ app.post('/api/users', requireRole('admin'), async (req, res) => {
         }
 
         const newId = 'u_' + Date.now();
+        const passwordHash = await bcrypt.hash(password, 12);
 
         await pool.request()
             .input('id',       sql.VarChar,  newId)
             .input('username', sql.NVarChar, username.trim())
-            .input('password', sql.NVarChar, password)
+            .input('password', sql.NVarChar, passwordHash)
             .input('name',     sql.NVarChar, name.trim())
             .input('role',     sql.NVarChar, role)
             .input('assignedTeacherId', sql.VarChar, role === 'assistant' ? assignedTeacherId : null)
@@ -852,8 +958,8 @@ app.put('/api/users/:id', requireRole('admin'), async (req, res) => {
     if (name !== undefined && !String(name).trim()) {
         return res.status(400).json({ error: 'Tên tài khoản không được để trống.' });
     }
-    if (password && (password.length < 4 || password.length > MAX_PASSWORD_LENGTH)) {
-        return res.status(400).json({ error: `Mật khẩu phải từ 4 đến ${MAX_PASSWORD_LENGTH} ký tự.` });
+    if (password && (password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH)) {
+        return res.status(400).json({ error: `Mật khẩu phải từ ${MIN_PASSWORD_LENGTH} đến ${MAX_PASSWORD_LENGTH} ký tự.` });
     }
     if (role === 'assistant' && assignedTeacherId === undefined) {
         return res.status(400).json({ error: 'Trợ giảng (assistant) bắt buộc phải được gán cho một giáo viên (assignedTeacherId).' });
@@ -885,8 +991,9 @@ app.put('/api/users/:id', requireRole('admin'), async (req, res) => {
         }
         if (active !== undefined)   { sets.push('Active = @active'); request.input('active',   sql.Bit,      active ? 1 : 0); }
         if (password)               {
+            const passwordHash = await bcrypt.hash(password, 12);
             sets.push('Password = @password');
-            request.input('password', sql.NVarChar, password);
+            request.input('password', sql.NVarChar, passwordHash);
         }
 
         if (sets.length === 0) return res.status(400).json({ error: 'Không có trường nào để cập nhật.' });
@@ -1100,8 +1207,8 @@ app.post('/api/students/:id/account', requireRole('teacher', 'assistant'), requi
     let { username, password } = req.body || {};
     username = (username || '').trim();
 
-    if (!username || !password || password.length < 4) {
-        return res.status(400).json({ error: 'Cần nhập tên đăng nhập và mật khẩu (tối thiểu 4 ký tự).' });
+    if (!username || !password || password.length < MIN_PASSWORD_LENGTH) {
+        return res.status(400).json({ error: `Cần nhập tên đăng nhập và mật khẩu (tối thiểu ${MIN_PASSWORD_LENGTH} ký tự).` });
     }
     if (username.length > MAX_USERNAME_LENGTH) {
         return res.status(400).json({ error: `Tên đăng nhập không được vượt quá ${MAX_USERNAME_LENGTH} ký tự.` });
@@ -1151,8 +1258,8 @@ app.post('/api/students/:id/account', requireRole('teacher', 'assistant'), requi
 app.put('/api/students/:id/account/reset-password', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     const { id } = req.params;
     const { password } = req.body || {};
-    if (!password || password.length < 4) {
-        return res.status(400).json({ error: 'Mật khẩu mới cần tối thiểu 4 ký tự.' });
+    if (!password || password.length < MIN_PASSWORD_LENGTH) {
+        return res.status(400).json({ error: `Mật khẩu mới cần tối thiểu ${MIN_PASSWORD_LENGTH} ký tự.` });
     }
     if (password.length > MAX_PASSWORD_LENGTH) {
         return res.status(400).json({ error: `Mật khẩu không được vượt quá ${MAX_PASSWORD_LENGTH} ký tự.` });

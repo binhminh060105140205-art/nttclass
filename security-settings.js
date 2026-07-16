@@ -11,6 +11,7 @@ Object.assign(PinkyClassApp.prototype, {
         }
 
         // Reset các trường nhập mật khẩu
+        document.getElementById('settingsCurrentPassword').value = '';
         document.getElementById('settingsNewPassword').value = '';
         document.getElementById('settingsConfirmPassword').value = '';
         
@@ -166,15 +167,20 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     async changePassword() {
+        const currentPassword = document.getElementById('settingsCurrentPassword').value;
         const newPassword = document.getElementById('settingsNewPassword').value;
         const confirmPassword = document.getElementById('settingsConfirmPassword').value;
 
+        if (!currentPassword) {
+            this.showToast('Vui lòng nhập mật khẩu hiện tại.', 'error');
+            return;
+        }
         if (!newPassword) {
             this.showToast('Vui lòng nhập mật khẩu mới.', 'error');
             return;
         }
-        if (newPassword.length < 4) {
-            this.showToast('Mật khẩu cần tối thiểu 4 ký tự.', 'error');
+        if (newPassword.length < 8) {
+            this.showToast('Mật khẩu cần tối thiểu 8 ký tự.', 'error');
             return;
         }
         if (newPassword !== confirmPassword) {
@@ -186,7 +192,7 @@ Object.assign(PinkyClassApp.prototype, {
             const res = await this.authFetch(`${API_BASE_URL}/api/account/security/password`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password: newPassword })
+                body: JSON.stringify({ currentPassword, password: newPassword })
             });
 
             if (!res.ok) {
@@ -197,6 +203,7 @@ Object.assign(PinkyClassApp.prototype, {
             this.showToast('Thay đổi mật khẩu thành công!', 'success');
             document.getElementById('settingsNewPassword').value = '';
             document.getElementById('settingsConfirmPassword').value = '';
+            document.getElementById('settingsCurrentPassword').value = '';
             this.closeModal('accountSettingsModal');
         } catch (err) {
             this.showToast(err.message || 'Lỗi khi cập nhật mật khẩu.', 'error');
@@ -348,8 +355,8 @@ Object.assign(PinkyClassApp.prototype, {
             this.showToast('Vui lòng nhập mật khẩu mới.', 'error');
             return;
         }
-        if (newPassword.length < 4) {
-            this.showToast('Mật khẩu cần tối thiểu 4 ký tự.', 'error');
+        if (newPassword.length < 8) {
+            this.showToast('Mật khẩu cần tối thiểu 8 ký tự.', 'error');
             return;
         }
         if (newPassword !== confirmPassword) {

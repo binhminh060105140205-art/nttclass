@@ -279,8 +279,8 @@ Object.assign(PinkyClassApp.prototype, {
             this.showToast('Vui lòng nhập tên đăng nhập và mật khẩu.', 'error');
             return;
         }
-        if (password.length < 4) {
-            this.showToast('Mật khẩu cần tối thiểu 4 ký tự.', 'error');
+        if (password.length < 8) {
+            this.showToast('Mật khẩu cần tối thiểu 8 ký tự.', 'error');
             return;
         }
 
