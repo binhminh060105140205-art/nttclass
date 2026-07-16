@@ -32,6 +32,16 @@ Object.assign(PinkyClassApp.prototype, {
             if (!checkbox) return;
             this.updateRequestStatus(checkbox.dataset.requestId, checkbox.checked, checkbox);
         });
+
+        list.addEventListener('click', (event) => {
+            const imageButton = event.target.closest('.request-item-image');
+            if (!imageButton) return;
+            this.openRequestImage(imageButton.dataset.requestId);
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') this.closeRequestImage();
+        });
     },
 
     async selectRequestImage(event) {
@@ -90,6 +100,43 @@ Object.assign(PinkyClassApp.prototype, {
         if (input) input.value = '';
         if (image) image.removeAttribute('src');
         if (preview) preview.hidden = true;
+    },
+
+    openRequestImage(requestId) {
+        const item = this.requests.find(request => String(request.id) === String(requestId));
+        if (!item?.imageData) return;
+        let viewer = document.getElementById('requestImageViewer');
+        if (!viewer) {
+            viewer = document.createElement('div');
+            viewer.id = 'requestImageViewer';
+            viewer.className = 'request-image-viewer';
+            viewer.hidden = true;
+            viewer.innerHTML = `
+                <div class="request-image-viewer-dialog" role="dialog" aria-modal="true" aria-label="Xem ảnh yêu cầu">
+                    <button type="button" class="request-image-viewer-close" aria-label="Đóng ảnh">&times;</button>
+                    <img alt="Ảnh yêu cầu phóng to">
+                    <div class="request-image-viewer-name"></div>
+                </div>`;
+            viewer.addEventListener('click', event => {
+                if (event.target === viewer || event.target.closest('.request-image-viewer-close')) this.closeRequestImage();
+            });
+            document.body.appendChild(viewer);
+        }
+        const image = viewer.querySelector('img');
+        image.src = item.imageData;
+        image.alt = item.imageName || 'Ảnh yêu cầu';
+        viewer.querySelector('.request-image-viewer-name').textContent = item.imageName || 'Ảnh đính kèm';
+        viewer.hidden = false;
+        document.body.classList.add('request-image-viewer-open');
+        viewer.querySelector('.request-image-viewer-close').focus();
+    },
+
+    closeRequestImage() {
+        const viewer = document.getElementById('requestImageViewer');
+        if (!viewer || viewer.hidden) return;
+        viewer.hidden = true;
+        viewer.querySelector('img').removeAttribute('src');
+        document.body.classList.remove('request-image-viewer-open');
     },
 
     async loadRequests() {
@@ -189,9 +236,9 @@ Object.assign(PinkyClassApp.prototype, {
                 ? `<div class="request-item-text">${this.escapeHtml(item.text).replace(/\n/g, '<br>')}</div>`
                 : '';
             const imageHtml = item.imageData
-                ? `<a class="request-item-image" href="${this.escapeHtmlAttr(item.imageData)}" target="_blank" rel="noopener" title="Mở ảnh đầy đủ">
+                ? `<button type="button" class="request-item-image" data-request-id="${this.escapeHtmlAttr(item.id)}" title="Phóng to ảnh">
                        <img src="${this.escapeHtmlAttr(item.imageData)}" alt="${this.escapeHtmlAttr(item.imageName || 'Ảnh yêu cầu')}">
-                   </a>`
+                   </button>`
                 : '';
             return `
                 <article class="request-item ${item.completed ? 'is-completed' : ''}">
