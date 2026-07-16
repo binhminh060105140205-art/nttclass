@@ -28,9 +28,15 @@ Object.assign(PinkyClassApp.prototype, {
         });
 
         list.addEventListener('change', (event) => {
-            const checkbox = event.target.closest('.request-complete-checkbox');
-            if (!checkbox) return;
-            this.updateRequestStatus(checkbox.dataset.requestId, checkbox.checked, checkbox);
+            const completeCheckbox = event.target.closest('.request-complete-checkbox');
+            if (completeCheckbox) {
+                this.updateRequestStatus(completeCheckbox.dataset.requestId, completeCheckbox.checked, completeCheckbox);
+                return;
+            }
+            const priorityCheckbox = event.target.closest('.request-priority-checkbox');
+            if (priorityCheckbox) {
+                this.updateRequestPriority(priorityCheckbox.dataset.requestId, priorityCheckbox.checked, priorityCheckbox);
+            }
         });
 
         list.addEventListener('click', (event) => {
@@ -209,13 +215,36 @@ Object.assign(PinkyClassApp.prototype, {
         }
     },
 
+    async updateRequestPriority(id, priority, checkbox) {
+        if (!id) return;
+        checkbox.disabled = true;
+        try {
+            const response = await this.authFetch(`${API_BASE_URL}/api/requests/${encodeURIComponent(id)}/priority`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ priority })
+            });
+            const updated = await this.requireApiSuccess(response, 'Không thể cập nhật mức độ ưu tiên.');
+            const index = this.requests.findIndex(item => String(item.id) === String(id));
+            if (index >= 0) this.requests[index] = updated;
+            this.renderRequests();
+            this.showToast(priority ? 'Đã thêm vào danh sách ưu tiên.' : 'Đã bỏ khỏi danh sách ưu tiên.', 'success');
+        } catch (err) {
+            checkbox.checked = !priority;
+            checkbox.disabled = false;
+            this.showToast(err.message || 'Không thể cập nhật mức độ ưu tiên.', 'error');
+        }
+    },
+
     renderRequests() {
         const list = document.getElementById('requestList');
         if (!list) return;
         const pendingCount = this.requests.filter(item => !item.completed).length;
         const completedCount = this.requests.length - pendingCount;
+        const priorityCount = this.requests.filter(item => item.priority).length;
         document.getElementById('requestPendingCount').innerText = pendingCount;
         document.getElementById('requestCompletedCount').innerText = completedCount;
+        document.getElementById('requestPriorityCount').innerText = priorityCount;
 
         document.querySelectorAll('[data-request-filter]').forEach(button => {
             const active = button.dataset.requestFilter === this.requestFilter;
@@ -224,13 +253,22 @@ Object.assign(PinkyClassApp.prototype, {
         });
 
         const showCompleted = this.requestFilter === 'completed';
-        const visibleItems = this.requests.filter(item => Boolean(item.completed) === showCompleted);
+        const showPriority = this.requestFilter === 'priority';
+        const visibleItems = this.requests.filter(item => {
+            if (showPriority) return Boolean(item.priority);
+            return Boolean(item.completed) === showCompleted;
+        });
         if (!visibleItems.length) {
-            list.innerHTML = `<div class="request-empty">${showCompleted ? 'Chưa có yêu cầu nào đã hoàn thành.' : 'Chưa có yêu cầu nào. Hãy tạo yêu cầu đầu tiên.'}</div>`;
+            const emptyMessage = showPriority
+                ? 'Chưa có yêu cầu ưu tiên. Hãy tích “Ưu tiên” ở một yêu cầu.'
+                : showCompleted
+                    ? 'Chưa có yêu cầu nào đã hoàn thành.'
+                    : 'Chưa có yêu cầu nào. Hãy tạo yêu cầu đầu tiên.';
+            list.innerHTML = `<div class="request-empty">${emptyMessage}</div>`;
             return;
         }
 
-        list.innerHTML = visibleItems.map(item => {
+        list.innerHTML = visibleItems.map((item, index) => {
             const createdLabel = this.formatRequestDate(item.createdAt);
             const textHtml = item.text
                 ? `<div class="request-item-text">${this.escapeHtml(item.text).replace(/\n/g, '<br>')}</div>`
@@ -241,18 +279,28 @@ Object.assign(PinkyClassApp.prototype, {
                    </button>`
                 : '';
             return `
-                <article class="request-item ${item.completed ? 'is-completed' : ''}">
+                <article class="request-item ${item.completed ? 'is-completed' : ''} ${item.priority ? 'is-priority' : ''}">
+                    <span class="request-sequence" aria-label="Yêu cầu số ${index + 1}">${index + 1}</span>
                     <div class="request-item-content">
+                        ${item.priority ? '<div class="request-priority-label">Ưu tiên cao</div>' : ''}
                         ${textHtml}
                         ${imageHtml}
                         <div class="request-item-meta">${createdLabel}</div>
                     </div>
-                    <label class="request-status-control" title="${item.completed ? 'Chuyển về chưa hoàn thành' : 'Đánh dấu đã hoàn thành'}">
-                        <input type="checkbox" class="request-complete-checkbox"
-                            data-request-id="${this.escapeHtmlAttr(item.id)}" ${item.completed ? 'checked' : ''}>
-                        <span class="request-checkmark" aria-hidden="true"></span>
-                        <span>${item.completed ? 'Đã hoàn thành' : 'Hoàn thành'}</span>
-                    </label>
+                    <div class="request-item-actions">
+                        <label class="request-status-control request-priority-control" title="${item.priority ? 'Bỏ khỏi danh sách ưu tiên' : 'Đánh dấu là ưu tiên cao'}">
+                            <input type="checkbox" class="request-priority-checkbox"
+                                data-request-id="${this.escapeHtmlAttr(item.id)}" ${item.priority ? 'checked' : ''}>
+                            <span class="request-checkmark" aria-hidden="true"></span>
+                            <span>Ưu tiên</span>
+                        </label>
+                        <label class="request-status-control" title="${item.completed ? 'Chuyển về chưa hoàn thành' : 'Đánh dấu đã hoàn thành'}">
+                            <input type="checkbox" class="request-complete-checkbox"
+                                data-request-id="${this.escapeHtmlAttr(item.id)}" ${item.completed ? 'checked' : ''}>
+                            <span class="request-checkmark" aria-hidden="true"></span>
+                            <span>${item.completed ? 'Đã hoàn thành' : 'Hoàn thành'}</span>
+                        </label>
+                    </div>
                 </article>`;
         }).join('');
     },

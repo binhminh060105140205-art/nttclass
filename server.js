@@ -399,11 +399,14 @@ let poolPromise = pgPool.query('SELECT 1')
                 ImageData TEXT NULL,
                 ImageName VARCHAR(255) NULL,
                 Completed BOOLEAN NOT NULL DEFAULT FALSE,
+                Priority BOOLEAN NOT NULL DEFAULT FALSE,
                 CreatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UpdatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 CompletedAt TIMESTAMP NULL
             )`);
+            await pgPool.query('ALTER TABLE TaskRequests ADD COLUMN IF NOT EXISTS Priority BOOLEAN NOT NULL DEFAULT FALSE');
             await pgPool.query('CREATE INDEX IF NOT EXISTS idx_taskrequests_owner_status ON TaskRequests (OwnerId, OwnerRole, Completed, CreatedAt DESC)');
+            await pgPool.query('CREATE INDEX IF NOT EXISTS idx_taskrequests_owner_priority ON TaskRequests (OwnerId, OwnerRole, Priority, CreatedAt DESC)');
         } catch (migErr) {
             console.error('TaskRequests migration error:', migErr.message);
         }
@@ -2367,11 +2370,11 @@ app.get('/api/requests', requireAuth, async (req, res) => {
     try {
         const result = await pgPool.query(`
             SELECT Id AS "id", TextContent AS "text", ImageData AS "imageData",
-                   ImageName AS "imageName", Completed AS "completed",
+                   ImageName AS "imageName", Completed AS "completed", Priority AS "priority",
                    CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"
             FROM TaskRequests
             WHERE OwnerId = $1 AND OwnerRole = $2
-            ORDER BY Completed ASC, CreatedAt DESC`,
+            ORDER BY Priority DESC, Completed ASC, CreatedAt DESC`,
         [req.authUser.userId, req.authUser.role]);
         res.json(result.rows);
     } catch (err) {
@@ -2391,10 +2394,10 @@ app.post('/api/requests', requireAuth, async (req, res) => {
     const id = `req_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
     try {
         const result = await pgPool.query(`
-            INSERT INTO TaskRequests (Id, OwnerId, OwnerRole, TextContent, ImageData, ImageName, Completed)
-            VALUES ($1, $2, $3, $4, $5, $6, FALSE)
+            INSERT INTO TaskRequests (Id, OwnerId, OwnerRole, TextContent, ImageData, ImageName, Completed, Priority)
+            VALUES ($1, $2, $3, $4, $5, $6, FALSE, FALSE)
             RETURNING Id AS "id", TextContent AS "text", ImageData AS "imageData",
-                      ImageName AS "imageName", Completed AS "completed",
+                      ImageName AS "imageName", Completed AS "completed", Priority AS "priority",
                       CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"`,
         [id, req.authUser.userId, req.authUser.role, text, image.value, imageName || null]);
         res.status(201).json(result.rows[0]);
@@ -2416,7 +2419,7 @@ app.put('/api/requests/:id/status', requireAuth, async (req, res) => {
                 CompletedAt = CASE WHEN $1 THEN CURRENT_TIMESTAMP ELSE NULL END
             WHERE Id = $2 AND OwnerId = $3 AND OwnerRole = $4
             RETURNING Id AS "id", TextContent AS "text", ImageData AS "imageData",
-                      ImageName AS "imageName", Completed AS "completed",
+                      ImageName AS "imageName", Completed AS "completed", Priority AS "priority",
                       CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"`,
         [completed, req.params.id, req.authUser.userId, req.authUser.role]);
         if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy yêu cầu.' });
@@ -2424,6 +2427,28 @@ app.put('/api/requests/:id/status', requireAuth, async (req, res) => {
     } catch (err) {
         console.error('[PUT /api/requests/:id/status]', err);
         res.status(500).json({ error: 'Không thể cập nhật yêu cầu.' });
+    }
+});
+
+app.put('/api/requests/:id/priority', requireAuth, async (req, res) => {
+    const { priority } = req.body || {};
+    if (typeof priority !== 'boolean') {
+        return res.status(400).json({ error: 'Trạng thái ưu tiên không hợp lệ.' });
+    }
+    try {
+        const result = await pgPool.query(`
+            UPDATE TaskRequests
+            SET Priority = $1, UpdatedAt = CURRENT_TIMESTAMP
+            WHERE Id = $2 AND OwnerId = $3 AND OwnerRole = $4
+            RETURNING Id AS "id", TextContent AS "text", ImageData AS "imageData",
+                      ImageName AS "imageName", Completed AS "completed", Priority AS "priority",
+                      CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"`,
+        [priority, req.params.id, req.authUser.userId, req.authUser.role]);
+        if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy yêu cầu.' });
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error('[PUT /api/requests/:id/priority]', err);
+        res.status(500).json({ error: 'Không thể cập nhật mức độ ưu tiên.' });
     }
 });
 

@@ -108,12 +108,15 @@ CREATE TABLE TaskRequests (
     ImageData TEXT NULL,
     ImageName VARCHAR(255) NULL,
     Completed BOOLEAN NOT NULL DEFAULT FALSE,
+    Priority BOOLEAN NOT NULL DEFAULT FALSE,
     CreatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UpdatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CompletedAt TIMESTAMP NULL
 );
 CREATE INDEX idx_taskrequests_owner_status
     ON TaskRequests (OwnerId, OwnerRole, Completed, CreatedAt DESC);
+CREATE INDEX idx_taskrequests_owner_priority
+    ON TaskRequests (OwnerId, OwnerRole, Priority, CreatedAt DESC);
 
 -- 7. TÀI KHOẢN NGƯỜI DÙNG
 -- Mật khẩu lưu dạng văn bản thuần (plain text) — đồ án sinh viên quy mô nhỏ.
