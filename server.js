@@ -77,7 +77,9 @@ app.use(cors({
     credentials: true
 }));
 
-app.use(express.json());
+// Ảnh đính kèm của trang Yêu cầu được gửi dưới dạng data URL. Giới hạn tổng
+// body 5 MB và kiểm tra riêng ảnh tối đa 3 MB ở API bên dưới.
+app.use(express.json({ limit: '5mb' }));
 app.use(express.static(path.join(__dirname)));
 
 // Serve index.html
@@ -336,6 +338,26 @@ let poolPromise = pgPool.query('SELECT 1')
             await pgPool.query('CREATE INDEX IF NOT EXISTS idx_tuitionpayments_student_month ON TuitionPayments (StudentId, PeriodMonth)');
         } catch (migErr) {
             console.error('Tuition migration error:', migErr.message);
+        }
+
+        // Bảng yêu cầu/công việc cá nhân. Không gắn foreign key vì OwnerId có thể
+        // thuộc Users hoặc Students; OwnerRole giúp phân tách an toàn hai không gian tài khoản.
+        try {
+            await pgPool.query(`CREATE TABLE IF NOT EXISTS TaskRequests (
+                Id VARCHAR(60) PRIMARY KEY,
+                OwnerId VARCHAR(50) NOT NULL,
+                OwnerRole VARCHAR(20) NOT NULL,
+                TextContent TEXT NOT NULL DEFAULT '',
+                ImageData TEXT NULL,
+                ImageName VARCHAR(255) NULL,
+                Completed BOOLEAN NOT NULL DEFAULT FALSE,
+                CreatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UpdatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CompletedAt TIMESTAMP NULL
+            )`);
+            await pgPool.query('CREATE INDEX IF NOT EXISTS idx_taskrequests_owner_status ON TaskRequests (OwnerId, OwnerRole, Completed, CreatedAt DESC)');
+        } catch (migErr) {
+            console.error('TaskRequests migration error:', migErr.message);
         }
         return { request: () => new sql.Request(pgPool) };
     })
@@ -2208,6 +2230,95 @@ async function buildAiContext(req) {
         scoreLines || '(chưa có điểm nào được ghi nhận)'
     ].join('\n');
 }
+
+// ==========================================
+// TASK REQUESTS API — yêu cầu cá nhân có ảnh đính kèm
+// ==========================================
+const REQUEST_IMAGE_MAX_BYTES = 3 * 1024 * 1024;
+const REQUEST_IMAGE_HEADER_PATTERN = /^data:image\/(png|jpeg|webp|gif);base64,/;
+
+function validateRequestImage(imageData) {
+    if (!imageData) return { value: null };
+    if (typeof imageData !== 'string') return { error: 'Ảnh đính kèm không hợp lệ.' };
+    const header = imageData.slice(0, 40).match(REQUEST_IMAGE_HEADER_PATTERN);
+    if (!header) return { error: 'Chỉ hỗ trợ ảnh PNG, JPG, WEBP hoặc GIF.' };
+    const base64 = imageData.slice(header[0].length);
+    // Chặn payload quá lớn trước khi chạy regex trên toàn chuỗi.
+    if (base64.length > Math.ceil(REQUEST_IMAGE_MAX_BYTES * 4 / 3) + 4) {
+        return { error: 'Ảnh đính kèm không được vượt quá 3 MB.' };
+    }
+    if (!base64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) {
+        return { error: 'Dữ liệu ảnh không hợp lệ.' };
+    }
+    const padding = (base64.match(/=*$/) || [''])[0].length;
+    const byteSize = Math.floor(base64.length * 3 / 4) - padding;
+    if (byteSize > REQUEST_IMAGE_MAX_BYTES) return { error: 'Ảnh đính kèm không được vượt quá 3 MB.' };
+    return { value: imageData };
+}
+
+app.get('/api/requests', requireAuth, async (req, res) => {
+    try {
+        const result = await pgPool.query(`
+            SELECT Id AS "id", TextContent AS "text", ImageData AS "imageData",
+                   ImageName AS "imageName", Completed AS "completed",
+                   CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"
+            FROM TaskRequests
+            WHERE OwnerId = $1 AND OwnerRole = $2
+            ORDER BY Completed ASC, CreatedAt DESC`,
+        [req.authUser.userId, req.authUser.role]);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('[GET /api/requests]', err);
+        res.status(500).json({ error: 'Không thể tải danh sách yêu cầu.' });
+    }
+});
+
+app.post('/api/requests', requireAuth, async (req, res) => {
+    const text = String(req.body?.text || '').trim();
+    const imageName = String(req.body?.imageName || '').trim().slice(0, 255);
+    const image = validateRequestImage(req.body?.imageData || null);
+    if (image.error) return res.status(400).json({ error: image.error });
+    if (!text && !image.value) return res.status(400).json({ error: 'Hãy nhập nội dung hoặc chọn một ảnh.' });
+    if (text.length > 5000) return res.status(400).json({ error: 'Nội dung yêu cầu không được vượt quá 5.000 ký tự.' });
+
+    const id = `req_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    try {
+        const result = await pgPool.query(`
+            INSERT INTO TaskRequests (Id, OwnerId, OwnerRole, TextContent, ImageData, ImageName, Completed)
+            VALUES ($1, $2, $3, $4, $5, $6, FALSE)
+            RETURNING Id AS "id", TextContent AS "text", ImageData AS "imageData",
+                      ImageName AS "imageName", Completed AS "completed",
+                      CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"`,
+        [id, req.authUser.userId, req.authUser.role, text, image.value, imageName || null]);
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error('[POST /api/requests]', err);
+        res.status(500).json({ error: 'Không thể lưu yêu cầu.' });
+    }
+});
+
+app.put('/api/requests/:id/status', requireAuth, async (req, res) => {
+    const { completed } = req.body || {};
+    if (typeof completed !== 'boolean') {
+        return res.status(400).json({ error: 'Trạng thái hoàn thành không hợp lệ.' });
+    }
+    try {
+        const result = await pgPool.query(`
+            UPDATE TaskRequests
+            SET Completed = $1, UpdatedAt = CURRENT_TIMESTAMP,
+                CompletedAt = CASE WHEN $1 THEN CURRENT_TIMESTAMP ELSE NULL END
+            WHERE Id = $2 AND OwnerId = $3 AND OwnerRole = $4
+            RETURNING Id AS "id", TextContent AS "text", ImageData AS "imageData",
+                      ImageName AS "imageName", Completed AS "completed",
+                      CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"`,
+        [completed, req.params.id, req.authUser.userId, req.authUser.role]);
+        if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy yêu cầu.' });
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error('[PUT /api/requests/:id/status]', err);
+        res.status(500).json({ error: 'Không thể cập nhật yêu cầu.' });
+    }
+});
 
 app.post('/api/ai-chat', requireAuth, async (req, res) => {
     const { message, history } = req.body || {};

@@ -304,6 +304,8 @@ Object.assign(PinkyClassApp.prototype, {
             this.clearAiChat();
         });
 
+        this.initRequestsFeature();
+
         // Tải ảnh QR thanh toán lên phiếu học phí (tuỳ chọn) — đọc file thành
         // base64 để nhúng thẳng vào ảnh xuất ra (không cần lưu file lên server).
         document.getElementById('invoiceQrInput').addEventListener('change', (e) => {
@@ -455,6 +457,9 @@ Object.assign(PinkyClassApp.prototype, {
     async onLoginSuccess(user, save = true) {
         this.currentUser = user;
         this.currentRole = user.role;
+        this.requests = [];
+        this.requestsLoaded = false;
+        this.requestFilter = 'pending';
         if (save) {
             localStorage.setItem('pinky_current_user', JSON.stringify(user));
             // Refresh data now that we have a valid auth token
@@ -543,6 +548,9 @@ Object.assign(PinkyClassApp.prototype, {
 
     handleLogout() {
         localStorage.removeItem('pinky_current_user');
+        this.requests = [];
+        this.requestsLoaded = false;
+        this.clearRequestImage();
         this.showLoginPage();
         this.showToast('Bạn đã đăng xuất.', 'success');
     },
@@ -576,6 +584,7 @@ Object.assign(PinkyClassApp.prototype, {
         const navStudents = document.getElementById('nav-students');
         const navUsers = document.getElementById('nav-users');
         const navAiChat = document.getElementById('nav-ai-chat');
+        const navRequests = document.getElementById('nav-requests');
 
         if (role === 'admin') {
             // Admin: chỉ được quản lý tài khoản người dùng, không truy cập
@@ -589,6 +598,7 @@ Object.assign(PinkyClassApp.prototype, {
             navStudents.style.display = 'none';
             navUsers.style.display = 'flex';
             navAiChat.style.display = 'none';
+            navRequests.style.display = 'none';
         } else if (role === 'assistant') {
             navDashboard.style.display = 'flex';
             navLogs.style.display = 'flex';
@@ -598,6 +608,7 @@ Object.assign(PinkyClassApp.prototype, {
             navStudents.style.display = 'flex'; // TA can view classes/students of their assigned teacher
             navUsers.style.display = 'none';
             navAiChat.style.display = 'flex';
+            navRequests.style.display = 'flex';
         } else if (role === 'student') {
             // Học sinh: xem "Nhật ký học tập" + "Điểm số" của chính mình —
             // không thấy học phí, không thấy học sinh khác, không thấy lịch
@@ -612,6 +623,7 @@ Object.assign(PinkyClassApp.prototype, {
             navStudents.style.display = 'none';
             navUsers.style.display = 'none';
             navAiChat.style.display = 'flex';
+            navRequests.style.display = 'flex';
         } else {
             // teacher: toàn quyền với các chức năng dạy học
             navDashboard.style.display = 'flex';
@@ -622,6 +634,7 @@ Object.assign(PinkyClassApp.prototype, {
             navStudents.style.display = 'flex';
             navUsers.style.display = 'none';
             navAiChat.style.display = 'flex';
+            navRequests.style.display = 'flex';
         }
 
         // Trigger UI updates
@@ -664,6 +677,10 @@ Object.assign(PinkyClassApp.prototype, {
         } else if (viewId === 'view-ai-chat') {
             titleEl.innerText = "Trợ lý AI";
             subtitleEl.innerText = "Hỏi đáp dựa trên dữ liệu lịch dạy và điểm số thật trong tài khoản của bạn.";
+        } else if (viewId === 'view-requests') {
+            titleEl.innerText = "Yêu cầu";
+            subtitleEl.innerText = "Ghi lại yêu cầu cần thực hiện và theo dõi trạng thái hoàn thành.";
+            this.loadRequests();
         } else if (viewId === 'view-scheduler') {
             titleEl.innerText = "Lịch dạy & Chấm công";
             subtitleEl.innerText = "Sắp xếp lịch dạy học và tính công dạy hàng tuần.";

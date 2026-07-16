@@ -4349,6 +4349,295 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     color: #fff !important;
 }
 
+/* ================================================================
+   YÊU CẦU — bảng công việc tối giản, kèm ảnh và trạng thái hoàn thành
+   ================================================================ */
+.requests-card {
+    padding: 22px;
+    max-width: 1120px;
+    margin: 0 auto;
+}
+
+.request-composer {
+    padding: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    background: var(--surface-soft, rgba(248, 250, 252, .72));
+}
+
+.request-text-input {
+    width: 100%;
+    min-height: 92px;
+    resize: vertical;
+    line-height: 1.55;
+}
+
+.request-composer-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.request-image-button {
+    cursor: pointer;
+}
+
+.request-image-button svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+}
+
+.request-image-preview {
+    position: relative;
+    width: fit-content;
+    max-width: 220px;
+    margin-top: 12px;
+}
+
+.request-image-preview[hidden] {
+    display: none;
+}
+
+.request-image-preview img {
+    display: block;
+    max-width: 220px;
+    max-height: 150px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.request-image-remove {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(15, 23, 42, .78);
+    color: #fff;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.request-board-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 22px 0 14px;
+}
+
+.request-tabs {
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-soft, rgba(248, 250, 252, .72));
+}
+
+.request-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 7px 13px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.request-tab span {
+    display: inline-grid;
+    place-items: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--border-color);
+    font-size: 12px;
+}
+
+.request-tab.active {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 5px 14px rgba(37, 99, 235, .18);
+}
+
+.request-tab.active span {
+    background: rgba(255, 255, 255, .2);
+}
+
+.request-list {
+    display: grid;
+    gap: 10px;
+}
+
+.request-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 18px;
+    padding: 15px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: var(--card-bg);
+    transition: border-color .2s ease, transform .2s ease, opacity .2s ease;
+}
+
+.request-item:hover {
+    border-color: var(--primary-light);
+    transform: translateY(-1px);
+}
+
+.request-item.is-completed {
+    opacity: .78;
+}
+
+.request-item-text {
+    color: var(--text-main);
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+}
+
+.request-item-image {
+    display: inline-block;
+    margin-top: 10px;
+}
+
+.request-item-image img {
+    display: block;
+    width: 150px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+}
+
+.request-item-meta {
+    margin-top: 9px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.request-status-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 650;
+    cursor: pointer;
+    user-select: none;
+}
+
+.request-status-control input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.request-checkmark {
+    position: relative;
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+    border: 2px solid var(--border-color);
+    border-radius: 7px;
+    background: var(--card-bg);
+}
+
+.request-status-control input:checked + .request-checkmark {
+    border-color: var(--primary);
+    background: var(--primary);
+}
+
+.request-status-control input:checked + .request-checkmark::after {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 2px;
+    width: 6px;
+    height: 11px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.request-status-control input:focus-visible + .request-checkmark {
+    outline: 3px solid var(--primary-soft);
+    outline-offset: 2px;
+}
+
+.request-empty {
+    padding: 44px 16px;
+    border: 1px dashed var(--border-color);
+    border-radius: 14px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.request-error {
+    color: var(--danger, #dc2626);
+}
+
+[data-theme-mode="dark"] .request-composer,
+[data-theme-mode="dark"] .request-tabs {
+    background: rgba(15, 23, 42, .42);
+}
+
+@media (max-width: 640px) {
+    .requests-card {
+        padding: 14px;
+    }
+
+    .request-composer-actions {
+        align-items: stretch;
+    }
+
+    .request-composer-actions .btn {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .request-tabs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        width: 100%;
+    }
+
+    .request-tab {
+        justify-content: center;
+        padding-inline: 8px;
+        font-size: 13px;
+    }
+
+    .request-item {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .request-status-control {
+        justify-self: start;
+    }
+
+    .request-item-image img {
+        width: min(180px, 100%);
+        height: 112px;
+    }
+}
+
 [data-theme-mode="dark"] .tuition-status-select.status-paid {
     background: rgba(22, 101, 52, 0.28) !important;
     color: #86efac !important;

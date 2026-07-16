@@ -15,6 +15,7 @@
 -- nội dung file này vào, chọn hết (Ctrl+A) rồi Run.
 
 -- 1. XÓA BẢNG CŨ NẾU ĐÃ TỒN TẠI
+DROP TABLE IF EXISTS TaskRequests CASCADE;
 DROP TABLE IF EXISTS SessionDetails CASCADE;
 DROP TABLE IF EXISTS Sessions CASCADE;
 DROP TABLE IF EXISTS Students CASCADE;
@@ -98,7 +99,23 @@ CREATE TABLE TuitionPayments (
     CONSTRAINT FK_TuitionPayments_Student FOREIGN KEY (StudentId) REFERENCES Students(Id)
 );
 
--- 6. TÀI KHOẢN NGƯỜI DÙNG
+-- 6. YÊU CẦU / CÔNG VIỆC CÁ NHÂN
+CREATE TABLE TaskRequests (
+    Id VARCHAR(60) PRIMARY KEY,
+    OwnerId VARCHAR(50) NOT NULL,
+    OwnerRole VARCHAR(20) NOT NULL,
+    TextContent TEXT NOT NULL DEFAULT '',
+    ImageData TEXT NULL,
+    ImageName VARCHAR(255) NULL,
+    Completed BOOLEAN NOT NULL DEFAULT FALSE,
+    CreatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CompletedAt TIMESTAMP NULL
+);
+CREATE INDEX idx_taskrequests_owner_status
+    ON TaskRequests (OwnerId, OwnerRole, Completed, CreatedAt DESC);
+
+-- 7. TÀI KHOẢN NGƯỜI DÙNG
 -- Mật khẩu lưu dạng văn bản thuần (plain text) — đồ án sinh viên quy mô nhỏ.
 -- ĐỔI username/password bên dưới thành tài khoản thật của bạn trước khi chạy.
 INSERT INTO Users (Id, Username, Password, Name, Role, Active, AssignedTeacherId) VALUES
@@ -106,7 +123,7 @@ INSERT INTO Users (Id, Username, Password, Name, Role, Active, AssignedTeacherId
 ('u_teacher', 'teacher', 'teacher123', 'Nguyễn Thanh Thúy', 'teacher', 1, NULL),
 ('u_assistant', 'trogiang', 'trogiang123', 'Trần Gia Bảo', 'assistant', 1, 'u_teacher');
 
--- 7. DANH SÁCH HỌC SINH (đúng theo ảnh Hồ sơ học sinh hiện tại)
+-- 8. DANH SÁCH HỌC SINH (đúng theo ảnh Hồ sơ học sinh hiện tại)
 INSERT INTO Students (Id, Name, Class, GradeLevel, Subject, BasePrice, TeacherId) VALUES
 ('hs_1', 'Khánh Hà',    'Lớp 8',  8,  'Toán', 200000, 'u_teacher'),
 ('hs_2', 'Quỳnh Anh',   'Lớp 8',  8,  'Toán', 250000, 'u_teacher'),

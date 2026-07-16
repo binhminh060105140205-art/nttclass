@@ -181,6 +181,10 @@
                 <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 1 1-3.4-6.53"/><path d="M21 4v5h-5"/><circle cx="9" cy="12" r="1"/><circle cx="13" cy="12" r="1"/></svg>
                 <span>Trợ lý AI</span>
             </a>
+            <a href="#" class="menu-item" data-target="view-requests" id="nav-requests">
+                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h5M8 16h4"/><path d="m15 16 1.5 1.5L20 14"/></svg>
+                <span>Yêu cầu</span>
+            </a>
         </nav>
 
         <div class="sidebar-footer">
@@ -456,6 +460,45 @@
                     <input type="text" id="aiChatInput" class="form-control" placeholder="Nhập câu hỏi, ví dụ: Tuần này có bao nhiêu buổi dạy?" autocomplete="off" required>
                     <button type="submit" class="btn btn-primary" id="aiChatSendBtn">Gửi</button>
                 </form>
+            </div>
+        </section>
+
+        <!-- YÊU CẦU: ghi chú công việc kèm ảnh, lưu bền vững trên server -->
+        <section id="view-requests" class="view-section">
+            <div class="glass-card requests-card">
+                <form id="requestCreateForm" class="request-composer">
+                    <div class="request-composer-main">
+                        <textarea id="requestTextInput" class="form-control request-text-input" maxlength="5000" rows="3"
+                            placeholder="Nhập yêu cầu cần thực hiện..."></textarea>
+                        <div id="requestImagePreview" class="request-image-preview" hidden>
+                            <img id="requestImagePreviewImg" alt="Ảnh đính kèm xem trước">
+                            <button type="button" id="requestRemoveImageBtn" class="request-image-remove" aria-label="Bỏ ảnh đính kèm">&times;</button>
+                        </div>
+                    </div>
+                    <div class="request-composer-actions">
+                        <label for="requestImageInput" class="btn btn-secondary request-image-button">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m4 17 5-4 3 3 3-2 5 4"/></svg>
+                            Thêm ảnh
+                        </label>
+                        <input id="requestImageInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+                        <button type="submit" id="requestSubmitBtn" class="btn btn-primary">Gửi yêu cầu</button>
+                    </div>
+                </form>
+
+                <div class="request-board-header">
+                    <div class="request-tabs" role="tablist" aria-label="Trạng thái yêu cầu">
+                        <button type="button" class="request-tab active" data-request-filter="pending" role="tab" aria-selected="true">
+                            Chưa hoàn thành <span id="requestPendingCount">0</span>
+                        </button>
+                        <button type="button" class="request-tab" data-request-filter="completed" role="tab" aria-selected="false">
+                            Đã hoàn thành <span id="requestCompletedCount">0</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="requestList" class="request-list" aria-live="polite">
+                    <div class="request-empty">Chưa có yêu cầu nào.</div>
+                </div>
             </div>
         </section>
 
@@ -1454,6 +1497,7 @@
     <script src="tuition-export.js"></script>
     <script src="students.js"></script>
     <script src="ai-chat.js"></script>
+    <script src="requests.js"></script>
     <script src="security-settings.js"></script>
     <script src="main.js"></script>
     <script src="invoice-export.js"></script>
