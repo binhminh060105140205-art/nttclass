@@ -301,7 +301,10 @@ let poolPromise = pgPool.query('SELECT 1')
             // một ô Ghi chú/Ý thức dài cũng rollback toàn bộ lần lưu nhận xét.
             await pgPool.query('ALTER TABLE SessionDetails ALTER COLUMN Attitude TYPE TEXT');
             await pgPool.query('ALTER TABLE SessionDetails ALTER COLUMN Homework TYPE TEXT');
+            await pgPool.query('ALTER TABLE SessionDetails ALTER COLUMN IndividualComment TYPE TEXT');
             await pgPool.query('ALTER TABLE SessionDetails ALTER COLUMN Note TYPE TEXT');
+            await pgPool.query("ALTER TABLE SessionDetails ALTER COLUMN Attitude SET DEFAULT ''");
+            await pgPool.query("ALTER TABLE SessionDetails ALTER COLUMN Homework SET DEFAULT ''");
             await pgPool.query(`UPDATE SessionDetails sd
                 SET FeeAmount = CASE
                     WHEN st.BasePrice <= 0 THEN 0
@@ -1365,7 +1368,7 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
                 .input('sessionId',        sql.VarChar,  id)
                 .input('studentId',        sql.VarChar,  stId)
                 .input('homework',         sql.NVarChar, detail.homework         || '')
-                .input('attitude',         sql.NVarChar, detail.attitude         || 'Tốt')
+                .input('attitude',         sql.NVarChar, String(detail.attitude ?? '').trim())
                 .input('individualComment',sql.NVarChar, detail.individualComment|| '')
                 .input('note',             sql.NVarChar, detail.note             || '')
                 .input('feeAmount',         sql.Int,      feeAmount)
@@ -1384,6 +1387,81 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
     } catch (err) {
         if (transaction) { try { await transaction.rollback(); } catch (_) {} }
         console.error('[POST /api/sessions]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Cập nhật nhanh nội dung/nhật ký của một buổi học. Route này chỉ UPDATE đúng
+// các trường giáo viên nhập trong popup, không xóa và tạo lại SessionDetails;
+// nhờ vậy học phí, trạng thái thanh toán và các giá trị nhật ký không bị reset.
+app.put('/api/sessions/:id/quick-entry', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
+    const { id } = req.params;
+    const { content, sessionName, generalComment, studentDetails } = req.body || {};
+    if (!studentDetails || typeof studentDetails !== 'object' || Array.isArray(studentDetails)) {
+        return res.status(400).json({ error: 'Thiếu dữ liệu nhật ký của học sinh.' });
+    }
+
+    let transaction;
+    try {
+        const pool = await poolPromise;
+        transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        const owner = await new sql.Request(transaction)
+            .input('sessionId', sql.VarChar, id)
+            .query('SELECT TeacherId FROM Sessions WHERE Id = @sessionId');
+        if (owner.recordset.length === 0) {
+            await transaction.rollback();
+            transaction = null;
+            return res.status(404).json({ error: 'Không tìm thấy buổi học.' });
+        }
+        if (owner.recordset[0].TeacherId !== req.effectiveTeacherId) {
+            await transaction.rollback();
+            transaction = null;
+            return res.status(403).json({ error: 'Bạn không có quyền cập nhật buổi học này.' });
+        }
+
+        const participants = await new sql.Request(transaction)
+            .input('sessionId', sql.VarChar, id)
+            .query('SELECT StudentId FROM SessionDetails WHERE SessionId = @sessionId');
+        const participantIds = new Set((participants.recordset || []).map(row => row.StudentId));
+        const detailEntries = Object.entries(studentDetails);
+        if (detailEntries.length !== participantIds.size || detailEntries.some(([studentId]) => !participantIds.has(studentId))) {
+            await transaction.rollback();
+            transaction = null;
+            return res.status(400).json({ error: 'Danh sách học sinh không khớp với buổi học.' });
+        }
+
+        await new sql.Request(transaction)
+            .input('sessionId', sql.VarChar, id)
+            .input('content', sql.NVarChar, String(content ?? ''))
+            .input('sessionName', sql.NVarChar, String(sessionName ?? ''))
+            .input('generalComment', sql.NVarChar, String(generalComment ?? ''))
+            .query(`UPDATE Sessions
+                    SET Content = @content, SessionName = @sessionName, GeneralComment = @generalComment
+                    WHERE Id = @sessionId`);
+
+        for (const [studentId, rawDetail] of detailEntries) {
+            const detail = rawDetail && typeof rawDetail === 'object' ? rawDetail : {};
+            await new sql.Request(transaction)
+                .input('sessionId', sql.VarChar, id)
+                .input('studentId', sql.VarChar, studentId)
+                .input('homework', sql.NVarChar, String(detail.homework ?? ''))
+                .input('attitude', sql.NVarChar, String(detail.attitude ?? '').trim())
+                .input('individualComment', sql.NVarChar, String(detail.individualComment ?? ''))
+                .input('note', sql.NVarChar, String(detail.note ?? ''))
+                .query(`UPDATE SessionDetails
+                        SET Homework = @homework, Attitude = @attitude,
+                            IndividualComment = @individualComment, Note = @note
+                        WHERE SessionId = @sessionId AND StudentId = @studentId`);
+        }
+
+        await transaction.commit();
+        transaction = null;
+        res.json({ message: 'Đã lưu nội dung và nhật ký buổi học.' });
+    } catch (err) {
+        if (transaction) { try { await transaction.rollback(); } catch (_) {} }
+        console.error('[PUT /api/sessions/:id/quick-entry]', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -1463,7 +1541,7 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
             .query('DELETE FROM SessionDetails WHERE SessionId = @sessionId');
 
         for (const stId of studentIds) {
-            const detail = (studentDetails && studentDetails[stId]) || { homework: null, attitude: 'Tốt', individualComment: '', note: '' };
+            const detail = (studentDetails && studentDetails[stId]) || { homework: null, attitude: '', individualComment: '', note: '' };
             const keepPaid = (detail.paid !== undefined) ? !!detail.paid : !!existingPaidMap[stId];
             const hasExistingFee = Object.prototype.hasOwnProperty.call(existingFeeMap, stId);
             const hasIncomingFee = detail.feeAmount !== undefined && detail.feeAmount !== null
@@ -1475,7 +1553,7 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
                 .input('sessionId',        sql.VarChar,  id)
                 .input('studentId',        sql.VarChar,  stId)
                 .input('homework',         sql.NVarChar, detail.homework          || '')
-                .input('attitude',         sql.NVarChar, detail.attitude          || 'Tốt')
+                .input('attitude',         sql.NVarChar, String(detail.attitude ?? '').trim())
                 .input('individualComment',sql.NVarChar, detail.individualComment || '')
                 .input('note',             sql.NVarChar, detail.note              || '')
                 .input('feeAmount',         sql.Int,      feeAmount)
@@ -1733,6 +1811,75 @@ app.get('/api/scores', requireRole('teacher', 'assistant'), requireTeacherContex
         })));
     } catch (err) {
         console.error('[GET /api/scores]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Nhập điểm hàng loạt cho nhiều học sinh trong cùng một bài kiểm tra. Toàn bộ
+// danh sách được lưu trong một transaction: hoặc lưu đủ tất cả, hoặc không lưu
+// dòng nào, tránh tình trạng nửa lớp có điểm còn nửa lớp bị mất khi mạng lỗi.
+app.post('/api/scores/batch', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
+    const { scoreType, date, note, entries } = req.body || {};
+    if (!SCORE_TYPES.includes(scoreType)) {
+        return res.status(400).json({ error: 'Loại điểm không hợp lệ.' });
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || ''))) {
+        return res.status(400).json({ error: 'Ngày chấm điểm không hợp lệ.' });
+    }
+    if (!Array.isArray(entries) || entries.length === 0 || entries.length > 200) {
+        return res.status(400).json({ error: 'Danh sách điểm phải có từ 1 đến 200 học sinh.' });
+    }
+
+    const normalized = entries.map(entry => ({
+        studentId: String(entry && entry.studentId || '').trim(),
+        scoreValue: Number(entry && entry.scoreValue),
+        note: String((entry && entry.note) ?? note ?? '').trim()
+    }));
+    const ids = normalized.map(entry => entry.studentId);
+    if (ids.some(id => !id) || new Set(ids).size !== ids.length) {
+        return res.status(400).json({ error: 'Danh sách có học sinh trống hoặc bị trùng.' });
+    }
+    if (normalized.some(entry => !Number.isFinite(entry.scoreValue) || entry.scoreValue < 0 || entry.scoreValue > 10)) {
+        return res.status(400).json({ error: 'Mọi điểm số phải nằm trong khoảng từ 0 đến 10.' });
+    }
+
+    let transaction;
+    try {
+        const pool = await poolPromise;
+        transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        const owned = await new sql.Request(transaction)
+            .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+            .query('SELECT Id FROM Students WHERE TeacherId = @teacherId');
+        const ownedIds = new Set((owned.recordset || []).map(row => row.Id));
+        if (normalized.some(entry => !ownedIds.has(entry.studentId))) {
+            await transaction.rollback();
+            transaction = null;
+            return res.status(403).json({ error: 'Danh sách có học sinh không thuộc giáo viên hiện tại.' });
+        }
+
+        const batchToken = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        for (let index = 0; index < normalized.length; index++) {
+            const entry = normalized[index];
+            await new sql.Request(transaction)
+                .input('id', sql.VarChar, `sc_${batchToken}_${index}`)
+                .input('studentId', sql.VarChar, entry.studentId)
+                .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+                .input('scoreType', sql.VarChar, scoreType)
+                .input('scoreValue', sql.Decimal(), entry.scoreValue)
+                .input('date', sql.Date, date)
+                .input('note', sql.NVarChar, entry.note)
+                .query(`INSERT INTO Scores (Id, StudentId, TeacherId, SessionId, ScoreType, ScoreValue, ScoreDate, Note)
+                        VALUES (@id, @studentId, @teacherId, NULL, @scoreType, @scoreValue, @date, @note)`);
+        }
+
+        await transaction.commit();
+        transaction = null;
+        res.status(201).json({ message: 'Đã lưu bảng điểm.', count: normalized.length });
+    } catch (err) {
+        if (transaction) { try { await transaction.rollback(); } catch (_) {} }
+        console.error('[POST /api/scores/batch]', err);
         res.status(500).json({ error: err.message });
     }
 });

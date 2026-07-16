@@ -39,7 +39,7 @@ Object.assign(PinkyClassApp.prototype, {
         studentSessions.forEach((sess, idx) => {
             const tr = document.createElement('tr');
 
-            const detail = sess.studentDetails[studentId] || { homework: null, attitude: 'Tốt', individualComment: '', note: '' };
+            const detail = sess.studentDetails[studentId] || { homework: null, attitude: '', individualComment: '', note: '' };
 
             // BÀI TẬP VỀ NHÀ: chỉ HIỂN THỊ (badge tĩnh), không cho sửa trực
             // tiếp ở bảng này nữa — giá trị luôn lấy từ dữ liệu chấm công đã
@@ -47,9 +47,14 @@ Object.assign(PinkyClassApp.prototype, {
             // Giá trị lưu là MỨC % HOÀN THÀNH (0% / 30% / 50% / 70% / 100%),
             // màu badge đi theo mức độ: 100% xanh (done), 50-70% vàng
             // (pending), 0-30% đỏ (not-done).
-            const hwClass = this.getHomeworkClass(detail.homework);
+            // Buổi chưa kết thúc chưa thể có kết quả BTVN thực tế. Một số dữ liệu cũ
+            // từng bị form mặc định ghi nhầm 0%; luôn coi là chưa nhập và hiển thị "-".
+            const sessionCompleted = this.isSessionCompleted(sess);
+            const displayedHomework = sessionCompleted ? detail.homework : null;
+            const displayedAttitude = sessionCompleted ? detail.attitude : null;
+            const hwClass = this.getHomeworkClass(displayedHomework);
             const hwInlineStyle = hwClass === 'no-data' ? ' style="background:transparent;color:var(--text-muted);"' : '';
-            const homeworkBadge = `<span class="homework-badge ${hwClass}"${hwInlineStyle}>${this.getHomeworkLabel(detail.homework)}</span>`;
+            const homeworkBadge = `<span class="homework-badge ${hwClass}"${hwInlineStyle}>${this.getHomeworkLabel(displayedHomework)}</span>`;
 
             // Session Date display: dòng trên "Thứ 7", dòng dưới "23/05" (không gạch ngang)
             const dateStr = this.formatDateVNSplit(sess.date);
@@ -75,7 +80,7 @@ Object.assign(PinkyClassApp.prototype, {
                 <td class="session-date-cell">${dateStr}</td>
                 <td class="col-content-compact">${contentHTML}</td>
                 <td style="text-align:center;">${homeworkBadge}</td>
-                <td>${detail.attitude || 'Tập trung'}</td>
+                <td>${displayedAttitude || '-'}</td>
                 <td>${commentHTML}</td>
                 <td class="student-log-note">${detail.note || '-'}</td>
                 <td class="role-restricted admin-tutor log-export-hide">${actionsHTML}</td>

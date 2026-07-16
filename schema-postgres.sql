@@ -68,8 +68,8 @@ CREATE TABLE Sessions (
 CREATE TABLE SessionDetails (
     SessionId VARCHAR(50) NOT NULL,
     StudentId VARCHAR(50) NOT NULL,
-    Homework TEXT NOT NULL DEFAULT 'Chưa làm',
-    Attitude TEXT NOT NULL DEFAULT 'Tốt',
+    Homework TEXT NOT NULL DEFAULT '',
+    Attitude TEXT NOT NULL DEFAULT '',
     IndividualComment TEXT NULL,
     Note TEXT NULL,
     -- Số tiền phải thu của RIÊNG học sinh này trong buổi học, được chốt ngay

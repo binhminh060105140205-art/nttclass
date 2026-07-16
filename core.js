@@ -275,8 +275,8 @@ class PinkyClassApp {
             if (row.StudentId && !sessionObj.studentIds.includes(row.StudentId)) {
                 sessionObj.studentIds.push(row.StudentId);
                 sessionObj.studentDetails[row.StudentId] = {
-                    homework: row.Homework || 'Chưa làm',
-                    attitude: row.Attitude || 'Tốt',
+                    homework: row.Homework || '',
+                    attitude: row.Attitude || '',
                     individualComment: row.IndividualComment || '',
                     note: row.Note || ''
                 };
@@ -575,27 +575,62 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     queueDeletion(label, commit) {
-        if (this._pendingDeletion) clearTimeout(this._pendingDeletion.timer);
-        const toast = document.getElementById('toastNotification');
-        const msg = document.getElementById('toastMessage');
-        const undoBtn = document.getElementById('undoDeleteBtn');
-        const pending = { cancelled: false, timer: null };
-        this._pendingDeletion = pending;
+        this._pendingDeletions = this._pendingDeletions || new Map();
+        let stack = document.getElementById('undoDeletionStack');
+        if (!stack) {
+            stack = document.createElement('div');
+            stack.id = 'undoDeletionStack';
+            stack.className = 'undo-deletion-stack';
+            document.body.appendChild(stack);
+        }
 
-        msg.innerText = `${label} sẽ bị xóa sau 7 giây.`;
-        toast.className = 'notification show warning undo-toast';
-        undoBtn.hidden = false;
-        undoBtn.onclick = () => {
+        const deletionId = `del_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const item = document.createElement('div');
+        item.className = 'undo-deletion-item';
+        item.innerHTML = `
+            <div class="undo-deletion-copy">
+                <strong>${this.escapeHtml ? this.escapeHtml(label) : label}</strong>
+                <span>Sẽ xóa sau 7 giây</span>
+            </div>
+            <button type="button" class="undo-deletion-btn">Hoàn tác</button>
+            <span class="undo-deletion-progress" aria-hidden="true"></span>
+        `;
+        stack.appendChild(item);
+
+        const pending = { cancelled: false, timer: null, item };
+        this._pendingDeletions.set(deletionId, pending);
+        const removePending = () => {
+            this._pendingDeletions.delete(deletionId);
+            item.remove();
+            if (stack && !stack.children.length) stack.remove();
+        };
+
+        item.querySelector('.undo-deletion-btn').addEventListener('click', () => {
             pending.cancelled = true;
             clearTimeout(pending.timer);
-            undoBtn.hidden = true;
-            toast.classList.remove('show');
+            removePending();
             this.showToast('Đã hoàn tác. Dữ liệu vẫn được giữ nguyên.', 'success');
-        };
+        });
         pending.timer = setTimeout(async () => {
-            undoBtn.hidden = true;
-            if (!pending.cancelled) await commit();
+            removePending();
+            if (pending.cancelled) return;
+            try {
+                await commit();
+            } catch (err) {
+                this.showToast(err.message || `Không thể xóa ${label.toLowerCase()}.`, 'error');
+            }
         }, 7000);
+    },
+
+    async runDeletionRefresh(refresh) {
+        const previous = this._deletionRefresh || Promise.resolve();
+        const current = previous.catch(() => {}).then(refresh);
+        this._deletionRefresh = current;
+        try {
+            return await current;
+        } finally {
+            if (this._deletionRefresh === current) this._deletionRefresh = null;
+        }
     },
 
     // Toast Alert Helper

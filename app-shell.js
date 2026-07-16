@@ -104,10 +104,19 @@ Object.assign(PinkyClassApp.prototype, {
             });
         }
 
-        // Nút "Thêm điểm" ở trang Điểm số
-        const addScoreBtnEl = document.getElementById('addScoreBtn');
-        if (addScoreBtnEl) {
-            addScoreBtnEl.addEventListener('click', () => this.openAddScoreModal());
+        const batchScoreForm = document.getElementById('batchScoreForm');
+        if (batchScoreForm) {
+            batchScoreForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.saveBatchScores();
+            });
+            batchScoreForm.addEventListener('input', (e) => {
+                if (e.target.classList.contains('batch-score-value')) this.updateBatchScoreCount();
+            });
+        }
+        const batchScoreGrade = document.getElementById('batchScoreGrade');
+        if (batchScoreGrade) {
+            batchScoreGrade.addEventListener('change', () => this.filterBatchScoreRows());
         }
 
         // Form thêm/sửa điểm

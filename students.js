@@ -207,34 +207,20 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     async deleteStudent(id) {
-        if (!this._committingDeletion) {
-            if (!confirm('Xóa học sinh này? Bạn có 7 giây để hoàn tác.')) return;
-            this.queueDeletion('Học sinh', async () => {
-                const originalConfirm = window.confirm;
-                this._committingDeletion = true;
-                window.confirm = () => true;
-                try { await this.deleteStudent(id); } finally { window.confirm = originalConfirm; this._committingDeletion = false; }
-            });
-            return;
-        }
         if (this.currentRole !== 'teacher') {
             this.showToast("Chỉ Giáo viên mới có quyền xóa học sinh!", "error");
             return;
         }
+        if (!confirm('Xóa học sinh này cùng toàn bộ ca học liên quan? Bạn có 7 giây để hoàn tác.')) return;
+        this.queueDeletion('Học sinh', () => this.commitDeleteStudent(id));
+    },
 
-        if (confirm("Bạn có chắc chắn muốn xóa học sinh này? Tất cả các ca học và nhật ký liên quan sẽ bị xóa!")) {
-            try {
-                const res = await this.authFetch(`${API_BASE_URL}/api/students/${id}`, { method: 'DELETE' });
-                await this.requireApiSuccess(res, 'Không thể xóa học sinh.');
-                await this.loadData();
-            } catch (err) {
-                this.showToast(err.message || 'Không thể xóa học sinh.', 'error');
-                return;
-            }
-
-            this.populateStudentPickers();
-            this.showToast("Đã xóa học sinh và các dữ liệu liên quan.", "success");
-        }
+    async commitDeleteStudent(id) {
+        const res = await this.authFetch(`${API_BASE_URL}/api/students/${id}`, { method: 'DELETE' });
+        await this.requireApiSuccess(res, 'Không thể xóa học sinh.');
+        await this.runDeletionRefresh(() => this.loadData());
+        this.populateStudentPickers();
+        this.showToast("Đã xóa học sinh và các dữ liệu liên quan.", "success");
     }
 
     // 2. Log Session (Add Session)

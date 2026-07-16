@@ -216,30 +216,19 @@ Object.assign(PinkyClassApp.prototype, {
             this.showToast('Không thể xóa tài khoản chủ sở hữu.', 'error');
             return;
         }
-        if (!this._committingDeletion) {
-            if (!confirm('Xóa tài khoản này? Bạn có 7 giây để hoàn tác.')) return;
-            this.queueDeletion('Tài khoản', async () => {
-                const originalConfirm = window.confirm;
-                this._committingDeletion = true;
-                window.confirm = () => true;
-                try { await this.deleteUser(id); } finally { window.confirm = originalConfirm; this._committingDeletion = false; }
-            });
-            return;
-        }
         if (this.currentUser && (this.currentUser.id || this.currentUser.Id) === id) {
             this.showToast('Bạn không thể tự xóa tài khoản đang đăng nhập!', 'error');
             return;
         }
-        if (!confirm('Bạn có chắc chắn muốn xóa tài khoản này?')) return;
+        if (!confirm('Xóa tài khoản này? Bạn có 7 giây để hoàn tác.')) return;
+        this.queueDeletion('Tài khoản', () => this.commitDeleteUser(id));
+    },
 
-        try {
-            const res = await this.authFetch(`${API_BASE_URL}/api/users/${id}`, { method: 'DELETE' });
-            await this.requireApiSuccess(res, 'Không thể xóa tài khoản.');
-            this.showToast('Đã xóa tài khoản.', 'success');
-            await this.renderUsersTable();
-        } catch (err) {
-            this.showToast(err.message || 'Không thể xóa tài khoản.', 'error');
-        }
+    async commitDeleteUser(id) {
+        const res = await this.authFetch(`${API_BASE_URL}/api/users/${id}`, { method: 'DELETE' });
+        await this.requireApiSuccess(res, 'Không thể xóa tài khoản.');
+        this.showToast('Đã xóa tài khoản.', 'success');
+        await this.runDeletionRefresh(() => this.renderUsersTable());
     },
 
     // ==========================================

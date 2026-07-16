@@ -5,6 +5,7 @@ Object.assign(PinkyClassApp.prototype, {
     renderScores() {
         const studentId = this.currentStudentId;
         const studentScores = this.getScoresForStudent(studentId);
+        this.renderBatchScoreRows();
 
         // ----- Bảng danh sách điểm (mới nhất lên đầu) -----
         const tbody = document.getElementById('scoresTableBody');
@@ -76,6 +77,112 @@ Object.assign(PinkyClassApp.prototype, {
         }
     },
 
+    renderBatchScoreRows() {
+        const tbody = document.getElementById('batchScoreTableBody');
+        if (!tbody) return;
+        const existing = new Map();
+        tbody.querySelectorAll('.batch-score-row').forEach(row => {
+            existing.set(row.dataset.studentId, {
+                score: row.querySelector('.batch-score-value').value,
+                note: row.querySelector('.batch-score-student-note').value
+            });
+        });
+
+        const students = [...(this.students || [])].sort((a, b) =>
+            (Number(a.gradeLevel || 99) - Number(b.gradeLevel || 99)) ||
+            String(a.name || '').localeCompare(String(b.name || ''), 'vi')
+        );
+        tbody.innerHTML = students.length ? students.map(student => {
+            const old = existing.get(student.id) || { score: '', note: '' };
+            return `
+                <tr class="batch-score-row" data-student-id="${this.escapeHtmlAttr(student.id)}" data-grade="${student.gradeLevel || ''}">
+                    <td><strong>${this.escapeHtml(student.name)}</strong></td>
+                    <td>${this.escapeHtml(student.class || (student.gradeLevel ? `Lớp ${student.gradeLevel}` : '-'))}</td>
+                    <td><input type="number" class="form-control batch-score-value" min="0" max="10" step="0.1" inputmode="decimal" placeholder="-" value="${this.escapeHtmlAttr(old.score)}" aria-label="Điểm của ${this.escapeHtmlAttr(student.name)}"></td>
+                    <td><input type="text" class="form-control batch-score-student-note" placeholder="Không bắt buộc" value="${this.escapeHtmlAttr(old.note)}" aria-label="Ghi chú của ${this.escapeHtmlAttr(student.name)}"></td>
+                </tr>
+            `;
+        }).join('') : '<tr><td colspan="4" class="score-batch-empty">Chưa có học sinh để nhập điểm.</td></tr>';
+
+        const dateInput = document.getElementById('batchScoreDate');
+        if (dateInput && !dateInput.value) dateInput.value = this.toISODateOnly(new Date());
+        this.filterBatchScoreRows();
+        this.updateBatchScoreCount();
+    },
+
+    filterBatchScoreRows() {
+        const grade = document.getElementById('batchScoreGrade')?.value || '';
+        document.querySelectorAll('#batchScoreTableBody .batch-score-row').forEach(row => {
+            row.hidden = !!grade && row.dataset.grade !== grade;
+        });
+    },
+
+    updateBatchScoreCount() {
+        const count = [...document.querySelectorAll('#batchScoreTableBody .batch-score-value')]
+            .filter(input => input.value.trim() !== '').length;
+        const label = document.getElementById('batchScoreCount');
+        if (label) label.innerText = `${count} học sinh có điểm`;
+    },
+
+    async saveBatchScores() {
+        const scoreType = document.getElementById('batchScoreType').value;
+        const date = document.getElementById('batchScoreDate').value;
+        const commonNote = document.getElementById('batchScoreNote').value.trim();
+        const entries = [];
+        let invalidStudent = '';
+
+        document.querySelectorAll('#batchScoreTableBody .batch-score-row').forEach(row => {
+            const scoreInput = row.querySelector('.batch-score-value');
+            const raw = scoreInput.value.trim();
+            if (raw === '') return;
+            const value = Number(raw.replace(',', '.'));
+            const studentId = row.dataset.studentId;
+            if (!Number.isFinite(value) || value < 0 || value > 10) {
+                invalidStudent = invalidStudent || this.getStudentName(studentId);
+                return;
+            }
+            const privateNote = row.querySelector('.batch-score-student-note').value.trim();
+            entries.push({
+                studentId,
+                scoreValue: value,
+                note: [commonNote, privateNote].filter(Boolean).join(' — ')
+            });
+        });
+
+        if (invalidStudent) {
+            this.showToast(`Điểm của ${invalidStudent} phải từ 0 đến 10.`, 'error');
+            return;
+        }
+        if (!date) {
+            this.showToast('Vui lòng chọn ngày chấm điểm.', 'error');
+            return;
+        }
+        if (!entries.length) {
+            this.showToast('Hãy nhập điểm cho ít nhất một học sinh.', 'error');
+            return;
+        }
+
+        this.setBtnLoading('saveBatchScoresBtn', true, 'Đang lưu cả lớp...');
+        try {
+            const res = await this.authFetch(`${API_BASE_URL}/api/scores/batch`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scoreType, date, note: commonNote, entries })
+            });
+            const payload = await this.requireApiSuccess(res, 'Không thể lưu bảng điểm.');
+            document.querySelectorAll('#batchScoreTableBody .batch-score-value, #batchScoreTableBody .batch-score-student-note')
+                .forEach(input => { input.value = ''; });
+            document.getElementById('batchScoreNote').value = '';
+            await this.loadScores();
+            this.showToast(`Đã lưu điểm cho ${payload.count || entries.length} học sinh.`, 'success');
+        } catch (err) {
+            this.showToast(err.message || 'Không thể lưu bảng điểm.', 'error');
+        } finally {
+            this.setBtnLoading('saveBatchScoresBtn', false);
+            this.updateBatchScoreCount();
+        }
+    },
+
     // - Biểu đồ đường: tiến bộ điểm theo thời gian (1 đường / loại điểm)
     // - Biểu đồ cột: so sánh điểm trung bình giữa 3 loại
     // - Biểu đồ tròn: tỷ lệ hoàn thành BTVN (dựa trên Homework của SessionDetails)
@@ -135,14 +242,16 @@ Object.assign(PinkyClassApp.prototype, {
         // --- PIE CHART: tỷ lệ hoàn thành BTVN (theo dữ liệu Homework của buổi học) ---
         const pieCanvas = document.getElementById('homeworkPieChart');
         if (pieCanvas) {
-            const relevantSessions = (this.sessions || []).filter(sess => sess.studentIds && sess.studentIds.includes(studentId));
+            const relevantSessions = (this.sessions || []).filter(sess =>
+                this.isSessionCompleted(sess) && sess.studentIds && sess.studentIds.includes(studentId)
+            );
             let done = 0, pending = 0, notDone = 0;
             relevantSessions.forEach(sess => {
                 const hw = (sess.studentDetails[studentId] || {}).homework;
                 const hwClass = this.getHomeworkClass(hw);
                 if (hwClass === 'done') done++;
                 else if (hwClass === 'pending') pending++;
-                else notDone++;
+                else if (hwClass !== 'no-data') notDone++;
             });
 
             if (this.charts.pie) this.charts.pie.destroy();
@@ -245,31 +354,17 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     async deleteScore() {
-        if (!this._committingDeletion) {
-            const scoreId = document.getElementById('editScoreId').value;
-            if (!scoreId || !confirm('Xóa điểm này? Bạn có 7 giây để hoàn tác.')) return;
-            this.queueDeletion('Điểm số', async () => {
-                const originalConfirm = window.confirm;
-                this._committingDeletion = true;
-                window.confirm = () => true;
-                try { await this.deleteScore(); } finally { window.confirm = originalConfirm; this._committingDeletion = false; }
-            });
-            return;
-        }
         const id = document.getElementById('editScoreId').value;
-        if (!id) return;
-        if (!confirm('Xóa điểm này? Hành động không thể hoàn tác.')) return;
-        try {
-            const res = await this.authFetch(`${API_BASE_URL}/api/scores/${id}`, { method: 'DELETE' });
-            const payload = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(payload.error || 'Không thể xóa điểm.');
+        if (!id || !confirm('Xóa điểm này? Bạn có 7 giây để hoàn tác.')) return;
+        this.closeModal('scoreModal');
+        this.queueDeletion('Điểm số', () => this.commitDeleteScore(id));
+    },
 
-            this.showToast('Đã xóa điểm.', 'success');
-            this.closeModal('scoreModal');
-            await this.loadScores();
-        } catch (err) {
-            this.showToast(err.message || 'Không thể xóa điểm.', 'error');
-        }
+    async commitDeleteScore(id) {
+        const res = await this.authFetch(`${API_BASE_URL}/api/scores/${id}`, { method: 'DELETE' });
+        await this.requireApiSuccess(res, 'Không thể xóa điểm.');
+        await this.runDeletionRefresh(() => this.loadScores());
+        this.showToast('Đã xóa điểm.', 'success');
     },
 
     // Tải lại riêng danh sách điểm (nhanh hơn loadData() vì không cần tải lại
@@ -278,9 +373,13 @@ Object.assign(PinkyClassApp.prototype, {
         try {
             const url = this.currentRole === 'student' ? `${API_BASE_URL}/api/me/scores` : `${API_BASE_URL}/api/scores`;
             const res = await this.authFetch(url);
-            this.scores = res.ok ? await res.json() : [];
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(payload.error || 'Không thể tải lại điểm số.');
+            this.scores = Array.isArray(payload) ? payload : [];
         } catch (err) {
             console.error('[loadScores]', err.message);
+            this.showToast(err.message || 'Không thể tải lại điểm số.', 'error');
+            return;
         }
         this.renderScores();
     }

@@ -340,10 +340,52 @@
                         <div class="student-context-picker">
                             <select id="scoresStudentPicker" class="student-select"></select>
                         </div>
-                        <button class="btn btn-primary btn-sm role-restricted admin-tutor" id="addScoreBtn"> Thêm điểm
-                        </button>
                     </div>
                 </div>
+
+                <form id="batchScoreForm" class="score-batch-panel role-restricted admin-tutor">
+                    <div class="score-batch-heading">
+                        <div>
+                            <h3>Nhập điểm hàng loạt</h3>
+                            <p>Chọn loại bài, ngày chấm rồi nhập điểm cho tất cả học sinh cần chấm. Ô để trống sẽ không được lưu.</p>
+                        </div>
+                        <span class="score-batch-status" id="batchScoreCount">0 học sinh có điểm</span>
+                    </div>
+                    <div class="score-batch-controls">
+                        <label>Loại điểm
+                            <select id="batchScoreType" class="form-control" required>
+                                <option value="BTVN">Bài tập về nhà (BTVN)</option>
+                                <option value="KTTX">Kiểm tra thường xuyên</option>
+                                <option value="CuoiChuong">Kiểm tra cuối chương</option>
+                            </select>
+                        </label>
+                        <label>Ngày chấm
+                            <input type="date" id="batchScoreDate" class="form-control" required>
+                        </label>
+                        <label>Lọc theo lớp
+                            <select id="batchScoreGrade" class="form-control">
+                                <option value="">Tất cả các lớp</option>
+                                <option value="6">Lớp 6</option><option value="7">Lớp 7</option>
+                                <option value="8">Lớp 8</option><option value="9">Lớp 9</option>
+                                <option value="10">Lớp 10</option><option value="11">Lớp 11</option>
+                                <option value="12">Lớp 12</option>
+                            </select>
+                        </label>
+                        <label class="score-batch-note">Tên bài / ghi chú chung
+                            <input type="text" id="batchScoreNote" class="form-control" placeholder="Ví dụ: Kiểm tra 15 phút chương 2">
+                        </label>
+                    </div>
+                    <div class="table-wrapper score-batch-table-wrap">
+                        <table class="custom-table score-batch-table">
+                            <thead><tr><th>Học sinh</th><th>Lớp</th><th>Điểm (0–10)</th><th>Ghi chú riêng</th></tr></thead>
+                            <tbody id="batchScoreTableBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="score-batch-actions">
+                        <span>Việc lưu được thực hiện một lần cho toàn bộ danh sách.</span>
+                        <button type="submit" class="btn btn-primary" id="saveBatchScoresBtn">Lưu bảng điểm</button>
+                    </div>
+                </form>
 
                 <!-- Bảng tóm tắt trung bình theo từng loại điểm + nhận xét tự động -->
                 <div class="score-summary-grid" id="scoreSummaryGrid">
@@ -823,6 +865,7 @@
                     <div class="form-group">
                         <label for="updateHomework">Bài tập về nhà — mức hoàn thành</label>
                         <select id="updateHomework" class="form-control">
+                            <option value="">-</option>
                             <option value="0%">0%</option>
                             <option value="30%">30%</option>
                             <option value="50%">50%</option>
