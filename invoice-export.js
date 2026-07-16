@@ -282,7 +282,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         /* ============ I. ROOT ============ */
         #invoiceExportSheet {
-            font-family: 'Nunito', 'Be Vietnam Pro', 'Segoe UI', Arial, sans-serif;
+            font-family: 'Comfortaa', sans-serif;
             background: #f8e9ef;
             width: 600px;
             max-width: 600px;
@@ -411,7 +411,7 @@ Object.assign(PinkyClassApp.prototype, {
         const captureEl = document.getElementById('invoiceExportSheet');
 
         try {
-            // Đợi toàn bộ font chữ (kể cả font tiếng Việt Comfortaa/Nunito)
+            // Đợi font tiếng Việt Comfortaa
             // tải xong trước khi chụp — đây là nguyên nhân chính khiến chữ có
             // dấu đôi khi hiển thị sai/vỡ nếu chụp quá sớm lúc font chưa sẵn.
             if (document.fonts && document.fonts.ready) {
