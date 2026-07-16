@@ -1194,18 +1194,8 @@ Object.assign(PinkyClassApp.prototype, {
         const sessionCompleted = this.isSessionCompleted(sess);
         document.getElementById('updateHomework').value = sessionCompleted ? (this.normalizeHomeworkValue(detail.homework) || '') : '';
         document.getElementById('updateAttitude').value = sessionCompleted ? (detail.attitude || '') : '';
-        document.getElementById('updateGeneralComment').value = sess.generalComment || '';
         document.getElementById('updateIndividualComment').value = detail.individualComment || '';
         document.getElementById('updateNote').value = detail.note || '';
-
-        // Show general comment updater field only if it's a shared session (chung)
-        const generalCommentGroup = document.getElementById('generalCommentGroup');
-        if (sess.type === 'chung') {
-            generalCommentGroup.style.display = 'block';
-        } else {
-            // Private session: generalComment acts as the individualComment itself
-            generalCommentGroup.style.display = 'none';
-        }
 
         this.openModal('updateLogModal');
     },
@@ -1224,20 +1214,13 @@ Object.assign(PinkyClassApp.prototype, {
         const attitude = document.getElementById('updateAttitude').value.trim();
         const individualComment = document.getElementById('updateIndividualComment').value.trim();
         const note = document.getElementById('updateNote').value.trim();
-        
-        let generalComment = undefined;
-        if (sess.type === 'chung') {
-            generalComment = document.getElementById('updateGeneralComment').value.trim();
-        } else {
-            generalComment = individualComment;
-        }
 
         this.setBtnLoading('saveUpdateLogBtn', true, 'Đang lưu...');
         try {
             const res = await this.authFetch(`${API_BASE_URL}/api/session-details/${sessionId}/${studentId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ homework, attitude, individualComment, note, generalComment })
+                body: JSON.stringify({ homework, attitude, individualComment, note })
             });
             await this.requireApiSuccess(res, 'Không thể lưu nhận xét học sinh.');
             await this.loadData();

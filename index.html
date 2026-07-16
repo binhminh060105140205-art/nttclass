@@ -466,6 +466,17 @@
         <!-- YÊU CẦU: ghi chú công việc kèm ảnh, lưu bền vững trên server -->
         <section id="view-requests" class="view-section">
             <div class="glass-card requests-card">
+                <div class="request-board-header">
+                    <div class="request-tabs" role="tablist" aria-label="Trạng thái yêu cầu">
+                        <button type="button" class="request-tab active" data-request-filter="pending" role="tab" aria-selected="true">
+                            Chưa hoàn thành <span id="requestPendingCount">0</span>
+                        </button>
+                        <button type="button" class="request-tab" data-request-filter="completed" role="tab" aria-selected="false">
+                            Đã hoàn thành <span id="requestCompletedCount">0</span>
+                        </button>
+                    </div>
+                </div>
+
                 <form id="requestCreateForm" class="request-composer">
                     <div class="request-composer-main">
                         <textarea id="requestTextInput" class="form-control request-text-input" maxlength="5000" rows="3"
@@ -484,17 +495,6 @@
                         <button type="submit" id="requestSubmitBtn" class="btn btn-primary">Gửi yêu cầu</button>
                     </div>
                 </form>
-
-                <div class="request-board-header">
-                    <div class="request-tabs" role="tablist" aria-label="Trạng thái yêu cầu">
-                        <button type="button" class="request-tab active" data-request-filter="pending" role="tab" aria-selected="true">
-                            Chưa hoàn thành <span id="requestPendingCount">0</span>
-                        </button>
-                        <button type="button" class="request-tab" data-request-filter="completed" role="tab" aria-selected="false">
-                            Đã hoàn thành <span id="requestCompletedCount">0</span>
-                        </button>
-                    </div>
-                </div>
 
                 <div id="requestList" class="request-list" aria-live="polite">
                     <div class="request-empty">Chưa có yêu cầu nào.</div>
@@ -920,11 +920,6 @@
                     <div class="form-group">
                         <label for="updateAttitude">Ý thức học tập</label>
                         <input type="text" id="updateAttitude" class="form-control" placeholder="Ví dụ: Tập trung, tốt, chưa chăm...">
-                    </div>
-
-                    <div class="form-group" id="generalCommentGroup">
-                        <label for="updateGeneralComment">Nhận xét chung buổi học (Tự động cập nhật cho các học sinh học chung)</label>
-                        <textarea id="updateGeneralComment" class="form-control" placeholder="Viết nhận xét chung của buổi học..." rows="3"></textarea>
                     </div>
 
                     <div class="form-group">

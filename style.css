@@ -4354,8 +4354,9 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
    ================================================================ */
 .requests-card {
     padding: 22px;
-    max-width: 1120px;
-    margin: 0 auto;
+    width: 100%;
+    max-width: none;
+    margin: 0;
 }
 
 .request-composer {
@@ -4363,6 +4364,7 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     border: 1px solid var(--border-color);
     border-radius: 16px;
     background: var(--surface-soft, rgba(248, 250, 252, .72));
+    margin-bottom: 14px;
 }
 
 .request-text-input {
@@ -4370,6 +4372,7 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     min-height: 92px;
     resize: vertical;
     line-height: 1.55;
+    font-size: 15px;
 }
 
 .request-composer-actions {
@@ -4378,6 +4381,10 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     justify-content: flex-end;
     gap: 10px;
     margin-top: 12px;
+}
+
+.request-composer-actions .btn {
+    font-size: 14px;
 }
 
 .request-image-button {
@@ -4431,7 +4438,7 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin: 22px 0 14px;
+    margin: 0 0 14px;
 }
 
 .request-tabs {
@@ -4454,6 +4461,7 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     background: transparent;
     color: var(--text-muted);
     font: inherit;
+    font-size: 14px;
     font-weight: 650;
     cursor: pointer;
 }
@@ -4508,6 +4516,7 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
 .request-item-text {
     color: var(--text-main);
     line-height: 1.55;
+    font-size: 15px;
     overflow-wrap: anywhere;
 }
 
