@@ -466,14 +466,14 @@
             <div class="glass-card requests-card">
                 <div class="request-board-header">
                     <div class="request-tabs" role="tablist" aria-label="Trạng thái yêu cầu">
+                        <button type="button" class="request-tab request-priority-tab" data-request-filter="priority" role="tab" aria-selected="false">
+                            Ưu tiên <span id="requestPriorityCount">0</span>
+                        </button>
                         <button type="button" class="request-tab active" data-request-filter="pending" role="tab" aria-selected="true">
                             Chưa hoàn thành <span id="requestPendingCount">0</span>
                         </button>
                         <button type="button" class="request-tab" data-request-filter="completed" role="tab" aria-selected="false">
                             Đã hoàn thành <span id="requestCompletedCount">0</span>
-                        </button>
-                        <button type="button" class="request-tab request-priority-tab" data-request-filter="priority" role="tab" aria-selected="false">
-                            Ưu tiên <span id="requestPriorityCount">0</span>
                         </button>
                     </div>
                 </div>
@@ -493,6 +493,11 @@
                             Thêm ảnh
                         </label>
                         <input id="requestImageInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+                        <label class="request-status-control request-priority-control request-compose-priority" for="requestPriorityInput">
+                            <input id="requestPriorityInput" type="checkbox">
+                            <span class="request-checkmark" aria-hidden="true"></span>
+                            <span>Ưu tiên</span>
+                        </label>
                         <button type="submit" id="requestSubmitBtn" class="btn btn-primary">Gửi yêu cầu</button>
                     </div>
                 </form>

@@ -4231,6 +4231,12 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     font-size: 0.875rem;
 }
 
+.request-compose-priority {
+    min-height: 40px;
+    padding: 0 8px;
+    color: var(--text-main);
+}
+
 .request-image-button {
     cursor: pointer;
 }
@@ -4383,7 +4389,7 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     display: grid;
     justify-items: start;
     gap: 11px;
-    min-width: 132px;
+    min-width: 118px;
 }
 
 .request-item:hover {
@@ -4574,11 +4580,17 @@ body.request-image-viewer-open { overflow: hidden; }
 
     .request-composer-actions {
         align-items: stretch;
+        flex-wrap: wrap;
     }
 
     .request-composer-actions .btn {
         flex: 1;
         justify-content: center;
+    }
+
+    .request-compose-priority {
+        order: -1;
+        flex: 1 0 100%;
     }
 
     .request-tabs {

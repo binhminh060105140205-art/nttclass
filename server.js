@@ -2386,8 +2386,10 @@ app.get('/api/requests', requireAuth, async (req, res) => {
 app.post('/api/requests', requireAuth, async (req, res) => {
     const text = String(req.body?.text || '').trim();
     const imageName = String(req.body?.imageName || '').trim().slice(0, 255);
+    const priority = req.body?.priority ?? false;
     const image = validateRequestImage(req.body?.imageData || null);
     if (image.error) return res.status(400).json({ error: image.error });
+    if (typeof priority !== 'boolean') return res.status(400).json({ error: 'Trạng thái ưu tiên không hợp lệ.' });
     if (!text && !image.value) return res.status(400).json({ error: 'Hãy nhập nội dung hoặc chọn một ảnh.' });
     if (text.length > 5000) return res.status(400).json({ error: 'Nội dung yêu cầu không được vượt quá 5.000 ký tự.' });
 
@@ -2395,11 +2397,11 @@ app.post('/api/requests', requireAuth, async (req, res) => {
     try {
         const result = await pgPool.query(`
             INSERT INTO TaskRequests (Id, OwnerId, OwnerRole, TextContent, ImageData, ImageName, Completed, Priority)
-            VALUES ($1, $2, $3, $4, $5, $6, FALSE, FALSE)
+            VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7)
             RETURNING Id AS "id", TextContent AS "text", ImageData AS "imageData",
                       ImageName AS "imageName", Completed AS "completed", Priority AS "priority",
                       CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"`,
-        [id, req.authUser.userId, req.authUser.role, text, image.value, imageName || null]);
+        [id, req.authUser.userId, req.authUser.role, text, image.value, imageName || null, priority]);
         res.status(201).json(result.rows[0]);
     } catch (err) {
         console.error('[POST /api/requests]', err);
