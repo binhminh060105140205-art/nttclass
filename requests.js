@@ -6,6 +6,7 @@ Object.assign(PinkyClassApp.prototype, {
         const form = document.getElementById('requestCreateForm');
         const imageInput = document.getElementById('requestImageInput');
         const removeImageBtn = document.getElementById('requestRemoveImageBtn');
+        const textInput = document.getElementById('requestTextInput');
         const list = document.getElementById('requestList');
         if (!form || form.dataset.bound === 'true') return;
         form.dataset.bound = 'true';
@@ -17,6 +18,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         imageInput.addEventListener('change', (event) => this.selectRequestImage(event));
         removeImageBtn.addEventListener('click', () => this.clearRequestImage());
+        textInput.addEventListener('paste', (event) => this.pasteRequestImage(event));
 
         document.querySelectorAll('[data-request-filter]').forEach(button => {
             button.addEventListener('click', () => {
@@ -35,15 +37,31 @@ Object.assign(PinkyClassApp.prototype, {
     async selectRequestImage(event) {
         const file = event.target.files && event.target.files[0];
         if (!file) return;
+        await this.setRequestImageFile(file);
+    },
+
+    async pasteRequestImage(event) {
+        const items = Array.from(event.clipboardData?.items || []);
+        const imageItem = items.find(item => item.kind === 'file' && item.type.startsWith('image/'));
+        if (!imageItem) return;
+        const file = imageItem.getAsFile();
+        if (!file) return;
+        event.preventDefault();
+        await this.setRequestImageFile(file, `anh-dan-${Date.now()}.${(file.type.split('/')[1] || 'png').replace('jpeg', 'jpg')}`, true);
+    },
+
+    async setRequestImageFile(file, fallbackName = '', pasted = false) {
         const allowedTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
         if (!allowedTypes.includes(file.type)) {
             this.showToast('Chỉ hỗ trợ ảnh PNG, JPG, WEBP hoặc GIF.', 'error');
-            event.target.value = '';
+            const input = document.getElementById('requestImageInput');
+            if (input) input.value = '';
             return;
         }
         if (file.size > 3 * 1024 * 1024) {
             this.showToast('Ảnh đính kèm không được vượt quá 3 MB.', 'error');
-            event.target.value = '';
+            const input = document.getElementById('requestImageInput');
+            if (input) input.value = '';
             return;
         }
 
@@ -54,9 +72,10 @@ Object.assign(PinkyClassApp.prototype, {
                 reader.onerror = () => reject(new Error('Không thể đọc ảnh đã chọn.'));
                 reader.readAsDataURL(file);
             });
-            this.requestImageDraft = { dataUrl, name: file.name };
+            this.requestImageDraft = { dataUrl, name: file.name || fallbackName || 'anh-dinh-kem' };
             document.getElementById('requestImagePreviewImg').src = dataUrl;
             document.getElementById('requestImagePreview').hidden = false;
+            if (pasted) this.showToast('Đã dán ảnh từ bộ nhớ tạm.', 'success');
         } catch (err) {
             this.showToast(err.message, 'error');
             this.clearRequestImage();

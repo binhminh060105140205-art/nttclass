@@ -480,7 +480,7 @@
                 <form id="requestCreateForm" class="request-composer">
                     <div class="request-composer-main">
                         <textarea id="requestTextInput" class="form-control request-text-input" maxlength="5000" rows="3"
-                            placeholder="Nhập yêu cầu cần thực hiện..."></textarea>
+                            placeholder="Nhập yêu cầu hoặc nhấn Ctrl+V để dán ảnh đã sao chép..."></textarea>
                         <div id="requestImagePreview" class="request-image-preview" hidden>
                             <img id="requestImagePreviewImg" alt="Ảnh đính kèm xem trước">
                             <button type="button" id="requestRemoveImageBtn" class="request-image-remove" aria-label="Bỏ ảnh đính kèm">&times;</button>
@@ -647,19 +647,34 @@
                                 <textarea id="sessionContent" class="form-control" placeholder="Ví dụ: Ôn tam giác, luyện bài tập đại số, chữa đề...&#10;BTVN: Phiếu 8.1" rows="3"></textarea>
                             </div>
 
-                            <!-- Lặp lại buổi học trong tháng (chọn thêm từng ngày thủ công) -->
+                            <!-- Lặp lại buổi học theo chu kỳ hoặc chọn ngày tùy chỉnh -->
                             <div class="form-group form-group-full repeat-session-section">
                                 <label class="repeat-toggle-label">
                                     <input type="checkbox" id="sessionRepeatToggle">
-                                    <span>Lặp lại buổi học này vào (các) ngày khác trong tháng</span>
+                                    <span>Lặp lại buổi học này</span>
                                 </label>
                                 <div id="repeatDatesPanel" class="repeat-dates-panel" style="display:none;">
+                                    <div class="repeat-schedule-row">
+                                        <div>
+                                            <label for="repeatFrequency">Kiểu lặp lại</label>
+                                            <select id="repeatFrequency" class="form-control">
+                                                <option value="weekly">Mỗi tuần</option>
+                                                <option value="daily">Mỗi ngày</option>
+                                                <option value="monthly">Mỗi tháng</option>
+                                                <option value="custom">Tùy chỉnh chọn ngày</option>
+                                            </select>
+                                        </div>
+                                        <div id="repeatUntilGroup">
+                                            <label for="repeatUntilDate">Lặp đến ngày</label>
+                                            <input type="date" id="repeatUntilDate" class="form-control">
+                                        </div>
+                                    </div>
                                     <div class="repeat-dates-add-row">
                                         <input type="date" id="repeatExtraDateInput" class="form-control">
                                         <button type="button" class="btn btn-secondary btn-sm" id="addRepeatDateBtn">+ Thêm ngày</button>
                                     </div>
                                     <div id="repeatDatesList" class="repeat-dates-chips"></div>
-                                    <p class="repeat-dates-hint">Chỉ thêm được các ngày trong CÙNG THÁNG với "Ngày học" ở trên. Mỗi ngày thêm vào sẽ tự tạo thêm 1 buổi học giống hệt (cùng giờ, học sinh, học phí, nội dung).</p>
+                                    <p id="repeatDatesHint" class="repeat-dates-hint">Chọn ngày kết thúc để xem các buổi lặp mỗi tuần. Tối đa 366 buổi.</p>
                                 </div>
                             </div>
                         </div>

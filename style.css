@@ -2,25 +2,12 @@
 
 /* ==========================================================================
    1. ROOT / VARIABLES
-   Design tokens (colors, shadows, transitions) + mobile-first typography
-   scale. All font-size declarations below use rem, so changing the root
-   font-size here automatically re-scales every text element in the app.
-   Base sizes follow the required breakpoints:
-     - Mobile  (< 768px)  -> 14px base  (87.5%)
-     - Tablet  (>= 768px) -> 16px base  (100%)
-     - Desktop (>= 1024px)-> 18px base  (112.5%)
+   Design tokens (colors, shadows, transitions) + one consistent 16px root
+   typography scale on mobile, tablet and desktop.
    ========================================================================== */
-html {
-    font-size: 87.5%; /* 14px base on mobile */
-}
+html { font-size: 100%; }
 
-@media (min-width: 768px) {
-    html { font-size: 100%; } /* 16px base on tablet */
-}
-
-@media (min-width: 1024px) {
-    html { font-size: 112.5%; } /* 18px base on desktop */
-}
+body, button, input, select, textarea { font-family: 'Outfit', sans-serif; }
 
 /* ========================================================================
    8. PROFESSIONAL PRODUCT UI — cohesive visual layer
@@ -2247,6 +2234,24 @@ textarea.form-control {
     border-top: 1px solid rgba(var(--primary-rgb), 0.15);
 }
 
+.repeat-schedule-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.repeat-schedule-row label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+@media (max-width: 640px) {
+    .repeat-schedule-row { grid-template-columns: 1fr; }
+}
+
 .repeat-dates-add-row {
     display: flex;
     gap: 8px;
@@ -4372,7 +4377,7 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     min-height: 92px;
     resize: vertical;
     line-height: 1.55;
-    font-size: 15px;
+    font-size: 1rem;
 }
 
 .request-composer-actions {
@@ -4384,7 +4389,7 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
 }
 
 .request-composer-actions .btn {
-    font-size: 14px;
+    font-size: 0.875rem;
 }
 
 .request-image-button {

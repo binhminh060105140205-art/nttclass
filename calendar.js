@@ -627,10 +627,8 @@ Object.assign(PinkyClassApp.prototype, {
             this.showToast('Vui lòng chọn 1 ngày để thêm vào danh sách lặp lại.', 'error');
             return;
         }
-        const [mainYear, mainMonth] = mainDate.split('-');
-        const [extraYear, extraMonth] = extraDate.split('-');
-        if (extraYear !== mainYear || extraMonth !== mainMonth) {
-            this.showToast('Chỉ được chọn ngày lặp lại trong CÙNG THÁNG với "Ngày học" chính.', 'error');
+        if (extraDate < mainDate) {
+            this.showToast('Ngày lặp lại phải sau "Ngày học" chính.', 'error');
             return;
         }
         if (extraDate === mainDate) {
@@ -646,6 +644,66 @@ Object.assign(PinkyClassApp.prototype, {
         this.repeatExtraDates.sort();
         this.renderRepeatDatesChips();
         extraInput.value = '';
+    },
+
+    updateRepeatScheduleUI() {
+        const frequency = document.getElementById('repeatFrequency')?.value || 'weekly';
+        const custom = frequency === 'custom';
+        const addRow = document.querySelector('.repeat-dates-add-row');
+        const untilGroup = document.getElementById('repeatUntilGroup');
+        const hint = document.getElementById('repeatDatesHint');
+        if (addRow) addRow.style.display = custom ? '' : 'none';
+        if (untilGroup) untilGroup.style.display = custom ? 'none' : '';
+        if (hint) hint.textContent = custom
+            ? 'Chọn từng ngày bất kỳ sau ngày học chính rồi bấm “Thêm ngày”.'
+            : `Chọn ngày kết thúc để tạo các buổi lặp ${frequency === 'daily' ? 'mỗi ngày' : frequency === 'monthly' ? 'mỗi tháng' : 'mỗi tuần'}. Tối đa 366 buổi.`;
+        this.repeatExtraDates = [];
+        this.renderRepeatDatesChips();
+        if (!custom) this.generateRepeatDates();
+    },
+
+    generateRepeatDates() {
+        const frequency = document.getElementById('repeatFrequency')?.value;
+        if (!frequency || frequency === 'custom') return;
+        const startValue = document.getElementById('sessionDate')?.value;
+        const untilValue = document.getElementById('repeatUntilDate')?.value;
+        if (!startValue || !untilValue) {
+            this.repeatExtraDates = [];
+            this.renderRepeatDatesChips();
+            return;
+        }
+        if (untilValue <= startValue) {
+            this.repeatExtraDates = [];
+            this.renderRepeatDatesChips();
+            this.showToast('Ngày kết thúc lặp phải sau ngày học chính.', 'error');
+            return;
+        }
+
+        const parse = value => new Date(`${value}T00:00:00Z`);
+        const format = date => date.toISOString().slice(0, 10);
+        const until = parse(untilValue);
+        const dates = [];
+        if (frequency === 'monthly') {
+            const start = parse(startValue);
+            const originalDay = start.getUTCDate();
+            for (let offset = 1; dates.length < 366; offset++) {
+                const first = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + offset, 1));
+                const lastDay = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+                const next = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), Math.min(originalDay, lastDay)));
+                if (next > until) break;
+                dates.push(format(next));
+            }
+        } else {
+            const step = frequency === 'daily' ? 1 : 7;
+            const cursor = parse(startValue);
+            while (dates.length < 366) {
+                cursor.setUTCDate(cursor.getUTCDate() + step);
+                if (cursor > until) break;
+                dates.push(format(cursor));
+            }
+        }
+        this.repeatExtraDates = dates;
+        this.renderRepeatDatesChips();
     },
 
     renderRepeatDatesChips() {
@@ -725,7 +783,7 @@ Object.assign(PinkyClassApp.prototype, {
         await this.loadData();
 
         if (createdCount > 0) {
-            this.showToast(`Đã tự động tạo thêm ${createdCount} buổi học lặp lại trong tháng.`, "success");
+            this.showToast(`Đã tự động tạo thêm ${createdCount} buổi học lặp lại.`, "success");
         }
         if (skippedDates.length > 0) {
             const listStr = skippedDates.map(d => this.formatDateVN(d)).join(', ');
@@ -954,6 +1012,15 @@ Object.assign(PinkyClassApp.prototype, {
             studentDetails
         };
 
+        const repeatToggleEl = document.getElementById('sessionRepeatToggle');
+        if (repeatToggleEl?.checked && this.repeatExtraDates.length === 0) {
+            const frequency = document.getElementById('repeatFrequency')?.value;
+            this.showToast(frequency === 'custom'
+                ? 'Hãy thêm ít nhất một ngày lặp lại tùy chỉnh.'
+                : 'Hãy chọn ngày kết thúc cho lịch lặp lại.', 'error');
+            return;
+        }
+
         this.setBtnLoading('saveSessionBtn', true, 'Đang lưu...');
         try {
             const res = await this.authFetch(`${API_BASE_URL}/api/sessions`, {
@@ -972,7 +1039,6 @@ Object.assign(PinkyClassApp.prototype, {
 
         // Nếu giáo viên có bật "Lặp lại buổi học" và đã thêm ít nhất 1 ngày,
         // tự động tạo thêm các buổi học giống hệt cho từng ngày đó.
-        const repeatToggleEl = document.getElementById('sessionRepeatToggle');
         if (repeatToggleEl && repeatToggleEl.checked && this.repeatExtraDates.length > 0) {
             await this.createRepeatedSessions(newSession, this.repeatExtraDates);
         }
@@ -1002,6 +1068,10 @@ Object.assign(PinkyClassApp.prototype, {
         if (repeatToggleEl) repeatToggleEl.checked = false;
         const repeatPanelEl = document.getElementById('repeatDatesPanel');
         if (repeatPanelEl) repeatPanelEl.style.display = 'none';
+        const repeatFrequencyEl = document.getElementById('repeatFrequency');
+        if (repeatFrequencyEl) repeatFrequencyEl.value = 'weekly';
+        const repeatUntilEl = document.getElementById('repeatUntilDate');
+        if (repeatUntilEl) repeatUntilEl.value = '';
     },
 
     // 3. Edit Session Modal triggers

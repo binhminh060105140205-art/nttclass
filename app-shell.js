@@ -390,12 +390,13 @@ Object.assign(PinkyClassApp.prototype, {
         // trong initCalendarDragToCreate bên dưới).
         this.initCalendarDragToCreate();
 
-        // ----- Lặp lại buổi học trong tháng (chọn thêm từng ngày thủ công) -----
+        // ----- Lặp lại buổi học theo ngày / tuần / tháng / ngày tùy chỉnh -----
         const repeatToggle = document.getElementById('sessionRepeatToggle');
         const repeatPanel = document.getElementById('repeatDatesPanel');
         if (repeatToggle && repeatPanel) {
             repeatToggle.addEventListener('change', () => {
                 repeatPanel.style.display = repeatToggle.checked ? '' : 'none';
+                if (repeatToggle.checked) this.updateRepeatScheduleUI();
                 if (!repeatToggle.checked) {
                     this.repeatExtraDates = [];
                     this.renderRepeatDatesChips();
@@ -406,26 +407,12 @@ Object.assign(PinkyClassApp.prototype, {
         if (addRepeatDateBtn) {
             addRepeatDateBtn.addEventListener('click', () => this.handleAddRepeatDate());
         }
-        // Đổi "Ngày học" chính -> tự loại các ngày lặp lại đã thêm nếu chúng
-        // không còn cùng tháng/năm với ngày mới chọn (quy tắc: chỉ tính theo tháng).
-        const sessionDateInput = document.getElementById('sessionDate');
-        if (sessionDateInput) {
-            sessionDateInput.addEventListener('change', () => {
-                if (!this.repeatExtraDates.length) return;
-                const main = sessionDateInput.value;
-                if (!main) return;
-                const [mainYear, mainMonth] = main.split('-');
-                const before = this.repeatExtraDates.length;
-                this.repeatExtraDates = this.repeatExtraDates.filter(d => {
-                    const [y, m] = d.split('-');
-                    return y === mainYear && m === mainMonth;
-                });
-                if (this.repeatExtraDates.length !== before) {
-                    this.showToast('Đã bỏ các ngày lặp lại không còn cùng tháng với Ngày học mới.', 'error');
-                    this.renderRepeatDatesChips();
-                }
-            });
-        }
+        const repeatFrequency = document.getElementById('repeatFrequency');
+        const repeatUntilDate = document.getElementById('repeatUntilDate');
+        if (repeatFrequency) repeatFrequency.addEventListener('change', () => this.updateRepeatScheduleUI());
+        if (repeatUntilDate) repeatUntilDate.addEventListener('change', () => this.generateRepeatDates());
+        const sessionDate = document.getElementById('sessionDate');
+        if (sessionDate) sessionDate.addEventListener('change', () => this.generateRepeatDates());
     }
 
 });
