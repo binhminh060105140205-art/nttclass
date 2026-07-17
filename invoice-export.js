@@ -303,16 +303,16 @@ Object.assign(PinkyClassApp.prototype, {
         /* ============ III. GRID 2 CỘT ============ */
         #invoiceExportSheet .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
         #invoiceExportSheet .card { border:1.5px solid #f1cbd7; border-radius:18px; padding:14px; background:#fff; }
-        #invoiceExportSheet .student-info-card { display:flex; flex-direction:column; justify-content:center; padding:14px; }
+        #invoiceExportSheet .student-info-card { padding:14px; }
         /* Riêng padding trên của Lịch học/Lộ trình/Ghi chú học phí: chỉnh số đầu tiên (padding-top) này */
-        #invoiceExportSheet .card.card-tight { padding:8px 14px 14px; }
+        #invoiceExportSheet .card.card-tight { padding:14px; }
         /* Khoảng cách tiêu đề "📝 Nhận xét học tập" -> ô comment-box đầu tiên: chỉnh margin-bottom này */
-        #invoiceExportSheet .section-title { font-size:15px; font-weight:600; color:#8a1f4d; margin-bottom:6px; }
+        #invoiceExportSheet .section-title { font-size:15px; font-weight:600; line-height:1.4; color:#8a1f4d; margin-bottom:6px; }
         /* Riêng khoảng cách tiêu đề "📝 Nhận xét học tập" -> ô đầu tiên: chỉnh margin-bottom này */
         #invoiceExportSheet .section-title.section-title-notes { margin-bottom:10px; }
 
         /* ============ IV. THÔNG TIN HỌC SINH ============ */
-        #invoiceExportSheet .row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:5px 0; border-bottom:1px dashed #f1cbd7; }
+        #invoiceExportSheet .row { display:flex; justify-content:space-between; align-items:center; min-height:28px; gap:8px; padding:4px 0; border-bottom:1px dashed #f1cbd7; }
         #invoiceExportSheet .row:last-of-type { border-bottom:none; }
         #invoiceExportSheet .label { font-size:12px; color:#a35b73; }
         #invoiceExportSheet .value { font-size:13px; color:#8a1f4d; font-weight:500; text-align:right; }
@@ -348,7 +348,7 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .empty-hint { font-size:13px; color:#c48ba6; }
 
         /* ============ VIII. FOOTER ============ */
-        #invoiceExportSheet .footer { background:#f7dce5; border-radius:12px; padding:9px 8px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; font-weight:700; color:#8a3a55; }
+        #invoiceExportSheet .footer { min-height:40px; background:#f7dce5; border-radius:12px; padding:8px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; font-weight:700; color:#8a3a55; }
         #invoiceExportSheet .footer-text { line-height:1.4; }
         #invoiceExportSheet .section-block { margin-top:10px; }
     </style>
