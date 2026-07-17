@@ -303,6 +303,7 @@ Object.assign(PinkyClassApp.prototype, {
         /* ============ III. GRID 2 CỘT ============ */
         #invoiceExportSheet .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
         #invoiceExportSheet .card { border:1.5px solid #f1cbd7; border-radius:18px; padding:14px; background:#fff; }
+        #invoiceExportSheet .student-info-card { padding-top:8px; }
         /* Riêng padding trên của Lịch học/Lộ trình/Ghi chú học phí: chỉnh số đầu tiên (padding-top) này */
         #invoiceExportSheet .card.card-tight { padding:8px 14px 14px; }
         /* Khoảng cách tiêu đề "📝 Nhận xét học tập" -> ô comment-box đầu tiên: chỉnh margin-bottom này */
@@ -314,10 +315,10 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:5px 0; border-bottom:1px dashed #f1cbd7; }
         #invoiceExportSheet .row:last-of-type { border-bottom:none; }
         #invoiceExportSheet .label { font-size:12px; color:#a35b73; }
-        #invoiceExportSheet .value { font-size:13px; color:#333; font-weight:500; text-align:right; }
+        #invoiceExportSheet .value { font-size:13px; color:#8a1f4d; font-weight:500; text-align:right; }
         #invoiceExportSheet .date-label { font-size:12px; color:#a35b73; margin:8px 0 6px; }
-        #invoiceExportSheet .date-chip { display:inline-flex; align-items:center; justify-content:center; background:#f7dce5; color:#c2185b; font-weight:700; font-size:12px; padding:7px 9px 5px; border-radius:999px; margin:0 4px 4px 0; }
-        #invoiceExportSheet .date-chip-text { line-height:1; position:relative; top:-7px; }
+        #invoiceExportSheet .date-chip { display:inline-flex; align-items:center; justify-content:center; min-height:30px; background:#f7dce5; color:#c2185b; font-weight:700; font-size:12px; line-height:1; padding:0 9px; border-radius:999px; margin:0 4px 4px 0; vertical-align:middle; }
+        #invoiceExportSheet .date-chip-text { display:block; line-height:1; }
 
         /* ============ V. TỔNG HỌC PHÍ ============ */
         #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#a35b73; }
@@ -360,7 +361,7 @@ Object.assign(PinkyClassApp.prototype, {
         <div class="title">${esc(title)}</div>
 
         <div class="grid-2">
-            <div class="card">
+            <div class="card student-info-card">
                 <div class="section-title">🎓 Thông tin học sinh</div>
                 <div class="row"><span class="label">Họ và tên</span><span class="value">${esc(st.name)} – ${esc(st.class)}</span></div>
                 <div class="row"><span class="label">Học phí/buổi</span><span class="value">${privateCount > 0 ? this.formatVND(privateUnit) : this.formatVND(groupUnit)}</span></div>
