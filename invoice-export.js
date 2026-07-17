@@ -78,6 +78,7 @@ Object.assign(PinkyClassApp.prototype, {
         document.getElementById('invoiceGeometry').value = '';
         document.getElementById('invoiceRoadmap').value = '';
         document.getElementById('invoiceSchedule').value = '';
+        document.getElementById('invoiceTuitionNote').value = '';
 
         // Ảnh QR thanh toán: tự động điền lại ảnh QR đã dùng lần gần nhất (lưu
         // trong localStorage) để giáo viên KHÔNG phải tải lên lại mỗi lần xuất
@@ -231,15 +232,18 @@ Object.assign(PinkyClassApp.prototype, {
 
         const dateChips = sessions.map(s => {
             const [y, m, d] = String(s.date).split('-');
-            return `<span class="date-chip">${d}/${m}</span>`;
+            return `<span class="date-chip"><span class="date-chip-text">${d}/${m}</span></span>`;
         }).join('');
 
         // Ghi chú học phí: liệt kê số buổi riêng/chung và đơn giá tương ứng,
         // theo đúng bố cục "GHI CHÚ HỌC PHÍ" trong mẫu phiếu (dạng checklist ✓).
+        const customTuitionNote = document.getElementById('invoiceTuitionNote').value.trim();
         const feeNoteLines = [];
         if (privateCount > 0) feeNoteLines.push(`${privateCount} buổi học riêng: <strong>${this.formatVND(privateUnit)}/buổi</strong>`);
         if (groupCount > 0) feeNoteLines.push(`${groupCount} buổi học chung: <strong>${this.formatVND(groupUnit)}/buổi</strong>`);
-        const feeNoteHTML = feeNoteLines.map(l => `<div class="list-item"><span class="mark">✓</span><span class="list-text">${l}</span></div>`).join('');
+        const feeNoteHTML = customTuitionNote
+            ? checklistHTML(customTuitionNote)
+            : feeNoteLines.map(l => `<div class="list-item"><span class="mark">✓</span><span class="list-text">${l}</span></div>`).join('');
 
         // Nhận xét học tập: gộp Tổng quan/Đại số/Hình học vào chung 1 khung,
         // mỗi mục là 1 "comment-box" (nền hồng nhạt + thanh dọc trái), xếp
@@ -305,7 +309,7 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .card { border:1.5px solid #f1cbd7; border-radius:18px; padding:14px; background:#fff; }
         #invoiceExportSheet .student-info-card { padding-top:8px; }
         /* Riêng padding trên của Lịch học/Lộ trình/Ghi chú học phí: chỉnh số đầu tiên (padding-top) này */
-        #invoiceExportSheet .card.card-tight { padding:8px 14px 14px; }
+        #invoiceExportSheet .card.card-tight { padding:2px 14px 14px; }
         /* Khoảng cách tiêu đề "📝 Nhận xét học tập" -> ô comment-box đầu tiên: chỉnh margin-bottom này */
         #invoiceExportSheet .section-title { font-size:15px; font-weight:600; color:#8a1f4d; margin-bottom:6px; }
         /* Riêng khoảng cách tiêu đề "📝 Nhận xét học tập" -> ô đầu tiên: chỉnh margin-bottom này */
@@ -318,7 +322,8 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .value { font-size:13px; color:#8a1f4d; font-weight:500; text-align:right; }
         #invoiceExportSheet .date-label { font-size:12px; color:#a35b73; margin:8px 0 6px; }
         /* Tránh flex + phần tử chữ lồng nhau: html2canvas có thể làm mất chữ Comfortaa. */
-        #invoiceExportSheet .date-chip { display:inline-block; height:30px; line-height:26px; background:#f7dce5; color:#c2185b; font-weight:700; font-size:12px; text-align:center; white-space:nowrap; padding:0 9px; border-radius:999px; margin:0 4px 4px 0; vertical-align:top; }
+        #invoiceExportSheet .date-chip { display:inline-table; height:30px; line-height:normal; background:#f7dce5; color:#c2185b; font-weight:700; font-size:12px; white-space:nowrap; padding:0 9px; border-radius:999px; margin:0 4px 4px 0; vertical-align:top; }
+        #invoiceExportSheet .date-chip-text { display:table-cell; height:30px; text-align:center; vertical-align:middle; line-height:1; position:relative; top:-1px; }
 
         /* ============ V. TỔNG HỌC PHÍ ============ */
         #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#a35b73; }
