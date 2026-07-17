@@ -231,7 +231,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         const dateChips = sessions.map(s => {
             const [y, m, d] = String(s.date).split('-');
-            return `<span class="date-chip"><span class="date-chip-text">${d}/${m}</span></span>`;
+            return `<span class="date-chip">${d}/${m}</span>`;
         }).join('');
 
         // Ghi chú học phí: liệt kê số buổi riêng/chung và đơn giá tương ứng,
@@ -317,8 +317,8 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .label { font-size:12px; color:#a35b73; }
         #invoiceExportSheet .value { font-size:13px; color:#8a1f4d; font-weight:500; text-align:right; }
         #invoiceExportSheet .date-label { font-size:12px; color:#a35b73; margin:8px 0 6px; }
-        #invoiceExportSheet .date-chip { display:inline-flex; align-items:center; justify-content:center; min-height:30px; background:#f7dce5; color:#c2185b; font-weight:700; font-size:12px; line-height:1; padding:0 9px; border-radius:999px; margin:0 4px 4px 0; vertical-align:middle; }
-        #invoiceExportSheet .date-chip-text { display:block; line-height:1; }
+        /* Tránh flex + phần tử chữ lồng nhau: html2canvas có thể làm mất chữ Comfortaa. */
+        #invoiceExportSheet .date-chip { display:inline-block; height:30px; line-height:30px; background:#f7dce5; color:#c2185b; font-weight:700; font-size:12px; text-align:center; white-space:nowrap; padding:0 9px; border-radius:999px; margin:0 4px 4px 0; vertical-align:top; }
 
         /* ============ V. TỔNG HỌC PHÍ ============ */
         #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#a35b73; }
