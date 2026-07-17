@@ -303,7 +303,7 @@ Object.assign(PinkyClassApp.prototype, {
         /* ============ III. GRID 2 CỘT ============ */
         #invoiceExportSheet .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
         #invoiceExportSheet .card { border:1.5px solid #f1cbd7; border-radius:18px; padding:14px; background:#fff; }
-        #invoiceExportSheet .student-info-card { padding-top:8px; }
+        #invoiceExportSheet .student-info-card { display:flex; flex-direction:column; justify-content:center; padding:14px; }
         /* Riêng padding trên của Lịch học/Lộ trình/Ghi chú học phí: chỉnh số đầu tiên (padding-top) này */
         #invoiceExportSheet .card.card-tight { padding:8px 14px 14px; }
         /* Khoảng cách tiêu đề "📝 Nhận xét học tập" -> ô comment-box đầu tiên: chỉnh margin-bottom này */
@@ -332,25 +332,24 @@ Object.assign(PinkyClassApp.prototype, {
 
         /* ============ VI. NHẬN XÉT ============ */
         /* Padding bên trong mỗi ô "Tổng quan/Đại số/Hình học": chỉnh 4 số trong padding này */
-        #invoiceExportSheet .comment-box { background:#fdeff4; border-radius:12px; padding:10px 10px 10px 14px; margin-bottom:10px; position:relative; overflow:hidden; }
+        #invoiceExportSheet .comment-box { display:flex; align-items:center; min-height:42px; background:#fdeff4; border-radius:12px; padding:10px 10px 10px 14px; margin-bottom:10px; position:relative; overflow:hidden; }
         /* Khoảng cách giữa các ô comment-box với nhau: chỉnh margin-bottom ở dòng trên (ô cuối luôn về 0, không cần sửa dòng dưới) */
         #invoiceExportSheet .comment-box:last-child { margin-bottom:0; }
         #invoiceExportSheet .comment-box::before { content:''; position:absolute; left:0; top:0; width:5px; height:100%; background:#d94f7a; border-radius:12px 0 0 12px; }
-        #invoiceExportSheet .comment-text { font-size:13px; line-height:1.3; position:relative; top:-6px; }
+        #invoiceExportSheet .comment-text { width:100%; font-size:13px; line-height:1.3; }
         #invoiceExportSheet .comment-text strong { color:#8a1f4d; }
 
         /* ============ VII. 2 CARD DƯỚI ============ */
         #invoiceExportSheet .grid-bottom { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:10px; }
-        #invoiceExportSheet .list-item { display:flex; align-items:flex-start; gap:6px; font-size:13px; line-height:1.4; margin-bottom:5px; }
+        #invoiceExportSheet .list-item { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; gap:6px; font-size:13px; line-height:1.4; margin-bottom:5px; }
         #invoiceExportSheet .list-item:last-child { margin-bottom:0; }
-        #invoiceExportSheet .list-item .mark { color:#d94f7a; font-weight:700; flex-shrink:0; }
-        /* Chữ trong Lịch học/Lộ trình/Ghi chú học phí lệch so với dấu ✓/•: chỉnh top này */
-        #invoiceExportSheet .list-item .list-text { position:relative; top:-7px; }
+        #invoiceExportSheet .list-item .mark { color:#d94f7a; font-weight:700; line-height:1.4; }
+        #invoiceExportSheet .list-item .list-text { min-width:0; line-height:1.4; }
         #invoiceExportSheet .empty-hint { font-size:13px; color:#c48ba6; }
 
         /* ============ VIII. FOOTER ============ */
         #invoiceExportSheet .footer { background:#f7dce5; border-radius:12px; padding:9px 8px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; font-weight:700; color:#8a3a55; }
-        #invoiceExportSheet .footer-text { line-height:1.4; position:relative; top:-7px; }
+        #invoiceExportSheet .footer-text { line-height:1.4; }
         #invoiceExportSheet .section-block { margin-top:10px; }
     </style>
     <div class="card-main">
