@@ -218,7 +218,7 @@ Object.assign(PinkyClassApp.prototype, {
         // Danh sách kiểu "checklist" (✓ đầu dòng) dùng cho khối LỊCH HỌC và GHI
         // CHÚ HỌC PHÍ, giống đúng bố cục trong mẫu phiếu. Nếu dòng có dấu ":"
         // thì in đậm phần trước dấu ":" (VD "16h–18h thứ 4:" in đậm).
-        const checklistHTML = (text) => {
+        const plainListHTML = (text) => {
             const lines = esc(text).split('\n').map(l => l.trim()).filter(Boolean);
             if (lines.length === 0) return '';
             return lines.map(line => {
@@ -226,7 +226,7 @@ Object.assign(PinkyClassApp.prototype, {
                 const item = colonIdx > -1
                     ? `<strong>${line.slice(0, colonIdx + 1)}</strong>${line.slice(colonIdx + 1)}`
                     : line;
-                return `<div class="list-item"><span class="mark">✓</span><span class="list-text">${item}</span></div>`;
+                return `<div class="list-item no-mark"><span class="list-text">${item}</span></div>`;
             }).join('');
         };
 
@@ -242,8 +242,8 @@ Object.assign(PinkyClassApp.prototype, {
         if (privateCount > 0) feeNoteLines.push(`${privateCount} buổi học riêng: <strong>${this.formatVND(privateUnit)}/buổi</strong>`);
         if (groupCount > 0) feeNoteLines.push(`${groupCount} buổi học chung: <strong>${this.formatVND(groupUnit)}/buổi</strong>`);
         const feeNoteHTML = customTuitionNote
-            ? checklistHTML(customTuitionNote)
-            : feeNoteLines.map(l => `<div class="list-item"><span class="mark">✓</span><span class="list-text">${l}</span></div>`).join('');
+            ? plainListHTML(customTuitionNote)
+            : feeNoteLines.map(l => `<div class="list-item no-mark"><span class="list-text">${l}</span></div>`).join('');
 
         // Nhận xét học tập: gộp Tổng quan/Đại số/Hình học vào chung 1 khung,
         // mỗi mục là 1 "comment-box" (nền hồng nhạt + thanh dọc trái), xếp
@@ -262,7 +262,7 @@ Object.assign(PinkyClassApp.prototype, {
             return lines.map(line => `<div class="list-item"><span class="mark">•</span><span class="list-text">${line}</span></div>`).join('');
         };
 
-        const scheduleHTML = checklistHTML(schedule);
+        const scheduleHTML = plainListHTML(schedule);
         const roadmapHTML = bulletListHTML(roadmap);
 
         // Ảnh QR thanh toán (tuỳ chọn) — chèn ngay dưới khối "Tổng học phí",
@@ -300,9 +300,9 @@ Object.assign(PinkyClassApp.prototype, {
 
         /* ============ II. HEADER ============ */
         #invoiceExportSheet .header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; row-gap:6px; }
-        #invoiceExportSheet .badge { display:inline-flex; align-items:center; line-height:1.4; color:#b83b6a; font-size:15px; font-weight:700; border:none; padding:0; border-radius:0; gap:0; background:none; }
+        #invoiceExportSheet .badge { display:inline-flex; align-items:center; line-height:1.4; color:#8a3a55; font-size:13px; font-weight:500; border:none; padding:0; border-radius:0; gap:0; background:none; }
         #invoiceExportSheet .phone { font-size:13px; color:#8a3a55; }
-        #invoiceExportSheet .title { text-align:center; font-size:26px; font-weight:700; color:#8a1f4d; margin:6px 0 22px; line-height:1.5; }
+        #invoiceExportSheet .title { text-align:center; font-size:26px; font-weight:800; color:#8a1f4d; margin:6px 0 22px; line-height:1.5; }
 
         /* ============ III. GRID 2 CỘT ============ */
         #invoiceExportSheet .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
@@ -350,6 +350,7 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .list-item:last-child { margin-bottom:0; }
         #invoiceExportSheet .list-item .mark { color:#d94f7a; font-weight:700; flex-shrink:0; }
         #invoiceExportSheet .list-item .list-text { min-width:0; }
+        #invoiceExportSheet .list-item.no-mark { display:block; }
         #invoiceExportSheet .empty-hint { font-size:13px; color:#c48ba6; }
 
         /* ============ VIII. FOOTER ============ */
@@ -371,7 +372,7 @@ Object.assign(PinkyClassApp.prototype, {
                 <div class="row"><span class="label">Học phí/buổi</span><span class="value">${privateCount > 0 ? this.formatVND(privateUnit) : this.formatVND(groupUnit)}</span></div>
                 <div class="row"><span class="label">Số buổi học</span><span class="value">${sessions.length} buổi</span></div>
                 <div class="row"><span class="label">Số giờ học</span><span class="value">${totalHours.toFixed(1)} giờ</span></div>
-                <div class="date-label">Ngày học đăng ký</div>
+                <div class="date-label">Ngày học</div>
                 <div>${dateChips || '<span class="empty-hint">Chưa có buổi học trong kỳ</span>'}</div>
             </div>
 
@@ -384,19 +385,19 @@ Object.assign(PinkyClassApp.prototype, {
 
         ${quoteItemsHTML ? `<div class="section-block"><div class="section-title section-title-notes">📝 Nhận xét học tập</div>${quoteItemsHTML}</div>` : ''}
 
-        ${(scheduleHTML || roadmapHTML) ? `
+        ${roadmapHTML ? `<div class="card card-tight section-block"><div class="section-title">🎯 Lộ trình</div>${roadmapHTML}</div>` : ''}
+
+        ${(scheduleHTML || feeNoteHTML) ? `
         <div class="grid-bottom">
             <div class="card card-tight">
                 <div class="section-title">📅 Lịch học</div>
                 ${scheduleHTML || '<span class="empty-hint">Chưa có lịch học.</span>'}
             </div>
             <div class="card card-tight">
-                <div class="section-title">🎯 Lộ trình</div>
-                ${roadmapHTML || '<span class="empty-hint">Chưa có lộ trình.</span>'}
+                <div class="section-title">💡 Học phí</div>
+                ${feeNoteHTML || '<span class="empty-hint">Chưa có học phí.</span>'}
             </div>
         </div>` : ''}
-
-        ${feeNoteHTML ? `<div class="card card-tight section-block"><div class="section-title">💡 Ghi chú học phí</div>${feeNoteHTML}</div>` : ''}
 
         <div class="footer section-block"><span class="footer-text">${note ? nl2br(note) : 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.'}</span></div>
     </div>
