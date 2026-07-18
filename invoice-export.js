@@ -165,6 +165,255 @@ Object.assign(PinkyClassApp.prototype, {
         return sessions;
     },
 
+    // Nạp pdfMake và bộ font Roboto Unicode khi người dùng xuất PDF lần đầu.
+    // PDF được dựng từ văn bản thật, không chụp HTML thành ảnh, nên dấu tiếng Việt,
+    // căn lề và việc xuống trang ổn định hơn html2canvas.
+    async ensurePdfMake() {
+        if (window.pdfMake && window.pdfMake.vfs) return window.pdfMake;
+        if (!this._pdfMakeLoadingPromise) {
+            const loadScript = (src) => new Promise((resolve, reject) => {
+                const existing = document.querySelector(`script[src="${src}"]`);
+                if (existing) {
+                    if (existing.dataset.loaded === 'true') return resolve();
+                    existing.addEventListener('load', resolve, { once: true });
+                    existing.addEventListener('error', reject, { once: true });
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = () => {
+                    script.dataset.loaded = 'true';
+                    resolve();
+                };
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+
+            this._pdfMakeLoadingPromise = (async () => {
+                await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.12/pdfmake.min.js');
+                await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.12/vfs_fonts.js');
+                return window.pdfMake;
+            })();
+        }
+        return this._pdfMakeLoadingPromise;
+    },
+
+    // Tạo cấu trúc PDF A4 riêng biệt. Hàm này chỉ dựng dữ liệu/bố cục để có thể
+    // kiểm tra độc lập; exportInvoicePdf() phía dưới đảm nhiệm tải file.
+    buildInvoicePdfDefinition() {
+        const studentId = document.getElementById('invoiceStudentId').value;
+        const st = this.students.find(s => s.id === studentId);
+        if (!st) return null;
+
+        const sessions = this.recomputeInvoiceTotals();
+        let totalFee = 0, totalHours = 0;
+        let privateCount = 0, privateSum = 0, groupCount = 0, groupSum = 0;
+        sessions.forEach(sess => {
+            totalHours += parseFloat(sess.duration) || 0;
+            const portion = this.getStudentSessionFee(sess, studentId);
+            if (portion <= 0) return;
+            totalFee += portion;
+            if (sess.type === 'chung') {
+                groupCount += 1;
+                groupSum += portion;
+            } else {
+                privateCount += 1;
+                privateSum += portion;
+            }
+        });
+
+        const privateUnit = privateCount > 0 ? Math.round(privateSum / privateCount) : 0;
+        const groupUnit = groupCount > 0 ? Math.round(groupSum / groupCount) : 0;
+        const nfc = value => String(value || '').normalize('NFC').trim();
+        const title = nfc(document.getElementById('invoiceTitle').value) || 'PHIẾU HỌC PHÍ';
+        const teacherName = nfc(document.getElementById('invoiceTeacherName').value) || nfc(this.currentUser && this.currentUser.name) || 'Giáo viên phụ trách';
+        const teacherPhone = nfc(document.getElementById('invoiceTeacherPhone').value) || 'Dành cho phụ huynh';
+        const overview = nfc(document.getElementById('invoiceOverview').value);
+        const algebra = nfc(document.getElementById('invoiceAlgebra').value);
+        const geometry = nfc(document.getElementById('invoiceGeometry').value);
+        const roadmap = nfc(document.getElementById('invoiceRoadmap').value);
+        const schedule = nfc(document.getElementById('invoiceSchedule').value);
+        const customTuition = nfc(document.getElementById('invoiceTuitionNote').value);
+        const note = nfc(document.getElementById('invoiceNote').value) || 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.';
+        const dates = sessions.map(sess => {
+            const [year, month, day] = String(sess.date || '').split('-');
+            return day && month && year ? `${day}/${month}/${year}` : String(sess.date || '');
+        }).filter(Boolean).join(', ') || 'Chưa có buổi học trong kỳ';
+
+        const feeLines = [];
+        if (privateCount > 0) feeLines.push(`${privateCount} buổi học riêng: ${this.formatVND(privateUnit)}/buổi`);
+        if (groupCount > 0) feeLines.push(`${groupCount} buổi học chung: ${this.formatVND(groupUnit)}/buổi`);
+        const tuitionText = customTuition || feeLines.join('\n') || 'Chưa có thông tin học phí.';
+
+        const labelValue = (label, value) => [
+            { text: label, style: 'label' },
+            { text: nfc(value), style: 'value', alignment: 'right' }
+        ];
+        const commentCard = (label, value) => ({
+            margin: [0, 0, 0, 8],
+            table: {
+                widths: ['*'],
+                body: [[{
+                    text: [
+                        { text: `${label}: `, style: 'inlineLabel' },
+                        { text: value, style: 'bodyText' }
+                    ],
+                    fillColor: '#eff6ff'
+                }]]
+            },
+            layout: {
+                hLineWidth: () => 0,
+                vLineWidth: index => index === 0 ? 4 : 0,
+                vLineColor: () => '#3b82f6',
+                paddingLeft: () => 10,
+                paddingRight: () => 10,
+                paddingTop: () => 9,
+                paddingBottom: () => 9
+            }
+        });
+        const borderedCard = stack => ({
+            table: { widths: ['*'], body: [[{ stack }]] },
+            layout: {
+                hLineWidth: () => 1,
+                vLineWidth: () => 1,
+                hLineColor: () => '#bfdbfe',
+                vLineColor: () => '#bfdbfe',
+                paddingLeft: () => 14,
+                paddingRight: () => 14,
+                paddingTop: () => 12,
+                paddingBottom: () => 12
+            }
+        });
+
+        const studentCard = borderedCard([
+            { text: 'THÔNG TIN HỌC SINH', style: 'cardTitle', margin: [0, 0, 0, 8] },
+            {
+                table: {
+                    widths: ['38%', '62%'],
+                    body: [
+                        labelValue('Họ và tên', `${nfc(st.name)} - ${nfc(st.class)}`),
+                        labelValue('Học phí/buổi', privateCount > 0 ? this.formatVND(privateUnit) : this.formatVND(groupUnit)),
+                        labelValue('Số buổi học', `${sessions.length} buổi`),
+                        labelValue('Số giờ học', `${totalHours.toFixed(1)} giờ`),
+                        labelValue('Ngày học', dates)
+                    ]
+                },
+                layout: {
+                    hLineWidth: index => index > 0 ? 0.7 : 0,
+                    vLineWidth: () => 0,
+                    hLineColor: () => '#dbeafe',
+                    paddingLeft: () => 0,
+                    paddingRight: () => 0,
+                    paddingTop: () => 6,
+                    paddingBottom: () => 6
+                }
+            }
+        ]);
+
+        const tuitionStack = [
+            { text: 'TỔNG HỌC PHÍ', style: 'label', alignment: 'center' },
+            { text: this.formatVND(totalFee), style: 'totalPrice', alignment: 'center', margin: [0, 4, 0, 10] }
+        ];
+        if (this._invoiceQrDataUrl) {
+            tuitionStack.push({ image: this._invoiceQrDataUrl, fit: [105, 105], alignment: 'center', margin: [0, 2, 0, 10] });
+            tuitionStack.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 220, y2: 0, lineWidth: 1, lineColor: '#bfdbfe' }], alignment: 'center', margin: [0, 0, 0, 8] });
+            tuitionStack.push({
+                text: [
+                    { text: 'Số TK: ', style: 'label' }, { text: '68688886669', style: 'value' }, '\n',
+                    { text: 'Chủ TK: ', style: 'label' }, { text: 'Nguyễn Thanh Thúy', style: 'value' }
+                ],
+                alignment: 'center',
+                lineHeight: 1.35
+            });
+        }
+        const tuitionCard = borderedCard(tuitionStack);
+
+        const comments = [];
+        if (overview) comments.push(commentCard('Tổng quan', overview));
+        if (algebra) comments.push(commentCard('Đại số', algebra));
+        if (geometry) comments.push(commentCard('Hình học', geometry));
+
+        const content = [
+            {
+                columns: [
+                    { text: teacherName, style: 'meta' },
+                    { text: teacherPhone, style: 'meta', alignment: 'right' }
+                ]
+            },
+            { text: title, style: 'title', alignment: 'center', margin: [0, 8, 0, 18] },
+            { columns: [{ width: '53%', ...studentCard }, { width: '47%', ...tuitionCard }], columnGap: 14 },
+            ...(comments.length ? [{ text: 'NHẬN XÉT HỌC TẬP', style: 'sectionTitle', margin: [0, 18, 0, 9] }, ...comments] : []),
+            ...(roadmap ? [{ text: 'LỘ TRÌNH', style: 'sectionTitle', margin: [0, 12, 0, 7] }, borderedCard([{ text: roadmap, style: 'bodyText' }])] : []),
+            {
+                columns: [
+                    { width: '*', stack: [{ text: 'LỊCH HỌC', style: 'sectionTitle', margin: [0, 0, 0, 7] }, borderedCard([{ text: schedule || 'Chưa có lịch học.', style: 'bodyText' }])] },
+                    { width: '*', stack: [{ text: 'HỌC PHÍ', style: 'sectionTitle', margin: [0, 0, 0, 7] }, borderedCard([{ text: tuitionText, style: 'bodyText' }])] }
+                ],
+                columnGap: 14,
+                margin: [0, 14, 0, 14]
+            },
+            {
+                table: { widths: ['*'], body: [[{ text: note, alignment: 'center', style: 'footerText', fillColor: '#dbeafe' }]] },
+                layout: {
+                    hLineWidth: () => 0,
+                    vLineWidth: () => 0,
+                    paddingLeft: () => 12,
+                    paddingRight: () => 12,
+                    paddingTop: () => 10,
+                    paddingBottom: () => 10
+                }
+            }
+        ];
+
+        return {
+            pageSize: 'A4',
+            pageMargins: [38, 34, 38, 42],
+            info: { title, author: teacherName, subject: 'Phiếu học phí học sinh' },
+            content,
+            defaultStyle: { font: 'Roboto', fontSize: 10, color: '#1f2937', lineHeight: 1.25 },
+            styles: {
+                meta: { fontSize: 9.5, color: '#1f2937', bold: true },
+                title: { fontSize: 21, color: '#1d4ed8', bold: true },
+                cardTitle: { fontSize: 12.5, color: '#1d4ed8', bold: true },
+                sectionTitle: { fontSize: 12, color: '#1d4ed8', bold: true },
+                label: { fontSize: 9.5, color: '#1d4ed8' },
+                value: { fontSize: 10, color: '#1f2937', bold: true },
+                inlineLabel: { fontSize: 10, color: '#1d4ed8', bold: true },
+                bodyText: { fontSize: 10, color: '#1f2937' },
+                totalPrice: { fontSize: 24, color: '#1f2937', bold: true },
+                footerText: { fontSize: 9.5, color: '#1f2937', bold: true }
+            },
+            footer: (currentPage, pageCount) => ({
+                text: `Trang ${currentPage}/${pageCount}`,
+                alignment: 'center',
+                color: '#64748b',
+                fontSize: 8,
+                margin: [0, 14, 0, 0]
+            })
+        };
+    },
+
+    async exportInvoicePdf() {
+        const definition = this.buildInvoicePdfDefinition();
+        if (!definition) return;
+        this.setBtnLoading('btnExportInvoicePdf', true, 'Đang tạo PDF...');
+        try {
+            const pdfMake = await this.ensurePdfMake();
+            if (!pdfMake) throw new Error('Không tải được thư viện PDF');
+            const studentId = document.getElementById('invoiceStudentId').value;
+            const st = this.students.find(s => s.id === studentId);
+            const todayStr = this.toISODateOnly(new Date());
+            const safeName = String((st && st.name) || 'HocSinh').normalize('NFC').replace(/\s+/g, '');
+            pdfMake.createPdf(definition).download(`PhieuHocPhi_${safeName}_${todayStr}.pdf`);
+            this.showToast('Đã xuất phiếu học phí dạng PDF thành công!', 'success');
+        } catch (err) {
+            console.error('Lỗi xuất phiếu học phí PDF:', err);
+            this.showToast('Không thể xuất PDF. Vui lòng kiểm tra kết nối và thử lại!', 'error');
+        } finally {
+            this.setBtnLoading('btnExportInvoicePdf', false);
+        }
+    },
+
     // Render phiếu học phí ra 1 file ẢNH (PNG) chất lượng cao, dựa trên dữ
     // liệu đã điền sẵn + phần nhận xét giáo viên vừa nhập thêm trong form.
     // Trước đây mở cửa sổ mới rồi gọi window.print() (xuất PDF qua hộp thoại
