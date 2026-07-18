@@ -249,8 +249,21 @@ Object.assign(PinkyClassApp.prototype, {
             { text: label, style: 'label' },
             { text: nfc(value), style: 'value', alignment: 'right' }
         ];
+        const sectionHeading = text => ({
+            margin: [0, 16, 0, 9],
+            table: { widths: ['*'], body: [[{ text, style: 'sectionTitle' }]] },
+            layout: {
+                hLineWidth: () => 0,
+                vLineWidth: index => index === 0 ? 4 : 0,
+                vLineColor: () => '#2563eb',
+                paddingLeft: () => 9,
+                paddingRight: () => 0,
+                paddingTop: () => 2,
+                paddingBottom: () => 2
+            }
+        });
         const commentCard = (label, value) => ({
-            margin: [0, 0, 0, 8],
+            margin: [0, 0, 0, 7],
             table: {
                 widths: ['*'],
                 body: [[{
@@ -258,35 +271,35 @@ Object.assign(PinkyClassApp.prototype, {
                         { text: `${label}: `, style: 'inlineLabel' },
                         { text: value, style: 'bodyText' }
                     ],
-                    fillColor: '#eff6ff'
+                    fillColor: '#f2f7ff'
                 }]]
             },
             layout: {
                 hLineWidth: () => 0,
                 vLineWidth: index => index === 0 ? 4 : 0,
                 vLineColor: () => '#3b82f6',
-                paddingLeft: () => 10,
-                paddingRight: () => 10,
-                paddingTop: () => 9,
-                paddingBottom: () => 9
+                paddingLeft: () => 11,
+                paddingRight: () => 11,
+                paddingTop: () => 8,
+                paddingBottom: () => 8
             }
         });
-        const borderedCard = stack => ({
-            table: { widths: ['*'], body: [[{ stack }]] },
+        const borderedCard = (stack, fillColor = '#ffffff') => ({
+            table: { widths: ['*'], body: [[{ stack, fillColor }]] },
             layout: {
                 hLineWidth: () => 1,
                 vLineWidth: () => 1,
                 hLineColor: () => '#bfdbfe',
                 vLineColor: () => '#bfdbfe',
-                paddingLeft: () => 14,
-                paddingRight: () => 14,
-                paddingTop: () => 12,
-                paddingBottom: () => 12
+                paddingLeft: () => 13,
+                paddingRight: () => 13,
+                paddingTop: () => 11,
+                paddingBottom: () => 11
             }
         });
 
-        const studentCard = borderedCard([
-            { text: 'THÔNG TIN HỌC SINH', style: 'cardTitle', margin: [0, 0, 0, 8] },
+        const studentStack = [
+            { text: 'THÔNG TIN HỌC SINH', style: 'cardTitle', margin: [0, 0, 0, 9] },
             {
                 table: {
                     widths: ['38%', '62%'],
@@ -304,29 +317,55 @@ Object.assign(PinkyClassApp.prototype, {
                     hLineColor: () => '#dbeafe',
                     paddingLeft: () => 0,
                     paddingRight: () => 0,
-                    paddingTop: () => 6,
-                    paddingBottom: () => 6
+                    paddingTop: () => 5.5,
+                    paddingBottom: () => 5.5
                 }
             }
-        ]);
+        ];
 
         const tuitionStack = [
-            { text: 'TỔNG HỌC PHÍ', style: 'label', alignment: 'center' },
-            { text: this.formatVND(totalFee), style: 'totalPrice', alignment: 'center', margin: [0, 4, 0, 10] }
+            { text: 'TỔNG HỌC PHÍ', style: 'cardTitle', alignment: 'center' },
+            { text: this.formatVND(totalFee), style: 'totalPrice', alignment: 'center', margin: [0, 5, 0, 8] }
         ];
         if (this._invoiceQrDataUrl) {
-            tuitionStack.push({ image: this._invoiceQrDataUrl, fit: [105, 105], alignment: 'center', margin: [0, 2, 0, 10] });
-            tuitionStack.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 220, y2: 0, lineWidth: 1, lineColor: '#bfdbfe' }], alignment: 'center', margin: [0, 0, 0, 8] });
+            tuitionStack.push({ image: this._invoiceQrDataUrl, fit: [92, 92], alignment: 'center', margin: [0, 2, 0, 8] });
+            tuitionStack.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0, lineWidth: 1, lineColor: '#bfdbfe' }], alignment: 'center', margin: [0, 0, 0, 7] });
             tuitionStack.push({
                 text: [
                     { text: 'Số TK: ', style: 'label' }, { text: '68688886669', style: 'value' }, '\n',
                     { text: 'Chủ TK: ', style: 'label' }, { text: 'Nguyễn Thanh Thúy', style: 'value' }
                 ],
                 alignment: 'center',
-                lineHeight: 1.35
+                lineHeight: 1.3
+            });
+        } else {
+            tuitionStack.push({
+                text: `${sessions.length} buổi học  |  ${totalHours.toFixed(1)} giờ`,
+                style: 'summaryHint',
+                alignment: 'center',
+                margin: [0, 7, 0, 0]
             });
         }
-        const tuitionCard = borderedCard(tuitionStack);
+
+        const summaryTable = {
+            table: {
+                widths: ['54%', '46%'],
+                body: [[
+                    { stack: studentStack, fillColor: '#f8fbff', verticalAlignment: 'middle' },
+                    { stack: tuitionStack, fillColor: '#f8fbff', verticalAlignment: 'middle' }
+                ]]
+            },
+            layout: {
+                hLineWidth: () => 1,
+                vLineWidth: () => 1,
+                hLineColor: () => '#bfdbfe',
+                vLineColor: () => '#bfdbfe',
+                paddingLeft: () => 14,
+                paddingRight: () => 14,
+                paddingTop: () => 13,
+                paddingBottom: () => 13
+            }
+        };
 
         const comments = [];
         if (overview) comments.push(commentCard('Tổng quan', overview));
@@ -335,60 +374,88 @@ Object.assign(PinkyClassApp.prototype, {
 
         const content = [
             {
-                columns: [
-                    { text: teacherName, style: 'meta' },
-                    { text: teacherPhone, style: 'meta', alignment: 'right' }
-                ]
+                table: {
+                    widths: ['*', 'auto'],
+                    body: [[
+                        { stack: [{ text: 'NttClass', style: 'brand' }, { text: teacherName, style: 'meta', margin: [0, 2, 0, 0] }] },
+                        { stack: [{ text: 'PHIẾU HỌC PHÍ', style: 'eyebrow', alignment: 'right' }, { text: teacherPhone, style: 'meta', alignment: 'right', margin: [0, 2, 0, 0] }] }
+                    ]]
+                },
+                layout: {
+                    hLineWidth: index => index === 1 ? 1 : 0,
+                    vLineWidth: () => 0,
+                    hLineColor: () => '#dbeafe',
+                    paddingLeft: () => 0,
+                    paddingRight: () => 0,
+                    paddingTop: () => 0,
+                    paddingBottom: () => 8
+                }
             },
-            { text: title, style: 'title', alignment: 'center', margin: [0, 8, 0, 18] },
-            { columns: [{ width: '53%', ...studentCard }, { width: '47%', ...tuitionCard }], columnGap: 14 },
-            ...(comments.length ? [{ text: 'NHẬN XÉT HỌC TẬP', style: 'sectionTitle', margin: [0, 18, 0, 9] }, ...comments] : []),
-            ...(roadmap ? [{ text: 'LỘ TRÌNH', style: 'sectionTitle', margin: [0, 12, 0, 7] }, borderedCard([{ text: roadmap, style: 'bodyText' }])] : []),
+            { text: title, style: 'title', alignment: 'center', margin: [0, 13, 0, 2] },
+            { text: 'BÁO CÁO HỌC TẬP VÀ HỌC PHÍ', style: 'subtitle', alignment: 'center', margin: [0, 0, 0, 17] },
+            summaryTable,
+            ...(comments.length ? [sectionHeading('NHẬN XÉT HỌC TẬP'), ...comments] : []),
+            ...(roadmap ? [sectionHeading('LỘ TRÌNH HỌC TẬP'), borderedCard([{ text: roadmap, style: 'bodyText' }], '#fbfdff')] : []),
             {
                 columns: [
-                    { width: '*', stack: [{ text: 'LỊCH HỌC', style: 'sectionTitle', margin: [0, 0, 0, 7] }, borderedCard([{ text: schedule || 'Chưa có lịch học.', style: 'bodyText' }])] },
-                    { width: '*', stack: [{ text: 'HỌC PHÍ', style: 'sectionTitle', margin: [0, 0, 0, 7] }, borderedCard([{ text: tuitionText, style: 'bodyText' }])] }
+                    { width: '*', stack: [sectionHeading('LỊCH HỌC'), borderedCard([{ text: schedule || 'Chưa có lịch học.', style: 'bodyText' }], '#fbfdff')] },
+                    { width: '*', stack: [sectionHeading('CHI TIẾT HỌC PHÍ'), borderedCard([{ text: tuitionText, style: 'bodyText' }], '#fbfdff')] }
                 ],
                 columnGap: 14,
-                margin: [0, 14, 0, 14]
-            },
-            {
-                table: { widths: ['*'], body: [[{ text: note, alignment: 'center', style: 'footerText', fillColor: '#dbeafe' }]] },
-                layout: {
-                    hLineWidth: () => 0,
-                    vLineWidth: () => 0,
-                    paddingLeft: () => 12,
-                    paddingRight: () => 12,
-                    paddingTop: () => 10,
-                    paddingBottom: () => 10
-                }
+                margin: [0, 0, 0, 4]
             }
         ];
 
         return {
             pageSize: 'A4',
-            pageMargins: [38, 34, 38, 42],
+            pageMargins: [52, 42, 52, 68],
             info: { title, author: teacherName, subject: 'Phiếu học phí học sinh' },
+            background: (currentPage, pageSize) => ({
+                canvas: [
+                    { type: 'rect', x: 0, y: 0, w: pageSize.width, h: pageSize.height, color: '#eef6ff' },
+                    { type: 'rect', x: 26, y: 22, w: pageSize.width - 52, h: pageSize.height - 44, r: 14, color: '#ffffff', lineColor: '#bfdbfe', lineWidth: 1.2 }
+                ]
+            }),
             content,
             defaultStyle: { font: 'Roboto', fontSize: 10, color: '#1f2937', lineHeight: 1.25 },
             styles: {
-                meta: { fontSize: 9.5, color: '#1f2937', bold: true },
-                title: { fontSize: 21, color: '#1d4ed8', bold: true },
-                cardTitle: { fontSize: 12.5, color: '#1d4ed8', bold: true },
-                sectionTitle: { fontSize: 12, color: '#1d4ed8', bold: true },
+                brand: { fontSize: 14, color: '#1d4ed8', bold: true },
+                eyebrow: { fontSize: 8.5, color: '#64748b', bold: true, characterSpacing: 1.2 },
+                meta: { fontSize: 9, color: '#334155', bold: true },
+                title: { fontSize: 22, color: '#1d4ed8', bold: true },
+                subtitle: { fontSize: 8.5, color: '#64748b', bold: true, characterSpacing: 1.1 },
+                cardTitle: { fontSize: 11.5, color: '#1d4ed8', bold: true },
+                sectionTitle: { fontSize: 11.5, color: '#1d4ed8', bold: true, characterSpacing: 0.35 },
                 label: { fontSize: 9.5, color: '#1d4ed8' },
                 value: { fontSize: 10, color: '#1f2937', bold: true },
                 inlineLabel: { fontSize: 10, color: '#1d4ed8', bold: true },
                 bodyText: { fontSize: 10, color: '#1f2937' },
-                totalPrice: { fontSize: 24, color: '#1f2937', bold: true },
+                totalPrice: { fontSize: 25, color: '#1f2937', bold: true },
+                summaryHint: { fontSize: 8.5, color: '#64748b' },
                 footerText: { fontSize: 9.5, color: '#1f2937', bold: true }
             },
             footer: (currentPage, pageCount) => ({
-                text: `Trang ${currentPage}/${pageCount}`,
-                alignment: 'center',
-                color: '#64748b',
-                fontSize: 8,
-                margin: [0, 14, 0, 0]
+                margin: [52, 0, 52, 0],
+                stack: [
+                    ...(currentPage === pageCount ? [{
+                        table: { widths: ['*'], body: [[{ text: note, alignment: 'center', style: 'footerText', fillColor: '#dbeafe' }]] },
+                        layout: {
+                            hLineWidth: () => 0,
+                            vLineWidth: () => 0,
+                            paddingLeft: () => 10,
+                            paddingRight: () => 10,
+                            paddingTop: () => 7,
+                            paddingBottom: () => 7
+                        }
+                    }] : []),
+                    {
+                        text: `Trang ${currentPage}/${pageCount}`,
+                        alignment: 'center',
+                        color: '#94a3b8',
+                        fontSize: 8,
+                        margin: [0, 7, 0, 0]
+                    }
+                ]
             })
         };
     },
