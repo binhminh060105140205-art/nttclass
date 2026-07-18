@@ -275,7 +275,7 @@ Object.assign(PinkyClassApp.prototype, {
                         table: {
                             widths: ['*'],
                             heights: () => Math.max(0, height - paddingY * 2),
-                            body: [[{ stack, verticalAlignment: options.verticalAlignment || 'top' }]]
+                            body: [[{ stack, verticalAlignment: options.verticalAlignment || 'middle' }]]
                         },
                         layout: {
                             hLineWidth: () => 0,
@@ -685,7 +685,7 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .date-label { font-size:12px; color:#1d4ed8; margin:8px 0 6px; }
         /* Tránh flex + phần tử chữ lồng nhau để html2canvas không làm mất nét chữ. */
         #invoiceExportSheet .date-chip-list { font-size:0; line-height:0; }
-        #invoiceExportSheet .date-chip { display:inline-block; min-height:30px; line-height:16px; background:#dbeafe; color:#1f2937; font-weight:700; font-size:12px; white-space:nowrap; padding:7px 10px; border-radius:999px; margin:0 4px 4px 0; vertical-align:middle; text-align:center; }
+        #invoiceExportSheet .date-chip { display:inline-block; min-height:30px; line-height:16px; background:#dbeafe; color:#1f2937; font-weight:700; font-size:12px; white-space:nowrap; padding:7px 7px; border-radius:999px; margin:0 3px 4px 0; vertical-align:middle; text-align:center; }
         #invoiceExportSheet .date-chip-text { display:inline; line-height:16px; position:static; }
 
         /* ============ V. TỔNG HỌC PHÍ ============ */
