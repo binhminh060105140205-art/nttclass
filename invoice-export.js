@@ -343,8 +343,9 @@ Object.assign(PinkyClassApp.prototype, {
         /* Khoảng cách giữa các ô comment-box với nhau: chỉnh margin-bottom ở dòng trên (ô cuối luôn về 0, không cần sửa dòng dưới) */
         #invoiceExportSheet .comment-box:last-child { margin-bottom:0; }
         #invoiceExportSheet .comment-box::before { content:''; position:absolute; left:0; top:0; width:5px; height:100%; background:#3b82f6; border-radius:12px 0 0 12px; }
-        #invoiceExportSheet .comment-text { font-size:13px; line-height:1.5; }
-        #invoiceExportSheet .comment-text strong { color:#1d4ed8; }
+        /* Cùng quy ước với bảng thông tin phía trên: nhãn tối, nội dung xanh. */
+        #invoiceExportSheet .comment-text { color:#1d4ed8; font-size:13px; line-height:1.5; }
+        #invoiceExportSheet .comment-text strong { color:#315b88; }
 
         /* ============ VII. 2 CARD DƯỚI ============ */
         #invoiceExportSheet .grid-bottom { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:10px; }
