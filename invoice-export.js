@@ -261,7 +261,13 @@ Object.assign(PinkyClassApp.prototype, {
             const radius = options.radius || 8;
             const borderColor = options.borderColor || '#bfdbfe';
             const paddingX = options.paddingX ?? 13;
-            const paddingY = options.paddingY ?? 10;
+            const basePaddingY = options.paddingY ?? 10;
+            const contentHeight = options.contentHeight || 0;
+            const centeredPadding = options.centerContent && contentHeight > 0
+                ? Math.max(0, (height - contentHeight) / 2)
+                : basePaddingY;
+            const paddingTop = centeredPadding;
+            const paddingBottom = centeredPadding;
             return {
                 stack: [
                     {
@@ -274,16 +280,16 @@ Object.assign(PinkyClassApp.prototype, {
                     {
                         table: {
                             widths: ['*'],
-                            heights: () => Math.max(0, height - paddingY * 2),
-                            body: [[{ stack, verticalAlignment: options.verticalAlignment || 'middle' }]]
+                            heights: () => Math.max(0, height - paddingTop - paddingBottom),
+                            body: [[{ stack, verticalAlignment: options.centerContent ? 'top' : (options.verticalAlignment || 'middle') }]]
                         },
                         layout: {
                             hLineWidth: () => 0,
                             vLineWidth: () => 0,
                             paddingLeft: () => paddingX,
                             paddingRight: () => paddingX,
-                            paddingTop: () => paddingY,
-                            paddingBottom: () => paddingY
+                            paddingTop: () => paddingTop,
+                            paddingBottom: () => paddingBottom
                         }
                     }
                 ]
@@ -301,7 +307,9 @@ Object.assign(PinkyClassApp.prototype, {
             columnGap: 0
         });
         const commentCard = (label, value) => {
-            const height = Math.max(36, 22 + estimateLines(`${label}: ${value}`, 88) * 12);
+            const lineCount = estimateLines(`${label}: ${value}`, 88);
+            const contentHeight = Math.max(18, lineCount * 12.5);
+            const height = Math.max(36, 18 + lineCount * 12.5);
             return {
                 ...roundedCard([{
                     columns: [
@@ -318,7 +326,9 @@ Object.assign(PinkyClassApp.prototype, {
                             margin: [5, 0, 0, 0]
                         }
                     ]
-                }], pdfContentWidth, height, '#f2f7ff', { paddingX: 10, paddingY: 8, radius: 8 }),
+                }], pdfContentWidth, height, '#f2f7ff', {
+                    paddingX: 10, radius: 8, centerContent: true, contentHeight
+                }),
                 margin: [0, 0, 0, 7]
             };
         };
@@ -429,7 +439,9 @@ Object.assign(PinkyClassApp.prototype, {
             ...(comments.length ? [sectionHeading('NHẬN XÉT HỌC TẬP'), ...comments] : []),
             ...(roadmap ? [
                 sectionHeading('LỘ TRÌNH HỌC TẬP'),
-                roundedCard([{ text: roadmap, style: 'bodyText' }], pdfContentWidth, roadmapHeight, '#fbfdff', { radius: 9 })
+                roundedCard([{ text: roadmap, style: 'bodyText' }], pdfContentWidth, roadmapHeight, '#fbfdff', {
+                    radius: 9, centerContent: true, contentHeight: estimateLines(roadmap, 82) * 12.5
+                })
             ] : []),
             {
                 columns: [
@@ -437,14 +449,18 @@ Object.assign(PinkyClassApp.prototype, {
                         width: pdfHalfWidth,
                         stack: [
                             sectionHeading('LỊCH HỌC'),
-                            roundedCard([{ text: scheduleText, style: 'bodyText' }], pdfHalfWidth, lowerHeight, '#fbfdff', { radius: 9 })
+                            roundedCard([{ text: scheduleText, style: 'bodyText' }], pdfHalfWidth, lowerHeight, '#fbfdff', {
+                                radius: 9, centerContent: true, contentHeight: estimateLines(scheduleText, 34) * 12.5
+                            })
                         ]
                     },
                     {
                         width: pdfHalfWidth,
                         stack: [
                             sectionHeading('CHI TIẾT HỌC PHÍ'),
-                            roundedCard([{ text: tuitionText, style: 'bodyText' }], pdfHalfWidth, lowerHeight, '#fbfdff', { radius: 9 })
+                            roundedCard([{ text: tuitionText, style: 'bodyText' }], pdfHalfWidth, lowerHeight, '#fbfdff', {
+                                radius: 9, centerContent: true, contentHeight: estimateLines(tuitionText, 34) * 12.5
+                            })
                         ]
                     }
                 ],
@@ -489,7 +505,7 @@ Object.assign(PinkyClassApp.prototype, {
                         pdfContentWidth,
                         28,
                         '#dbeafe',
-                        { radius: 9, paddingX: 10, paddingY: 5, borderColor: '#dbeafe', verticalAlignment: 'middle' }
+                        { radius: 9, paddingX: 10, borderColor: '#dbeafe', centerContent: true, contentHeight: 12.5 }
                     )] : []),
                     {
                         text: `Trang ${currentPage}/${pageCount}`,
@@ -686,7 +702,7 @@ Object.assign(PinkyClassApp.prototype, {
         /* Tránh flex + phần tử chữ lồng nhau để html2canvas không làm mất nét chữ. */
         #invoiceExportSheet .date-chip-list { font-size:0; line-height:0; }
         #invoiceExportSheet .date-chip { display:inline-block; min-height:30px; line-height:16px; background:#dbeafe; color:#1f2937; font-weight:700; font-size:12px; white-space:nowrap; padding:7px 7px; border-radius:999px; margin:0 3px 4px 0; vertical-align:middle; text-align:center; }
-        #invoiceExportSheet .date-chip-text { display:inline; line-height:16px; position:static; }
+        #invoiceExportSheet .date-chip-text { display:inline-block; line-height:16px; position:relative; top:-2px; }
 
         /* ============ V. TỔNG HỌC PHÍ ============ */
         #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#1d4ed8; }
