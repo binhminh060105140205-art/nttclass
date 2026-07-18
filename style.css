@@ -185,12 +185,12 @@ body {
 .modal-header { background: linear-gradient(135deg, #f8fbff, #eff6ff); border-bottom-color: #e3ebf4; }
 .modal-footer { border-top-color: #edf1f5; background: #fbfdff; }
 
-/* Form tạo phiếu học phí dùng toàn bộ vùng nhìn để nhập liệu thoải mái. */
-#invoiceModal { padding: 12px; }
+/* Form tạo phiếu học phí: toàn màn hình nhưng nội dung được chia thành từng khối rõ ràng. */
+#invoiceModal { padding: 14px; }
 #invoiceModal .invoice-modal-container {
     width: 100%;
     max-width: none;
-    height: calc(100vh - 24px);
+    height: calc(100vh - 28px);
     max-height: none;
     display: flex;
     flex-direction: column;
@@ -206,22 +206,92 @@ body {
     max-height: none;
     flex: 1;
     overflow-y: auto;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-content: start;
-    gap: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 22px max(24px, calc((100vw - 1500px) / 2));
 }
 #invoiceModal .invoice-modal-body > * { min-width: 0; }
-#invoiceModal .invoice-modal-body > .grid-form {
-    min-width: 0;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-}
 #invoiceModal .invoice-modal-body .form-group { min-width: 0; }
-#invoiceModal .invoice-modal-body > :first-child,
-#invoiceModal .invoice-modal-body > .form-group:nth-child(3) {
-    grid-column: 1 / -1;
-}
 #invoiceModal .modal-footer { flex: 0 0 auto; }
+
+#invoiceModal .invoice-summary {
+    display: grid;
+    grid-template-columns: 1.4fr 1.4fr repeat(5, minmax(110px, 1fr));
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    background: var(--primary-soft);
+}
+#invoiceModal .invoice-summary-item {
+    min-width: 0;
+    min-height: 68px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    border: 1px solid rgba(var(--primary-rgb), .13);
+    border-radius: 11px;
+    background: rgba(var(--primary-rgb), .055);
+}
+#invoiceModal .invoice-summary-item span { color: var(--text-muted); font-size: 12px; line-height: 1.45; }
+#invoiceModal .invoice-summary-item strong { color: var(--text-main); font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+#invoiceModal .invoice-summary-paid strong { color: #16a34a; }
+#invoiceModal .invoice-summary-debt strong { color: #dc2626; }
+
+#invoiceModal .invoice-form-section {
+    padding: 18px;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    background: var(--card-bg);
+}
+#invoiceModal .invoice-section-heading {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    margin-bottom: 16px;
+}
+#invoiceModal .invoice-section-heading > span {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    color: #fff;
+    background: linear-gradient(135deg, #2563eb, #0ea5e9);
+    font-size: 12px;
+    font-weight: 800;
+}
+#invoiceModal .invoice-section-heading div { display: flex; flex-direction: column; gap: 2px; }
+#invoiceModal .invoice-section-heading strong { color: var(--text-main); font-size: 15px; line-height: 1.45; }
+#invoiceModal .invoice-section-heading small { color: var(--text-muted); font-size: 11px; line-height: 1.45; }
+#invoiceModal .invoice-basic-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+#invoiceModal .invoice-field-wide { grid-column: span 2; }
+#invoiceModal .invoice-review-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+#invoiceModal .invoice-output-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+#invoiceModal .invoice-form-section label { line-height: 1.5; }
+#invoiceModal .invoice-form-section textarea { resize: vertical; min-height: 86px; }
+
+@media (max-width: 1500px) {
+    #invoiceModal .invoice-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    #invoiceModal .invoice-basic-grid,
+    #invoiceModal .invoice-review-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 
 @media (max-width: 900px) {
     #invoiceModal { padding: 0; }
@@ -229,9 +299,30 @@ body {
         height: 100vh;
         border-radius: 0;
     }
-    #invoiceModal .invoice-modal-body { grid-template-columns: 1fr; }
-    #invoiceModal .invoice-modal-body > * { grid-column: 1 !important; }
+    #invoiceModal .invoice-modal-body { padding: 16px; }
+    #invoiceModal .invoice-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #invoiceModal .invoice-basic-grid,
+    #invoiceModal .invoice-review-grid,
+    #invoiceModal .invoice-output-grid { grid-template-columns: 1fr; }
+    #invoiceModal .invoice-field-wide { grid-column: auto; }
 }
+
+@media (max-width: 520px) {
+    #invoiceModal .invoice-summary { grid-template-columns: 1fr; }
+    #invoiceModal .invoice-form-section { padding: 14px; }
+}
+
+[data-theme-mode="dark"] #invoiceModal .invoice-summary-item,
+[data-theme-mode="dark"] #invoiceModal .invoice-form-section {
+    background: rgba(15, 23, 42, .58);
+    border-color: rgba(96, 165, 250, .2);
+}
+[data-theme-mode="dark"] #invoiceModal .invoice-summary-item span,
+[data-theme-mode="dark"] #invoiceModal .invoice-section-heading small { color: #94a3b8; }
+[data-theme-mode="dark"] #invoiceModal .invoice-summary-item strong,
+[data-theme-mode="dark"] #invoiceModal .invoice-section-heading strong { color: #e2e8f0; }
+[data-theme-mode="dark"] #invoiceModal .invoice-summary-paid strong { color: #4ade80; }
+[data-theme-mode="dark"] #invoiceModal .invoice-summary-debt strong { color: #f87171; }
 
 @media (min-width: 1024px) {
     .sidebar { padding: 22px 16px; }

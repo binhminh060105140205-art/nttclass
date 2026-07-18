@@ -212,7 +212,9 @@ Object.assign(PinkyClassApp.prototype, {
         const schedule = document.getElementById('invoiceSchedule').value.trim();
         const note = document.getElementById('invoiceNote').value.trim();
 
-        const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        // Chuẩn hoá Unicode về NFC trước khi render để dấu tiếng Việt luôn gắn đúng
+        // với ký tự gốc (đặc biệt với nội dung được dán từ Word/điện thoại).
+        const esc = (s) => String(s || '').normalize('NFC').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const nl2br = (s) => esc(s).replace(/\n/g, '<br>');
 
         // Danh sách kiểu "checklist" (✓ đầu dòng) dùng cho khối LỊCH HỌC và GHI
@@ -311,7 +313,7 @@ Object.assign(PinkyClassApp.prototype, {
         /* Riêng padding trên của Lịch học/Lộ trình/Ghi chú học phí: chỉnh số đầu tiên (padding-top) này */
         #invoiceExportSheet .card.card-tight { padding:8px 14px 14px; }
         /* Khoảng cách tiêu đề "📝 Nhận xét học tập" -> ô comment-box đầu tiên: chỉnh margin-bottom này */
-        #invoiceExportSheet .section-title { font-size:15px; font-weight:600; color:#1d4ed8; margin-bottom:6px; }
+        #invoiceExportSheet .section-title { font-size:15px; font-weight:600; color:#1d4ed8; line-height:1.55; margin-bottom:6px; }
         /* Riêng khoảng cách tiêu đề "📝 Nhận xét học tập" -> ô đầu tiên: chỉnh margin-bottom này */
         #invoiceExportSheet .section-title.section-title-notes { margin-bottom:10px; }
 
@@ -337,16 +339,16 @@ Object.assign(PinkyClassApp.prototype, {
 
         /* ============ VI. NHẬN XÉT ============ */
         /* Padding bên trong mỗi ô "Tổng quan/Đại số/Hình học": chỉnh 4 số trong padding này */
-        #invoiceExportSheet .comment-box { background:#eff6ff; border-radius:12px; padding:10px 10px 10px 14px; margin-bottom:10px; position:relative; overflow:hidden; }
+        #invoiceExportSheet .comment-box { background:#eff6ff; border-radius:12px; padding:10px 10px 10px 14px; margin-bottom:10px; position:relative; overflow:visible; }
         /* Khoảng cách giữa các ô comment-box với nhau: chỉnh margin-bottom ở dòng trên (ô cuối luôn về 0, không cần sửa dòng dưới) */
         #invoiceExportSheet .comment-box:last-child { margin-bottom:0; }
         #invoiceExportSheet .comment-box::before { content:''; position:absolute; left:0; top:0; width:5px; height:100%; background:#3b82f6; border-radius:12px 0 0 12px; }
-        #invoiceExportSheet .comment-text { font-size:13px; line-height:1.3; position:relative; top:-2px; }
+        #invoiceExportSheet .comment-text { font-size:13px; line-height:1.5; }
         #invoiceExportSheet .comment-text strong { color:#1d4ed8; }
 
         /* ============ VII. 2 CARD DƯỚI ============ */
         #invoiceExportSheet .grid-bottom { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:10px; }
-        #invoiceExportSheet .list-item { display:flex; align-items:flex-start; gap:6px; font-size:13px; line-height:1.4; margin-bottom:5px; position:relative; top:-2px; }
+        #invoiceExportSheet .list-item { display:flex; align-items:flex-start; gap:6px; font-size:13px; line-height:1.5; margin-bottom:5px; }
         #invoiceExportSheet .list-item:last-child { margin-bottom:0; }
         #invoiceExportSheet .list-item .mark { color:#3b82f6; font-weight:700; flex-shrink:0; }
         #invoiceExportSheet .list-item .list-text { min-width:0; }
@@ -355,7 +357,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         /* ============ VIII. FOOTER ============ */
         #invoiceExportSheet .footer { background:#dbeafe; border-radius:12px; padding:9px 8px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; font-weight:700; color:#315b88; }
-        #invoiceExportSheet .footer-text { line-height:1.4; position:relative; top:-2px; }
+        #invoiceExportSheet .footer-text { line-height:1.5; }
         #invoiceExportSheet .section-block { margin-top:10px; }
     </style>
     <div class="card-main">
@@ -420,6 +422,13 @@ Object.assign(PinkyClassApp.prototype, {
             // Đợi font tiếng Việt Comfortaa
             // tải xong trước khi chụp — đây là nguyên nhân chính khiến chữ có
             // dấu đôi khi hiển thị sai/vỡ nếu chụp quá sớm lúc font chưa sẵn.
+            if (document.fonts && document.fonts.load) {
+                await Promise.all([
+                    document.fonts.load("400 13px 'Comfortaa'", 'Học phí Tổng quan Đại số Hình học'),
+                    document.fonts.load("600 15px 'Comfortaa'", 'Học phí Tổng quan Đại số Hình học'),
+                    document.fonts.load("700 30px 'Comfortaa'", 'HỌC PHÍ THÁNG')
+                ]);
+            }
             if (document.fonts && document.fonts.ready) {
                 await document.fonts.ready;
             }
