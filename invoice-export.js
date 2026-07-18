@@ -241,8 +241,8 @@ Object.assign(PinkyClassApp.prototype, {
         // theo đúng bố cục "GHI CHÚ HỌC PHÍ" trong mẫu phiếu (dạng checklist ✓).
         const customTuitionNote = document.getElementById('invoiceTuitionNote').value.trim();
         const feeNoteLines = [];
-        if (privateCount > 0) feeNoteLines.push(`${privateCount} buổi học riêng: <strong>${this.formatVND(privateUnit)}/buổi</strong>`);
-        if (groupCount > 0) feeNoteLines.push(`${groupCount} buổi học chung: <strong>${this.formatVND(groupUnit)}/buổi</strong>`);
+        if (privateCount > 0) feeNoteLines.push(`<strong>${privateCount} buổi học riêng:</strong> ${this.formatVND(privateUnit)}/buổi`);
+        if (groupCount > 0) feeNoteLines.push(`<strong>${groupCount} buổi học chung:</strong> ${this.formatVND(groupUnit)}/buổi`);
         const feeNoteHTML = customTuitionNote
             ? plainListHTML(customTuitionNote)
             : feeNoteLines.map(l => `<div class="list-item no-mark"><span class="list-text">${l}</span></div>`).join('');
@@ -288,12 +288,13 @@ Object.assign(PinkyClassApp.prototype, {
 
         /* ============ I. ROOT ============ */
         #invoiceExportSheet {
-            font-family: 'Comfortaa', sans-serif;
+            /* Segoe UI render dấu tiếng Việt ổn định hơn Comfortaa trong html2canvas. */
+            font-family: 'Segoe UI', Arial, sans-serif;
             background: #eff6ff;
             width: 600px;
             max-width: 600px;
             padding: 20px;
-            color: #315b88;
+            color: #1f2937;
             overflow-wrap: break-word;
             word-break: break-word;
             -webkit-font-smoothing: antialiased;
@@ -302,8 +303,8 @@ Object.assign(PinkyClassApp.prototype, {
 
         /* ============ II. HEADER ============ */
         #invoiceExportSheet .header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; row-gap:6px; }
-        #invoiceExportSheet .badge { display:inline-flex; align-items:center; line-height:1.4; color:#315b88; font-size:13px; font-weight:500; border:none; padding:0; border-radius:0; gap:0; background:none; }
-        #invoiceExportSheet .phone { font-size:13px; color:#315b88; }
+        #invoiceExportSheet .badge { display:inline-flex; align-items:center; line-height:1.4; color:#1f2937; font-size:13px; font-weight:500; border:none; padding:0; border-radius:0; gap:0; background:none; }
+        #invoiceExportSheet .phone { font-size:13px; color:#1f2937; }
         #invoiceExportSheet .title { text-align:center; font-size:26px; font-weight:800; color:#1d4ed8; margin:6px 0 22px; line-height:1.5; }
 
         /* ============ III. GRID 2 CỘT ============ */
@@ -320,22 +321,22 @@ Object.assign(PinkyClassApp.prototype, {
         /* ============ IV. THÔNG TIN HỌC SINH ============ */
         #invoiceExportSheet .row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:5px 0; border-bottom:1px dashed #bfdbfe; }
         #invoiceExportSheet .row:last-of-type { border-bottom:none; }
-        #invoiceExportSheet .label { font-size:12px; color:#315b88; }
-        #invoiceExportSheet .value { font-size:13px; color:#1d4ed8; font-weight:500; text-align:right; }
-        #invoiceExportSheet .date-label { font-size:12px; color:#315b88; margin:8px 0 6px; }
-        /* Tránh flex + phần tử chữ lồng nhau: html2canvas có thể làm mất chữ Comfortaa. */
-        #invoiceExportSheet .date-chip { display:inline-table; height:30px; line-height:normal; background:#dbeafe; color:#1d4ed8; font-weight:700; font-size:12px; white-space:nowrap; padding:0 9px; border-radius:999px; margin:0 4px 4px 0; vertical-align:top; }
+        #invoiceExportSheet .label { font-size:12px; color:#1d4ed8; }
+        #invoiceExportSheet .value { font-size:13px; color:#1f2937; font-weight:600; text-align:right; }
+        #invoiceExportSheet .date-label { font-size:12px; color:#1d4ed8; margin:8px 0 6px; }
+        /* Tránh flex + phần tử chữ lồng nhau để html2canvas không làm mất nét chữ. */
+        #invoiceExportSheet .date-chip { display:inline-table; height:30px; line-height:normal; background:#dbeafe; color:#1f2937; font-weight:700; font-size:12px; white-space:nowrap; padding:0 9px; border-radius:999px; margin:0 4px 4px 0; vertical-align:top; }
         #invoiceExportSheet .date-chip-text { display:table-cell; height:30px; text-align:center; vertical-align:middle; line-height:1; position:relative; top:-4px; }
 
         /* ============ V. TỔNG HỌC PHÍ ============ */
-        #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#315b88; }
+        #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#1d4ed8; }
         /* Khoảng cách TỔNG HỌC PHÍ -> 700.000đ: chỉnh số margin-top này (đang để 6px bằng với gap dưới) */
-        #invoiceExportSheet .total-price { text-align:center; font-size:30px; font-weight:700; color:#1d4ed8; margin-top:0px; }
+        #invoiceExportSheet .total-price { text-align:center; font-size:30px; font-weight:700; color:#1f2937; margin-top:0px; }
         /* Khoảng cách 700.000đ -> ảnh QR: chỉnh số margin-top này (đang để 6px bằng với gap trên) */
         #invoiceExportSheet .qr { width:110px; height:110px; display:block; margin:16px auto 8px; object-fit:contain; border-radius:10px; border:2px solid #bfdbfe; background:#fff; }
         #invoiceExportSheet .divider { border-top:1px solid #bfdbfe; margin:8px 0; }
-        #invoiceExportSheet .bank { text-align:center; font-size:13px; color:#315b88; line-height:1.4; }
-        #invoiceExportSheet .bank b { color:#1d4ed8; }
+        #invoiceExportSheet .bank { text-align:center; font-size:13px; color:#1d4ed8; line-height:1.4; }
+        #invoiceExportSheet .bank b { color:#1f2937; }
 
         /* ============ VI. NHẬN XÉT ============ */
         /* Padding bên trong mỗi ô "Tổng quan/Đại số/Hình học": chỉnh 4 số trong padding này */
@@ -343,9 +344,9 @@ Object.assign(PinkyClassApp.prototype, {
         /* Khoảng cách giữa các ô comment-box với nhau: chỉnh margin-bottom ở dòng trên (ô cuối luôn về 0, không cần sửa dòng dưới) */
         #invoiceExportSheet .comment-box:last-child { margin-bottom:0; }
         #invoiceExportSheet .comment-box::before { content:''; position:absolute; left:0; top:0; width:5px; height:100%; background:#3b82f6; border-radius:12px 0 0 12px; }
-        /* Cùng quy ước với bảng thông tin phía trên: nhãn tối, nội dung xanh. */
-        #invoiceExportSheet .comment-text { color:#1d4ed8; font-size:13px; line-height:1.5; }
-        #invoiceExportSheet .comment-text strong { color:#315b88; }
+        /* Cùng quy ước với bảng thông tin phía trên: nhãn xanh, nội dung đen. */
+        #invoiceExportSheet .comment-text { color:#1f2937; font-size:13px; line-height:1.5; }
+        #invoiceExportSheet .comment-text strong { color:#1d4ed8; }
 
         /* ============ VII. 2 CARD DƯỚI ============ */
         #invoiceExportSheet .grid-bottom { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:10px; }
@@ -353,11 +354,12 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .list-item:last-child { margin-bottom:0; }
         #invoiceExportSheet .list-item .mark { color:#3b82f6; font-weight:700; flex-shrink:0; }
         #invoiceExportSheet .list-item .list-text { min-width:0; }
+        #invoiceExportSheet .list-item strong { color:#1d4ed8; }
         #invoiceExportSheet .list-item.no-mark { display:block; }
         #invoiceExportSheet .empty-hint { font-size:13px; color:#93c5fd; }
 
         /* ============ VIII. FOOTER ============ */
-        #invoiceExportSheet .footer { background:#dbeafe; border-radius:12px; padding:9px 8px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; font-weight:700; color:#315b88; }
+        #invoiceExportSheet .footer { background:#dbeafe; border-radius:12px; padding:9px 8px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; font-weight:600; color:#1f2937; }
         #invoiceExportSheet .footer-text { line-height:1.5; }
         #invoiceExportSheet .section-block { margin-top:10px; }
     </style>
@@ -420,16 +422,8 @@ Object.assign(PinkyClassApp.prototype, {
         const captureEl = document.getElementById('invoiceExportSheet');
 
         try {
-            // Đợi font tiếng Việt Comfortaa
-            // tải xong trước khi chụp — đây là nguyên nhân chính khiến chữ có
-            // dấu đôi khi hiển thị sai/vỡ nếu chụp quá sớm lúc font chưa sẵn.
-            if (document.fonts && document.fonts.load) {
-                await Promise.all([
-                    document.fonts.load("400 13px 'Comfortaa'", 'Học phí Tổng quan Đại số Hình học'),
-                    document.fonts.load("600 15px 'Comfortaa'", 'Học phí Tổng quan Đại số Hình học'),
-                    document.fonts.load("700 30px 'Comfortaa'", 'HỌC PHÍ THÁNG')
-                ]);
-            }
+            // Đợi toàn bộ font của trang ổn định trước khi chụp để tránh chữ
+            // có dấu hiển thị sai/vỡ khi ảnh được tạo quá sớm.
             if (document.fonts && document.fonts.ready) {
                 await document.fonts.ready;
             }

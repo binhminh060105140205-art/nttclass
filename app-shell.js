@@ -288,17 +288,6 @@ Object.assign(PinkyClassApp.prototype, {
             this.exportInvoice();
         });
 
-        // Tự tăng chiều cao các ô nhập theo lượng nội dung để không phải cuộn
-        // bên trong textarea và luôn nhìn thấy đầy đủ phần đang soạn.
-        document.querySelectorAll('#invoiceForm textarea').forEach(textarea => {
-            const autoGrow = () => {
-                textarea.style.height = 'auto';
-                textarea.style.height = `${Math.max(textarea.scrollHeight, 72)}px`;
-            };
-            textarea.addEventListener('input', autoGrow);
-            autoGrow();
-        });
-
         document.getElementById('monthlyPaymentForm').addEventListener('submit', (e) => {
             e.preventDefault();
             this.submitMonthlyPayment();

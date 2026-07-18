@@ -285,7 +285,13 @@ body {
     gap: 14px;
 }
 #invoiceModal .invoice-form-section label { line-height: 1.5; }
-#invoiceModal .invoice-form-section textarea { resize: vertical; min-height: 86px; }
+#invoiceModal .invoice-form-section textarea {
+    height: 96px;
+    min-height: 96px;
+    max-height: 96px;
+    resize: none;
+    overflow-y: auto;
+}
 
 @media (max-width: 1500px) {
     #invoiceModal .invoice-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
