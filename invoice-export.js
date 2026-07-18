@@ -237,7 +237,7 @@ Object.assign(PinkyClassApp.prototype, {
         const note = nfc(document.getElementById('invoiceNote').value) || 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.';
         const dates = sessions.map(sess => {
             const [year, month, day] = String(sess.date || '').split('-');
-            return day && month && year ? `${day}/${month}/${year}` : String(sess.date || '');
+            return day && month && year ? `${day}/${month}` : String(sess.date || '');
         }).filter(Boolean).join(', ') || 'Chưa có buổi học trong kỳ';
 
         const feeLines = [];
@@ -251,34 +251,43 @@ Object.assign(PinkyClassApp.prototype, {
         ];
         const sectionHeading = text => ({
             margin: [0, 16, 0, 9],
-            table: { widths: ['*'], body: [[{ text, style: 'sectionTitle' }]] },
-            layout: {
-                hLineWidth: () => 0,
-                vLineWidth: index => index === 0 ? 4 : 0,
-                vLineColor: () => '#2563eb',
-                paddingLeft: () => 9,
-                paddingRight: () => 0,
-                paddingTop: () => 2,
-                paddingBottom: () => 2
-            }
+            columns: [
+                {
+                    width: 5,
+                    canvas: [{ type: 'rect', x: 0, y: 0, w: 4, h: 18, r: 2, color: '#2563eb' }]
+                },
+                { width: '*', text, style: 'sectionTitle', margin: [5, 1, 0, 0] }
+            ],
+            columnGap: 0
         });
         const commentCard = (label, value) => ({
             margin: [0, 0, 0, 7],
             table: {
                 widths: ['*'],
                 body: [[{
-                    text: [
-                        { text: `${label}: `, style: 'inlineLabel' },
-                        { text: value, style: 'bodyText' }
+                    columns: [
+                        {
+                            width: 4,
+                            canvas: [{ type: 'rect', x: 0, y: 0, w: 4, h: 18, r: 2, color: '#3b82f6' }]
+                        },
+                        {
+                            width: '*',
+                            text: [
+                                { text: `${label}: `, style: 'inlineLabel' },
+                                { text: value, style: 'bodyText' }
+                            ],
+                            margin: [5, 0, 0, 0]
+                        }
                     ],
                     fillColor: '#f2f7ff'
                 }]]
             },
             layout: {
-                hLineWidth: () => 0,
-                vLineWidth: index => index === 0 ? 4 : 0,
-                vLineColor: () => '#3b82f6',
-                paddingLeft: () => 11,
+                hLineWidth: () => 0.8,
+                vLineWidth: () => 0.8,
+                hLineColor: () => '#dbeafe',
+                vLineColor: () => '#dbeafe',
+                paddingLeft: () => 10,
                 paddingRight: () => 11,
                 paddingTop: () => 8,
                 paddingBottom: () => 8
