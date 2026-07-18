@@ -323,7 +323,7 @@ Object.assign(PinkyClassApp.prototype, {
                                 { text: `${label}: `, style: 'inlineLabel' },
                                 { text: value, style: 'bodyText' }
                             ],
-                            margin: [5, 0, 0, 0]
+                            margin: [5, 2.5, 0, 0]
                         }
                     ]
                 }], pdfContentWidth, height, '#f2f7ff', {
@@ -663,8 +663,8 @@ Object.assign(PinkyClassApp.prototype, {
 
         /* ============ I. ROOT ============ */
         #invoiceExportSheet {
-            /* Segoe UI render dấu tiếng Việt ổn định hơn Comfortaa trong html2canvas. */
-            font-family: 'Segoe UI', Arial, sans-serif;
+            /* Arial có metric chữ ổn định hơn khi html2canvas chụp ảnh; chỉ áp dụng cho phiếu PNG. */
+            font-family: Arial, 'Segoe UI', sans-serif;
             background: #eff6ff;
             width: 600px;
             max-width: 600px;
@@ -702,7 +702,7 @@ Object.assign(PinkyClassApp.prototype, {
         /* Tránh flex + phần tử chữ lồng nhau để html2canvas không làm mất nét chữ. */
         #invoiceExportSheet .date-chip-list { font-size:0; line-height:0; }
         #invoiceExportSheet .date-chip { display:inline-block; min-height:30px; line-height:16px; background:#dbeafe; color:#1f2937; font-weight:700; font-size:12px; white-space:nowrap; padding:7px 7px; border-radius:999px; margin:0 3px 4px 0; vertical-align:middle; text-align:center; }
-        #invoiceExportSheet .date-chip-text { display:inline-block; line-height:16px; position:relative; top:-2px; }
+        #invoiceExportSheet .date-chip-text { display:inline-block; line-height:16px; position:static; }
 
         /* ============ V. TỔNG HỌC PHÍ ============ */
         #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#1d4ed8; }
