@@ -185,6 +185,54 @@ body {
 .modal-header { background: linear-gradient(135deg, #f8fbff, #eff6ff); border-bottom-color: #e3ebf4; }
 .modal-footer { border-top-color: #edf1f5; background: #fbfdff; }
 
+/* Form tạo phiếu học phí dùng toàn bộ vùng nhìn để nhập liệu thoải mái. */
+#invoiceModal { padding: 12px; }
+#invoiceModal .invoice-modal-container {
+    width: 100%;
+    max-width: none;
+    height: calc(100vh - 24px);
+    max-height: none;
+    display: flex;
+    flex-direction: column;
+}
+#invoiceModal #invoiceForm {
+    min-height: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+#invoiceModal .invoice-modal-body {
+    min-height: 0;
+    max-height: none;
+    flex: 1;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 16px 20px;
+}
+#invoiceModal .invoice-modal-body > * { min-width: 0; }
+#invoiceModal .invoice-modal-body > .grid-form {
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+#invoiceModal .invoice-modal-body .form-group { min-width: 0; }
+#invoiceModal .invoice-modal-body > :first-child,
+#invoiceModal .invoice-modal-body > .form-group:nth-child(3) {
+    grid-column: 1 / -1;
+}
+#invoiceModal .modal-footer { flex: 0 0 auto; }
+
+@media (max-width: 900px) {
+    #invoiceModal { padding: 0; }
+    #invoiceModal .invoice-modal-container {
+        height: 100vh;
+        border-radius: 0;
+    }
+    #invoiceModal .invoice-modal-body { grid-template-columns: 1fr; }
+    #invoiceModal .invoice-modal-body > * { grid-column: 1 !important; }
+}
+
 @media (min-width: 1024px) {
     .sidebar { padding: 22px 16px; }
     .main-content { padding: 26px 30px 34px; }
