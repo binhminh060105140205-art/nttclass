@@ -249,6 +249,46 @@ Object.assign(PinkyClassApp.prototype, {
             { text: label, style: 'label' },
             { text: nfc(value), style: 'value', alignment: 'right' }
         ];
+        const pdfContentWidth = 491.28;
+        const pdfColumnGap = 14;
+        const pdfHalfWidth = (pdfContentWidth - pdfColumnGap) / 2;
+        const pdfStudentWidth = (pdfContentWidth - pdfColumnGap) * 0.54;
+        const pdfTuitionWidth = (pdfContentWidth - pdfColumnGap) * 0.46;
+        const estimateLines = (value, charsPerLine) => String(value || '').split('\n').reduce((sum, line) => {
+            return sum + Math.max(1, Math.ceil(line.length / charsPerLine));
+        }, 0);
+        const roundedCard = (stack, width, height, fillColor = '#ffffff', options = {}) => {
+            const radius = options.radius || 8;
+            const borderColor = options.borderColor || '#bfdbfe';
+            const paddingX = options.paddingX ?? 13;
+            const paddingY = options.paddingY ?? 10;
+            return {
+                stack: [
+                    {
+                        canvas: [{
+                            type: 'rect', x: 0, y: 0, w: width, h: height, r: radius,
+                            color: fillColor, lineColor: borderColor, lineWidth: 0.9
+                        }],
+                        margin: [0, 0, 0, -height]
+                    },
+                    {
+                        table: {
+                            widths: ['*'],
+                            heights: () => Math.max(0, height - paddingY * 2),
+                            body: [[{ stack, verticalAlignment: options.verticalAlignment || 'top' }]]
+                        },
+                        layout: {
+                            hLineWidth: () => 0,
+                            vLineWidth: () => 0,
+                            paddingLeft: () => paddingX,
+                            paddingRight: () => paddingX,
+                            paddingTop: () => paddingY,
+                            paddingBottom: () => paddingY
+                        }
+                    }
+                ]
+            };
+        };
         const sectionHeading = text => ({
             margin: [0, 16, 0, 9],
             columns: [
@@ -260,11 +300,10 @@ Object.assign(PinkyClassApp.prototype, {
             ],
             columnGap: 0
         });
-        const commentCard = (label, value) => ({
-            margin: [0, 0, 0, 7],
-            table: {
-                widths: ['*'],
-                body: [[{
+        const commentCard = (label, value) => {
+            const height = Math.max(36, 22 + estimateLines(`${label}: ${value}`, 88) * 12);
+            return {
+                ...roundedCard([{
                     columns: [
                         {
                             width: 4,
@@ -278,34 +317,11 @@ Object.assign(PinkyClassApp.prototype, {
                             ],
                             margin: [5, 0, 0, 0]
                         }
-                    ],
-                    fillColor: '#f2f7ff'
-                }]]
-            },
-            layout: {
-                hLineWidth: () => 0.8,
-                vLineWidth: () => 0.8,
-                hLineColor: () => '#dbeafe',
-                vLineColor: () => '#dbeafe',
-                paddingLeft: () => 10,
-                paddingRight: () => 11,
-                paddingTop: () => 8,
-                paddingBottom: () => 8
-            }
-        });
-        const borderedCard = (stack, fillColor = '#ffffff') => ({
-            table: { widths: ['*'], body: [[{ stack, fillColor }]] },
-            layout: {
-                hLineWidth: () => 1,
-                vLineWidth: () => 1,
-                hLineColor: () => '#bfdbfe',
-                vLineColor: () => '#bfdbfe',
-                paddingLeft: () => 13,
-                paddingRight: () => 13,
-                paddingTop: () => 11,
-                paddingBottom: () => 11
-            }
-        });
+                    ]
+                }], pdfContentWidth, height, '#f2f7ff', { paddingX: 10, paddingY: 8, radius: 8 }),
+                margin: [0, 0, 0, 7]
+            };
+        };
 
         const studentStack = [
             { text: 'THÔNG TIN HỌC SINH', style: 'cardTitle', margin: [0, 0, 0, 9] },
@@ -356,30 +372,37 @@ Object.assign(PinkyClassApp.prototype, {
             });
         }
 
+        const summaryHeight = this._invoiceQrDataUrl ? 234 : 154;
         const summaryTable = {
-            table: {
-                widths: ['54%', '46%'],
-                body: [[
-                    { stack: studentStack, fillColor: '#f8fbff', verticalAlignment: 'middle' },
-                    { stack: tuitionStack, fillColor: '#f8fbff', verticalAlignment: 'middle' }
-                ]]
-            },
-            layout: {
-                hLineWidth: () => 1,
-                vLineWidth: () => 1,
-                hLineColor: () => '#bfdbfe',
-                vLineColor: () => '#bfdbfe',
-                paddingLeft: () => 14,
-                paddingRight: () => 14,
-                paddingTop: () => 13,
-                paddingBottom: () => 13
-            }
+            columns: [
+                {
+                    width: pdfStudentWidth,
+                    ...roundedCard(studentStack, pdfStudentWidth, summaryHeight, '#f8fbff', {
+                        paddingX: 14, paddingY: 13, radius: 11, verticalAlignment: 'middle'
+                    })
+                },
+                {
+                    width: pdfTuitionWidth,
+                    ...roundedCard(tuitionStack, pdfTuitionWidth, summaryHeight, '#f8fbff', {
+                        paddingX: 14, paddingY: 13, radius: 11, verticalAlignment: 'middle'
+                    })
+                }
+            ],
+            columnGap: pdfColumnGap
         };
 
         const comments = [];
         if (overview) comments.push(commentCard('Tổng quan', overview));
         if (algebra) comments.push(commentCard('Đại số', algebra));
         if (geometry) comments.push(commentCard('Hình học', geometry));
+
+        const roadmapHeight = Math.max(48, 24 + estimateLines(roadmap, 82) * 13);
+        const scheduleText = schedule || 'Chưa có lịch học.';
+        const lowerHeight = Math.max(
+            46,
+            24 + estimateLines(scheduleText, 34) * 13,
+            24 + estimateLines(tuitionText, 34) * 13
+        );
 
         const content = [
             {
@@ -404,13 +427,28 @@ Object.assign(PinkyClassApp.prototype, {
             { text: 'BÁO CÁO HỌC TẬP VÀ HỌC PHÍ', style: 'subtitle', alignment: 'center', margin: [0, 0, 0, 17] },
             summaryTable,
             ...(comments.length ? [sectionHeading('NHẬN XÉT HỌC TẬP'), ...comments] : []),
-            ...(roadmap ? [sectionHeading('LỘ TRÌNH HỌC TẬP'), borderedCard([{ text: roadmap, style: 'bodyText' }], '#fbfdff')] : []),
+            ...(roadmap ? [
+                sectionHeading('LỘ TRÌNH HỌC TẬP'),
+                roundedCard([{ text: roadmap, style: 'bodyText' }], pdfContentWidth, roadmapHeight, '#fbfdff', { radius: 9 })
+            ] : []),
             {
                 columns: [
-                    { width: '*', stack: [sectionHeading('LỊCH HỌC'), borderedCard([{ text: schedule || 'Chưa có lịch học.', style: 'bodyText' }], '#fbfdff')] },
-                    { width: '*', stack: [sectionHeading('CHI TIẾT HỌC PHÍ'), borderedCard([{ text: tuitionText, style: 'bodyText' }], '#fbfdff')] }
+                    {
+                        width: pdfHalfWidth,
+                        stack: [
+                            sectionHeading('LỊCH HỌC'),
+                            roundedCard([{ text: scheduleText, style: 'bodyText' }], pdfHalfWidth, lowerHeight, '#fbfdff', { radius: 9 })
+                        ]
+                    },
+                    {
+                        width: pdfHalfWidth,
+                        stack: [
+                            sectionHeading('CHI TIẾT HỌC PHÍ'),
+                            roundedCard([{ text: tuitionText, style: 'bodyText' }], pdfHalfWidth, lowerHeight, '#fbfdff', { radius: 9 })
+                        ]
+                    }
                 ],
-                columnGap: 14,
+                columnGap: pdfColumnGap,
                 margin: [0, 0, 0, 4]
             }
         ];
@@ -446,17 +484,13 @@ Object.assign(PinkyClassApp.prototype, {
             footer: (currentPage, pageCount) => ({
                 margin: [52, 0, 52, 0],
                 stack: [
-                    ...(currentPage === pageCount ? [{
-                        table: { widths: ['*'], body: [[{ text: note, alignment: 'center', style: 'footerText', fillColor: '#dbeafe' }]] },
-                        layout: {
-                            hLineWidth: () => 0,
-                            vLineWidth: () => 0,
-                            paddingLeft: () => 10,
-                            paddingRight: () => 10,
-                            paddingTop: () => 7,
-                            paddingBottom: () => 7
-                        }
-                    }] : []),
+                    ...(currentPage === pageCount ? [roundedCard(
+                        [{ text: note, alignment: 'center', style: 'footerText' }],
+                        pdfContentWidth,
+                        28,
+                        '#dbeafe',
+                        { radius: 9, paddingX: 10, paddingY: 5, borderColor: '#dbeafe', verticalAlignment: 'middle' }
+                    )] : []),
                     {
                         text: `Trang ${currentPage}/${pageCount}`,
                         alignment: 'center',
@@ -650,8 +684,9 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .value { font-size:13px; color:#1f2937; font-weight:600; text-align:right; }
         #invoiceExportSheet .date-label { font-size:12px; color:#1d4ed8; margin:8px 0 6px; }
         /* Tránh flex + phần tử chữ lồng nhau để html2canvas không làm mất nét chữ. */
-        #invoiceExportSheet .date-chip { display:inline-table; height:30px; line-height:normal; background:#dbeafe; color:#1f2937; font-weight:700; font-size:12px; white-space:nowrap; padding:0 9px; border-radius:999px; margin:0 4px 4px 0; vertical-align:top; }
-        #invoiceExportSheet .date-chip-text { display:table-cell; height:30px; text-align:center; vertical-align:middle; line-height:1; position:relative; top:-4px; }
+        #invoiceExportSheet .date-chip-list { font-size:0; line-height:0; }
+        #invoiceExportSheet .date-chip { display:inline-block; min-height:30px; line-height:16px; background:#dbeafe; color:#1f2937; font-weight:700; font-size:12px; white-space:nowrap; padding:7px 10px; border-radius:999px; margin:0 4px 4px 0; vertical-align:middle; text-align:center; }
+        #invoiceExportSheet .date-chip-text { display:inline; line-height:16px; position:static; }
 
         /* ============ V. TỔNG HỌC PHÍ ============ */
         #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#1d4ed8; }
@@ -703,7 +738,7 @@ Object.assign(PinkyClassApp.prototype, {
                 <div class="row"><span class="label">Số buổi học</span><span class="value">${sessions.length} buổi</span></div>
                 <div class="row"><span class="label">Số giờ học</span><span class="value">${totalHours.toFixed(1)} giờ</span></div>
                 <div class="date-label">Ngày học</div>
-                <div>${dateChips || '<span class="empty-hint">Chưa có buổi học trong kỳ</span>'}</div>
+                <div class="date-chip-list">${dateChips || '<span class="empty-hint">Chưa có buổi học trong kỳ</span>'}</div>
             </div>
 
             <div class="card" style="text-align:center;">
