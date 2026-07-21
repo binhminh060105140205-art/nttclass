@@ -1551,7 +1551,9 @@ Object.assign(PinkyClassApp.prototype, {
                     const priceInputId = prefix === 'session' ? 'sessionPrice' : 'editSessionPrice';
                     const priceEl = document.getElementById(priceInputId);
                     if (priceEl) delete priceEl.dataset.userEdited;
+                    selectAllCheckbox.checked = Array.from(body.querySelectorAll('input[type="checkbox"]')).every(cb => cb.checked);
                     this.updateSessionPricing(prefix);
+                    this.updateSessionNameFromSelectedClasses(prefix);
                 });
 
                 const span = document.createElement('span');
@@ -1587,6 +1589,7 @@ Object.assign(PinkyClassApp.prototype, {
                 const priceEl = document.getElementById(priceInputId);
                 if (priceEl) delete priceEl.dataset.userEdited;
                 this.updateSessionPricing(prefix);
+                this.updateSessionNameFromSelectedClasses(prefix);
             });
 
             groupEl.appendChild(header);
@@ -1601,6 +1604,33 @@ Object.assign(PinkyClassApp.prototype, {
         if (searchInput) this.filterStudentCheckboxGrid(containerId, searchInput.value);
 
         this.updateSessionPricing(prefix);
+        this.updateSessionNameFromSelectedClasses(prefix);
+    },
+
+    // Khi giáo viên tick đủ học sinh của một lớp, gợi ý tên ca theo môn + khối
+    // (ví dụ "Toán 6"). Không ghi đè tên mà giáo viên đã tự nhập.
+    updateSessionNameFromSelectedClasses(prefix) {
+        const gridId = prefix === 'session' ? 'studentsCheckboxGrid' : 'editStudentsCheckboxGrid';
+        const inputId = prefix === 'session' ? 'sessionName' : 'editSessionName';
+        const grid = document.getElementById(gridId);
+        const input = document.getElementById(inputId);
+        if (!grid || !input) return;
+
+        const fullClasses = Array.from(grid.querySelectorAll('.student-class-group')).map(group => {
+            const checkboxes = Array.from(group.querySelectorAll('.student-check-item input[type="checkbox"]'));
+            if (!checkboxes.length || !checkboxes.every(checkbox => checkbox.checked)) return null;
+            const className = group.querySelector('.student-class-name')?.textContent.trim() || '';
+            const classNumber = className.replace(/^lớp\s*/i, '').trim();
+            const classStudents = this.students.filter(student => String(student.class || '').trim() === className);
+            const subject = classStudents.map(student => String(student.subject || '').trim()).find(Boolean) || 'Toán';
+            return `${subject} ${classNumber}`.trim();
+        }).filter(Boolean);
+
+        const suggestion = fullClasses.join(', ');
+        const currentValue = input.value.trim();
+        const previousSuggestion = input.dataset.autoClassName || '';
+        if (!currentValue || currentValue === previousSuggestion) input.value = suggestion;
+        input.dataset.autoClassName = suggestion;
     },
 
     // Thu gọn/mở rộng 1 nhóm lớp trong lưới chọn học sinh. remember=true khi

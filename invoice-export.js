@@ -165,11 +165,24 @@ Object.assign(PinkyClassApp.prototype, {
         return sessions;
     },
 
-    // Nạp pdfMake và bộ font Roboto Unicode khi người dùng xuất PDF lần đầu.
-    // PDF được dựng từ văn bản thật, không chụp HTML thành ảnh, nên dấu tiếng Việt,
-    // căn lề và việc xuống trang ổn định hơn html2canvas.
+    // Nạp pdfMake và font Be Vietnam Pro từ chính máy chủ trước, tránh phụ thuộc CDN
+    // khiến nút xuất PDF hỏng khi mạng yếu hoặc trình duyệt chặn tài nguyên ngoài.
     async ensurePdfMake() {
-        if (window.pdfMake && window.pdfMake.vfs) return window.pdfMake;
+        const configureFonts = (pdfMake) => {
+            const regularFontUrl = new URL('/assets/fonts/BeVietnamPro-Regular.ttf', window.location.href).href;
+            const boldFontUrl = new URL('/assets/fonts/BeVietnamPro-Bold.ttf', window.location.href).href;
+            pdfMake.fonts = {
+                ...(pdfMake.fonts || {}),
+                BeVietnamPro: {
+                    normal: regularFontUrl,
+                    bold: boldFontUrl,
+                    italics: regularFontUrl,
+                    bolditalics: boldFontUrl
+                }
+            };
+            return pdfMake;
+        };
+        if (window.pdfMake && window.pdfMake.vfs) return configureFonts(window.pdfMake);
         if (!this._pdfMakeLoadingPromise) {
             const loadScript = (src) => new Promise((resolve, reject) => {
                 const existing = document.querySelector(`script[src="${src}"]`);
@@ -189,10 +202,30 @@ Object.assign(PinkyClassApp.prototype, {
                 document.head.appendChild(script);
             });
 
+            const loadWithFallback = async (sources) => {
+                let lastError;
+                for (const source of sources) {
+                    try {
+                        await loadScript(source);
+                        return;
+                    } catch (err) {
+                        lastError = err;
+                    }
+                }
+                throw lastError || new Error('Không tải được thư viện PDF');
+            };
+
             this._pdfMakeLoadingPromise = (async () => {
-                await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.12/pdfmake.min.js');
-                await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.12/vfs_fonts.js');
-                return window.pdfMake;
+                await loadWithFallback([
+                    '/node_modules/pdfmake/build/pdfmake.min.js',
+                    'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.12/pdfmake.min.js'
+                ]);
+                await loadWithFallback([
+                    '/node_modules/pdfmake/build/vfs_fonts.js',
+                    'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.12/vfs_fonts.js'
+                ]);
+                if (!window.pdfMake?.vfs) throw new Error('Bộ font PDF chưa tải hoàn chỉnh');
+                return configureFonts(window.pdfMake);
             })();
         }
         return this._pdfMakeLoadingPromise;
@@ -480,22 +513,22 @@ Object.assign(PinkyClassApp.prototype, {
                 ]
             }),
             content,
-            defaultStyle: { font: 'Roboto', fontSize: 10, color: '#1f2937', lineHeight: 1.25 },
+            defaultStyle: { font: 'BeVietnamPro', fontSize: 10, color: '#17345f', lineHeight: 1.25 },
             styles: {
-                brand: { fontSize: 14, color: '#1d4ed8', bold: true },
+                brand: { fontSize: 14, color: '#0b438f', bold: true },
                 eyebrow: { fontSize: 8.5, color: '#64748b', bold: true, characterSpacing: 1.2 },
                 meta: { fontSize: 9, color: '#334155', bold: true },
-                title: { fontSize: 22, color: '#1d4ed8', bold: true },
+                title: { fontSize: 22, color: '#0b438f', bold: true },
                 subtitle: { fontSize: 8.5, color: '#64748b', bold: true, characterSpacing: 1.1 },
-                cardTitle: { fontSize: 11.5, color: '#1d4ed8', bold: true },
-                sectionTitle: { fontSize: 11.5, color: '#1d4ed8', bold: true, characterSpacing: 0.35 },
-                label: { fontSize: 9.5, color: '#1d4ed8' },
-                value: { fontSize: 10, color: '#1f2937', bold: true },
-                inlineLabel: { fontSize: 10, color: '#1d4ed8', bold: true },
-                bodyText: { fontSize: 10, color: '#1f2937' },
-                totalPrice: { fontSize: 25, color: '#1f2937', bold: true },
+                cardTitle: { fontSize: 11.5, color: '#0b438f', bold: true },
+                sectionTitle: { fontSize: 11.5, color: '#0b438f', bold: true, characterSpacing: 0.35 },
+                label: { fontSize: 9.5, color: '#0b438f' },
+                value: { fontSize: 10, color: '#17345f', bold: true },
+                inlineLabel: { fontSize: 10, color: '#0b438f', bold: true },
+                bodyText: { fontSize: 10, color: '#17345f' },
+                totalPrice: { fontSize: 25, color: '#17345f', bold: true },
                 summaryHint: { fontSize: 8.5, color: '#64748b' },
-                footerText: { fontSize: 9.5, color: '#1f2937', bold: true }
+                footerText: { fontSize: 9.5, color: '#17345f', bold: true }
             },
             footer: (currentPage, pageCount) => ({
                 margin: [52, 0, 52, 0],
@@ -530,11 +563,31 @@ Object.assign(PinkyClassApp.prototype, {
             const st = this.students.find(s => s.id === studentId);
             const todayStr = this.toISODateOnly(new Date());
             const safeName = String((st && st.name) || 'HocSinh').normalize('NFC').replace(/\s+/g, '');
-            pdfMake.createPdf(definition).download(`PhieuHocPhi_${safeName}_${todayStr}.pdf`);
+            const pdfBlob = await new Promise((resolve, reject) => {
+                try {
+                    pdfMake.createPdf(definition).getBlob(resolve);
+                } catch (err) {
+                    reject(err);
+                }
+            });
+            if (!(pdfBlob instanceof Blob) || pdfBlob.size < 100) throw new Error('File PDF tạo ra không hợp lệ');
+
+            const header = await pdfBlob.slice(0, 5).text();
+            if (header !== '%PDF-') throw new Error('File tải xuống không đúng định dạng PDF');
+
+            const downloadUrl = URL.createObjectURL(pdfBlob);
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = `PhieuHocPhi_${safeName}_${todayStr}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 30000);
             this.showToast('Đã xuất phiếu học phí dạng PDF thành công!', 'success');
         } catch (err) {
             console.error('Lỗi xuất phiếu học phí PDF:', err);
-            this.showToast('Không thể xuất PDF. Vui lòng kiểm tra kết nối và thử lại!', 'error');
+            this._pdfMakeLoadingPromise = null;
+            this.showToast(err.message || 'Không thể xuất PDF, vui lòng thử lại.', 'error');
         } finally {
             this.setBtnLoading('btnExportInvoicePdf', false);
         }
@@ -663,13 +716,12 @@ Object.assign(PinkyClassApp.prototype, {
 
         /* ============ I. ROOT ============ */
         #invoiceExportSheet {
-            /* Arial có metric chữ ổn định hơn khi html2canvas chụp ảnh; chỉ áp dụng cho phiếu PNG. */
-            font-family: Arial, 'Segoe UI', sans-serif;
+            font-family: 'Be Vietnam Pro', Arial, sans-serif;
             background: #eff6ff;
             width: 600px;
             max-width: 600px;
             padding: 20px;
-            color: #1f2937;
+            color: #17345f;
             overflow-wrap: break-word;
             word-break: break-word;
             -webkit-font-smoothing: antialiased;
@@ -678,9 +730,9 @@ Object.assign(PinkyClassApp.prototype, {
 
         /* ============ II. HEADER ============ */
         #invoiceExportSheet .header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; row-gap:6px; }
-        #invoiceExportSheet .badge { display:inline-flex; align-items:center; line-height:1.4; color:#1f2937; font-size:13px; font-weight:500; border:none; padding:0; border-radius:0; gap:0; background:none; }
-        #invoiceExportSheet .phone { font-size:13px; color:#1f2937; }
-        #invoiceExportSheet .title { text-align:center; font-size:26px; font-weight:800; color:#1d4ed8; margin:6px 0 22px; line-height:1.5; }
+        #invoiceExportSheet .badge { display:inline-flex; align-items:center; line-height:1.4; color:#17345f; font-size:13px; font-weight:500; border:none; padding:0; border-radius:0; gap:0; background:none; }
+        #invoiceExportSheet .phone { font-size:13px; color:#17345f; }
+        #invoiceExportSheet .title { text-align:center; font-size:26px; font-weight:800; color:#0b438f; margin:6px 0 22px; line-height:1.5; }
 
         /* ============ III. GRID 2 CỘT ============ */
         #invoiceExportSheet .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
@@ -689,30 +741,30 @@ Object.assign(PinkyClassApp.prototype, {
         /* Riêng padding trên của Lịch học/Lộ trình/Ghi chú học phí: chỉnh số đầu tiên (padding-top) này */
         #invoiceExportSheet .card.card-tight { padding:8px 14px 14px; }
         /* Khoảng cách tiêu đề "📝 Nhận xét học tập" -> ô comment-box đầu tiên: chỉnh margin-bottom này */
-        #invoiceExportSheet .section-title { font-size:15px; font-weight:600; color:#1d4ed8; line-height:1.55; margin-bottom:6px; }
+        #invoiceExportSheet .section-title { font-size:15px; font-weight:700; color:#0b438f; line-height:1.55; margin-bottom:6px; }
         /* Riêng khoảng cách tiêu đề "📝 Nhận xét học tập" -> ô đầu tiên: chỉnh margin-bottom này */
         #invoiceExportSheet .section-title.section-title-notes { margin-bottom:10px; }
 
         /* ============ IV. THÔNG TIN HỌC SINH ============ */
         #invoiceExportSheet .row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:5px 0; border-bottom:1px dashed #bfdbfe; }
         #invoiceExportSheet .row:last-of-type { border-bottom:none; }
-        #invoiceExportSheet .label { font-size:12px; color:#1d4ed8; }
-        #invoiceExportSheet .value { font-size:13px; color:#1f2937; font-weight:600; text-align:right; }
-        #invoiceExportSheet .date-label { font-size:12px; color:#1d4ed8; margin:8px 0 6px; }
+        #invoiceExportSheet .label { font-size:12px; color:#0b438f; }
+        #invoiceExportSheet .value { font-size:13px; color:#17345f; font-weight:600; text-align:right; }
+        #invoiceExportSheet .date-label { font-size:12px; color:#0b438f; margin:8px 0 6px; }
         /* Tránh flex + phần tử chữ lồng nhau để html2canvas không làm mất nét chữ. */
         #invoiceExportSheet .date-chip-list { font-size:0; line-height:0; }
-        #invoiceExportSheet .date-chip { display:inline-block; min-height:30px; line-height:16px; background:#dbeafe; color:#1f2937; font-weight:700; font-size:12px; white-space:nowrap; padding:7px 7px; border-radius:999px; margin:0 3px 4px 0; vertical-align:middle; text-align:center; }
+        #invoiceExportSheet .date-chip { display:inline-block; min-height:30px; line-height:16px; background:#dbeafe; color:#17345f; font-weight:700; font-size:12px; white-space:nowrap; padding:7px 7px; border-radius:999px; margin:0 3px 4px 0; vertical-align:middle; text-align:center; }
         #invoiceExportSheet .date-chip-text { display:inline-block; line-height:16px; position:static; }
 
         /* ============ V. TỔNG HỌC PHÍ ============ */
-        #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#1d4ed8; }
+        #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#0b438f; }
         /* Khoảng cách TỔNG HỌC PHÍ -> 700.000đ: chỉnh số margin-top này (đang để 6px bằng với gap dưới) */
-        #invoiceExportSheet .total-price { text-align:center; font-size:30px; font-weight:700; color:#1f2937; margin-top:0px; }
+        #invoiceExportSheet .total-price { text-align:center; font-size:30px; font-weight:700; color:#17345f; margin-top:0px; }
         /* Khoảng cách 700.000đ -> ảnh QR: chỉnh số margin-top này (đang để 6px bằng với gap trên) */
         #invoiceExportSheet .qr { width:110px; height:110px; display:block; margin:16px auto 8px; object-fit:contain; border-radius:10px; border:2px solid #bfdbfe; background:#fff; }
         #invoiceExportSheet .divider { border-top:1px solid #bfdbfe; margin:8px 0; }
-        #invoiceExportSheet .bank { text-align:center; font-size:13px; color:#1d4ed8; line-height:1.4; }
-        #invoiceExportSheet .bank b { color:#1f2937; }
+        #invoiceExportSheet .bank { text-align:center; font-size:13px; color:#0b438f; line-height:1.4; }
+        #invoiceExportSheet .bank b { color:#17345f; }
 
         /* ============ VI. NHẬN XÉT ============ */
         /* Padding bên trong mỗi ô "Tổng quan/Đại số/Hình học": chỉnh 4 số trong padding này */
@@ -721,8 +773,8 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .comment-box:last-child { margin-bottom:0; }
         #invoiceExportSheet .comment-box::before { content:''; position:absolute; left:0; top:0; width:5px; height:100%; background:#3b82f6; border-radius:12px 0 0 12px; }
         /* Cùng quy ước với bảng thông tin phía trên: nhãn xanh, nội dung đen. */
-        #invoiceExportSheet .comment-text { color:#1f2937; font-size:13px; line-height:1.5; }
-        #invoiceExportSheet .comment-text strong { color:#1d4ed8; }
+        #invoiceExportSheet .comment-text { color:#17345f; font-size:13px; line-height:1.5; }
+        #invoiceExportSheet .comment-text strong { color:#0b438f; }
 
         /* ============ VII. 2 CARD DƯỚI ============ */
         #invoiceExportSheet .grid-bottom { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:10px; }
@@ -730,12 +782,12 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .list-item:last-child { margin-bottom:0; }
         #invoiceExportSheet .list-item .mark { color:#3b82f6; font-weight:700; flex-shrink:0; }
         #invoiceExportSheet .list-item .list-text { min-width:0; }
-        #invoiceExportSheet .list-item strong { color:#1d4ed8; }
+        #invoiceExportSheet .list-item strong { color:#0b438f; }
         #invoiceExportSheet .list-item.no-mark { display:block; }
         #invoiceExportSheet .empty-hint { font-size:13px; color:#93c5fd; }
 
         /* ============ VIII. FOOTER ============ */
-        #invoiceExportSheet .footer { background:#dbeafe; border-radius:12px; padding:9px 8px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; font-weight:600; color:#1f2937; }
+        #invoiceExportSheet .footer { background:#dbeafe; border-radius:12px; padding:9px 8px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; font-weight:600; color:#17345f; }
         #invoiceExportSheet .footer-text { line-height:1.5; }
         #invoiceExportSheet .section-block { margin-top:10px; }
     </style>
