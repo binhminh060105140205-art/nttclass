@@ -4266,6 +4266,27 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     background: #f8fafc !important;
     color: var(--text-main) !important;
 }
+.log-export-capture.is-exporting * {
+    animation: none !important;
+    transition: none !important;
+    text-shadow: none !important;
+}
+.log-export-capture.is-exporting .student-log-title,
+.log-export-capture.is-exporting .student-log-subtitle {
+    color: #ffffff !important;
+    opacity: 1 !important;
+}
+.log-export-capture.is-exporting .session-number-val,
+.log-export-capture.is-exporting .session-time-val,
+.log-export-capture.is-exporting .session-date-cell,
+.log-export-capture.is-exporting .session-date-day,
+.log-export-capture.is-exporting .session-date-dm,
+.log-export-capture.is-exporting .session-content-text,
+.log-export-capture.is-exporting .comment-text,
+.log-export-capture.is-exporting .student-log-note {
+    color: #334155 !important;
+    opacity: 1 !important;
+}
 /* --- Xóa icon góc phải trên 4 thẻ thống kê Tổng quan (●, ◷, ↗, ₫) ---
    Đặt cuối file để ghi đè chắc chắn mọi định nghĩa ::after trùng lặp
    ở trên (kể cả bản theme sáng/tối), không cần dò sửa từng chỗ. */

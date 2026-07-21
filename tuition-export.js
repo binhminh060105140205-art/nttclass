@@ -123,6 +123,80 @@ Object.assign(PinkyClassApp.prototype, {
         return this._html2canvasLoadingPromise;
     },
 
+    isMobileExportDevice() {
+        const coarsePointer = typeof window !== 'undefined' && window.matchMedia
+            ? window.matchMedia('(pointer: coarse)').matches
+            : false;
+        return coarsePointer || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+    },
+
+    canvasToPngBlob(canvas) {
+        return new Promise((resolve, reject) => {
+            canvas.toBlob(blob => {
+                if (blob) resolve(blob);
+                else reject(new Error('Không thể tạo file ảnh PNG.'));
+            }, 'image/png');
+        });
+    },
+
+    openMobileExportPreview() {
+        if (!this.isMobileExportDevice()) return null;
+        try {
+            const preview = window.open('', '_blank');
+            if (!preview) return null;
+            preview.document.write('<!doctype html><title>Đang tạo ảnh</title><meta name="viewport" content="width=device-width,initial-scale=1"><p style="font:16px sans-serif;padding:24px">Đang tạo ảnh nhật ký...</p>');
+            preview.document.close();
+            return preview;
+        } catch (_) {
+            return null;
+        }
+    },
+
+    async deliverStudentLogImage(blob, fileName, preview) {
+        const objectUrl = URL.createObjectURL(blob);
+        const file = typeof File === 'function'
+            ? new File([blob], fileName, { type: 'image/png' })
+            : null;
+
+        if (this.isMobileExportDevice() && file && typeof navigator.share === 'function') {
+            try {
+                const canShare = typeof navigator.canShare !== 'function'
+                    || navigator.canShare({ files: [file] });
+                if (canShare) {
+                    await navigator.share({ files: [file], title: 'Nhật ký học tập' });
+                    if (preview && !preview.closed) preview.close();
+                    URL.revokeObjectURL(objectUrl);
+                    return 'shared';
+                }
+            } catch (err) {
+                if (err && err.name === 'AbortError') {
+                    if (preview && !preview.closed) preview.close();
+                    URL.revokeObjectURL(objectUrl);
+                    return 'cancelled';
+                }
+            }
+        }
+
+        if (preview && !preview.closed) {
+            const safeUrl = objectUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+            preview.document.open();
+            preview.document.write(`<!doctype html><title>Nhật ký học tập</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#eef3f8;font:14px sans-serif;color:#334155}body{padding:12px}img{display:block;width:100%;height:auto;background:#fff;box-shadow:0 4px 18px #0002}p{margin:0 0 12px}</style><p>Nhấn giữ ảnh để lưu hoặc chia sẻ.</p><img src="${safeUrl}" alt="Nhật ký học tập">`);
+            preview.document.close();
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 5 * 60 * 1000);
+            return 'preview';
+        }
+
+        const link = document.createElement('a');
+        link.download = fileName;
+        link.href = objectUrl;
+        link.rel = 'noopener';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 60 * 1000);
+        return 'downloaded';
+    },
+
     // Chụp khung Nhật ký học tập (#logExportCapture) ra 1 file ảnh PNG — ẩn tạm
     // cột "Thao tác" trong lúc chụp (class .log-export-hide, xem style.css)
     // để ảnh gửi phụ huynh không có nút bấm thao tác trên web.
@@ -142,78 +216,31 @@ Object.assign(PinkyClassApp.prototype, {
         const tableWrapperEl = captureEl.querySelector('.table-wrapper');
 
         this.setBtnLoading('btnExportLogImage', true, 'Đang tạo ảnh...');
-        captureEl.classList.add('is-exporting');
-
-        // FIX: trước đây khi màn hình không đủ rộng để hiển thị hết bảng
-        // (bảng phải cuộn ngang trong .table-wrapper, hoặc trang đang cuộn
-        // dọc dở), html2canvas chỉ chụp đúng phần đang HIỂN THỊ trên màn
-        // hình (theo scroll hiện tại) => ảnh xuất ra bị cắt/thiếu y hệt
-        // những gì đang bị che trên UI. Cách khắc phục: tạm thời ép khung
-        // chụp hiển thị TOÀN BỘ nội dung (không giới hạn theo viewport hay
-        // vị trí cuộn), chụp xong thì khôi phục lại giao diện như cũ.
-        const prevWrapperStyleAttr = tableWrapperEl ? tableWrapperEl.getAttribute('style') : null;
-        const prevWrapperScrollLeft = tableWrapperEl ? tableWrapperEl.scrollLeft : 0;
-        const prevWindowScrollX = window.scrollX;
-        const prevWindowScrollY = window.scrollY;
-
-        // FIX (màn hình nhỏ / điện thoại): CSS có "body { overflow-x: hidden }"
-        // để trang không bị kéo ngang khi lướt web bình thường. Nhưng khi bảng
-        // Nhật ký học tập phải giãn rộng hơn màn hình (nhiều cột: STT...Ghi
-        // chú), chính overflow-x:hidden của <body> sẽ CẮT MẤT phần bảng vượt
-        // ra ngoài màn hình trước khi html2canvas kịp chụp — dù .table-wrapper
-        // đã được mở overflow ở trên. Nên phải tạm gỡ luôn overflow của
-        // <html> và <body> trong lúc chụp, rồi khôi phục lại ngay sau đó.
-        const htmlEl = document.documentElement;
-        const prevHtmlOverflow = htmlEl.style.overflow;
-        const prevBodyOverflow = document.body.style.overflow;
-        htmlEl.style.overflow = 'visible';
-        document.body.style.overflow = 'visible';
-
-        // FIX (nguyên nhân còn sót lại): không chỉ <html>/<body> mới cắt nội
-        // dung. Nhật ký học tập thường nằm trong modal/card có overflow-y:auto
-        // + max-height theo viewport (để cuộn được trên màn hình nhỏ) — CHÍNH
-        // các thẻ cha đó (chứ không phải #logExportCapture hay .table-wrapper)
-        // mới là nơi đang "giam" phần nội dung vượt khung nhìn, nên khi thu
-        // nhỏ màn hình, phần bị che theo overflow của modal sẽ KHÔNG có mặt
-        // trong ảnh xuất ra dù .table-wrapper đã mở overflow. Cách khắc phục:
-        // duyệt ngược TẤT CẢ các phần tử cha từ #logExportCapture lên tới
-        // <body>, lưu lại style cũ của từng cha, rồi tạm gỡ overflow/max-height
-        // của toàn bộ chuỗi cha đó trong lúc chụp — chụp xong khôi phục lại
-        // y nguyên như trước.
-        const ancestors = [];
-        for (let el = captureEl.parentElement; el && el !== document.documentElement; el = el.parentElement) {
-            ancestors.push(el);
-        }
-        const prevAncestorStyleAttrs = ancestors.map(el => el.getAttribute('style'));
-        ancestors.forEach(el => {
-            el.style.overflow = 'visible';
-            el.style.overflowX = 'visible';
-            el.style.overflowY = 'visible';
-            el.style.maxHeight = 'none';
-            el.style.maxWidth = 'none';
-        });
-
-        if (tableWrapperEl) {
-            tableWrapperEl.scrollLeft = 0;
-            tableWrapperEl.style.overflow = 'visible';
-            tableWrapperEl.style.width = 'max-content';
-            tableWrapperEl.style.maxWidth = 'none';
-        }
-        // Cuộn trang về đầu để html2canvas không lấy nhầm gốc tọa độ theo
-        // vị trí cuộn dọc hiện tại của trang.
-        window.scrollTo(0, 0);
+        const preview = this.openMobileExportPreview();
 
         try {
             const html2canvas = await this.ensureHtml2Canvas();
+            if (document.fonts && document.fonts.ready) await document.fonts.ready;
 
-            // Đo lại kích thước ĐẦY ĐỦ của khung sau khi đã bỏ giới hạn cuộn,
-            // rồi truyền thẳng cho html2canvas để nó render đúng toàn bộ nội
-            // dung (không cắt theo clientWidth/clientHeight của khung).
-            const fullWidth = Math.ceil(captureEl.scrollWidth);
-            const fullHeight = Math.ceil(captureEl.scrollHeight);
+            const fullWidth = Math.ceil(Math.max(
+                captureEl.scrollWidth,
+                tableWrapperEl ? tableWrapperEl.scrollWidth : 0,
+                captureEl.getBoundingClientRect().width
+            ));
+            const fullHeight = Math.ceil(Math.max(
+                captureEl.scrollHeight,
+                tableWrapperEl ? tableWrapperEl.scrollHeight : 0,
+                captureEl.getBoundingClientRect().height
+            ));
+            const pixelBudget = 16000000;
+            const preferredScale = this.isMobileExportDevice() ? 1.5 : 2;
+            const scale = Math.max(1, Math.min(
+                preferredScale,
+                Math.sqrt(pixelBudget / Math.max(1, fullWidth * fullHeight))
+            ));
 
             const canvas = await html2canvas(captureEl, {
-                scale: 2,
+                scale,
                 backgroundColor: '#ffffff',
                 useCORS: true,
                 width: fullWidth,
@@ -221,45 +248,51 @@ Object.assign(PinkyClassApp.prototype, {
                 windowWidth: fullWidth,
                 windowHeight: fullHeight,
                 scrollX: 0,
-                scrollY: 0
+                scrollY: 0,
+                // Apply export-only layout to html2canvas's clone, not the live page.
+                onclone: clonedDocument => {
+                    const clonedCapture = clonedDocument.getElementById('logExportCapture');
+                    if (!clonedCapture) return;
+
+                    clonedCapture.classList.add('is-exporting');
+                    clonedCapture.style.width = `${fullWidth}px`;
+                    clonedCapture.style.maxWidth = 'none';
+                    clonedCapture.style.overflow = 'visible';
+
+                    const clonedWrapper = clonedCapture.querySelector('.table-wrapper');
+                    if (clonedWrapper) {
+                        clonedWrapper.style.width = `${fullWidth}px`;
+                        clonedWrapper.style.maxWidth = 'none';
+                        clonedWrapper.style.overflow = 'visible';
+                    }
+
+                    for (let el = clonedCapture.parentElement; el && el !== clonedDocument.documentElement; el = el.parentElement) {
+                        el.style.overflow = 'visible';
+                        el.style.overflowX = 'visible';
+                        el.style.overflowY = 'visible';
+                        el.style.maxHeight = 'none';
+                        el.style.maxWidth = 'none';
+                    }
+                }
             });
 
             const todayStr = this.toISODateOnly(new Date());
-            const link = document.createElement('a');
-            link.download = `NhatKyHocTap_${studentName.replace(/\s+/g, '')}_${todayStr}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
+            const fileName = `NhatKyHocTap_${studentName.replace(/\s+/g, '')}_${todayStr}.png`;
+            const blob = await this.canvasToPngBlob(canvas);
+            const delivery = await this.deliverStudentLogImage(blob, fileName, preview);
 
-            this.showToast("Đã xuất ảnh nhật ký học tập thành công!", "success");
+            if (delivery === 'cancelled') {
+                this.showToast('Đã hủy chia sẻ ảnh.', 'info');
+            } else if (delivery === 'preview') {
+                this.showToast('Ảnh đã mở ở tab mới. Nhấn giữ ảnh để lưu hoặc chia sẻ.', 'success');
+            } else {
+                this.showToast("Đã xuất ảnh nhật ký học tập thành công!", "success");
+            }
         } catch (err) {
             console.error('Lỗi xuất ảnh:', err);
+            if (preview && !preview.closed) preview.close();
             this.showToast(err.message || "Xuất ảnh thất bại, vui lòng thử lại.", "error");
         } finally {
-            // Khôi phục lại giao diện cuộn ngang/dọc như trước khi chụp.
-            if (tableWrapperEl) {
-                if (prevWrapperStyleAttr === null) {
-                    tableWrapperEl.removeAttribute('style');
-                } else {
-                    tableWrapperEl.setAttribute('style', prevWrapperStyleAttr);
-                }
-                tableWrapperEl.scrollLeft = prevWrapperScrollLeft;
-            }
-            // Khôi phục lại overflow gốc của <html>/<body> (đã tạm gỡ ở trên
-            // để chụp đủ ảnh trên màn hình nhỏ).
-            htmlEl.style.overflow = prevHtmlOverflow;
-            document.body.style.overflow = prevBodyOverflow;
-            // Khôi phục lại style gốc của toàn bộ chuỗi thẻ cha (modal/card...)
-            // đã tạm gỡ overflow/max-height ở trên.
-            ancestors.forEach((el, i) => {
-                const prevAttr = prevAncestorStyleAttrs[i];
-                if (prevAttr === null) {
-                    el.removeAttribute('style');
-                } else {
-                    el.setAttribute('style', prevAttr);
-                }
-            });
-            window.scrollTo(prevWindowScrollX, prevWindowScrollY);
-            captureEl.classList.remove('is-exporting');
             this.setBtnLoading('btnExportLogImage', false);
         }
     },
