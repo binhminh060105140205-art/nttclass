@@ -268,10 +268,13 @@ Object.assign(PinkyClassApp.prototype, {
         const schedule = nfc(document.getElementById('invoiceSchedule').value);
         const customTuition = nfc(document.getElementById('invoiceTuitionNote').value);
         const note = nfc(document.getElementById('invoiceNote').value) || 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.';
-        const dates = sessions.map(sess => {
+        const dateParts = sessions.map(sess => {
             const [year, month, day] = String(sess.date || '').split('-');
             return day && month && year ? `${day}/${month}` : String(sess.date || '');
-        }).filter(Boolean).join(', ') || 'Chưa có buổi học trong kỳ';
+        }).filter(Boolean);
+        const dates = dateParts.length
+            ? Array.from({ length: Math.ceil(dateParts.length / 5) }, (_, index) => dateParts.slice(index * 5, index * 5 + 5).join(', ')).join('\n')
+            : 'Chưa có buổi học trong kỳ';
 
         const feeLines = [];
         if (privateCount > 0) feeLines.push(`${privateCount} buổi học riêng: ${this.formatVND(privateUnit)}/buổi`);
@@ -415,7 +418,14 @@ Object.assign(PinkyClassApp.prototype, {
             });
         }
 
-        const summaryHeight = this._invoiceQrDataUrl ? 234 : 154;
+        // Chiều cao phải đủ cho bảng thông tin + ngày học; nếu giữ số cố định,
+        // dòng ngày dài sẽ tràn khỏi viền card và lệch với card học phí bên cạnh.
+        const dateLineCount = Math.max(1, estimateLines(dates, 16));
+        const studentNameLineCount = Math.max(1, estimateLines(`${nfc(st.name)} - ${nfc(st.class)}`, 20));
+        const summaryHeight = Math.max(
+            this._invoiceQrDataUrl ? 250 : 188,
+            162 + dateLineCount * 15 + Math.max(0, studentNameLineCount - 1) * 14
+        );
         const summaryTable = {
             columns: [
                 {
@@ -477,6 +487,7 @@ Object.assign(PinkyClassApp.prototype, {
                 })
             ] : []),
             {
+                unbreakable: true,
                 columns: [
                     {
                         width: pdfHalfWidth,
@@ -735,8 +746,11 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .title { text-align:center; font-size:26px; font-weight:800; color:#0b438f; margin:6px 0 22px; line-height:1.5; }
 
         /* ============ III. GRID 2 CỘT ============ */
-        #invoiceExportSheet .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+        #invoiceExportSheet .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:stretch; }
         #invoiceExportSheet .card { border:1.5px solid #bfdbfe; border-radius:18px; padding:14px; background:#fff; }
+        #invoiceExportSheet .grid-2 > .card,
+        #invoiceExportSheet .grid-bottom > .card { min-width:0; }
+        #invoiceExportSheet .grid-2 > .card:nth-child(2) { display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding-top:14px; }
         #invoiceExportSheet .student-info-card { padding-top:8px; }
         /* Riêng padding trên của Lịch học/Lộ trình/Ghi chú học phí: chỉnh số đầu tiên (padding-top) này */
         #invoiceExportSheet .card.card-tight { padding:8px 14px 14px; }
@@ -746,15 +760,15 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .section-title.section-title-notes { margin-bottom:10px; }
 
         /* ============ IV. THÔNG TIN HỌC SINH ============ */
-        #invoiceExportSheet .row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:5px 0; border-bottom:1px dashed #bfdbfe; }
+        #invoiceExportSheet .row { display:grid; grid-template-columns:minmax(84px, 36%) minmax(0, 1fr); align-items:start; gap:8px; padding:5px 0; border-bottom:1px dashed #bfdbfe; }
         #invoiceExportSheet .row:last-of-type { border-bottom:none; }
         #invoiceExportSheet .label { font-size:12px; color:#0b438f; }
-        #invoiceExportSheet .value { font-size:13px; color:#17345f; font-weight:600; text-align:right; }
+        #invoiceExportSheet .value { min-width:0; overflow-wrap:anywhere; font-size:13px; color:#17345f; font-weight:600; text-align:right; }
         #invoiceExportSheet .date-label { font-size:12px; color:#0b438f; margin:8px 0 6px; }
         /* Tránh flex + phần tử chữ lồng nhau để html2canvas không làm mất nét chữ. */
-        #invoiceExportSheet .date-chip-list { font-size:0; line-height:0; }
-        #invoiceExportSheet .date-chip { display:inline-block; min-height:30px; line-height:16px; background:#dbeafe; color:#17345f; font-weight:700; font-size:12px; white-space:nowrap; padding:7px 7px; border-radius:999px; margin:0 3px 4px 0; vertical-align:middle; text-align:center; }
-        #invoiceExportSheet .date-chip-text { display:inline-block; line-height:16px; position:static; }
+        #invoiceExportSheet .date-chip-list { display:flex; flex-wrap:wrap; align-content:flex-start; gap:4px; }
+        #invoiceExportSheet .date-chip { display:inline-flex; align-items:center; justify-content:center; min-height:30px; line-height:16px; background:#dbeafe; color:#17345f; font-weight:700; font-size:12px; white-space:nowrap; padding:7px 7px; border-radius:999px; margin:0; vertical-align:middle; text-align:center; }
+        #invoiceExportSheet .date-chip-text { display:inline; line-height:16px; position:static; }
 
         /* ============ V. TỔNG HỌC PHÍ ============ */
         #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#0b438f; }
