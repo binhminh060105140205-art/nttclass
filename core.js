@@ -41,7 +41,7 @@ class PinkyClassApp {
         this.aiChatHistory = []; // Lịch sử hội thoại Trợ lý AI (chỉ lưu ở client, gửi kèm mỗi lần hỏi để AI nhớ ngữ cảnh)
         this.requests = [];
         this.requestFilter = 'pending';
-        this.requestImageDraft = null;
+        this.requestImageDraft = [];
         this.requestsLoaded = false;
 
         // Áp dụng lại màu giao diện đã lưu (nếu có) ngay từ đầu, trước khi vẽ

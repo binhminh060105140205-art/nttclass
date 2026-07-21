@@ -125,9 +125,9 @@ app.use(cors({
     credentials: true
 }));
 
-// Ảnh đính kèm của trang Yêu cầu được gửi dưới dạng data URL. Giới hạn tổng
-// body 5 MB và kiểm tra riêng ảnh tối đa 3 MB ở API bên dưới.
-app.use(express.json({ limit: '5mb' }));
+// Ảnh đính kèm của trang Yêu cầu được gửi dưới dạng data URL. Body đủ rộng
+// cho nhiều ảnh; API bên dưới vẫn giới hạn từng ảnh và tổng dung lượng.
+app.use(express.json({ limit: '20mb' }));
 app.use(express.static(path.join(__dirname)));
 
 // Serve index.html
@@ -398,6 +398,7 @@ let poolPromise = pgPool.query('SELECT 1')
                 TextContent TEXT NOT NULL DEFAULT '',
                 ImageData TEXT NULL,
                 ImageName VARCHAR(255) NULL,
+                ImagesData TEXT NULL,
                 Completed BOOLEAN NOT NULL DEFAULT FALSE,
                 Priority BOOLEAN NOT NULL DEFAULT FALSE,
                 CreatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -405,6 +406,7 @@ let poolPromise = pgPool.query('SELECT 1')
                 CompletedAt TIMESTAMP NULL
             )`);
             await pgPool.query('ALTER TABLE TaskRequests ADD COLUMN IF NOT EXISTS Priority BOOLEAN NOT NULL DEFAULT FALSE');
+            await pgPool.query('ALTER TABLE TaskRequests ADD COLUMN IF NOT EXISTS ImagesData TEXT NULL');
             await pgPool.query('CREATE INDEX IF NOT EXISTS idx_taskrequests_owner_status ON TaskRequests (OwnerId, OwnerRole, Completed, CreatedAt DESC)');
             await pgPool.query('CREATE INDEX IF NOT EXISTS idx_taskrequests_owner_priority ON TaskRequests (OwnerId, OwnerRole, Priority, CreatedAt DESC)');
         } catch (migErr) {
@@ -2345,6 +2347,8 @@ async function buildAiContext(req) {
 // TASK REQUESTS API — yêu cầu cá nhân có ảnh đính kèm
 // ==========================================
 const REQUEST_IMAGE_MAX_BYTES = 3 * 1024 * 1024;
+const REQUEST_IMAGES_MAX_COUNT = 10;
+const REQUEST_IMAGES_MAX_TOTAL_BYTES = 12 * 1024 * 1024;
 const REQUEST_IMAGE_HEADER_PATTERN = /^data:image\/(png|jpeg|webp|gif);base64,/;
 
 function validateRequestImage(imageData) {
@@ -2363,20 +2367,69 @@ function validateRequestImage(imageData) {
     const padding = (base64.match(/=*$/) || [''])[0].length;
     const byteSize = Math.floor(base64.length * 3 / 4) - padding;
     if (byteSize > REQUEST_IMAGE_MAX_BYTES) return { error: 'Ảnh đính kèm không được vượt quá 3 MB.' };
-    return { value: imageData };
+    return { value: imageData, bytes: byteSize };
+}
+
+function validateRequestImages(rawImages) {
+    if (rawImages === undefined || rawImages === null) return { value: [] };
+    if (!Array.isArray(rawImages)) return { error: 'Danh sách ảnh đính kèm không hợp lệ.' };
+    if (rawImages.length > REQUEST_IMAGES_MAX_COUNT) {
+        return { error: `Mỗi yêu cầu chỉ được đính kèm tối đa ${REQUEST_IMAGES_MAX_COUNT} ảnh.` };
+    }
+
+    const images = [];
+    let totalBytes = 0;
+    for (let index = 0; index < rawImages.length; index++) {
+        const raw = rawImages[index];
+        const dataUrl = typeof raw === 'string' ? raw : raw?.dataUrl;
+        const name = typeof raw === 'object' && raw
+            ? String(raw.name || '').trim().slice(0, 255)
+            : '';
+        if (!dataUrl) return { error: `Ảnh ${index + 1}: Dữ liệu ảnh không hợp lệ.` };
+        const image = validateRequestImage(dataUrl);
+        if (image.error) return { error: `Ảnh ${index + 1}: ${image.error}` };
+        totalBytes += image.bytes || 0;
+        if (totalBytes > REQUEST_IMAGES_MAX_TOTAL_BYTES) {
+            return { error: 'Tổng dung lượng ảnh đính kèm không được vượt quá 12 MB.' };
+        }
+        images.push({ dataUrl: image.value, name: name || `anh-dinh-kem-${index + 1}` });
+    }
+    return { value: images };
+}
+
+function normalizeRequestRow(row) {
+    let images = [];
+    if (row?.imagesData) {
+        try {
+            const parsed = JSON.parse(row.imagesData);
+            if (Array.isArray(parsed)) {
+                images = parsed.filter(image => image && typeof image.dataUrl === 'string');
+            }
+        } catch (_) {}
+    }
+    if (!images.length && row?.imageData) {
+        images = [{ dataUrl: row.imageData, name: row.imageName || 'Ảnh yêu cầu' }];
+    }
+    return {
+        ...row,
+        images,
+        imageData: row?.imageData || images[0]?.dataUrl || null,
+        imageName: row?.imageName || images[0]?.name || null,
+        imagesData: undefined
+    };
 }
 
 app.get('/api/requests', requireAuth, async (req, res) => {
     try {
         const result = await pgPool.query(`
             SELECT Id AS "id", TextContent AS "text", ImageData AS "imageData",
-                   ImageName AS "imageName", Completed AS "completed", Priority AS "priority",
+                   ImageName AS "imageName", ImagesData AS "imagesData", Completed AS "completed", Priority AS "priority",
                    CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"
             FROM TaskRequests
             WHERE OwnerId = $1 AND OwnerRole = $2
             ORDER BY Priority DESC, Completed ASC, CreatedAt DESC`,
         [req.authUser.userId, req.authUser.role]);
-        res.json(result.rows);
+        res.json(result.rows.map(normalizeRequestRow));
     } catch (err) {
         console.error('[GET /api/requests]', err);
         res.status(500).json({ error: 'Không thể tải danh sách yêu cầu.' });
@@ -2387,22 +2440,26 @@ app.post('/api/requests', requireAuth, async (req, res) => {
     const text = String(req.body?.text || '').trim();
     const imageName = String(req.body?.imageName || '').trim().slice(0, 255);
     const priority = req.body?.priority ?? false;
-    const image = validateRequestImage(req.body?.imageData || null);
-    if (image.error) return res.status(400).json({ error: image.error });
+    const rawImages = Array.isArray(req.body?.images)
+        ? req.body.images
+        : (req.body?.imageData ? [{ dataUrl: req.body.imageData, name: imageName }] : []);
+    const imageList = validateRequestImages(rawImages);
+    if (imageList.error) return res.status(400).json({ error: imageList.error });
     if (typeof priority !== 'boolean') return res.status(400).json({ error: 'Trạng thái ưu tiên không hợp lệ.' });
-    if (!text && !image.value) return res.status(400).json({ error: 'Hãy nhập nội dung hoặc chọn một ảnh.' });
+    if (!text && imageList.value.length === 0) return res.status(400).json({ error: 'Hãy nhập nội dung hoặc chọn một ảnh.' });
     if (text.length > 5000) return res.status(400).json({ error: 'Nội dung yêu cầu không được vượt quá 5.000 ký tự.' });
 
     const id = `req_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    const firstImage = imageList.value[0] || { dataUrl: null, name: imageName || null };
     try {
         const result = await pgPool.query(`
-            INSERT INTO TaskRequests (Id, OwnerId, OwnerRole, TextContent, ImageData, ImageName, Completed, Priority)
-            VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7)
+            INSERT INTO TaskRequests (Id, OwnerId, OwnerRole, TextContent, ImageData, ImageName, ImagesData, Completed, Priority)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8)
             RETURNING Id AS "id", TextContent AS "text", ImageData AS "imageData",
-                      ImageName AS "imageName", Completed AS "completed", Priority AS "priority",
+                      ImageName AS "imageName", ImagesData AS "imagesData", Completed AS "completed", Priority AS "priority",
                       CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"`,
-        [id, req.authUser.userId, req.authUser.role, text, image.value, imageName || null, priority]);
-        res.status(201).json(result.rows[0]);
+        [id, req.authUser.userId, req.authUser.role, text, firstImage.dataUrl, firstImage.name || null, JSON.stringify(imageList.value), priority]);
+        res.status(201).json(normalizeRequestRow(result.rows[0]));
     } catch (err) {
         console.error('[POST /api/requests]', err);
         res.status(500).json({ error: 'Không thể lưu yêu cầu.' });
@@ -2421,11 +2478,11 @@ app.put('/api/requests/:id/status', requireAuth, async (req, res) => {
                 CompletedAt = CASE WHEN $1 THEN CURRENT_TIMESTAMP ELSE NULL END
             WHERE Id = $2 AND OwnerId = $3 AND OwnerRole = $4
             RETURNING Id AS "id", TextContent AS "text", ImageData AS "imageData",
-                      ImageName AS "imageName", Completed AS "completed", Priority AS "priority",
+                      ImageName AS "imageName", ImagesData AS "imagesData", Completed AS "completed", Priority AS "priority",
                       CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"`,
         [completed, req.params.id, req.authUser.userId, req.authUser.role]);
         if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy yêu cầu.' });
-        res.json(result.rows[0]);
+        res.json(normalizeRequestRow(result.rows[0]));
     } catch (err) {
         console.error('[PUT /api/requests/:id/status]', err);
         res.status(500).json({ error: 'Không thể cập nhật yêu cầu.' });
@@ -2443,11 +2500,11 @@ app.put('/api/requests/:id/priority', requireAuth, async (req, res) => {
             SET Priority = $1, UpdatedAt = CURRENT_TIMESTAMP
             WHERE Id = $2 AND OwnerId = $3 AND OwnerRole = $4
             RETURNING Id AS "id", TextContent AS "text", ImageData AS "imageData",
-                      ImageName AS "imageName", Completed AS "completed", Priority AS "priority",
+                      ImageName AS "imageName", ImagesData AS "imagesData", Completed AS "completed", Priority AS "priority",
                       CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"`,
         [priority, req.params.id, req.authUser.userId, req.authUser.role]);
         if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy yêu cầu.' });
-        res.json(result.rows[0]);
+        res.json(normalizeRequestRow(result.rows[0]));
     } catch (err) {
         console.error('[PUT /api/requests/:id/priority]', err);
         res.status(500).json({ error: 'Không thể cập nhật mức độ ưu tiên.' });

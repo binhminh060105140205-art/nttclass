@@ -483,8 +483,8 @@
                         <textarea id="requestTextInput" class="form-control request-text-input" maxlength="5000" rows="3"
                             placeholder="Nhập yêu cầu hoặc nhấn Ctrl+V để dán ảnh đã sao chép..."></textarea>
                         <div id="requestImagePreview" class="request-image-preview" hidden>
-                            <img id="requestImagePreviewImg" alt="Ảnh đính kèm xem trước">
-                            <button type="button" id="requestRemoveImageBtn" class="request-image-remove" aria-label="Bỏ ảnh đính kèm">&times;</button>
+                            <div id="requestImagePreviewGrid" class="request-image-preview-grid"></div>
+                            <button type="button" id="requestRemoveImageBtn" class="request-image-remove-all">Xóa ảnh</button>
                         </div>
                     </div>
                     <div class="request-composer-actions">
@@ -492,7 +492,7 @@
                             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m4 17 5-4 3 3 3-2 5 4"/></svg>
                             Thêm ảnh
                         </label>
-                        <input id="requestImageInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+                        <input id="requestImageInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
                         <label class="request-status-control request-priority-control request-compose-priority" for="requestPriorityInput">
                             <input id="requestPriorityInput" type="checkbox">
                             <span class="request-checkmark" aria-hidden="true"></span>
@@ -581,8 +581,18 @@
                         <div class="grid-form">
                             <!-- Session Type (1-on-1 vs Group) -->
                             <div class="form-group">
-                                <label for="sessionType">Loại buổi học <span style="color:red;">*</span></label>
-                                <select id="sessionType" class="form-control" required>
+                                <label>Loại buổi học <span style="color:red;">*</span></label>
+                                <div class="session-type-choice-group" role="radiogroup" aria-label="Loại buổi học">
+                                    <label class="session-type-choice">
+                                        <input type="radio" name="sessionTypeChoice" value="riêng" checked>
+                                        <span>Học riêng (1 vs 1)</span>
+                                    </label>
+                                    <label class="session-type-choice">
+                                        <input type="radio" name="sessionTypeChoice" value="chung">
+                                        <span>Học chung (Dạy nhóm)</span>
+                                    </label>
+                                </div>
+                                <select id="sessionType" class="session-type-select-hidden" required aria-hidden="true" tabindex="-1">
                                     <option value="riêng">Học riêng (1 vs 1)</option>
                                     <option value="chung">Học chung (Dạy nhóm)</option>
                                 </select>
@@ -1134,8 +1144,18 @@
                 <div class="modal-body" style="overflow-y: auto; min-height: 0;">
                     <div class="grid-form">
                         <div class="form-group">
-                            <label for="editSessionType">Loại buổi học <span style="color:red;">*</span></label>
-                            <select id="editSessionType" class="form-control" required>
+                            <label>Loại buổi học <span style="color:red;">*</span></label>
+                            <div class="session-type-choice-group" role="radiogroup" aria-label="Loại buổi học">
+                                <label class="session-type-choice">
+                                    <input type="radio" name="editSessionTypeChoice" value="riêng" checked>
+                                    <span>Học riêng (1 vs 1)</span>
+                                </label>
+                                <label class="session-type-choice">
+                                    <input type="radio" name="editSessionTypeChoice" value="chung">
+                                    <span>Học chung (Dạy nhóm)</span>
+                                </label>
+                            </div>
+                            <select id="editSessionType" class="session-type-select-hidden" required aria-hidden="true" tabindex="-1">
                                 <option value="riêng">Học riêng (1 vs 1)</option>
                                 <option value="chung">Học chung (Dạy nhóm)</option>
                             </select>

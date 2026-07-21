@@ -36,7 +36,7 @@ Object.assign(PinkyClassApp.prototype, {
         list.addEventListener('click', (event) => {
             const imageButton = event.target.closest('.request-item-image');
             if (!imageButton) return;
-            this.openRequestImage(imageButton.dataset.requestId);
+            this.openRequestImage(imageButton.dataset.requestId, imageButton.dataset.imageIndex);
         });
 
         document.addEventListener('keydown', (event) => {
@@ -45,19 +45,25 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     async selectRequestImage(event) {
-        const file = event.target.files && event.target.files[0];
-        if (!file) return;
-        await this.setRequestImageFile(file);
+        const files = Array.from(event.target.files || []);
+        for (const file of files) await this.setRequestImageFile(file);
+        event.target.value = '';
     },
 
     async pasteRequestImage(event) {
-        const items = Array.from(event.clipboardData?.items || []);
-        const imageItem = items.find(item => item.kind === 'file' && item.type.startsWith('image/'));
-        if (!imageItem) return;
-        const file = imageItem.getAsFile();
-        if (!file) return;
+        const files = Array.from(event.clipboardData?.items || [])
+            .filter(item => item.kind === 'file' && item.type.startsWith('image/'))
+            .map(item => item.getAsFile())
+            .filter(Boolean);
+        if (!files.length) return;
         event.preventDefault();
-        await this.setRequestImageFile(file, `anh-dan-${Date.now()}.${(file.type.split('/')[1] || 'png').replace('jpeg', 'jpg')}`, true);
+        for (const file of files) {
+            await this.setRequestImageFile(
+                file,
+                `anh-dan-${Date.now()}.${(file.type.split('/')[1] || 'png').replace('jpeg', 'jpg')}`,
+                true
+            );
+        }
     },
 
     async setRequestImageFile(file, fallbackName = '', pasted = false) {
@@ -69,9 +75,16 @@ Object.assign(PinkyClassApp.prototype, {
             return;
         }
         if (file.size > 3 * 1024 * 1024) {
-            this.showToast('Ảnh đính kèm không được vượt quá 3 MB.', 'error');
-            const input = document.getElementById('requestImageInput');
-            if (input) input.value = '';
+            this.showToast('Mỗi ảnh đính kèm không được vượt quá 3 MB.', 'error');
+            return;
+        }
+        if (this.requestImageDraft.length >= 10) {
+            this.showToast('Tối đa 10 ảnh cho mỗi yêu cầu.', 'error');
+            return;
+        }
+        const totalBytes = this.requestImageDraft.reduce((sum, image) => sum + Number(image.size || 0), 0);
+        if (totalBytes + file.size > 12 * 1024 * 1024) {
+            this.showToast('Tổng dung lượng ảnh không được vượt quá 12 MB.', 'error');
             return;
         }
 
@@ -82,29 +95,56 @@ Object.assign(PinkyClassApp.prototype, {
                 reader.onerror = () => reject(new Error('Không thể đọc ảnh đã chọn.'));
                 reader.readAsDataURL(file);
             });
-            this.requestImageDraft = { dataUrl, name: file.name || fallbackName || 'anh-dinh-kem' };
-            document.getElementById('requestImagePreviewImg').src = dataUrl;
-            document.getElementById('requestImagePreview').hidden = false;
+            if (this.requestImageDraft.some(image => image.dataUrl === dataUrl)) return;
+            this.requestImageDraft.push({
+                dataUrl,
+                name: file.name || fallbackName || `anh-dinh-kem-${this.requestImageDraft.length + 1}`,
+                size: file.size
+            });
+            this.renderRequestImagePreviews();
             if (pasted) this.showToast('Đã dán ảnh từ bộ nhớ tạm.', 'success');
         } catch (err) {
             this.showToast(err.message, 'error');
-            this.clearRequestImage();
         }
     },
 
-    clearRequestImage() {
-        this.requestImageDraft = null;
-        const input = document.getElementById('requestImageInput');
+    renderRequestImagePreviews() {
         const preview = document.getElementById('requestImagePreview');
-        const image = document.getElementById('requestImagePreviewImg');
-        if (input) input.value = '';
-        if (image) image.removeAttribute('src');
-        if (preview) preview.hidden = true;
+        const grid = document.getElementById('requestImagePreviewGrid');
+        if (!preview || !grid) return;
+        grid.innerHTML = this.requestImageDraft.map((image, index) => `
+            <div class="request-image-preview-item">
+                <img src="${this.escapeHtmlAttr(image.dataUrl)}" alt="${this.escapeHtmlAttr(image.name || `Ảnh ${index + 1}`)}">
+                <button type="button" class="request-image-remove-one" data-image-index="${index}" aria-label="Bỏ ảnh ${index + 1}">&times;</button>
+            </div>
+        `).join('');
+        preview.hidden = this.requestImageDraft.length === 0;
+        grid.querySelectorAll('.request-image-remove-one').forEach(button => {
+            button.addEventListener('click', () => {
+                this.requestImageDraft.splice(Number(button.dataset.imageIndex), 1);
+                this.renderRequestImagePreviews();
+            });
+        });
     },
 
-    openRequestImage(requestId) {
+    clearRequestImage() {
+        this.requestImageDraft = [];
+        const input = document.getElementById('requestImageInput');
+        if (input) input.value = '';
+        this.renderRequestImagePreviews();
+    },
+
+    getRequestImages(item) {
+        if (Array.isArray(item?.images) && item.images.length) return item.images;
+        return item?.imageData
+            ? [{ dataUrl: item.imageData, name: item.imageName || 'Ảnh yêu cầu' }]
+            : [];
+    },
+
+    openRequestImage(requestId, imageIndex = 0) {
         const item = this.requests.find(request => String(request.id) === String(requestId));
-        if (!item?.imageData) return;
+        const selectedImage = this.getRequestImages(item)[Number(imageIndex) || 0];
+        if (!selectedImage?.dataUrl) return;
         let viewer = document.getElementById('requestImageViewer');
         if (!viewer) {
             viewer = document.createElement('div');
@@ -123,9 +163,9 @@ Object.assign(PinkyClassApp.prototype, {
             document.body.appendChild(viewer);
         }
         const image = viewer.querySelector('img');
-        image.src = item.imageData;
-        image.alt = item.imageName || 'Ảnh yêu cầu';
-        viewer.querySelector('.request-image-viewer-name').textContent = item.imageName || 'Ảnh đính kèm';
+        image.src = selectedImage.dataUrl;
+        image.alt = selectedImage.name || 'Ảnh yêu cầu';
+        viewer.querySelector('.request-image-viewer-name').textContent = selectedImage.name || 'Ảnh đính kèm';
         viewer.hidden = false;
         document.body.classList.add('request-image-viewer-open');
         viewer.querySelector('.request-image-viewer-close').focus();
@@ -160,7 +200,7 @@ Object.assign(PinkyClassApp.prototype, {
         const priorityInput = document.getElementById('requestPriorityInput');
         const text = textInput.value.trim();
         const priority = Boolean(priorityInput?.checked);
-        if (!text && !this.requestImageDraft) {
+        if (!text && this.requestImageDraft.length === 0) {
             this.showToast('Hãy nhập nội dung hoặc chọn một ảnh.', 'error');
             return;
         }
@@ -172,8 +212,10 @@ Object.assign(PinkyClassApp.prototype, {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     text,
-                    imageData: this.requestImageDraft?.dataUrl || null,
-                    imageName: this.requestImageDraft?.name || null,
+                    images: this.requestImageDraft.map(image => ({
+                        dataUrl: image.dataUrl,
+                        name: image.name
+                    })),
                     priority
                 })
             });
@@ -251,10 +293,11 @@ Object.assign(PinkyClassApp.prototype, {
             const textHtml = item.text
                 ? `<div class="request-item-text">${this.escapeHtml(item.text).replace(/\n/g, '<br>')}</div>`
                 : '';
-            const imageHtml = item.imageData
-                ? `<button type="button" class="request-item-image" data-request-id="${this.escapeHtmlAttr(item.id)}" title="Phóng to ảnh">
-                       <img src="${this.escapeHtmlAttr(item.imageData)}" alt="${this.escapeHtmlAttr(item.imageName || 'Ảnh yêu cầu')}">
-                   </button>`
+            const imageHtml = this.getRequestImages(item).length
+                ? `<div class="request-item-images">${this.getRequestImages(item).map((image, imageIndex) => `
+                       <button type="button" class="request-item-image" data-request-id="${this.escapeHtmlAttr(item.id)}" data-image-index="${imageIndex}" title="Phóng to ảnh">
+                           <img src="${this.escapeHtmlAttr(image.dataUrl)}" alt="${this.escapeHtmlAttr(image.name || 'Ảnh yêu cầu')}">
+                       </button>`).join('')}</div>`
                 : '';
             return `
                 <article class="request-item ${item.completed ? 'is-completed' : ''} ${item.priority ? 'is-priority' : ''}">

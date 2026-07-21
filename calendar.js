@@ -1056,6 +1056,7 @@ Object.assign(PinkyClassApp.prototype, {
     // "+ Ghi buổi học mới" để luôn bắt đầu từ 1 form sạch.
     resetSessionLoggerForm() {
         document.getElementById('sessionLoggerForm').reset();
+        this.syncSessionTypeChoice('session');
         delete document.getElementById('sessionPrice').dataset.userEdited;
         const today = this.toISODateOnly(new Date());
         document.getElementById('sessionDate').value = today;
@@ -1081,6 +1082,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         document.getElementById('editSessionId').value = sess.id;
         document.getElementById('editSessionType').value = sess.type;
+        this.syncSessionTypeChoice('editSession');
         document.getElementById('editSessionName').value = sess.sessionName || '';
         document.getElementById('editSessionDate').value = sess.date;
         document.getElementById('editSessionStartTime').value = sess.startTime;
@@ -1644,6 +1646,15 @@ Object.assign(PinkyClassApp.prototype, {
 
     // Áp dụng quy tắc "Học riêng chỉ 1 học sinh / Học chung nhiều học sinh" khi
     // đổi loại buổi học, và cập nhật lại nhãn + đơn giá tương ứng.
+    syncSessionTypeChoice(prefix) {
+        const selectId = prefix === 'session' ? 'sessionType' : 'editSessionType';
+        const choiceName = prefix === 'session' ? 'sessionTypeChoice' : 'editSessionTypeChoice';
+        const selected = document.querySelector(`input[name="${choiceName}"][value="${document.getElementById(selectId).value}"]`);
+        document.querySelectorAll(`input[name="${choiceName}"]`).forEach(radio => {
+            radio.checked = radio === selected;
+        });
+    },
+
     applySessionTypeRules(prefix) {
         const typeSelectId = prefix === 'session' ? 'sessionType' : 'editSessionType';
         const gridId = prefix === 'session' ? 'studentsCheckboxGrid' : 'editStudentsCheckboxGrid';

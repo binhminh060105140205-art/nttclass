@@ -350,6 +350,19 @@ Object.assign(PinkyClassApp.prototype, {
         document.getElementById('editSessionType').addEventListener('change', () => {
             this.applySessionTypeRules('editSession');
         });
+        const bindSessionTypeChoices = (selectId, choiceName) => {
+            const select = document.getElementById(selectId);
+            if (!select) return;
+            document.querySelectorAll(`input[name="${choiceName}"]`).forEach(radio => {
+                radio.addEventListener('change', () => {
+                    if (!radio.checked) return;
+                    select.value = radio.value;
+                    select.dispatchEvent(new Event('change'));
+                });
+            });
+        };
+        bindSessionTypeChoices('sessionType', 'sessionTypeChoice');
+        bindSessionTypeChoices('editSessionType', 'editSessionTypeChoice');
         document.getElementById('sessionPrice').addEventListener('change', (e) => {
             e.target.dataset.userEdited = 'true';
             this.updateSessionPricing('session');
