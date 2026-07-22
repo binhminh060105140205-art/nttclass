@@ -3384,9 +3384,161 @@ textarea.form-control {
    SCORES MODULE (Phase 3 + Phase 4 — Điểm số & Biểu đồ)
    ========================================== */
 
+.scores-workspace {
+    padding: 20px;
+    overflow: hidden;
+}
+
+.score-page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 24px;
+    margin-bottom: 18px;
+}
+
+.score-page-kicker {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--primary);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+}
+
+.score-page-header h2 {
+    margin: 0;
+    color: var(--text-main);
+    font-size: clamp(1.45rem, 2.5vw, 2rem);
+    letter-spacing: -0.035em;
+}
+
+.score-page-header p {
+    max-width: 690px;
+    margin: 6px 0 0;
+    color: var(--text-muted);
+    font-size: 0.84rem;
+    line-height: 1.55;
+}
+
+.score-view-switch {
+    flex: none;
+    max-width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--border-color);
+    border-radius: 13px;
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.score-view-tab {
+    border: 0;
+    border-radius: 9px;
+    padding: 9px 13px;
+    color: var(--text-muted);
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.score-view-tab.active {
+    color: #fff;
+    background: var(--primary);
+    box-shadow: 0 6px 16px rgba(var(--primary-rgb), 0.22);
+}
+
+.score-filter-panel {
+    position: relative;
+    overflow: hidden;
+    padding: 15px;
+    border: 1px solid rgba(var(--primary-rgb), 0.18);
+    border-radius: 16px;
+    background:
+        linear-gradient(120deg, rgba(var(--primary-rgb), 0.08), rgba(255, 255, 255, 0.86) 55%),
+        repeating-linear-gradient(135deg, transparent 0 18px, rgba(var(--primary-rgb), 0.025) 18px 19px);
+}
+
+.score-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+    gap: 12px;
+}
+
+.score-filter-grid label,
+.score-batch-controls label {
+    min-width: 0;
+    color: var(--text-main);
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+.score-filter-grid .form-control,
+.score-batch-controls .form-control {
+    margin-top: 6px;
+}
+
+.score-filter-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.score-filter-footer span {
+    color: var(--primary);
+    font-size: 0.76rem;
+    font-weight: 800;
+}
+
+.score-outside-entry {
+    flex-direction: column;
+    margin: 16px 0;
+}
+
+.score-outside-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 12px 15px;
+    border: 1px dashed rgba(var(--primary-rgb), 0.38);
+    border-radius: 13px;
+    color: var(--primary);
+    background: rgba(var(--primary-rgb), 0.045);
+    font-family: inherit;
+    font-weight: 800;
+    cursor: pointer;
+    text-align: left;
+}
+
+.score-outside-toggle small {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-align: right;
+}
+
+.score-outside-toggle:hover,
+.score-outside-toggle[aria-expanded="true"] {
+    border-style: solid;
+    background: rgba(var(--primary-rgb), 0.1);
+}
+
+#outsideScorePanel[hidden] {
+    display: none !important;
+}
+
 .score-batch-panel {
     flex-direction: column;
-    margin-bottom: 20px;
+    margin-top: 10px;
     padding: 18px;
     border: 1px solid var(--border-color);
     border-radius: 16px;
@@ -3405,9 +3557,9 @@ textarea.form-control {
 .score-batch-heading p,
 .score-batch-actions span { margin: 0; color: var(--text-muted); font-size: 0.8rem; }
 .score-batch-status { flex: none; padding: 6px 10px; border-radius: 999px; background: var(--primary); color: #fff; font-size: 0.75rem; font-weight: 700; }
-.score-batch-controls { display: grid; grid-template-columns: 1fr 1fr 1fr 2fr; gap: 12px; margin: 16px 0; }
-.score-batch-controls label { min-width: 0; color: var(--text-main); font-size: 0.78rem; font-weight: 700; }
-.score-batch-controls .form-control { margin-top: 6px; }
+.score-batch-controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+.score-batch-test-name,
+.score-batch-note { grid-column: span 2; }
 .score-batch-table-wrap { border-top: 1px solid var(--border-color); border-radius: 12px; max-height: 390px; overflow: auto; }
 .score-batch-table { min-width: 720px; }
 .score-batch-table th { position: sticky; top: 0; z-index: 1; }
@@ -3416,6 +3568,194 @@ textarea.form-control {
 .score-batch-table .batch-score-student-note { min-width: 220px; }
 .score-batch-empty { padding: 24px !important; text-align: center; color: var(--text-muted); }
 .score-batch-actions { margin-top: 14px; }
+
+.score-results {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.score-test-card,
+.score-student-card {
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.045);
+}
+
+.score-test-header {
+    display: grid;
+    grid-template-columns: 105px minmax(220px, 1fr) 100px auto;
+    align-items: center;
+    gap: 16px;
+    padding: 15px 16px;
+    border-bottom: 1px solid var(--border-color);
+    background: linear-gradient(110deg, rgba(var(--primary-rgb), 0.065), rgba(255, 255, 255, 0.82));
+}
+
+.score-test-date {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.score-test-date span {
+    color: var(--text-main);
+    font-size: 0.9rem;
+    font-weight: 800;
+}
+
+.score-test-date small,
+.score-test-title p,
+.score-student-header p,
+.score-row-meta,
+.score-muted {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+}
+
+.score-test-title h3,
+.score-student-header h3 {
+    margin: 5px 0 2px;
+    color: var(--text-main);
+    font-size: 0.96rem;
+}
+
+.score-test-title p,
+.score-student-header p {
+    margin: 0;
+}
+
+.score-test-average,
+.score-student-average {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.score-test-average small,
+.score-student-average small {
+    color: var(--text-muted);
+    font-size: 0.64rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.score-test-average strong,
+.score-student-average strong {
+    color: var(--primary);
+    font-size: 1.45rem;
+    line-height: 1.1;
+}
+
+.score-test-actions,
+.score-actions-cell {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 7px;
+}
+
+.score-result-table-wrap {
+    border-radius: 0;
+}
+
+.score-result-table {
+    min-width: 680px;
+}
+
+.score-result-table td,
+.score-result-table th {
+    padding: 10px 14px;
+}
+
+.score-result-table td:first-child strong,
+.score-row-meta {
+    display: block;
+}
+
+.score-row-meta {
+    margin-top: 3px;
+}
+
+.score-value-cell {
+    color: var(--primary);
+    font-size: 0.9rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.score-value-cell span {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.score-icon-btn {
+    border: 1px solid rgba(var(--primary-rgb), 0.22);
+    border-radius: 8px;
+    padding: 6px 9px;
+    color: var(--primary);
+    background: rgba(var(--primary-rgb), 0.06);
+    font-family: inherit;
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.score-icon-btn.danger {
+    border-color: rgba(220, 38, 38, 0.22);
+    color: #b91c1c;
+    background: rgba(220, 38, 38, 0.055);
+}
+
+.score-student-header {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-color);
+    background: linear-gradient(110deg, rgba(15, 118, 110, 0.07), rgba(255, 255, 255, 0.84));
+}
+
+.score-student-avatar {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 13px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--primary), #0f766e);
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.score-empty-state {
+    padding: 46px 20px;
+    border: 1px dashed var(--border-color);
+    border-radius: 16px;
+    text-align: center;
+    background: rgba(var(--primary-rgb), 0.035);
+}
+
+.score-empty-state strong {
+    color: var(--text-main);
+}
+
+.score-empty-state p {
+    margin: 5px 0 0;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.score-modal-help {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.76rem;
+    line-height: 1.5;
+}
 
 .undo-deletion-stack {
     position: fixed;
@@ -3450,20 +3790,37 @@ textarea.form-control {
 @keyframes undo-countdown { to { transform: scaleX(0); } }
 
 @media (max-width: 767px) {
+    .scores-workspace { padding: 13px; }
+    .score-page-header { align-items: stretch; flex-direction: column; gap: 14px; }
+    .score-view-switch { width: 100%; }
+    .score-filter-grid { grid-template-columns: 1fr; }
+    .score-filter-footer { align-items: flex-start; flex-direction: column; }
+    .score-outside-toggle { align-items: flex-start; flex-direction: column; gap: 5px; }
+    .score-outside-toggle small { text-align: left; }
     .score-batch-panel { padding: 14px; }
     .score-batch-heading,
     .score-batch-actions { align-items: stretch; flex-direction: column; }
     .score-batch-status { align-self: flex-start; }
     .score-batch-controls { grid-template-columns: 1fr; }
+    .score-batch-test-name,
+    .score-batch-note { grid-column: auto; }
     .score-batch-actions .btn { width: 100%; }
+    .score-test-header { grid-template-columns: 1fr auto; gap: 10px; }
+    .score-test-date { grid-column: 1 / -1; flex-direction: row; align-items: center; }
+    .score-test-title { min-width: 0; }
+    .score-test-average { align-items: flex-end; }
+    .score-test-actions { grid-column: 1 / -1; justify-content: flex-start; }
+    .score-student-header { grid-template-columns: auto 1fr; }
+    .score-student-average { grid-column: 1 / -1; align-items: flex-start; padding-left: 54px; }
     .undo-deletion-stack { right: 12px; bottom: 12px; width: calc(100vw - 24px); }
 }
 
 /* Bảng tóm tắt điểm trung bình theo từng loại (BTVN / Kiểm tra / Thái độ / Chung) */
 .score-summary-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 12px;
+    margin-top: 16px;
     margin-bottom: 16px;
 }
 
@@ -3560,11 +3917,14 @@ textarea.form-control {
     }
 }
 
-@media (max-width: 1024px) {
+@media (min-width: 768px) and (max-width: 1024px) {
     .score-summary-grid {
         grid-template-columns: repeat(2, 1fr);
     }
+    .score-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .score-batch-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .score-test-header { grid-template-columns: 95px minmax(180px, 1fr) 90px; }
+    .score-test-actions { grid-column: 1 / -1; justify-content: flex-start; }
 }
 
 /* Sidebar collapse control: desktop users can keep only navigation icons. */
@@ -4286,6 +4646,24 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
 [data-theme-mode="dark"] .score-summary-card {
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), var(--primary-soft)) !important;
     border-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-theme-mode="dark"] .score-view-switch,
+[data-theme-mode="dark"] .score-filter-panel,
+[data-theme-mode="dark"] .score-test-card,
+[data-theme-mode="dark"] .score-student-card,
+[data-theme-mode="dark"] .score-empty-state {
+    background: rgba(15, 23, 42, 0.78) !important;
+    border-color: rgba(255, 255, 255, 0.09) !important;
+}
+[data-theme-mode="dark"] .score-test-header,
+[data-theme-mode="dark"] .score-student-header {
+    background: linear-gradient(110deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.86)) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-theme-mode="dark"] .score-outside-toggle {
+    color: #7dd3fc !important;
+    background: rgba(15, 23, 42, 0.62) !important;
+    border-color: rgba(125, 211, 252, 0.28) !important;
 }
 [data-theme-mode="dark"] .score-batch-panel {
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.94)) !important;

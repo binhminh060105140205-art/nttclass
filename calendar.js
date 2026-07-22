@@ -1615,9 +1615,14 @@ Object.assign(PinkyClassApp.prototype, {
 Object.assign(PinkyClassApp.prototype, {
     populateStudentPickers() {
         const globalPicker = document.getElementById('globalStudentPicker');
-        const scoresPicker = document.getElementById('scoresStudentPicker');
+        const scoreFilterStudent = document.getElementById('scoreFilterStudent');
+        const previousScoreFilter = scoreFilterStudent?.value || '';
         globalPicker.innerHTML = '';
-        if (scoresPicker) scoresPicker.innerHTML = '';
+        if (scoreFilterStudent) {
+            scoreFilterStudent.innerHTML = this.currentRole === 'student'
+                ? ''
+                : '<option value="">Tất cả học sinh</option>';
+        }
 
         this.students.forEach(st => {
             const opt = document.createElement('option');
@@ -1625,7 +1630,7 @@ Object.assign(PinkyClassApp.prototype, {
             opt.innerText = `${st.name} (${st.class})`;
             globalPicker.appendChild(opt);
 
-            if (scoresPicker) scoresPicker.appendChild(opt.cloneNode(true));
+            if (scoreFilterStudent) scoreFilterStudent.appendChild(opt.cloneNode(true));
         });
 
         if (this.students.length > 0) {
@@ -1636,7 +1641,14 @@ Object.assign(PinkyClassApp.prototype, {
                 this.currentStudentId = this.students[0].id;
                 globalPicker.value = this.currentStudentId;
             }
-            if (scoresPicker) scoresPicker.value = this.currentStudentId;
+            if (scoreFilterStudent) {
+                const desiredScoreFilter = this.currentRole === 'student'
+                    ? this.currentStudentId
+                    : previousScoreFilter;
+                scoreFilterStudent.value = [...scoreFilterStudent.options].some(option => option.value === desiredScoreFilter)
+                    ? desiredScoreFilter
+                    : '';
+            }
         }
 
         // Also render checkboxes in scheduler logger form
