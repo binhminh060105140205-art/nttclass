@@ -2267,6 +2267,139 @@ textarea.form-control {
     font-weight: 500;
 }
 
+/* ---- Nhập điểm ngay trong buổi học (mặc định thu gọn) ---- */
+.session-score-entry {
+    gap: 0;
+}
+
+.session-score-toggle {
+    width: 100%;
+    min-height: 46px;
+    border: 1px solid rgba(var(--primary-rgb), 0.28);
+    border-radius: 12px;
+    padding: 10px 14px;
+    background: rgba(var(--primary-rgb), 0.06);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.session-score-toggle:hover,
+.session-score-toggle[aria-expanded="true"] {
+    background: rgba(var(--primary-rgb), 0.12);
+    border-color: rgba(var(--primary-rgb), 0.48);
+}
+
+.session-score-toggle-status {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: right;
+}
+
+.session-score-panel {
+    margin-top: 10px;
+    padding: 16px;
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.58);
+}
+
+.session-score-common-grid {
+    display: grid;
+    grid-template-columns: minmax(140px, 1fr) minmax(210px, 1.5fr) minmax(100px, 0.65fr);
+    gap: 12px;
+}
+
+.session-score-group-field {
+    grid-column: span 2;
+}
+
+.session-score-table-heading {
+    margin: 16px 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--text-main);
+    font-size: 0.85rem;
+}
+
+.session-score-table-heading span {
+    color: var(--primary);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.session-score-table-wrap {
+    border-radius: 12px;
+    border: 1px solid rgba(var(--primary-rgb), 0.15);
+    overflow-x: auto;
+}
+
+.session-score-table {
+    min-width: 570px;
+}
+
+.session-score-table th:first-child {
+    width: 30%;
+}
+
+.session-score-table th:nth-child(2) {
+    width: 115px;
+}
+
+.session-score-table td,
+.session-score-table th {
+    padding: 9px 10px;
+}
+
+.session-score-table .form-control {
+    padding: 9px 10px;
+    border-radius: 10px;
+    box-shadow: none;
+}
+
+.session-score-student-name {
+    color: var(--text-main);
+    font-weight: 700;
+}
+
+.session-score-student-class {
+    display: block;
+    margin-top: 2px;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 500;
+}
+
+@media (max-width: 640px) {
+    .session-score-common-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .session-score-group-field {
+        grid-column: auto;
+    }
+
+    .session-score-panel {
+        padding: 12px;
+    }
+
+    .session-score-table-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 3px;
+    }
+}
+
 /* ---- Lặp lại buổi học trong tháng (chọn thêm từng ngày thủ công) ---- */
 .repeat-session-section {
     border: 1px dashed rgba(var(--primary-rgb), 0.3);
@@ -3409,6 +3542,13 @@ textarea.form-control {
     color: #15803d;
 }
 
+.score-test-name {
+    margin-top: 5px;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    line-height: 1.35;
+}
+
 @media (max-width: 720px) {
     .qe-score-grid {
         grid-template-columns: 1fr;
@@ -4181,6 +4321,16 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
 [data-theme-mode="dark"] .repeat-session-section {
     background: rgba(15, 23, 42, 0.4) !important;
     border-color: rgba(255, 255, 255, 0.1) !important;
+}
+[data-theme-mode="dark"] .session-score-toggle,
+[data-theme-mode="dark"] .session-score-panel {
+    background: rgba(15, 23, 42, 0.58) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+[data-theme-mode="dark"] .session-score-table-wrap,
+[data-theme-mode="dark"] .session-score-table td {
+    background: #0f172a !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
 }
 [data-theme-mode="dark"] .role-box {
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), var(--primary-soft)) !important;

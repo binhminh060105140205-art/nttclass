@@ -758,8 +758,10 @@ Object.assign(PinkyClassApp.prototype, {
                 };
             });
 
+            const repeatableSession = { ...baseSession };
+            delete repeatableSession.scoreBatch;
             const repeatedSession = {
-                ...baseSession,
+                ...repeatableSession,
                 id: "sess_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
                 date: extraDate,
                 completed: this.isSessionCompleted({ date: extraDate, endTime: baseSession.endTime }),
@@ -907,6 +909,7 @@ Object.assign(PinkyClassApp.prototype, {
     // Điền sẵn ngày + khung giờ vừa kéo-chọn trên lịch tuần vào form "Ghi Buổi
     // Học Mới", rồi MỞ MODAL ngay tại chỗ (không cuộn/nhảy trang như trước).
     openCreateSessionQuickForm(dateStr, startTime, endTime) {
+        this.resetSessionLoggerForm();
         document.getElementById('sessionDate').value = dateStr;
         document.getElementById('sessionStartTime').value = startTime;
         document.getElementById('sessionEndTime').value = endTime;
@@ -917,6 +920,207 @@ Object.assign(PinkyClassApp.prototype, {
 
         const searchInput = document.getElementById('studentsCheckboxSearch');
         if (searchInput) setTimeout(() => searchInput.focus(), 300);
+    },
+
+    getSessionScoreConfig(prefix) {
+        return {
+            toggleId: `${prefix}ScoreToggle`,
+            toggleStatusId: `${prefix}ScoreToggleStatus`,
+            panelId: `${prefix}ScorePanel`,
+            typeId: `${prefix}ScoreType`,
+            testNameId: `${prefix}ScoreTestName`,
+            maxId: `${prefix}ScoreMax`,
+            dateId: `${prefix}ScoreDate`,
+            groupId: `${prefix}ScoreGroup`,
+            tableBodyId: `${prefix}ScoreTableBody`,
+            countId: `${prefix}ScoreCount`,
+            sessionDateId: prefix === 'session' ? 'sessionDate' : 'editSessionDate',
+            sessionNameId: prefix === 'session' ? 'sessionName' : 'editSessionName',
+            studentCheckboxName: prefix === 'session' ? 'sessionStudents' : 'editSessionStudents'
+        };
+    },
+
+    initializeSessionScoreSection(prefix, session = null) {
+        const config = this.getSessionScoreConfig(prefix);
+        const linkedScores = session
+            ? (this.scores || []).filter(score => score.sessionId === session.id)
+            : [];
+        const firstScore = linkedScores[0] || null;
+        const rows = {};
+        linkedScores.forEach(score => {
+            rows[score.studentId] = {
+                score: String(score.scoreValue ?? ''),
+                note: score.note || ''
+            };
+        });
+
+        this._sessionScoreDrafts = this._sessionScoreDrafts || {};
+        this._sessionScoreDrafts[prefix] = {
+            rows,
+            scoreType: firstScore?.scoreType || 'BTVN',
+            testName: firstScore?.testName || (firstScore ? this.scoreTypeLabel(firstScore.scoreType) : ''),
+            maxScore: Number(firstScore?.maxScore) > 0 ? Number(firstScore.maxScore) : 10
+        };
+
+        document.getElementById(config.typeId).value = this._sessionScoreDrafts[prefix].scoreType;
+        document.getElementById(config.testNameId).value = this._sessionScoreDrafts[prefix].testName;
+        document.getElementById(config.maxId).value = String(this._sessionScoreDrafts[prefix].maxScore);
+        this.setSessionScoreExpanded(prefix, false);
+        this.syncSessionScoreRoster(prefix);
+    },
+
+    setSessionScoreExpanded(prefix, expanded) {
+        const config = this.getSessionScoreConfig(prefix);
+        const toggle = document.getElementById(config.toggleId);
+        const panel = document.getElementById(config.panelId);
+        if (!toggle || !panel) return;
+
+        toggle.setAttribute('aria-expanded', String(expanded));
+        toggle.querySelector('span:first-child').innerText = expanded ? '− Thu gọn điểm' : '+ Nhập điểm';
+        panel.hidden = !expanded;
+        panel.querySelectorAll('input, select, textarea').forEach(control => {
+            control.disabled = !expanded;
+        });
+        if (expanded) {
+            this.syncSessionScoreRoster(prefix);
+            window.setTimeout(() => document.getElementById(config.typeId)?.focus(), 0);
+        }
+    },
+
+    captureSessionScoreDraft(prefix) {
+        const config = this.getSessionScoreConfig(prefix);
+        this._sessionScoreDrafts = this._sessionScoreDrafts || {};
+        const draft = this._sessionScoreDrafts[prefix] || { rows: {}, scoreType: 'BTVN', testName: '', maxScore: 10 };
+        document.querySelectorAll(`#${config.tableBodyId} .session-score-row`).forEach(row => {
+            draft.rows[row.dataset.studentId] = {
+                score: row.querySelector('.session-score-value')?.value || '',
+                note: row.querySelector('.session-score-note')?.value || ''
+            };
+        });
+        draft.scoreType = document.getElementById(config.typeId)?.value || draft.scoreType;
+        draft.testName = document.getElementById(config.testNameId)?.value || '';
+        const maxScore = Number(document.getElementById(config.maxId)?.value);
+        draft.maxScore = Number.isFinite(maxScore) && maxScore > 0 ? maxScore : 10;
+        this._sessionScoreDrafts[prefix] = draft;
+        return draft;
+    },
+
+    getSelectedSessionStudentIds(prefix) {
+        const config = this.getSessionScoreConfig(prefix);
+        return Array.from(document.querySelectorAll(`input[name="${config.studentCheckboxName}"]:checked`))
+            .map(checkbox => checkbox.value);
+    },
+
+    getSessionScoreGroupLabel(prefix, studentIds) {
+        const config = this.getSessionScoreConfig(prefix);
+        const sessionName = document.getElementById(config.sessionNameId)?.value.trim();
+        if (sessionName) return sessionName;
+        const classNames = [...new Set(studentIds.map(studentId => {
+            return this.students.find(student => student.id === studentId)?.class || '';
+        }).filter(Boolean))];
+        if (classNames.length === 1) return classNames[0];
+        if (classNames.length > 1) return `Nhóm ${studentIds.length} học sinh - ${classNames.join(', ')}`;
+        return studentIds.length ? `Nhóm ${studentIds.length} học sinh` : 'Chưa chọn học sinh';
+    },
+
+    syncSessionScoreRoster(prefix) {
+        const config = this.getSessionScoreConfig(prefix);
+        const tbody = document.getElementById(config.tableBodyId);
+        if (!tbody) return;
+        const draft = this.captureSessionScoreDraft(prefix);
+        const studentIds = this.getSelectedSessionStudentIds(prefix);
+        const maxScore = Number(document.getElementById(config.maxId)?.value) || draft.maxScore || 10;
+        const isExpanded = document.getElementById(config.toggleId)?.getAttribute('aria-expanded') === 'true';
+
+        document.getElementById(config.dateId).value = document.getElementById(config.sessionDateId)?.value || '';
+        document.getElementById(config.groupId).value = this.getSessionScoreGroupLabel(prefix, studentIds);
+
+        tbody.innerHTML = studentIds.length ? studentIds.map(studentId => {
+            const student = this.students.find(item => item.id === studentId);
+            if (!student) return '';
+            const old = draft.rows[studentId] || { score: '', note: '' };
+            return `
+                <tr class="session-score-row" data-student-id="${this.escapeHtmlAttr(studentId)}">
+                    <td>
+                        <span class="session-score-student-name">${this.escapeHtml(student.name)}</span>
+                        <span class="session-score-student-class">${this.escapeHtml(student.class || '')}</span>
+                    </td>
+                    <td><input type="number" class="form-control session-score-value" min="0" max="${maxScore}" step="0.01" inputmode="decimal" placeholder="-" value="${this.escapeHtmlAttr(old.score)}" aria-label="Điểm của ${this.escapeHtmlAttr(student.name)}" ${isExpanded ? '' : 'disabled'}></td>
+                    <td><input type="text" class="form-control session-score-note" maxlength="500" placeholder="Không bắt buộc" value="${this.escapeHtmlAttr(old.note)}" aria-label="Ghi chú điểm của ${this.escapeHtmlAttr(student.name)}" ${isExpanded ? '' : 'disabled'}></td>
+                </tr>`;
+        }).join('') : '<tr><td colspan="3" class="score-batch-empty">Chọn học sinh tham gia buổi học để nhập điểm.</td></tr>';
+
+        this.updateSessionScoreCount(prefix);
+    },
+
+    updateSessionScoreMax(prefix) {
+        const config = this.getSessionScoreConfig(prefix);
+        const maxScore = Number(document.getElementById(config.maxId)?.value);
+        if (!Number.isFinite(maxScore) || maxScore <= 0) return;
+        document.querySelectorAll(`#${config.tableBodyId} .session-score-value`).forEach(input => {
+            input.max = String(maxScore);
+        });
+        this.captureSessionScoreDraft(prefix);
+    },
+
+    updateSessionScoreCount(prefix) {
+        const config = this.getSessionScoreConfig(prefix);
+        const inputs = Array.from(document.querySelectorAll(`#${config.tableBodyId} .session-score-value`));
+        const entered = inputs.filter(input => input.value.trim() !== '').length;
+        const text = `Đã nhập điểm: ${entered}/${inputs.length} học sinh`;
+        const count = document.getElementById(config.countId);
+        const status = document.getElementById(config.toggleStatusId);
+        if (count) count.innerText = text;
+        if (status) status.innerText = inputs.length ? `${entered}/${inputs.length} học sinh` : 'Không bắt buộc';
+    },
+
+    collectSessionScoreBatch(prefix) {
+        const config = this.getSessionScoreConfig(prefix);
+        const expanded = document.getElementById(config.toggleId)?.getAttribute('aria-expanded') === 'true';
+        if (!expanded) return { ok: true, batch: null };
+
+        this.captureSessionScoreDraft(prefix);
+        const scoreType = document.getElementById(config.typeId).value;
+        const testName = document.getElementById(config.testNameId).value.trim();
+        const maxScore = Number(document.getElementById(config.maxId).value);
+        if (!scoreType) {
+            this.showToast('Vui lòng chọn loại điểm.', 'error');
+            return { ok: false };
+        }
+        if (!testName) {
+            this.showToast('Vui lòng nhập tên bài kiểm tra.', 'error');
+            document.getElementById(config.testNameId).focus();
+            return { ok: false };
+        }
+        if (!Number.isFinite(maxScore) || maxScore <= 0 || maxScore > 1000) {
+            this.showToast('Thang điểm phải lớn hơn 0 và không vượt quá 1000.', 'error');
+            document.getElementById(config.maxId).focus();
+            return { ok: false };
+        }
+
+        const entries = [];
+        let invalidStudent = '';
+        document.querySelectorAll(`#${config.tableBodyId} .session-score-row`).forEach(row => {
+            const scoreInput = row.querySelector('.session-score-value');
+            const raw = scoreInput.value.trim();
+            if (raw === '') return;
+            const scoreValue = Number(raw);
+            if (!Number.isFinite(scoreValue) || scoreValue < 0 || scoreValue > maxScore) {
+                invalidStudent = invalidStudent || this.getStudentName(row.dataset.studentId);
+                return;
+            }
+            entries.push({
+                studentId: row.dataset.studentId,
+                scoreValue,
+                note: row.querySelector('.session-score-note').value.trim()
+            });
+        });
+        if (invalidStudent) {
+            this.showToast(`Điểm của ${invalidStudent} phải từ 0 đến ${maxScore}.`, 'error');
+            return { ok: false };
+        }
+
+        return { ok: true, batch: { scoreType, testName, maxScore, entries } };
     },
 
     async handleLogSession() {
@@ -973,6 +1177,8 @@ Object.assign(PinkyClassApp.prototype, {
 
         const studentIds = [];
         checkedBoxes.forEach(cb => studentIds.push(cb.value));
+        const scoreResult = this.collectSessionScoreBatch('session');
+        if (!scoreResult.ok) return;
 
         // Học chung: tổng thu = đơn giá/học sinh x SỐ HỌC SINH CÓ ĐÓNG HỌC PHÍ
         // (loại trừ học sinh học phí cơ bản = 0đ khỏi phép nhân). Học riêng:
@@ -1011,6 +1217,7 @@ Object.assign(PinkyClassApp.prototype, {
             paid: false,     // QUAN TRỌNG: học phí LUÔN mặc định "chưa thanh toán" khi mới lên lịch
             studentDetails
         };
+        if (scoreResult.batch) newSession.scoreBatch = scoreResult.batch;
 
         const repeatToggleEl = document.getElementById('sessionRepeatToggle');
         if (repeatToggleEl?.checked && this.repeatExtraDates.length === 0) {
@@ -1073,6 +1280,7 @@ Object.assign(PinkyClassApp.prototype, {
         if (repeatFrequencyEl) repeatFrequencyEl.value = 'weekly';
         const repeatUntilEl = document.getElementById('repeatUntilDate');
         if (repeatUntilEl) repeatUntilEl.value = '';
+        this.initializeSessionScoreSection('session');
     },
 
     // 3. Edit Session Modal triggers
@@ -1109,6 +1317,7 @@ Object.assign(PinkyClassApp.prototype, {
         const searchInput = document.getElementById('editStudentsCheckboxSearch');
         if (searchInput) searchInput.value = '';
         this.renderStudentSelectionGrid('editStudentsCheckboxGrid', sess.studentIds);
+        this.initializeSessionScoreSection('editSession', sess);
 
         this.applySessionTypeRules('editSession');
         this.openModal('editSessionModal');
@@ -1169,6 +1378,8 @@ Object.assign(PinkyClassApp.prototype, {
 
         const studentIds = [];
         checkedBoxes.forEach(cb => studentIds.push(cb.value));
+        const scoreResult = this.collectSessionScoreBatch('editSession');
+        if (!scoreResult.ok) return;
         const originalStudentIds = [...(sess.studentIds || [])].sort();
         const editedStudentIds = [...studentIds].sort();
         const rosterWasChanged = originalStudentIds.length !== editedStudentIds.length
@@ -1212,6 +1423,7 @@ Object.assign(PinkyClassApp.prototype, {
             repriceExistingFees: priceWasChanged,
             studentDetails: newStudentDetails
         };
+        if (scoreResult.batch) updatedSession.scoreBatch = scoreResult.batch;
 
         this.setBtnLoading('saveEditSessionBtn', true, 'Đang lưu...');
         try {
@@ -1554,6 +1766,7 @@ Object.assign(PinkyClassApp.prototype, {
                     selectAllCheckbox.checked = Array.from(body.querySelectorAll('input[type="checkbox"]')).every(cb => cb.checked);
                     this.updateSessionPricing(prefix);
                     this.updateSessionNameFromSelectedClasses(prefix);
+                    this.syncSessionScoreRoster(prefix);
                 });
 
                 const span = document.createElement('span');
@@ -1590,6 +1803,7 @@ Object.assign(PinkyClassApp.prototype, {
                 if (priceEl) delete priceEl.dataset.userEdited;
                 this.updateSessionPricing(prefix);
                 this.updateSessionNameFromSelectedClasses(prefix);
+                this.syncSessionScoreRoster(prefix);
             });
 
             groupEl.appendChild(header);
@@ -1605,6 +1819,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         this.updateSessionPricing(prefix);
         this.updateSessionNameFromSelectedClasses(prefix);
+        this.syncSessionScoreRoster(prefix);
     },
 
     // Khi giáo viên tick đủ học sinh của một lớp, gợi ý tên ca theo môn + khối
@@ -1714,6 +1929,8 @@ Object.assign(PinkyClassApp.prototype, {
         if (priceEl) delete priceEl.dataset.userEdited;
 
         this.updateSessionPricing(prefix);
+        this.updateSessionNameFromSelectedClasses(prefix);
+        this.syncSessionScoreRoster(prefix);
     },
 
     // Tính "Tổng thu buổi học": học riêng = đơn giá nhập; học chung = đơn giá/học sinh

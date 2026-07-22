@@ -282,6 +282,22 @@ Object.assign(PinkyClassApp.prototype, {
             this.handleEditSession();
         });
 
+        // Khối nhập điểm nằm ngay trong form buổi học và mặc định được thu gọn.
+        ['session', 'editSession'].forEach(prefix => {
+            const config = this.getSessionScoreConfig(prefix);
+            const form = document.getElementById(prefix === 'session' ? 'sessionLoggerForm' : 'editSessionForm');
+            document.getElementById(config.toggleId)?.addEventListener('click', () => {
+                const expanded = document.getElementById(config.toggleId).getAttribute('aria-expanded') === 'true';
+                this.setSessionScoreExpanded(prefix, !expanded);
+            });
+            form?.addEventListener('input', (event) => {
+                if (event.target.classList.contains('session-score-value')) this.updateSessionScoreCount(prefix);
+                if (event.target.id === config.maxId) this.updateSessionScoreMax(prefix);
+            });
+            document.getElementById(config.sessionDateId)?.addEventListener('change', () => this.syncSessionScoreRoster(prefix));
+            document.getElementById(config.sessionNameId)?.addEventListener('input', () => this.syncSessionScoreRoster(prefix));
+        });
+
         // Form Submit: Xuất phiếu học phí
         document.getElementById('invoiceForm').addEventListener('submit', (e) => {
             e.preventDefault();
