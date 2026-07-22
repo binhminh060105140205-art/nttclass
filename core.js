@@ -18,7 +18,6 @@ class PinkyClassApp {
         this.sessions = [];
         this.users = [];
         this.scores = []; // Điểm số (BTVN/Kiểm tra/Thái độ) — Phase 3
-        this.charts = {}; // Instance các biểu đồ Chart.js đang hiển thị (Phase 4), để destroy() trước khi vẽ lại
         this.currentUser = null;
         this.currentRole = null; // admin or teacher
         this.currentStudentId = null; // Active student filter (chỉ dùng ở trang Nhật ký học tập)

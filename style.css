@@ -3380,30 +3380,6 @@ textarea.form-control {
     color: var(--primary);
 }
 
-/* Lưới 3 biểu đồ: đường (tiến bộ), cột (so sánh loại điểm), tròn (tỷ lệ BTVN) */
-.charts-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    margin-bottom: 8px;
-}
-
-.chart-card {
-    padding: 16px;
-}
-
-.chart-card h4 {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text-main);
-    margin: 0 0 12px 0;
-}
-
-.chart-canvas-wrap {
-    position: relative;
-    height: 230px;
-}
-
 /* Badge màu theo loại điểm, dùng trong bảng danh sách điểm */
 .score-type-badge {
     display: inline-block;
@@ -3445,9 +3421,6 @@ textarea.form-control {
 }
 
 @media (max-width: 1024px) {
-    .charts-grid {
-        grid-template-columns: 1fr;
-    }
     .score-summary-grid {
         grid-template-columns: repeat(2, 1fr);
     }

@@ -67,9 +67,6 @@ Object.assign(PinkyClassApp.prototype, {
             commentBox.innerHTML = `<span><strong>Nhận xét tự động:</strong> ${this.getAutoComment(avgAll)}</span>`;
         }
 
-        // ----- Biểu đồ (Phase 4) -----
-        this.renderScoreCharts(studentId, studentScores);
-
         // Đồng bộ picker riêng của trang Điểm số với picker toàn cục
         const scoresPicker = document.getElementById('scoresStudentPicker');
         if (scoresPicker && scoresPicker.value !== studentId) {
@@ -180,95 +177,6 @@ Object.assign(PinkyClassApp.prototype, {
         } finally {
             this.setBtnLoading('saveBatchScoresBtn', false);
             this.updateBatchScoreCount();
-        }
-    },
-
-    // - Biểu đồ đường: tiến bộ điểm theo thời gian (1 đường / loại điểm)
-    // - Biểu đồ cột: so sánh điểm trung bình giữa 3 loại
-    // - Biểu đồ tròn: tỷ lệ hoàn thành BTVN (dựa trên Homework của SessionDetails)
-    renderScoreCharts(studentId, studentScores) {
-        if (typeof Chart === 'undefined') return; // Chart.js chưa tải xong / lỗi mạng CDN
-        this.charts = this.charts || {};
-
-        // --- LINE CHART: tiến bộ điểm theo thời gian ---
-        const lineCanvas = document.getElementById('scoreLineChart');
-        if (lineCanvas) {
-            const labels = studentScores.map(s => (this.formatDateVN(s.date).split(' - ')[1]) || s.date);
-            const dataFor = type => studentScores.map(s => s.scoreType === type ? s.scoreValue : null);
-
-            if (this.charts.line) this.charts.line.destroy();
-            this.charts.line = new Chart(lineCanvas, {
-                type: 'line',
-                data: {
-                    labels,
-                    datasets: [
-                        { label: 'BTVN',     data: dataFor('BTVN'),    borderColor: '#2563eb', backgroundColor: '#2563eb', spanGaps: true, tension: 0.3 },
-                        { label: 'Kiểm tra thường xuyên', data: studentScores.map(s => ['KTTX', 'KiemTra'].includes(s.scoreType) ? s.scoreValue : null), borderColor: '#dc2626', backgroundColor: '#dc2626', spanGaps: true, tension: 0.3 },
-                        { label: 'Kiểm tra cuối chương', data: dataFor('CuoiChuong'), borderColor: '#16a34a', backgroundColor: '#16a34a', spanGaps: true, tension: 0.3 }
-                    ]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    scales: { y: { min: 0, max: 10 } },
-                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } }
-                }
-            });
-        }
-
-        // --- BAR CHART: so sánh trung bình theo loại điểm ---
-        const barCanvas = document.getElementById('scoreBarChart');
-        if (barCanvas) {
-            const byTypeAvg = t => this.average(studentScores.filter(s => s.scoreType === t).map(s => s.scoreValue));
-            if (this.charts.bar) this.charts.bar.destroy();
-            this.charts.bar = new Chart(barCanvas, {
-                type: 'bar',
-                data: {
-                    labels: ['BTVN', 'Kiểm tra thường xuyên', 'Kiểm tra cuối chương'],
-                    datasets: [{
-                        label: 'Điểm trung bình',
-                        data: [byTypeAvg('BTVN'), this.average(studentScores.filter(s => ['KTTX', 'KiemTra'].includes(s.scoreType)).map(s => s.scoreValue)), byTypeAvg('CuoiChuong')].map(v => v === null ? 0 : v),
-                        backgroundColor: ['#2563eb', '#dc2626', '#16a34a'],
-                        borderRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    scales: { y: { min: 0, max: 10 } },
-                    plugins: { legend: { display: false } }
-                }
-            });
-        }
-
-        // --- PIE CHART: tỷ lệ hoàn thành BTVN (theo dữ liệu Homework của buổi học) ---
-        const pieCanvas = document.getElementById('homeworkPieChart');
-        if (pieCanvas) {
-            const relevantSessions = (this.sessions || []).filter(sess =>
-                this.isSessionCompleted(sess) && sess.studentIds && sess.studentIds.includes(studentId)
-            );
-            let done = 0, pending = 0, notDone = 0;
-            relevantSessions.forEach(sess => {
-                const hw = (sess.studentDetails[studentId] || {}).homework;
-                const hwClass = this.getHomeworkClass(hw);
-                if (hwClass === 'done') done++;
-                else if (hwClass === 'pending') pending++;
-                else if (hwClass !== 'no-data') notDone++;
-            });
-
-            if (this.charts.pie) this.charts.pie.destroy();
-            this.charts.pie = new Chart(pieCanvas, {
-                type: 'pie',
-                data: {
-                    labels: ['Hoàn thành (100%)', 'Đang làm (50-70%)', 'Chưa làm (0-30%)'],
-                    datasets: [{
-                        data: [done, pending, notDone],
-                        backgroundColor: ['#16a34a', '#f59e0b', '#dc2626']
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } }
-                }
-            });
         }
     },
 

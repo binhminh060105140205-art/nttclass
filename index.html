@@ -9,8 +9,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <!-- Chart.js (Phase 4 — biểu đồ tiến bộ điểm số, so sánh loại điểm, tỷ lệ hoàn thành BTVN) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -396,22 +394,6 @@
 
                 <div class="score-auto-comment" id="scoreAutoComment" style="display:none;">
                     <!-- Filled dynamically -->
-                </div>
-
-                <!-- Biểu đồ: đường (tiến bộ), cột (so sánh loại điểm), tròn (tỷ lệ BTVN) -->
-                <div class="charts-grid">
-                    <div class="glass-card chart-card">
-                        <h4>Tiến bộ điểm theo thời gian</h4>
-                        <div class="chart-canvas-wrap"><canvas id="scoreLineChart"></canvas></div>
-                    </div>
-                    <div class="glass-card chart-card">
-                        <h4>So sánh các loại điểm (trung bình)</h4>
-                        <div class="chart-canvas-wrap"><canvas id="scoreBarChart"></canvas></div>
-                    </div>
-                    <div class="glass-card chart-card">
-                        <h4>Tỷ lệ hoàn thành bài tập</h4>
-                        <div class="chart-canvas-wrap"><canvas id="homeworkPieChart"></canvas></div>
-                    </div>
                 </div>
 
                 <div class="table-wrapper" style="border-radius: 16px; margin-top: 20px;">

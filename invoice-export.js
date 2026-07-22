@@ -273,7 +273,7 @@ Object.assign(PinkyClassApp.prototype, {
             return day && month && year ? `${day}/${month}` : String(sess.date || '');
         }).filter(Boolean);
         const dates = dateParts.length
-            ? Array.from({ length: Math.ceil(dateParts.length / 5) }, (_, index) => dateParts.slice(index * 5, index * 5 + 5).join(', ')).join('\n')
+            ? Array.from({ length: Math.ceil(dateParts.length / 3) }, (_, index) => dateParts.slice(index * 3, index * 3 + 3).join(', ')).join('\n')
             : 'Chưa có buổi học trong kỳ';
 
         const feeLines = [];
@@ -287,7 +287,6 @@ Object.assign(PinkyClassApp.prototype, {
         ];
         const pdfContentWidth = 491.28;
         const pdfColumnGap = 14;
-        const pdfHalfWidth = (pdfContentWidth - pdfColumnGap) / 2;
         const pdfStudentWidth = (pdfContentWidth - pdfColumnGap) * 0.54;
         const pdfTuitionWidth = (pdfContentWidth - pdfColumnGap) * 0.46;
         const estimateLines = (value, charsPerLine) => String(value || '').split('\n').reduce((sum, line) => {
@@ -332,7 +331,7 @@ Object.assign(PinkyClassApp.prototype, {
             };
         };
         const sectionHeading = text => ({
-            margin: [0, 16, 0, 9],
+            margin: [0, 10, 0, 5],
             columns: [
                 {
                     width: 5,
@@ -342,32 +341,22 @@ Object.assign(PinkyClassApp.prototype, {
             ],
             columnGap: 0
         });
-        const commentCard = (label, value) => {
-            const lineCount = estimateLines(`${label}: ${value}`, 88);
-            const contentHeight = Math.max(18, lineCount * 12.5);
-            const height = Math.max(36, 18 + lineCount * 12.5);
-            return {
-                ...roundedCard([{
-                    columns: [
-                        {
-                            width: 4,
-                            canvas: [{ type: 'rect', x: 0, y: 0, w: 4, h: 18, r: 2, color: '#3b82f6' }]
-                        },
-                        {
-                            width: '*',
-                            text: [
-                                { text: `${label}: `, style: 'inlineLabel' },
-                                { text: value, style: 'bodyText' }
-                            ],
-                            margin: [5, 2.5, 0, 0]
-                        }
-                    ]
-                }], pdfContentWidth, height, '#f2f7ff', {
-                    paddingX: 10, radius: 8, centerContent: true, contentHeight
-                }),
-                margin: [0, 0, 0, 7]
-            };
-        };
+        const plainSection = (heading, rows) => [
+            sectionHeading(heading),
+            ...rows,
+            {
+                canvas: [{ type: 'line', x1: 0, y1: 0, x2: pdfContentWidth, y2: 0, lineWidth: 0.8, lineColor: '#dbeafe' }],
+                margin: [0, 3, 0, 0]
+            }
+        ];
+        const plainText = text => ({ text, style: 'bodyText', margin: [10, 0, 0, 5] });
+        const plainComment = (label, value) => ({
+            text: [
+                { text: `${label}: `, style: 'inlineLabel' },
+                { text: value, style: 'bodyText' }
+            ],
+            margin: [10, 0, 0, 5]
+        });
 
         const studentStack = [
             { text: 'THÔNG TIN HỌC SINH', style: 'cardTitle', margin: [0, 0, 0, 9] },
@@ -420,11 +409,11 @@ Object.assign(PinkyClassApp.prototype, {
 
         // Chiều cao phải đủ cho bảng thông tin + ngày học; nếu giữ số cố định,
         // dòng ngày dài sẽ tràn khỏi viền card và lệch với card học phí bên cạnh.
-        const dateLineCount = Math.max(1, estimateLines(dates, 16));
+        const dateLineCount = Math.max(1, dates.split('\n').length);
         const studentNameLineCount = Math.max(1, estimateLines(`${nfc(st.name)} - ${nfc(st.class)}`, 20));
         const summaryHeight = Math.max(
-            this._invoiceQrDataUrl ? 250 : 188,
-            162 + dateLineCount * 15 + Math.max(0, studentNameLineCount - 1) * 14
+            this._invoiceQrDataUrl ? 230 : 205,
+            150 + dateLineCount * 14 + Math.max(0, studentNameLineCount - 1) * 14
         );
         const summaryTable = {
             columns: [
@@ -445,17 +434,11 @@ Object.assign(PinkyClassApp.prototype, {
         };
 
         const comments = [];
-        if (overview) comments.push(commentCard('Tổng quan', overview));
-        if (algebra) comments.push(commentCard('Đại số', algebra));
-        if (geometry) comments.push(commentCard('Hình học', geometry));
+        if (overview) comments.push(plainComment('Tổng quan', overview));
+        if (algebra) comments.push(plainComment('Đại số', algebra));
+        if (geometry) comments.push(plainComment('Hình học', geometry));
 
-        const roadmapHeight = Math.max(48, 24 + estimateLines(roadmap, 82) * 13);
         const scheduleText = schedule || 'Chưa có lịch học.';
-        const lowerHeight = Math.max(
-            46,
-            24 + estimateLines(scheduleText, 34) * 13,
-            24 + estimateLines(tuitionText, 34) * 13
-        );
 
         const content = [
             {
@@ -479,43 +462,15 @@ Object.assign(PinkyClassApp.prototype, {
             { text: title, style: 'title', alignment: 'center', margin: [0, 13, 0, 2] },
             { text: 'BÁO CÁO HỌC TẬP VÀ HỌC PHÍ', style: 'subtitle', alignment: 'center', margin: [0, 0, 0, 17] },
             summaryTable,
-            ...(comments.length ? [sectionHeading('NHẬN XÉT HỌC TẬP'), ...comments] : []),
-            ...(roadmap ? [
-                sectionHeading('LỘ TRÌNH HỌC TẬP'),
-                roundedCard([{ text: roadmap, style: 'bodyText' }], pdfContentWidth, roadmapHeight, '#fbfdff', {
-                    radius: 9, centerContent: true, contentHeight: estimateLines(roadmap, 82) * 12.5
-                })
-            ] : []),
-            {
-                unbreakable: true,
-                columns: [
-                    {
-                        width: pdfHalfWidth,
-                        stack: [
-                            sectionHeading('LỊCH HỌC'),
-                            roundedCard([{ text: scheduleText, style: 'bodyText' }], pdfHalfWidth, lowerHeight, '#fbfdff', {
-                                radius: 9, centerContent: true, contentHeight: estimateLines(scheduleText, 34) * 12.5
-                            })
-                        ]
-                    },
-                    {
-                        width: pdfHalfWidth,
-                        stack: [
-                            sectionHeading('CHI TIẾT HỌC PHÍ'),
-                            roundedCard([{ text: tuitionText, style: 'bodyText' }], pdfHalfWidth, lowerHeight, '#fbfdff', {
-                                radius: 9, centerContent: true, contentHeight: estimateLines(tuitionText, 34) * 12.5
-                            })
-                        ]
-                    }
-                ],
-                columnGap: pdfColumnGap,
-                margin: [0, 0, 0, 4]
-            }
+            ...(comments.length ? plainSection('NHẬN XÉT HỌC TẬP', comments) : []),
+            ...(roadmap ? plainSection('LỘ TRÌNH HỌC TẬP', [plainText(roadmap)]) : []),
+            ...plainSection('LỊCH HỌC', [plainText(scheduleText)]),
+            ...plainSection('CHI TIẾT HỌC PHÍ', [plainText(tuitionText)])
         ];
 
         return {
             pageSize: 'A4',
-            pageMargins: [52, 42, 52, 68],
+            pageMargins: [52, 36, 52, 58],
             info: { title, author: teacherName, subject: 'Phiếu học phí học sinh' },
             background: (currentPage, pageSize) => ({
                 canvas: [
@@ -686,13 +641,11 @@ Object.assign(PinkyClassApp.prototype, {
             ? plainListHTML(customTuitionNote)
             : feeNoteLines.map(l => `<div class="list-item no-mark"><span class="list-text">${l}</span></div>`).join('');
 
-        // Nhận xét học tập: gộp Tổng quan/Đại số/Hình học vào chung 1 khung,
-        // mỗi mục là 1 "comment-box" (nền hồng nhạt + thanh dọc trái), xếp
-        // chồng, giống hệt bố cục khung "NHẬN XÉT HỌC TẬP" trong mẫu phiếu.
+        // Các phần phía dưới dùng một cột căn trái để nội dung dài không làm lệch cột.
         const quoteItemsHTML = [
-            overview  ? `<div class="comment-box"><div class="comment-text"><strong>Tổng quan:</strong> ${nl2br(overview)}</div></div>`  : '',
-            algebra   ? `<div class="comment-box"><div class="comment-text"><strong>Đại số:</strong> ${nl2br(algebra)}</div></div>`      : '',
-            geometry  ? `<div class="comment-box"><div class="comment-text"><strong>Hình học:</strong> ${nl2br(geometry)}</div></div>`   : ''
+            overview  ? `<div class="plain-row"><strong>Tổng quan:</strong> ${nl2br(overview)}</div>`  : '',
+            algebra   ? `<div class="plain-row"><strong>Đại số:</strong> ${nl2br(algebra)}</div>`      : '',
+            geometry  ? `<div class="plain-row"><strong>Hình học:</strong> ${nl2br(geometry)}</div>`   : ''
         ].filter(Boolean).join('');
 
         // Lộ trình sắp tới: hiển thị dạng bullet "•" mỗi dòng 1 mục, giống bố
@@ -748,16 +701,10 @@ Object.assign(PinkyClassApp.prototype, {
         /* ============ III. GRID 2 CỘT ============ */
         #invoiceExportSheet .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:stretch; }
         #invoiceExportSheet .card { border:1.5px solid #bfdbfe; border-radius:18px; padding:14px; background:#fff; }
-        #invoiceExportSheet .grid-2 > .card,
-        #invoiceExportSheet .grid-bottom > .card { min-width:0; }
+        #invoiceExportSheet .grid-2 > .card { min-width:0; }
         #invoiceExportSheet .grid-2 > .card:nth-child(2) { display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding-top:14px; }
         #invoiceExportSheet .student-info-card { padding-top:8px; }
-        /* Riêng padding trên của Lịch học/Lộ trình/Ghi chú học phí: chỉnh số đầu tiên (padding-top) này */
-        #invoiceExportSheet .card.card-tight { padding:8px 14px 14px; }
-        /* Khoảng cách tiêu đề "📝 Nhận xét học tập" -> ô comment-box đầu tiên: chỉnh margin-bottom này */
         #invoiceExportSheet .section-title { font-size:15px; font-weight:700; color:#0b438f; line-height:1.55; margin-bottom:6px; }
-        /* Riêng khoảng cách tiêu đề "📝 Nhận xét học tập" -> ô đầu tiên: chỉnh margin-bottom này */
-        #invoiceExportSheet .section-title.section-title-notes { margin-bottom:10px; }
 
         /* ============ IV. THÔNG TIN HỌC SINH ============ */
         #invoiceExportSheet .row { display:grid; grid-template-columns:minmax(84px, 36%) minmax(0, 1fr); align-items:start; gap:8px; padding:5px 0; border-bottom:1px dashed #bfdbfe; }
@@ -780,18 +727,12 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .bank { text-align:center; font-size:13px; color:#0b438f; line-height:1.4; }
         #invoiceExportSheet .bank b { color:#17345f; }
 
-        /* ============ VI. NHẬN XÉT ============ */
-        /* Padding bên trong mỗi ô "Tổng quan/Đại số/Hình học": chỉnh 4 số trong padding này */
-        #invoiceExportSheet .comment-box { background:#eff6ff; border-radius:12px; padding:10px 10px 10px 14px; margin-bottom:10px; position:relative; overflow:visible; }
-        /* Khoảng cách giữa các ô comment-box với nhau: chỉnh margin-bottom ở dòng trên (ô cuối luôn về 0, không cần sửa dòng dưới) */
-        #invoiceExportSheet .comment-box:last-child { margin-bottom:0; }
-        #invoiceExportSheet .comment-box::before { content:''; position:absolute; left:0; top:0; width:5px; height:100%; background:#3b82f6; border-radius:12px 0 0 12px; }
-        /* Cùng quy ước với bảng thông tin phía trên: nhãn xanh, nội dung đen. */
-        #invoiceExportSheet .comment-text { color:#17345f; font-size:13px; line-height:1.5; }
-        #invoiceExportSheet .comment-text strong { color:#0b438f; }
-
-        /* ============ VII. 2 CARD DƯỚI ============ */
-        #invoiceExportSheet .grid-bottom { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:10px; }
+        /* ============ VI. NỘI DUNG MỘT CỘT ============ */
+        #invoiceExportSheet .plain-section { margin-top:12px; padding:0 2px 10px; border-bottom:1px solid #bfdbfe; text-align:left; }
+        #invoiceExportSheet .plain-section .section-title { margin-bottom:7px; text-transform:uppercase; }
+        #invoiceExportSheet .plain-row { color:#17345f; font-size:13px; line-height:1.55; margin-bottom:6px; text-align:left; }
+        #invoiceExportSheet .plain-row:last-child { margin-bottom:0; }
+        #invoiceExportSheet .plain-row strong { color:#0b438f; }
         #invoiceExportSheet .list-item { display:flex; align-items:flex-start; gap:6px; font-size:13px; line-height:1.5; margin-bottom:5px; }
         #invoiceExportSheet .list-item:last-child { margin-bottom:0; }
         #invoiceExportSheet .list-item .mark { color:#3b82f6; font-weight:700; flex-shrink:0; }
@@ -800,7 +741,7 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .list-item.no-mark { display:block; }
         #invoiceExportSheet .empty-hint { font-size:13px; color:#93c5fd; }
 
-        /* ============ VIII. FOOTER ============ */
+        /* ============ VII. FOOTER ============ */
         #invoiceExportSheet .footer { background:#dbeafe; border-radius:12px; padding:9px 8px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; font-weight:600; color:#17345f; }
         #invoiceExportSheet .footer-text { line-height:1.5; }
         #invoiceExportSheet .section-block { margin-top:10px; }
@@ -830,21 +771,19 @@ Object.assign(PinkyClassApp.prototype, {
             </div>
         </div>
 
-        ${quoteItemsHTML ? `<div class="section-block"><div class="section-title section-title-notes">📝 Nhận xét học tập</div>${quoteItemsHTML}</div>` : ''}
+        ${quoteItemsHTML ? `<div class="plain-section"><div class="section-title">Nhận xét học tập</div>${quoteItemsHTML}</div>` : ''}
 
-        ${roadmapHTML ? `<div class="card card-tight section-block"><div class="section-title">🎯 Lộ trình</div>${roadmapHTML}</div>` : ''}
+        ${roadmapHTML ? `<div class="plain-section"><div class="section-title">Lộ trình</div>${roadmapHTML}</div>` : ''}
 
-        ${(scheduleHTML || feeNoteHTML) ? `
-        <div class="grid-bottom">
-            <div class="card card-tight">
-                <div class="section-title">📅 Lịch học</div>
-                ${scheduleHTML || '<span class="empty-hint">Chưa có lịch học.</span>'}
-            </div>
-            <div class="card card-tight">
-                <div class="section-title">💡 Học phí</div>
-                ${feeNoteHTML || '<span class="empty-hint">Chưa có học phí.</span>'}
-            </div>
-        </div>` : ''}
+        <div class="plain-section">
+            <div class="section-title">Lịch học</div>
+            ${scheduleHTML || '<span class="empty-hint">Chưa có lịch học.</span>'}
+        </div>
+
+        <div class="plain-section">
+            <div class="section-title">Học phí</div>
+            ${feeNoteHTML || '<span class="empty-hint">Chưa có học phí.</span>'}
+        </div>
 
         <div class="footer section-block"><span class="footer-text">${note ? nl2br(note) : 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.'}</span></div>
     </div>
