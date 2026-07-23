@@ -485,6 +485,10 @@ Object.assign(PinkyClassApp.prototype, {
         const listWrap = document.getElementById('quickEntryStudentsList');
         listWrap.innerHTML = sess.studentIds.map(stId => {
             const detail = sess.studentDetails[stId] || { homework: null, attitude: '', individualComment: '', note: '' };
+            const linkedScore = (this.scores || []).find(score => score.sessionId === sess.id && score.studentId === stId);
+            const linkedScoreType = linkedScore?.scoreType || '';
+            const linkedScoreValue = linkedScore?.scoreValue ?? '';
+            const linkedScoreNote = linkedScore?.note || '';
             const name = this.getStudentName(stId);
             const homeworkVal = isDone ? this.normalizeHomeworkValue(detail.homework) : null;
             const attitude = isDone ? (detail.attitude || '') : '';
@@ -494,6 +498,26 @@ Object.assign(PinkyClassApp.prototype, {
             return `
                 <div class="qe-student-card" data-student-id="${stId}">
                     <div class="qe-student-name">${this.escapeHtml(name)}</div>
+                    <div class="full-span qe-score-section">
+                        <div class="qe-score-heading">Nhập điểm <span>để trống nếu buổi này không chấm điểm</span></div>
+                        <div class="qe-score-grid">
+                            <label>Loại điểm
+                                <select class="qe-score-type">
+                                    <option value="" ${linkedScoreType === '' ? 'selected' : ''}>Chưa nhập điểm</option>
+                                    <option value="BTVN" ${linkedScoreType === 'BTVN' ? 'selected' : ''}>Bài tập về nhà (BTVN)</option>
+                                    <option value="KTTX" ${['KTTX', 'KiemTra'].includes(linkedScoreType) ? 'selected' : ''}>Kiểm tra thường xuyên</option>
+                                    <option value="CuoiChuong" ${linkedScoreType === 'CuoiChuong' ? 'selected' : ''}>Kiểm tra cuối chương</option>
+                                    <option value="ThaiDo" ${linkedScoreType === 'ThaiDo' ? 'selected' : ''}>Thái độ</option>
+                                </select>
+                            </label>
+                            <label>Điểm (0–10)
+                                <input type="number" class="qe-score-value" min="0" max="10" step="0.1" placeholder="Ví dụ: 8.5" value="${this.escapeHtmlAttr(linkedScoreValue)}">
+                            </label>
+                            <label>Ghi chú điểm
+                                <input type="text" class="qe-score-note" placeholder="Ví dụ: Bài kiểm tra 15 phút..." value="${this.escapeHtmlAttr(linkedScoreNote)}">
+                            </label>
+                        </div>
+                    </div>
                     <div class="qe-field-grid">
                         <div>
                             <label>Bài tập về nhà (BTVN) — mức hoàn thành</label>
@@ -525,7 +549,7 @@ Object.assign(PinkyClassApp.prototype, {
     // Escape giá trị chèn vào thuộc tính value="" để tránh vỡ HTML khi nội
     // dung có chứa dấu ngoặc kép
     escapeHtmlAttr(str) {
-        return String(str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+        return String(str ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
     },
 
     // Escape đầy đủ khi chèn text thuần vào NỘI DUNG thẻ HTML (khác với
@@ -556,6 +580,7 @@ Object.assign(PinkyClassApp.prototype, {
         const content = document.getElementById('quickEntryContent').value.trim();
         const sessionName = document.getElementById('quickEntrySessionName').value.trim();
         const newStudentDetails = {};
+        let scoreValidationError = '';
         document.querySelectorAll('#quickEntryStudentsList .qe-student-card').forEach(card => {
             const stId = card.getAttribute('data-student-id');
             const oldDetail = (sess.studentDetails && sess.studentDetails[stId]) || {};
@@ -563,17 +588,33 @@ Object.assign(PinkyClassApp.prototype, {
             const attitude = card.querySelector('.qe-attitude').value.trim();
             const individualComment = card.querySelector('.qe-comment').value.trim();
             const note = card.querySelector('.qe-note').value.trim();
+            const scoreType = card.querySelector('.qe-score-type').value;
+            const scoreValueRaw = card.querySelector('.qe-score-value').value.trim();
+            const scoreNote = card.querySelector('.qe-score-note').value.trim();
+            const scoreValue = scoreValueRaw === '' ? null : Number(scoreValueRaw.replace(',', '.'));
+            if (scoreValueRaw !== '' && !scoreType) {
+                scoreValidationError = `Vui lòng chọn loại điểm cho ${this.getStudentName(stId)}.`;
+            } else if (scoreValueRaw !== '' && (!Number.isFinite(scoreValue) || scoreValue < 0 || scoreValue > 10)) {
+                scoreValidationError = `Điểm của ${this.getStudentName(stId)} phải từ 0 đến 10.`;
+            }
             newStudentDetails[stId] = {
                 homework,
                 attitude,
                 individualComment,
                 note,
+                scoreType,
+                scoreValue,
+                scoreNote,
                 feeAmount: oldDetail.feeAmount,
                 paid: !!oldDetail.paid
             };
 
         });
 
+        if (scoreValidationError) {
+            this.showToast(scoreValidationError, 'error');
+            return;
+        }
         // Đã bỏ ô "Nhận xét chung cho cả lớp" khỏi form nhập nhanh (chỉ còn
         // nhận xét RIÊNG cho từng học sinh). Với buổi học riêng (1 học sinh),
         // generalComment vẫn mirror theo nhận xét riêng của em đó để tương

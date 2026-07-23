@@ -1543,7 +1543,7 @@ app.put('/api/sessions/:id/quick-entry', requireRole('teacher', 'assistant'), re
 
         const owner = await new sql.Request(transaction)
             .input('sessionId', sql.VarChar, id)
-            .query('SELECT TeacherId FROM Sessions WHERE Id = @sessionId');
+            .query('SELECT TeacherId, SessionDate FROM Sessions WHERE Id = @sessionId');
         if (owner.recordset.length === 0) {
             await transaction.rollback();
             transaction = null;
@@ -1564,6 +1564,43 @@ app.put('/api/sessions/:id/quick-entry', requireRole('teacher', 'assistant'), re
             await transaction.rollback();
             transaction = null;
             return res.status(400).json({ error: 'Danh sách học sinh không khớp với buổi học.' });
+        }
+
+        const scoreEntries = new Map();
+        for (const [studentId, rawDetail] of detailEntries) {
+            const detail = rawDetail && typeof rawDetail === 'object' ? rawDetail : {};
+            const scoreType = String(detail.scoreType || '').trim();
+            const rawScoreValue = detail.scoreValue;
+            const hasScoreValue = rawScoreValue !== null && rawScoreValue !== undefined && String(rawScoreValue).trim() !== '';
+            if (!hasScoreValue) {
+                if (!scoreType) {
+                    scoreEntries.set(studentId, null);
+                    continue;
+                }
+                if (!SCORE_TYPES.includes(scoreType)) {
+                    await transaction.rollback();
+                    transaction = null;
+                    return res.status(400).json({ error: 'Loại điểm không hợp lệ.' });
+                }
+                scoreEntries.set(studentId, { remove: true });
+                continue;
+            }
+            if (!SCORE_TYPES.includes(scoreType)) {
+                await transaction.rollback();
+                transaction = null;
+                return res.status(400).json({ error: 'Loại điểm không hợp lệ.' });
+            }
+            const scoreValue = Number(String(rawScoreValue).replace(',', '.'));
+            if (!Number.isFinite(scoreValue) || scoreValue < 0 || scoreValue > 10) {
+                await transaction.rollback();
+                transaction = null;
+                return res.status(400).json({ error: 'Điểm số phải nằm trong khoảng từ 0 đến 10.' });
+            }
+            scoreEntries.set(studentId, {
+                scoreType,
+                scoreValue,
+                note: String(detail.scoreNote ?? '')
+            });
         }
 
         await new sql.Request(transaction)
@@ -1588,6 +1625,26 @@ app.put('/api/sessions/:id/quick-entry', requireRole('teacher', 'assistant'), re
                         SET Homework = @homework, Attitude = @attitude,
                             IndividualComment = @individualComment, Note = @note
                         WHERE SessionId = @sessionId AND StudentId = @studentId`);
+            const scoreEntry = scoreEntries.get(studentId);
+            if (scoreEntry?.remove) {
+                await new sql.Request(transaction)
+                    .input('sessionId', sql.VarChar, id)
+                    .input('studentId', sql.VarChar, studentId)
+                    .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+                    .query('DELETE FROM Scores WHERE SessionId = @sessionId AND StudentId = @studentId AND TeacherId = @teacherId');
+            } else if (scoreEntry) {
+                await new sql.Request(transaction)
+                    .input('id', sql.VarChar, 'sc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8))
+                    .input('studentId', sql.VarChar, studentId)
+                    .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+                    .input('sessionId', sql.VarChar, id)
+                    .input('scoreType', sql.VarChar, scoreEntry.scoreType)
+                    .input('scoreValue', sql.Decimal(), scoreEntry.scoreValue)
+                    .input('scoreDate', sql.Date, String(owner.recordset[0].SessionDate).slice(0, 10))
+                    .input('note', sql.NVarChar, scoreEntry.note)
+                    .query('INSERT INTO Scores (Id, StudentId, TeacherId, SessionId, ScoreType, ScoreValue, ScoreDate, Note) VALUES (@id, @studentId, @teacherId, @sessionId, @scoreType, @scoreValue, @scoreDate, @note) ON CONFLICT (SessionId, StudentId) DO UPDATE SET TeacherId = EXCLUDED.TeacherId, ScoreType = EXCLUDED.ScoreType, ScoreValue = EXCLUDED.ScoreValue, ScoreDate = EXCLUDED.ScoreDate, Note = EXCLUDED.Note');
+            }
+
         }
 
         await transaction.commit();
