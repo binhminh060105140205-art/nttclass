@@ -16,6 +16,7 @@
 
 -- 1. XÓA BẢNG CŨ NẾU ĐÃ TỒN TẠI
 DROP TABLE IF EXISTS TaskRequests CASCADE;
+DROP TABLE IF EXISTS Scores CASCADE;
 DROP TABLE IF EXISTS SessionDetails CASCADE;
 DROP TABLE IF EXISTS Sessions CASCADE;
 DROP TABLE IF EXISTS Students CASCADE;
@@ -81,6 +82,31 @@ CREATE TABLE SessionDetails (
     CONSTRAINT FK_SessionDetails_Sessions FOREIGN KEY (SessionId) REFERENCES Sessions(Id) ON DELETE CASCADE,
     CONSTRAINT FK_SessionDetails_Students FOREIGN KEY (StudentId) REFERENCES Students(Id) ON DELETE CASCADE
 );
+
+-- 5A. ĐIỂM SỐ; mỗi học sinh có tối đa một điểm trong một buổi học.
+-- TestName/MaxScore được lặp lại theo từng học sinh để giữ bảng đơn giản.
+-- Luồng lưu buổi học thay toàn bộ các dòng cùng SessionId trong một transaction;
+-- unique (SessionId, StudentId) ngăn một học sinh bị ghi hai lần trong cùng bài.
+CREATE TABLE Scores (
+    Id VARCHAR(50) PRIMARY KEY,
+    StudentId VARCHAR(50) NOT NULL,
+    TeacherId VARCHAR(50) NOT NULL,
+    SessionId VARCHAR(50) NULL,
+    TestGroupId VARCHAR(100) NOT NULL,
+    ScoreType VARCHAR(20) NOT NULL,
+    TestName TEXT NOT NULL DEFAULT '',
+    ScoreValue DECIMAL(8,2) NOT NULL,
+    MaxScore DECIMAL(6,2) NOT NULL DEFAULT 10 CHECK (MaxScore > 0),
+    ScoreDate DATE NOT NULL,
+    Note TEXT NULL,
+    CONSTRAINT FK_Scores_Student FOREIGN KEY (StudentId) REFERENCES Students(Id) ON DELETE CASCADE,
+    CONSTRAINT FK_Scores_Teacher FOREIGN KEY (TeacherId) REFERENCES Users(Id),
+    CONSTRAINT FK_Scores_Session FOREIGN KEY (SessionId) REFERENCES Sessions(Id) ON DELETE CASCADE
+);
+CREATE INDEX idx_scores_student ON Scores (StudentId);
+CREATE INDEX idx_scores_teacher ON Scores (TeacherId);
+CREATE INDEX idx_scores_teacher_test_group ON Scores (TeacherId, TestGroupId);
+CREATE UNIQUE INDEX idx_scores_session_student ON Scores (SessionId, StudentId);
 
 -- 5B. LỊCH SỬ THU HỌC PHÍ THEO THÁNG
 -- Mỗi lần xác nhận đã thu tạo một dòng đối soát độc lập: ngày thu, số tiền,
