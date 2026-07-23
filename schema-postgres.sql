@@ -92,7 +92,6 @@ CREATE TABLE Scores (
     StudentId VARCHAR(50) NOT NULL,
     TeacherId VARCHAR(50) NOT NULL,
     SessionId VARCHAR(50) NULL,
-    TestGroupId VARCHAR(100) NOT NULL,
     ScoreType VARCHAR(20) NOT NULL,
     TestName TEXT NOT NULL DEFAULT '',
     ScoreValue DECIMAL(8,2) NOT NULL,
@@ -105,7 +104,6 @@ CREATE TABLE Scores (
 );
 CREATE INDEX idx_scores_student ON Scores (StudentId);
 CREATE INDEX idx_scores_teacher ON Scores (TeacherId);
-CREATE INDEX idx_scores_teacher_test_group ON Scores (TeacherId, TestGroupId);
 CREATE UNIQUE INDEX idx_scores_session_student ON Scores (SessionId, StudentId);
 
 -- 5B. LỊCH SỬ THU HỌC PHÍ THEO THÁNG

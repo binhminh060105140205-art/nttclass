@@ -90,25 +90,19 @@ Object.assign(PinkyClassApp.prototype, {
             this.showToast("Đã chuyển sang học sinh: " + this.getStudentName(this.currentStudentId), "success");
         });
 
-        document.querySelectorAll('[data-score-view-mode]').forEach(button => {
-            button.addEventListener('click', () => this.setScoreViewMode(button.dataset.scoreViewMode));
-        });
-        ['scoreFilterStudent', 'scoreFilterClass', 'scoreFilterMonth', 'scoreFilterType'].forEach(id => {
-            document.getElementById(id)?.addEventListener('change', () => this.renderScores());
-        });
-        document.getElementById('resetScoreFiltersBtn')?.addEventListener('click', () => this.resetScoreFilters());
-        document.getElementById('outsideScoreToggle')?.addEventListener('click', () => {
-            const expanded = document.getElementById('outsideScoreToggle').getAttribute('aria-expanded') === 'true';
-            this.setOutsideScoreExpanded(!expanded);
-        });
-        document.getElementById('scoreResults')?.addEventListener('click', (event) => {
-            const action = event.target.closest('[data-score-action]');
-            if (!action) return;
-            if (action.dataset.scoreAction === 'edit') this.openEditScoreModal(action.dataset.scoreId);
-            if (action.dataset.scoreAction === 'delete') this.deleteScoreFromList(action.dataset.scoreId);
-            if (action.dataset.scoreAction === 'delete-test') this.deleteScoreTest(action.dataset.testGroupId);
-            if (action.dataset.scoreAction === 'open-session') this.openEditSessionModal(action.dataset.sessionId);
-        });
+        // Student Picker riêng của trang Điểm số — đồng bộ 2 chiều với picker
+        // toàn cục ở trang Nhật ký học tập (cùng dùng chung this.currentStudentId).
+        const scoresPickerEl = document.getElementById('scoresStudentPicker');
+        if (scoresPickerEl) {
+            scoresPickerEl.addEventListener('change', (e) => {
+                this.currentStudentId = e.target.value;
+                document.getElementById('globalStudentPicker').value = this.currentStudentId;
+                this.updateAllViews();
+                const subtitle = document.getElementById('view-subtitle');
+                if (subtitle) subtitle.innerText = `Điểm BTVN, kiểm tra thường xuyên, kiểm tra cuối chương và biểu đồ tiến bộ của ${this.getStudentName(this.currentStudentId)}.`;
+                this.showToast("Đã chuyển sang học sinh: " + this.getStudentName(this.currentStudentId), "success");
+            });
+        }
 
         const batchScoreForm = document.getElementById('batchScoreForm');
         if (batchScoreForm) {
@@ -118,17 +112,12 @@ Object.assign(PinkyClassApp.prototype, {
             });
             batchScoreForm.addEventListener('input', (e) => {
                 if (e.target.classList.contains('batch-score-value')) this.updateBatchScoreCount();
-                if (e.target.id === 'batchScoreMax') this.updateBatchScoreMax();
             });
         }
         const batchScoreGrade = document.getElementById('batchScoreGrade');
         if (batchScoreGrade) {
             batchScoreGrade.addEventListener('change', () => this.filterBatchScoreRows());
         }
-        document.getElementById('scoreMax')?.addEventListener('input', () => {
-            const maxScore = Number(document.getElementById('scoreMax').value);
-            if (Number.isFinite(maxScore) && maxScore > 0) document.getElementById('scoreValue').max = String(maxScore);
-        });
 
         // Form thêm/sửa điểm
         const scoreFormEl = document.getElementById('scoreForm');
@@ -700,7 +689,7 @@ Object.assign(PinkyClassApp.prototype, {
             subtitleEl.innerText = `Theo dõi chi tiết tiến trình bài tập, ý thức học tập và nhận xét qua từng buổi học của ${this.getStudentName(this.currentStudentId)}.`;
         } else if (viewId === 'view-scores') {
             titleEl.innerText = "Điểm số";
-            subtitleEl.innerText = "Tra cứu theo bài kiểm tra hoặc học sinh, lọc dữ liệu và tổng hợp kết quả học tập.";
+            subtitleEl.innerText = `Điểm BTVN, kiểm tra thường xuyên, kiểm tra cuối chương và biểu đồ tiến bộ của ${this.getStudentName(this.currentStudentId)}.`;
         } else if (viewId === 'view-ai-chat') {
             titleEl.innerText = "Trợ lý AI";
             subtitleEl.innerText = "Hỏi đáp dựa trên dữ liệu lịch dạy và điểm số thật trong tài khoản của bạn.";
