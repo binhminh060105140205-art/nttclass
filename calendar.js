@@ -468,7 +468,8 @@ Object.assign(PinkyClassApp.prototype, {
         if (!sess) return;
 
         document.getElementById('quickEntrySessionId').value = sess.id;
-        document.getElementById('quickEntryTimeMeta').innerText = `${sess.startTime} - ${sess.endTime} (${sess.duration} giờ) — Học ${sess.type}`;
+        const sessionTypeLabel = sess.type === 'chung' ? 'Lớp học' : '1-1';
+        document.getElementById('quickEntryTimeMeta').innerText = `${sess.startTime} - ${sess.endTime} (${sess.duration} giờ) — ${sessionTypeLabel}`;
         document.getElementById('quickEntryDateMeta').innerText = this.formatDateVN(sess.date);
         document.getElementById('quickEntrySessionName').value = sess.sessionName || '';
         const isDone = this.isSessionCompleted(sess);
@@ -480,15 +481,42 @@ Object.assign(PinkyClassApp.prototype, {
         }
         document.getElementById('quickEntryContent').value = sess.content || '';
 
+        const scoreListWrap = document.getElementById('quickEntryScoresList');
+        scoreListWrap.innerHTML = sess.studentIds.map(stId => {
+            const linkedScore = (this.scores || []).find(score => score.sessionId === sess.id && score.studentId === stId);
+            const linkedScoreType = linkedScore?.scoreType || '';
+            const linkedScoreValue = linkedScore?.scoreValue ?? '';
+            const linkedScoreNote = linkedScore?.note || '';
+            const name = this.getStudentName(stId);
+            return `
+                <div class="qe-score-row" data-student-id="${stId}">
+                    <div class="qe-score-student">${this.escapeHtml(name)}</div>
+                    <div class="qe-score-grid">
+                        <label>Loại điểm
+                            <select class="qe-score-type">
+                                <option value="" ${linkedScoreType === '' ? 'selected' : ''}>Chưa nhập điểm</option>
+                                <option value="BTVN" ${linkedScoreType === 'BTVN' ? 'selected' : ''}>Bài tập về nhà (BTVN)</option>
+                                <option value="KTTX" ${['KTTX', 'KiemTra'].includes(linkedScoreType) ? 'selected' : ''}>Kiểm tra thường xuyên</option>
+                                <option value="CuoiChuong" ${linkedScoreType === 'CuoiChuong' ? 'selected' : ''}>Kiểm tra cuối chương</option>
+                                <option value="ThaiDo" ${linkedScoreType === 'ThaiDo' ? 'selected' : ''}>Thái độ</option>
+                            </select>
+                        </label>
+                        <label>Điểm (0–10)
+                            <input type="number" class="qe-score-value" min="0" max="10" step="0.1" placeholder="Ví dụ: 8.5" value="${this.escapeHtmlAttr(linkedScoreValue)}">
+                        </label>
+                        <label>Ghi chú điểm
+                            <input type="text" class="qe-score-note" placeholder="Ví dụ: Bài kiểm tra 15 phút..." value="${this.escapeHtmlAttr(linkedScoreNote)}">
+                        </label>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
         // Sinh 1 thẻ nhập liệu RIÊNG cho từng học sinh trong ca, dữ liệu khởi
         // tạo lấy từ studentDetails hiện có của đúng em đó (nếu có).
         const listWrap = document.getElementById('quickEntryStudentsList');
         listWrap.innerHTML = sess.studentIds.map(stId => {
             const detail = sess.studentDetails[stId] || { homework: null, attitude: '', individualComment: '', note: '' };
-            const linkedScore = (this.scores || []).find(score => score.sessionId === sess.id && score.studentId === stId);
-            const linkedScoreType = linkedScore?.scoreType || '';
-            const linkedScoreValue = linkedScore?.scoreValue ?? '';
-            const linkedScoreNote = linkedScore?.note || '';
             const name = this.getStudentName(stId);
             const homeworkVal = isDone ? this.normalizeHomeworkValue(detail.homework) : null;
             const attitude = isDone ? (detail.attitude || '') : '';
@@ -498,26 +526,6 @@ Object.assign(PinkyClassApp.prototype, {
             return `
                 <div class="qe-student-card" data-student-id="${stId}">
                     <div class="qe-student-name">${this.escapeHtml(name)}</div>
-                    <div class="full-span qe-score-section">
-                        <div class="qe-score-heading">Nhập điểm <span>để trống nếu buổi này không chấm điểm</span></div>
-                        <div class="qe-score-grid">
-                            <label>Loại điểm
-                                <select class="qe-score-type">
-                                    <option value="" ${linkedScoreType === '' ? 'selected' : ''}>Chưa nhập điểm</option>
-                                    <option value="BTVN" ${linkedScoreType === 'BTVN' ? 'selected' : ''}>Bài tập về nhà (BTVN)</option>
-                                    <option value="KTTX" ${['KTTX', 'KiemTra'].includes(linkedScoreType) ? 'selected' : ''}>Kiểm tra thường xuyên</option>
-                                    <option value="CuoiChuong" ${linkedScoreType === 'CuoiChuong' ? 'selected' : ''}>Kiểm tra cuối chương</option>
-                                    <option value="ThaiDo" ${linkedScoreType === 'ThaiDo' ? 'selected' : ''}>Thái độ</option>
-                                </select>
-                            </label>
-                            <label>Điểm (0–10)
-                                <input type="number" class="qe-score-value" min="0" max="10" step="0.1" placeholder="Ví dụ: 8.5" value="${this.escapeHtmlAttr(linkedScoreValue)}">
-                            </label>
-                            <label>Ghi chú điểm
-                                <input type="text" class="qe-score-note" placeholder="Ví dụ: Bài kiểm tra 15 phút..." value="${this.escapeHtmlAttr(linkedScoreNote)}">
-                            </label>
-                        </div>
-                    </div>
                     <div class="qe-field-grid">
                         <div>
                             <label>Bài tập về nhà (BTVN) — mức hoàn thành</label>
@@ -580,7 +588,22 @@ Object.assign(PinkyClassApp.prototype, {
         const content = document.getElementById('quickEntryContent').value.trim();
         const sessionName = document.getElementById('quickEntrySessionName').value.trim();
         const newStudentDetails = {};
+        const scoreDetailsByStudent = new Map();
         let scoreValidationError = '';
+        document.querySelectorAll('#quickEntryScoresList .qe-score-row').forEach(row => {
+            const stId = row.getAttribute('data-student-id');
+            const scoreType = row.querySelector('.qe-score-type').value;
+            const scoreValueRaw = row.querySelector('.qe-score-value').value.trim();
+            const scoreNote = row.querySelector('.qe-score-note').value.trim();
+            const scoreValue = scoreValueRaw === '' ? null : Number(scoreValueRaw.replace(',', '.'));
+            if (!scoreValidationError && scoreValueRaw !== '' && !scoreType) {
+                scoreValidationError = `Vui lòng chọn loại điểm cho ${this.getStudentName(stId)}.`;
+            } else if (!scoreValidationError && scoreValueRaw !== '' && (!Number.isFinite(scoreValue) || scoreValue < 0 || scoreValue > 10)) {
+                scoreValidationError = `Điểm của ${this.getStudentName(stId)} phải từ 0 đến 10.`;
+            }
+            scoreDetailsByStudent.set(stId, { scoreType, scoreValue, scoreNote });
+        });
+
         document.querySelectorAll('#quickEntryStudentsList .qe-student-card').forEach(card => {
             const stId = card.getAttribute('data-student-id');
             const oldDetail = (sess.studentDetails && sess.studentDetails[stId]) || {};
@@ -588,23 +611,13 @@ Object.assign(PinkyClassApp.prototype, {
             const attitude = card.querySelector('.qe-attitude').value.trim();
             const individualComment = card.querySelector('.qe-comment').value.trim();
             const note = card.querySelector('.qe-note').value.trim();
-            const scoreType = card.querySelector('.qe-score-type').value;
-            const scoreValueRaw = card.querySelector('.qe-score-value').value.trim();
-            const scoreNote = card.querySelector('.qe-score-note').value.trim();
-            const scoreValue = scoreValueRaw === '' ? null : Number(scoreValueRaw.replace(',', '.'));
-            if (scoreValueRaw !== '' && !scoreType) {
-                scoreValidationError = `Vui lòng chọn loại điểm cho ${this.getStudentName(stId)}.`;
-            } else if (scoreValueRaw !== '' && (!Number.isFinite(scoreValue) || scoreValue < 0 || scoreValue > 10)) {
-                scoreValidationError = `Điểm của ${this.getStudentName(stId)} phải từ 0 đến 10.`;
-            }
+            const scoreDetail = scoreDetailsByStudent.get(stId) || { scoreType: '', scoreValue: null, scoreNote: '' };
             newStudentDetails[stId] = {
                 homework,
                 attitude,
                 individualComment,
                 note,
-                scoreType,
-                scoreValue,
-                scoreNote,
+                ...scoreDetail,
                 feeAmount: oldDetail.feeAmount,
                 paid: !!oldDetail.paid
             };
@@ -995,7 +1008,7 @@ Object.assign(PinkyClassApp.prototype, {
             return;
         }
         if (type === 'riêng' && checkedBoxes.length > 1) {
-            this.showToast("Học riêng (1 vs 1) chỉ được chọn đúng 1 học sinh!", "error");
+            this.showToast("Loại 1-1 chỉ được chọn đúng 1 học sinh!", "error");
             return;
         }
 
@@ -1193,7 +1206,7 @@ Object.assign(PinkyClassApp.prototype, {
             return;
         }
         if (type === 'riêng' && checkedBoxes.length > 1) {
-            this.showToast("Học riêng (1 vs 1) chỉ được chọn đúng 1 học sinh!", "error");
+            this.showToast("Loại 1-1 chỉ được chọn đúng 1 học sinh!", "error");
             return;
         }
 
@@ -1622,7 +1635,7 @@ Object.assign(PinkyClassApp.prototype, {
                 const isPrivateNow = document.getElementById(typeSelectId).value !== 'chung';
                 if (isPrivateNow) {
                     selectAllCheckbox.checked = false;
-                    this.showToast('Học riêng (1 vs 1) chỉ được chọn 1 học sinh, không thể chọn cả lớp.', 'error');
+                    this.showToast('Loại 1-1 chỉ được chọn 1 học sinh, không thể chọn cả lớp.', 'error');
                     return;
                 }
                 body.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = selectAllCheckbox.checked; });

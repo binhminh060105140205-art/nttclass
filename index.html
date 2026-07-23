@@ -343,7 +343,7 @@
                     </div>
                 </div>
 
-                <form id="batchScoreForm" class="score-batch-panel role-restricted admin-tutor" hidden>
+                <form id="batchScoreForm" class="score-batch-panel role-restricted admin-tutor">
                     <div class="score-batch-heading">
                         <div>
                             <h3>Nhập điểm hàng loạt</h3>
@@ -527,7 +527,7 @@
                         <div style="font-size: 18px; font-weight: 700; color: var(--primary);" id="summary-total-hours">0</div>
                     </div>
                     <div class="glass-card" style="padding: 12px; text-align: center; border-radius: 12px;">
-                        <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Học riêng/chung</div>
+                        <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">1-1/Lớp học</div>
                         <div style="font-size: 18px; font-weight: 700; color: var(--primary);" id="summary-ratio">0/0</div>
                     </div>
                     <div class="glass-card" style="padding: 12px; text-align: center; border-radius: 12px;" id="admin-summary-money-card">
@@ -567,16 +567,16 @@
                                 <div class="session-type-choice-group" role="radiogroup" aria-label="Loại buổi học">
                                     <label class="session-type-choice">
                                         <input type="radio" name="sessionTypeChoice" value="riêng" checked>
-                                        <span>Học riêng (1 vs 1)</span>
+                                        <span>1-1</span>
                                     </label>
                                     <label class="session-type-choice">
                                         <input type="radio" name="sessionTypeChoice" value="chung">
-                                        <span>Học chung (Dạy nhóm)</span>
+                                        <span>Lớp học</span>
                                     </label>
                                 </div>
                                 <select id="sessionType" class="session-type-select-hidden" required aria-hidden="true" tabindex="-1">
-                                    <option value="riêng">Học riêng (1 vs 1)</option>
-                                    <option value="chung">Học chung (Dạy nhóm)</option>
+                                    <option value="riêng">1-1</option>
+                                    <option value="chung">Lớp học</option>
                                 </select>
                             </div>
 
@@ -1093,7 +1093,15 @@
                         <textarea id="quickEntryContent" class="form-control" placeholder="Ví dụ: Ôn tam giác, luyện đề..." rows="2"></textarea>
                     </div>
 
-                    <p class="quick-entry-score-note" style="margin:0; font-size:12px; color:var(--text-muted);">Nhập điểm ngay trong thẻ của từng học sinh bên dưới, gắn trực tiếp với buổi học này.</p>
+                    <section class="quick-entry-score-panel" aria-labelledby="quickEntryScoresHeading">
+                        <div class="quick-entry-score-header">
+                            <div>
+                                <strong id="quickEntryScoresHeading">Nhập điểm</strong>
+                                <p>Điểm được gắn trực tiếp với buổi học này. Để trống nếu buổi học không chấm điểm.</p>
+                            </div>
+                        </div>
+                        <div id="quickEntryScoresList" class="quick-entry-scores-list"></div>
+                    </section>
 
                     <div>
                         <label style="font-weight:700; display:block; margin-bottom:8px;"> Chấm riêng cho từng học sinh
@@ -1132,16 +1140,16 @@
                             <div class="session-type-choice-group" role="radiogroup" aria-label="Loại buổi học">
                                 <label class="session-type-choice">
                                     <input type="radio" name="editSessionTypeChoice" value="riêng" checked>
-                                    <span>Học riêng (1 vs 1)</span>
+                                    <span>1-1</span>
                                 </label>
                                 <label class="session-type-choice">
                                     <input type="radio" name="editSessionTypeChoice" value="chung">
-                                    <span>Học chung (Dạy nhóm)</span>
+                                    <span>Lớp học</span>
                                 </label>
                             </div>
                             <select id="editSessionType" class="session-type-select-hidden" required aria-hidden="true" tabindex="-1">
-                                <option value="riêng">Học riêng (1 vs 1)</option>
-                                <option value="chung">Học chung (Dạy nhóm)</option>
+                                <option value="riêng">1-1</option>
+                                <option value="chung">Lớp học</option>
                             </select>
                         </div>
                         

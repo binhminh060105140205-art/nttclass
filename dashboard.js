@@ -122,7 +122,7 @@ Object.assign(PinkyClassApp.prototype, {
             item.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
                     <span style="font-weight: 600; font-size: 13px; color: var(--primary);">${sess.startTime} - ${sess.endTime}</span>
-                    <span class="badge ${badgeClass}" style="font-size: 10px; padding: 2px 8px;">Học ${sess.type}</span>
+                    <span class="badge ${badgeClass}" style="font-size: 10px; padding: 2px 8px;">${sess.type === 'chung' ? 'Lớp học' : '1-1'}</span>
                 </div>
                 <div style="font-size:14px; font-weight:700; color:var(--text-main);">${sess.sessionName ? this.escapeHtml(sess.sessionName) + ' — ' : ''}${names}</div>
                 <div style="font-size:12px; color:var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px;">
