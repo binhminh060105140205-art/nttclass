@@ -645,53 +645,6 @@
                                 <textarea id="sessionContent" class="form-control" placeholder="Ví dụ: Ôn tam giác, luyện bài tập đại số, chữa đề...&#10;BTVN: Phiếu 8.1" rows="3"></textarea>
                             </div>
 
-                            <div class="form-group form-group-full session-score-entry">
-                                <button type="button" class="session-score-toggle" id="sessionScoreToggle" aria-expanded="false" aria-controls="sessionScorePanel">
-                                    <span>+ Nhập điểm</span>
-                                    <span class="session-score-toggle-status" id="sessionScoreToggleStatus">Không bắt buộc</span>
-                                </button>
-                                <div class="session-score-panel" id="sessionScorePanel" hidden>
-                                    <div class="session-score-common-grid">
-                                        <div class="form-group">
-                                            <label for="sessionScoreType">Loại điểm <span style="color:red;">*</span></label>
-                                            <select id="sessionScoreType" class="form-control" disabled>
-                                                <option value="BTVN">Bài tập về nhà (BTVN)</option>
-                                                <option value="KTTX">Kiểm tra thường xuyên</option>
-                                                <option value="CuoiChuong">Kiểm tra cuối chương</option>
-                                                <option value="KiemTra">Kiểm tra (dữ liệu cũ)</option>
-                                                <option value="ThaiDo">Thái độ (dữ liệu cũ)</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-group session-score-test-name">
-                                            <label for="sessionScoreTestName">Tên bài kiểm tra <span style="color:red;">*</span></label>
-                                            <input type="text" id="sessionScoreTestName" class="form-control" maxlength="150" placeholder="Ví dụ: Kiểm tra 15 phút chương 2" disabled>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="sessionScoreMax">Thang điểm</label>
-                                            <input type="number" id="sessionScoreMax" class="form-control" min="0.01" max="1000" step="0.01" value="10" inputmode="decimal" disabled>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="sessionScoreDate">Ngày chấm</label>
-                                            <input type="date" id="sessionScoreDate" class="form-control" readonly disabled>
-                                        </div>
-                                        <div class="form-group session-score-group-field">
-                                            <label for="sessionScoreGroup">Lớp/nhóm học</label>
-                                            <input type="text" id="sessionScoreGroup" class="form-control" readonly disabled>
-                                        </div>
-                                    </div>
-                                    <div class="session-score-table-heading">
-                                        <strong>Bảng điểm học sinh</strong>
-                                        <span id="sessionScoreCount">Đã nhập điểm: 0/0 học sinh</span>
-                                    </div>
-                                    <div class="table-wrapper session-score-table-wrap">
-                                        <table class="custom-table session-score-table">
-                                            <thead><tr><th>Họ tên học sinh</th><th>Điểm</th><th>Ghi chú về bài kiểm tra</th></tr></thead>
-                                            <tbody id="sessionScoreTableBody"></tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-
                             <!-- Lặp lại buổi học theo chu kỳ hoặc chọn ngày tùy chỉnh -->
                             <div class="form-group form-group-full repeat-session-section">
                                 <label class="repeat-toggle-label">
@@ -1163,7 +1116,7 @@
 
     <!-- MODAL 3: EDIT SESSION (Admin only) -->
     <div class="modal-backdrop" id="editSessionModal">
-        <div class="modal-container" style="max-width: 760px; max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="modal-container" style="max-width: 700px; max-height: 90vh; display: flex; flex-direction: column;">
             <div class="modal-header">
                 <h3 class="modal-title">Sửa Lịch Buổi Học</h3>
                 <button class="modal-close" onclick="app.closeModal('editSessionModal')">&times;</button>
@@ -1237,53 +1190,6 @@
                         <div class="form-group form-group-full">
                             <label for="editSessionContent">Nội dung học / ghi chú buổi học</label>
                             <textarea id="editSessionContent" class="form-control" rows="3"></textarea>
-                        </div>
-
-                        <div class="form-group form-group-full session-score-entry">
-                            <button type="button" class="session-score-toggle" id="editSessionScoreToggle" aria-expanded="false" aria-controls="editSessionScorePanel">
-                                <span>+ Nhập điểm</span>
-                                <span class="session-score-toggle-status" id="editSessionScoreToggleStatus">Không bắt buộc</span>
-                            </button>
-                            <div class="session-score-panel" id="editSessionScorePanel" hidden>
-                                <div class="session-score-common-grid">
-                                    <div class="form-group">
-                                        <label for="editSessionScoreType">Loại điểm <span style="color:red;">*</span></label>
-                                        <select id="editSessionScoreType" class="form-control" disabled>
-                                            <option value="BTVN">Bài tập về nhà (BTVN)</option>
-                                            <option value="KTTX">Kiểm tra thường xuyên</option>
-                                            <option value="CuoiChuong">Kiểm tra cuối chương</option>
-                                            <option value="KiemTra">Kiểm tra (dữ liệu cũ)</option>
-                                            <option value="ThaiDo">Thái độ (dữ liệu cũ)</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group session-score-test-name">
-                                        <label for="editSessionScoreTestName">Tên bài kiểm tra <span style="color:red;">*</span></label>
-                                        <input type="text" id="editSessionScoreTestName" class="form-control" maxlength="150" placeholder="Ví dụ: Kiểm tra 15 phút chương 2" disabled>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="editSessionScoreMax">Thang điểm</label>
-                                        <input type="number" id="editSessionScoreMax" class="form-control" min="0.01" max="1000" step="0.01" value="10" inputmode="decimal" disabled>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="editSessionScoreDate">Ngày chấm</label>
-                                        <input type="date" id="editSessionScoreDate" class="form-control" readonly disabled>
-                                    </div>
-                                    <div class="form-group session-score-group-field">
-                                        <label for="editSessionScoreGroup">Lớp/nhóm học</label>
-                                        <input type="text" id="editSessionScoreGroup" class="form-control" readonly disabled>
-                                    </div>
-                                </div>
-                                <div class="session-score-table-heading">
-                                    <strong>Bảng điểm học sinh</strong>
-                                    <span id="editSessionScoreCount">Đã nhập điểm: 0/0 học sinh</span>
-                                </div>
-                                <div class="table-wrapper session-score-table-wrap">
-                                    <table class="custom-table session-score-table">
-                                        <thead><tr><th>Họ tên học sinh</th><th>Điểm</th><th>Ghi chú về bài kiểm tra</th></tr></thead>
-                                        <tbody id="editSessionScoreTableBody"></tbody>
-                                    </table>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>

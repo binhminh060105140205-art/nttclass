@@ -18,11 +18,8 @@ Object.assign(PinkyClassApp.prototype, {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>${this.formatDateVN(sc.date)}</td>
-                        <td>
-                            <span class="score-type-badge ${this.scoreTypeBadgeClass(sc.scoreType)}">${this.scoreTypeLabel(sc.scoreType)}</span>
-                            ${sc.testName ? `<div class="score-test-name">${this.escapeHtml(sc.testName)}</div>` : ''}
-                        </td>
-                        <td style="text-align:center; font-weight:700; color:var(--primary);">${sc.scoreValue} / ${Number(sc.maxScore) > 0 ? sc.maxScore : 10}</td>
+                        <td><span class="score-type-badge ${this.scoreTypeBadgeClass(sc.scoreType)}">${this.scoreTypeLabel(sc.scoreType)}</span></td>
+                        <td style="text-align:center; font-weight:700; color:var(--primary);">${sc.scoreValue}</td>
                         <td>${sc.note ? this.escapeHtml(sc.note) : '<span style="color:var(--text-muted);">-</span>'}</td>
                         <td class="role-restricted admin-tutor" style="text-align:center;">
                             <button class="btn btn-secondary btn-sm" onclick="app.openEditScoreModal('${sc.id}')">Sửa</button>
@@ -34,15 +31,11 @@ Object.assign(PinkyClassApp.prototype, {
         }
 
         // ----- Bảng tóm tắt trung bình theo từng loại điểm -----
-        const normalizedToTen = score => {
-            const maxScore = Number(score.maxScore) > 0 ? Number(score.maxScore) : 10;
-            return Number(score.scoreValue) / maxScore * 10;
-        };
-        const byTypes = (...types) => studentScores.filter(s => types.includes(s.scoreType)).map(normalizedToTen);
+        const byTypes = (...types) => studentScores.filter(s => types.includes(s.scoreType)).map(s => s.scoreValue);
         const avgBTVN = this.average(byTypes('BTVN'));
         const avgKTTX = this.average(byTypes('KTTX', 'KiemTra'));
         const avgCC   = this.average(byTypes('CuoiChuong'));
-        const avgAll  = this.average(studentScores.map(normalizedToTen));
+        const avgAll  = this.average(studentScores.map(s => s.scoreValue));
         const fmt = v => v === null ? '-' : v.toFixed(1);
 
         const summaryGrid = document.getElementById('scoreSummaryGrid');
@@ -207,12 +200,6 @@ Object.assign(PinkyClassApp.prototype, {
     openEditScoreModal(scoreId) {
         const sc = (this.scores || []).find(s => s.id === scoreId);
         if (!sc) return;
-        if (sc.sessionId) {
-            this.openEditSessionModal(sc.sessionId);
-            this.setSessionScoreExpanded('editSession', true);
-            window.setTimeout(() => document.getElementById('editSessionScorePanel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
-            return;
-        }
         document.getElementById('scoreModalTitle').innerText = 'Sửa Điểm';
         document.getElementById('editScoreId').value = sc.id;
         const scoreTypeEl = document.getElementById('scoreType');
