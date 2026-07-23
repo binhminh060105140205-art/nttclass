@@ -246,9 +246,9 @@
             </div>
 
             <!-- Dashboard Content -->
-            <div class="dashboard-content-grid">
-                <div class="glass-card dashboard-overview-card">
-                    <div class="dashboard-section-heading">
+            <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr; gap: 20px;">
+                <div class="glass-card" style="padding: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <h3 style="color: var(--primary); font-weight: 700; display: flex; align-items: center; gap: 10px; margin-bottom: 0;"> Ca Dạy & Buổi Học Hôm Nay & Ngày Mai
                         </h3>
                         <button class="btn btn-primary btn-sm" onclick="app.switchView('view-scheduler')"> Xem toàn bộ lịch dạy
@@ -274,31 +274,21 @@
 
         <!-- SECTION 2: STUDENT LOGS -->
         <section id="view-logs" class="view-section">
-            <div class="glass-card page-workspace logs-workspace">
-                <div class="page-heading log-page-heading">
-                    <div>
-                        <span class="page-kicker">NHẬT KÝ HỌC TẬP</span>
-                        <h2>Nhật ký học sinh</h2>
-                        <p>Theo dõi nội dung từng buổi học, bài tập về nhà, ý thức và nhận xét của giáo viên.</p>
+            <div class="glass-card" style="padding: 14px 16px;">
+                <div class="evaluation-header" style="margin-bottom: 8px;">
+                    <div class="student-context-picker log-student-picker" id="studentContextPicker">
+                        <select id="globalStudentPicker" class="student-select" aria-label="Chọn học sinh">
+                            <!-- Filled dynamically -->
+                        </select>
                     </div>
-                    <div class="page-heading-actions role-restricted admin-tutor">
-                        <button class="btn btn-primary btn-sm log-export-btn" id="btnExportLogImage">Xuất ảnh
-                        </button>
-                        <button class="btn btn-secondary btn-sm log-export-btn" id="btnExportLog">Xuất Excel
-                        </button>
-                    </div>
-                </div>
-
-                <div class="page-filter-panel log-filter-panel">
-                    <label class="page-filter-field" for="globalStudentPicker">
-                        <span>Học sinh</span>
-                        <div class="student-context-picker log-student-picker" id="studentContextPicker">
-                            <select id="globalStudentPicker" class="student-select" aria-label="Chọn học sinh">
-                                <!-- Filled dynamically -->
-                            </select>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <div class="role-restricted admin-tutor" style="display: flex; gap: 8px;">
+                            <button class="btn btn-primary btn-sm log-export-btn" id="btnExportLogImage">Xuất ảnh
+                            </button>
+                            <button class="btn btn-secondary btn-sm log-export-btn" id="btnExportLog">Xuất Excel
+                            </button>
                         </div>
-                    </label>
-                    <span class="page-filter-note">Chọn học sinh để xem toàn bộ nhật ký theo thời gian.</span>
+                    </div>
                 </div>
 
                 <!-- Customized Table matching the layout "Quỳnh Anh Toán 8" in Image 1.
@@ -338,10 +328,10 @@
 
         <!-- SECTION 2B: TRA CỨU & QUẢN LÝ ĐIỂM SỐ -->
         <section id="view-scores" class="view-section">
-            <div class="glass-card scores-workspace page-workspace">
-                <div class="score-page-header page-heading">
+            <div class="glass-card scores-workspace">
+                <div class="score-page-header">
                     <div>
-                        <span class="score-page-kicker page-kicker">SỔ ĐIỂM TỔNG HỢP</span>
+                        <span class="score-page-kicker">SỔ ĐIỂM TỔNG HỢP</span>
                         <h2>Điểm số</h2>
                         <p>Xem, lọc và quản lý toàn bộ kết quả đã ghi nhận. Điểm của buổi học được nhập ngay trong form buổi học.</p>
                     </div>
@@ -445,10 +435,9 @@
              (lịch dạy + điểm số + học sinh) của ĐÚNG giáo viên hiệu lực của
              tài khoản đang đăng nhập (xem /api/ai-chat ở server.js). -->
         <section id="view-ai-chat" class="view-section">
-            <div class="glass-card ai-chat-card page-workspace">
-                <div class="page-heading ai-page-heading">
+            <div class="glass-card ai-chat-card">
+                <div class="evaluation-header" style="margin-bottom: 15px;">
                     <div>
-                        <span class="page-kicker">TRỢ LÝ DỮ LIỆU</span>
                         <h2 style="color: var(--primary); font-weight: 700; display: inline-flex; align-items: center; gap: 8px;">Trợ lý AI</h2>
                         <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
                             Hỏi về lịch dạy, điểm số, học sinh — trợ lý trả lời dựa trên đúng dữ liệu của tài khoản bạn.
@@ -472,14 +461,7 @@
 
         <!-- YÊU CẦU: ghi chú công việc kèm ảnh, lưu bền vững trên server -->
         <section id="view-requests" class="view-section">
-            <div class="glass-card requests-card page-workspace">
-                <div class="page-heading requests-page-heading">
-                    <div>
-                        <span class="page-kicker">BẢNG CÔNG VIỆC</span>
-                        <h2>Yêu cầu</h2>
-                        <p>Ghi lại công việc cần xử lý, đính kèm hình ảnh và theo dõi trạng thái hoàn thành.</p>
-                    </div>
-                </div>
+            <div class="glass-card requests-card">
                 <div class="request-board-header">
                     <div class="request-tabs" role="tablist" aria-label="Trạng thái yêu cầu">
                         <button type="button" class="request-tab request-priority-tab" data-request-filter="priority" role="tab" aria-selected="false">
@@ -528,17 +510,8 @@
         <section id="view-scheduler" class="view-section">
 
             <!-- Weekly calendar view of scheduled sessions (Image 4 format) -->
-            <div class="glass-card page-workspace scheduler-workspace">
-                <div class="page-heading scheduler-page-heading">
-                    <div>
-                        <span class="page-kicker">LỊCH DẠY &amp; CHẤM CÔNG</span>
-                        <h2>Lịch giảng dạy</h2>
-                        <p>Xem lịch theo ngày, tuần hoặc tháng và ghi nhận nhanh các buổi học mới.</p>
-                    </div>
-                    <button type="button" class="btn btn-primary btn-sm" id="btnOpenCreateSession">+ Ghi buổi học mới</button>
-                </div>
-
-                <div class="page-filter-panel scheduler-control-panel">
+            <div class="glass-card" style="padding: 24px;">
+                <div class="evaluation-header" style="margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                     <div class="calendar-view-switcher" role="group" aria-label="Chọn kiểu xem lịch">
                         <button type="button" class="cal-view-btn" data-view="day">Ngày</button>
                         <button type="button" class="cal-view-btn active" data-view="week">Tuần</button>
@@ -550,29 +523,30 @@
                         <span id="weekRangeLabel" class="week-range-label">--</span>
                         <button class="btn btn-secondary btn-sm" id="nextWeekBtn">Tuần sau</button>
                     </div>
+                    <button type="button" class="btn btn-primary btn-sm" id="btnOpenCreateSession">+ Ghi buổi học mới</button>
                 </div>
 
                 <!-- Gợi ý thao tác nhanh trên lịch tuần: bấm-kéo trên 1 khung giờ
                      TRỐNG để mở form tạo buổi học mới đã điền sẵn đúng ngày/giờ. -->
-                <p class="page-hint">
+                <p style="font-size: 12px; color: var(--text-muted); margin: -6px 0 14px;">
                      Mẹo: giữ chuột/tay và kéo trên 1 khung giờ trống trong lịch bên dưới để tạo buổi học mới với ngày/giờ điền sẵn.
                 </p>
 
                 <!-- mini statistics banner (tính theo khoảng thời gian đang xem: ngày/tuần/tháng) -->
-                <div class="stats-grid scheduler-metrics-grid">
-                    <div class="glass-card metric-card">
+                <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
+                    <div class="glass-card" style="padding: 12px; text-align: center; border-radius: 12px;">
                         <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Tổng buổi</div>
                         <div style="font-size: 18px; font-weight: 700; color: var(--primary);" id="summary-total-sessions">0</div>
                     </div>
-                    <div class="glass-card metric-card">
+                    <div class="glass-card" style="padding: 12px; text-align: center; border-radius: 12px;">
                         <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Tổng giờ</div>
                         <div style="font-size: 18px; font-weight: 700; color: var(--primary);" id="summary-total-hours">0</div>
                     </div>
-                    <div class="glass-card metric-card">
+                    <div class="glass-card" style="padding: 12px; text-align: center; border-radius: 12px;">
                         <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Học riêng/chung</div>
                         <div style="font-size: 18px; font-weight: 700; color: var(--primary);" id="summary-ratio">0/0</div>
                     </div>
-                    <div class="glass-card metric-card" id="admin-summary-money-card">
+                    <div class="glass-card" style="padding: 12px; text-align: center; border-radius: 12px;" id="admin-summary-money-card">
                         <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Tổng tiền</div>
                         <div style="font-size: 18px; font-weight: 700; color: var(--primary);" id="summary-total-money">0đ</div>
                     </div>
@@ -776,10 +750,9 @@
 
         <!-- SECTION 4: TUITION & PAYMENTS -->
         <section id="view-tuition" class="view-section">
-            <div class="glass-card page-workspace tuition-workspace">
-                <div class="page-heading tuition-page-heading">
+            <div class="glass-card" style="padding: 24px;">
+                <div class="evaluation-header" style="margin-bottom: 20px;">
                     <div>
-                        <span class="page-kicker">TÀI CHÍNH HỌC TẬP</span>
                         <h2 style="color: var(--primary); font-weight: 700;"> Thống Kê Học Phí</h2>
                         <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
                             Theo dõi tổng học phí, trạng thái đã thanh toán hoặc còn nợ của học sinh.
@@ -787,22 +760,22 @@
                     </div>
                 </div>
 
-                <div class="tuition-metrics-grid">
-                    <div class="glass-card stat-card tuition-metric-card">
+                <div class="grid-form" style="margin-bottom: 25px;">
+                    <div class="glass-card stat-card" style="padding: 20px;">
                         <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Học phí Đã Thu</div>
                         <div style="font-size: 24px; font-weight: 700; color: #16a34a; margin-top: 5px;" id="tuition-paid-sum">0đ</div>
                     </div>
-                    <div class="glass-card stat-card tuition-metric-card">
+                    <div class="glass-card stat-card" style="padding: 20px;">
                         <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Học phí Chưa Thu</div>
                         <div style="font-size: 24px; font-weight: 700; color: #dc2626; margin-top: 5px;" id="tuition-unpaid-sum">0đ</div>
                     </div>
-                    <div class="glass-card stat-card tuition-metric-card">
+                    <div class="glass-card stat-card" style="padding: 20px;">
                         <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Tổng cộng học phí</div>
                         <div style="font-size: 24px; font-weight: 700; color: var(--primary); margin-top: 5px;" id="tuition-total-sum">0đ</div>
                     </div>
                 </div>
 
-                <div class="table-wrapper page-table">
+                <div class="table-wrapper" style="border-radius: 16px;">
                     <table class="custom-table" id="tuitionOverviewTable">
                         <thead>
                             <tr>
@@ -827,10 +800,9 @@
 
         <!-- SECTION 5: STUDENT PROFILE MANAGEMENT -->
         <section id="view-students" class="view-section">
-            <div class="glass-card page-workspace students-workspace">
-                <div class="page-heading students-page-heading">
+            <div class="glass-card" style="padding: 24px;">
+                <div class="evaluation-header" style="margin-bottom: 20px;">
                     <div>
-                        <span class="page-kicker">HỒ SƠ HỌC VIÊN</span>
                         <h2 style="color: var(--primary); font-weight: 700;"> Hồ Sơ & Thông Tin Học Sinh</h2>
                         <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
                             Quản lý danh mục học sinh cá nhân, thiết lập mức học phí cơ bản của từng em.
@@ -840,7 +812,7 @@
                     </button>
                 </div>
 
-                <div class="page-filter-panel page-toolbar students-toolbar">
+                <div class="evaluation-header" style="margin-bottom: 16px; gap: 10px; flex-wrap: wrap;">
                     <div style="display:flex; align-items:center; gap:8px;">
                         <label for="studentGradeFilter" style="font-size:13px; font-weight:600; color: var(--text-muted);"> Lọc theo lớp:
                         </label>
@@ -857,7 +829,7 @@
                     </div>
                 </div>
 
-                <div class="table-wrapper page-table">
+                <div class="table-wrapper" style="border-radius: 16px;">
                     <table class="custom-table">
                         <thead>
                             <tr>
@@ -880,17 +852,16 @@
 
         <!-- SECTION 6: USER MANAGEMENT -->
         <section id="view-users" class="view-section">
-            <div class="glass-card page-workspace users-workspace">
-                <div class="page-heading users-page-heading">
+            <div class="glass-card" style="padding: 24px;">
+                <div class="evaluation-header" style="margin-bottom: 20px; justify-content: space-between; align-items: center; display:flex; gap: 14px;">
                     <div>
-                        <span class="page-kicker">QUẢN TRỊ HỆ THỐNG</span>
                         <h2 style="color: var(--primary); font-weight: 700;"> Quản lý tài khoản</h2>
                         <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Admin chỉ quản lý tài khoản (tạo, sửa, xóa, khóa/mở khóa, gán vai trò). Admin không có quyền truy cập dữ liệu dạy học.</p>
                     </div>
                     <button class="btn btn-primary" id="addNewUserBtn"> Thêm tài khoản
                     </button>
                 </div>
-                <div class="table-wrapper page-table">
+                <div class="table-wrapper" style="border-radius: 16px;">
                     <table class="custom-table">
                         <thead>
                             <tr>
