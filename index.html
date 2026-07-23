@@ -9,11 +9,126 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="landing.css">
 </head>
 <body>
 
+    <!-- Public Landing Page -->
+    <section id="landingPage" class="landing-page">
+        <div class="landing-cinematic-bg" aria-hidden="true">
+            <span class="landing-noise"></span>
+            <span class="landing-star landing-star-one"></span>
+            <span class="landing-star landing-star-two"></span>
+            <span class="landing-star landing-star-three"></span>
+            <span class="landing-aurora landing-aurora-one"></span>
+            <span class="landing-aurora landing-aurora-two"></span>
+            <span class="landing-horizon-glow"></span>
+        </div>
+
+        <header class="landing-nav">
+            <a href="#landingPage" class="landing-brand" aria-label="NttClass - Trang gi&#7899;i thi&#7879;u">
+                <span class="landing-brand-mark">N</span>
+                <span class="landing-brand-copy">
+                    <strong>NttClass</strong>
+                    <small>Learning, made clear.</small>
+                </span>
+            </a>
+            <nav class="landing-nav-links" aria-label="?i?u h??ng landing page">
+                <a href="#landingPage">Trang ch?</a>
+                <a href="#landingFeatures">T?nh n?ng</a>
+                <a href="#landingStory">C?ch ho?t ??ng</a>
+            </nav>
+            <div class="landing-nav-actions">
+                <span class="landing-nav-note">Learning space for teachers and students</span>
+                <button type="button" class="landing-glass landing-login-nav" data-open-login>Login <span aria-hidden="true">&#8599;</span></button>
+                <button type="button" class="landing-mobile-menu" aria-label="Open menu">&#9776;</button>
+            </div>
+        </header>
+
+        <main class="landing-main">
+            <section class="landing-hero" id="landingStory">
+                <div class="landing-hero-copy">
+                    <span class="landing-kicker"><i></i>NTTCLASS / LEARNING OPERATING SYSTEM</span>
+                    <h1>Qu&#7843;n l&#253; l&#7899;p h&#7885;c.<br><em>Nh&#7865; nh&#224;ng h&#417;n.</em></h1>
+                    <p>Mot khong gian tap trung cho lich day, nhat ky hoc tap, diem so va hoc phi de moi buoi hoc tien ve phia truoc ro rang hon.</p>
+                    <div class="landing-hero-actions">
+                        <button type="button" class="landing-button landing-button-primary" data-open-login>
+                            <span>Dang nhap de bat dau</span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13m0 0-5-5m5 5-5 5"/></svg>
+                        </button>
+                        <button type="button" class="landing-button landing-button-link" id="landingExploreBtn" data-open-login>
+                            Explore platform
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v13m0 0-5-5m5 5 5-5"/></svg>
+                        </button>
+                    </div>
+                    <div class="landing-proof-list hidden" aria-label="Highlights">
+                        <span><i>?</i>G?n trong m?t m?n h?nh</span>
+                        <span><i>?</i>D? li?u lu?n r? r?ng</span>
+                    </div>
+                </div>
+
+                <div class="landing-hero-stage" aria-label="Minh h?a kh?ng gian l?m vi?c NttClass">
+                    <div class="landing-stage-meta"><span>01</span><i></i><span>04</span><small>THE CLEARER WAY TO TEACH</small></div>
+                    <div class="landing-scene">
+                        <span class="landing-sun"></span>
+                        <span class="landing-cloud landing-cloud-one"></span>
+                        <span class="landing-cloud landing-cloud-two"></span>
+                        <span class="landing-mountain landing-mountain-left"></span>
+                        <span class="landing-mountain landing-mountain-right"></span>
+                        <span class="landing-portal-glow"></span>
+                        <span class="landing-portal landing-portal-left"></span>
+                        <span class="landing-portal landing-portal-right"></span>
+                        <span class="landing-path"></span>
+                        <span class="landing-scene-grain"></span>
+
+                        <div class="landing-dashboard-card">
+                            <div class="landing-dashboard-topbar">
+                                <div class="landing-dashboard-brand"><span>N</span><strong>NttClass</strong></div>
+                                <span class="landing-dashboard-status"><i></i>Dang hoat dong</span>
+                            </div>
+                            <div class="landing-dashboard-heading"><small>TONG QUAN</small><strong>Chao buoi sang, Thuy.</strong></div>
+                            <div class="landing-dashboard-metrics">
+                                <div><small>STUDENTS</small><strong>24</strong><span>+3 this week</span></div>
+                                <div><small>SESSIONS</small><strong>18</strong><span>96% complete</span></div>
+                                <div><small>AVERAGE SCORE</small><strong>8.6</strong><span>+0.4 vs last month</span></div>
+                            </div>
+                            <div class="landing-dashboard-chart">
+                                <div class="landing-chart-heading"><strong>Learning progress</strong><span>Last 7 days</span></div>
+                                <div class="landing-chart-bars" aria-hidden="true"><i style="height:34%"></i><i style="height:52%"></i><i style="height:42%"></i><i style="height:68%"></i><i style="height:58%"></i><i style="height:82%"></i><i style="height:94%"></i></div>
+                                <div class="landing-chart-labels"><span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="landing-floating-note landing-floating-score"><span>NEW SCORE</span><strong>9.0</strong><small>Chapter 2 test</small></div>
+                    <div class="landing-floating-note landing-floating-payment"><span class="landing-check">&#10003;</span><div><strong>Tuition updated</strong><small>Just now</small></div></div>
+                </div>
+            </section>
+
+            <section class="landing-feature-section hidden" id="landingFeatures">
+                <div class="landing-section-heading">
+                    <span>M?I TH? ? ??NG N?I</span>
+                    <h2>T?p trung v?o vi?c d?y,<br>?? NttClass lo ph?n qu?n l?.</h2>
+                    <p>Thi?t k? g?n, d? li?u li?n m?ch v? nh?ng th?ng tin quan tr?ng lu?n n?m trong t?m m?t.</p>
+                </div>
+                <div class="landing-feature-grid">
+                    <article class="landing-feature-card"><span class="landing-feature-icon landing-feature-blue">01</span><h3>L?ch d?y tr?c quan</h3><p>S?p x?p ca h?c theo ng?y, tu?n ho?c th?ng v? ghi nh?n n?i dung ngay sau bu?i h?c.</p></article>
+                    <article class="landing-feature-card"><span class="landing-feature-icon landing-feature-violet">02</span><h3>Nh?t k? h?c t?p</h3><p>Theo d?i b?i t?p, ? th?c v? nh?n x?t ri?ng c?a t?ng h?c sinh qua t?ng bu?i.</p></article>
+                    <article class="landing-feature-card"><span class="landing-feature-icon landing-feature-teal">03</span><h3>?i?m s? r? r?ng</h3><p>Qu?n l? b?i ki?m tra, l?c k?t qu? v? xem ti?n ?? h?c t?p theo t?ng h?c sinh.</p></article>
+                    <article class="landing-feature-card"><span class="landing-feature-icon landing-feature-amber">04</span><h3>H?c ph? minh b?ch</h3><p>T? ??ng t?ng h?p s? bu?i, s? gi?, kho?n ?? thu v? h?c ph? c?n l?i.</p></article>
+                </div>
+            </section>
+
+            <section class="landing-cta-section hidden">
+                <div><span>S?N S?NG B?T ??U?</span><h2>M? l?p h?c c?a b?n tr?n NttClass.</h2><p>??ng nh?p ?? ti?p t?c qu?n l? h?c sinh v? ti?n tr?nh h?c t?p.</p></div>
+                <button type="button" class="landing-button landing-button-light" data-open-login>?i t?i ??ng nh?p <span aria-hidden="true">?</span></button>
+            </section>
+        </main>
+
+        <footer class="landing-footer hidden"></footer>
+    </section>
+
     <!-- Login Page -->
-    <section id="loginPage" class="login-screen">
+    <section id="loginPage" class="login-screen hidden">
         <!-- Trang trí nền: các khối blur mềm, không ảnh hưởng thao tác (aria-hidden) -->
         <div class="login-bg-decor" aria-hidden="true">
             <span class="login-blob login-blob-1"></span>
@@ -75,6 +190,10 @@
 
             <!-- Thẻ đăng nhập bên phải -->
             <div class="login-card" id="loginCard">
+                <button type="button" class="login-back-button" id="loginBackToLanding">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                    <span>Về trang giới thiệu</span>
+                </button>
                 <div class="login-card-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12 3 1 8l11 5 9-4.09V17h2V8L12 3Zm0 12.5L4.6 12 12 15.5 19.4 12 12 15.5ZM5 13.18v3.6C5 19.5 8.13 21 12 21s7-1.5 7-4.22v-3.6l-7 3.18-7-3.18Z" fill="currentColor"/>
@@ -1490,6 +1609,7 @@
          load đầu tiên, và main.js (khởi tạo app) phải load SAU CÙNG. Các
          file ở giữa (app-shell, users, dashboard...) load trước/sau nhau
          thoải mái, không phụ thuộc lẫn nhau. -->
+    <script src="landing-copy.js"></script>
     <script src="core.js"></script>
     <script src="app-shell.js"></script>
     <script src="users.js"></script>

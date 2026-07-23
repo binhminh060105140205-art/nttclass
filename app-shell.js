@@ -12,6 +12,7 @@ Object.assign(PinkyClassApp.prototype, {
         this.initSidebarCollapse();
         // Bộ chọn màu giao diện (3 chấm màu ở cuối sidebar)
         this.bindThemeSwitcher();
+        this.bindLandingNavigation();
 
         // Nút Cài đặt bảo mật tài khoản
         const settingsBtn = document.getElementById('sidebarSettingsBtn');
@@ -447,7 +448,38 @@ Object.assign(PinkyClassApp.prototype, {
 // prototype của PinkyClassApp nên PHẢI được load SAU core.js.
 // ================================================================
 Object.assign(PinkyClassApp.prototype, {
+    bindLandingNavigation() {
+        document.querySelectorAll('[data-open-login]').forEach((button) => {
+            button.addEventListener('click', () => this.showLoginPage());
+        });
+        const landingExploreBtn = document.getElementById('landingExploreBtn');
+        if (landingExploreBtn) {
+            landingExploreBtn.addEventListener('click', () => {
+                document.getElementById('landingFeatures')?.scrollIntoView({ behavior: 'smooth' });
+            });
+        }
+        const loginBackToLanding = document.getElementById('loginBackToLanding');
+        if (loginBackToLanding) loginBackToLanding.addEventListener('click', () => this.showLandingPage());
+        const mobileMenu = document.querySelector('.landing-mobile-menu');
+        if (mobileMenu) {
+            mobileMenu.addEventListener('click', () => {
+                document.querySelector('.landing-nav-links')?.classList.toggle('is-open');
+            });
+        }
+    },
+
+    showLandingPage() {
+        document.getElementById('landingPage').classList.remove('hidden');
+        document.getElementById('loginPage').classList.add('hidden');
+        document.querySelector('.sidebar').classList.add('hidden');
+        document.querySelector('.main-content').classList.add('hidden');
+        document.getElementById('logoutBtn').style.display = 'none';
+        this.currentUser = null;
+        this.currentRole = null;
+    },
+
     showLoginPage() {
+        document.getElementById('landingPage').classList.add('hidden');
         document.getElementById('loginPage').classList.remove('hidden');
         document.querySelector('.sidebar').classList.add('hidden');
         document.querySelector('.main-content').classList.add('hidden');
@@ -459,6 +491,7 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     showAppPage() {
+        document.getElementById('landingPage').classList.add('hidden');
         document.getElementById('loginPage').classList.add('hidden');
         document.querySelector('.sidebar').classList.remove('hidden');
         document.querySelector('.main-content').classList.remove('hidden');
@@ -562,7 +595,7 @@ Object.assign(PinkyClassApp.prototype, {
         this.requests = [];
         this.requestsLoaded = false;
         this.clearRequestImage();
-        this.showLoginPage();
+        this.showLandingPage();
         this.showToast('Bạn đã đăng xuất.', 'success');
     },
 

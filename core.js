@@ -81,7 +81,7 @@ class PinkyClassApp {
         if (savedUser && savedUser.role) {
             this.onLoginSuccess(savedUser, false);
         } else {
-            this.showLoginPage();
+            this.showLandingPage();
             // Điền lại tên đăng nhập đã lưu (nếu người dùng từng tick "Ghi nhớ
             // đăng nhập") — không lưu mật khẩu vì lý do bảo mật.
             const rememberedUsername = localStorage.getItem('nttclass_remembered_username');
