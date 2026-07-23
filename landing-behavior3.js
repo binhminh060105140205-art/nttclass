@@ -1,0 +1,1 @@
+var a=document.querySelectorAll('.landing-nav-links a');a[2].addEventListener('click',function(v){v.preventDefault();closeLandingMenu();if(window.app)window.app.showLoginPage();},true);for(var i=0;i!==a.length;i++)a[i].addEventListener('click',closeLandingMenu,true);var s=document.createElement('script');s.src='landing-behavior4.js';document.head.appendChild(s);

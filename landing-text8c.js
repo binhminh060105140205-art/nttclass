@@ -1,0 +1,1 @@
+var m=document.querySelectorAll('.landing-dashboard-metrics div');m[0].querySelector('span').textContent='+3 tuần này';m[1].querySelector('span').textContent='96% hoàn thành';m[2].querySelector('span').textContent='+0.4 so với tháng trước';var s=document.createElement('script');s.src='landing-text9.js';document.head.appendChild(s);

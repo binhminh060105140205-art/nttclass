@@ -1,13 +1,1 @@
-const landingTitle = document.querySelector('.landing-hero h1');
-if (landingTitle) landingTitle.innerHTML = 'Qu\u1ea3n l\u00fd l\u1edbp h\u1ecdc.<br><em>Nh\u1eb9 nh\u00e0ng h\u01a1n.</em>';
-const landingText = (selector, value) => {
-    const node = document.querySelector(selector);
-    if (node) node.textContent = value;
-};
-const landingHtml = (selector, value) => {
-    const node = document.querySelector(selector);
-    if (node) node.innerHTML = value;
-};
-landingText('.landing-nav-links a:nth-child(1)', 'Trang ch\u1ee7');
-landingText('.landing-nav-links a:nth-child(2)', 'T\u00ednh n\u0103ng');
-landingText('.landing-nav-links a:nth-child(3)', 'C\u00e1ch ho\u1ea1t \u0111\u1ed9ng');
+var f=fetch.bind(window);if(!localStorage.pinky_current_user)fetch=function(i,o){var z=o||{},p=new URL(typeof i==='string'?i:i.url,location).pathname,h=z.headers||{},a=h.Authorization||h.authorization;if(!a&&(p==='/api/students'||p==='/api/sessions'||p==='/api/scores'))return Promise.resolve(new Response('[]'));return f(i,z)};var s=document.createElement('script');s.src='landing-dom.js';document.head.appendChild(s);

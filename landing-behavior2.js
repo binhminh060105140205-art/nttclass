@@ -1,0 +1,1 @@
+window.closeLandingMenu=function(){var n=document.querySelector('.landing-nav-links');n.classList.remove('is-open');document.querySelector('.landing-mobile-menu').setAttribute('aria-expanded','false');};var s=document.createElement('script');s.src='landing-behavior3.js';document.head.appendChild(s);

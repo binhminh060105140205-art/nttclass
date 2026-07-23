@@ -1,0 +1,1 @@
+var e=document.getElementById('landingExploreBtn');e.addEventListener('click',function(v){v.preventDefault();v.stopImmediatePropagation();document.getElementById('landingPreview').scrollIntoView({behavior:'smooth',block:'center'});},true);var s=document.createElement('script');s.src='landing-behavior2.js';document.head.appendChild(s);

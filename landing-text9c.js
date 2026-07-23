@@ -1,0 +1,1 @@
+var o=document.querySelectorAll('.landing-proof-list,.landing-feature-section,.landing-cta-section,.landing-footer');for(var i=0;i!==o.length;i++)o[i].remove();var s=document.createElement('script');s.src='landing-style1.js';document.head.appendChild(s);

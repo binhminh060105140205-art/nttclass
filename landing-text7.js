@@ -1,0 +1,1 @@
+var g=document.querySelector('.landing-hero-stage');g.id='landingPreview';g.setAttribute('aria-label','Minh h\u1ecda kh\u00f4ng gian l\u00e0m vi\u1ec7c NttClass');var s=document.createElement('script');s.src='landing-text7b.js';document.head.appendChild(s);

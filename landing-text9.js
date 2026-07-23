@@ -1,0 +1,1 @@
+document.querySelector('.landing-chart-heading strong').textContent='Tiến độ học tập';document.querySelector('.landing-chart-heading span').textContent='7 ngày gần đây';document.querySelector('.landing-floating-score span').textContent='ĐIỂM MỚI';var s=document.createElement('script');s.src='landing-text9b.js';document.head.appendChild(s);

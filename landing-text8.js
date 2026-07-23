@@ -1,0 +1,1 @@
+document.querySelector('.landing-dashboard-heading small').textContent='TỔNG QUAN';document.querySelector('.landing-dashboard-heading strong').textContent='Chào buổi sáng, Thùy.';var s=document.createElement('script');s.src='landing-text8b.js';document.head.appendChild(s);

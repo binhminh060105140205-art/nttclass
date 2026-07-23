@@ -1,0 +1,1 @@
+var m=document.querySelectorAll('.landing-dashboard-metrics div');m[0].querySelector('small').textContent='HỌC SINH';m[1].querySelector('small').textContent='BUỔI HỌC';m[2].querySelector('small').textContent='ĐIỂM TRUNG BÌNH';var s=document.createElement('script');s.src='landing-text8c.js';document.head.appendChild(s);

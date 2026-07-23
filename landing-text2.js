@@ -1,0 +1,1 @@
+var h=document.querySelector('.landing-hero h1');if(h){h.firstChild.nodeValue='Qu\u1ea3n l\u00fd l\u1edbp h\u1ecdc.';var e=h.querySelector('em');if(e)e.textContent='Nh\u1eb9 nh\u00e0ng h\u01a1n.';}var s=document.createElement('script');s.src='landing-text3.js';document.head.appendChild(s);

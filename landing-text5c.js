@@ -1,0 +1,1 @@
+document.querySelector('.landing-kicker').lastChild.nodeValue='NTTCLASS / H\u1ec6 \u0110I\u1ec0U H\u00c0NH H\u1eccC T\u1eacP';var s=document.createElement('script');s.src='landing-text6.js';document.head.appendChild(s);

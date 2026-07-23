@@ -1,0 +1,1 @@
+var a=document.querySelectorAll('.landing-nav-links a'),l=['Trang ch\u1ee7','Xem giao di\u1ec7n','\u0110\u0103ng nh\u1eadp'];for(var i=0;i!==a.length;i++){a[i].textContent=l[i];}a[0].href='#landingPage';a[1].href='#landingPreview';a[2].href='#loginPage';var s=document.createElement('script');s.src='landing-text4.js';document.head.appendChild(s);

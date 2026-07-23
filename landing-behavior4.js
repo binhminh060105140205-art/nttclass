@@ -1,0 +1,1 @@
+var m=document.querySelector('.landing-mobile-menu');m.addEventListener('click',function(){setTimeout(function(){m.setAttribute('aria-expanded',String(document.querySelector('.landing-nav-links').classList.contains('is-open')));},0);});var b=document.querySelectorAll('[data-open-login]');for(var i=0;i!==b.length;i++)b[i].addEventListener('click',closeLandingMenu,true);
