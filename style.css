@@ -4605,25 +4605,34 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     margin-bottom: 20px;
 }
 
-.metric-card {
+.metric-card,
+.tuition-metric-card,
+.score-summary-card.stat-card {
     min-height: auto;
-    padding: 13px 15px;
-    border-radius: 13px;
+    padding: 14px 16px;
+    border-radius: 14px;
     text-align: center;
 }
 
-.metric-card > div:first-child {
+.metric-card > div:first-child,
+.tuition-metric-card > div:first-child {
+    margin-bottom: 6px;
     color: var(--text-muted) !important;
-    font-size: 0.66rem !important;
+    font-size: 11px !important;
     font-weight: 700 !important;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.02em;
+}
+
+.metric-card > div:last-child,
+.tuition-metric-card > div:last-child {
+    margin-top: 0 !important;
+    font-size: 22px !important;
+    font-weight: 800 !important;
+    letter-spacing: normal;
 }
 
 .metric-card > div:last-child {
-    margin-top: 4px;
     color: var(--primary) !important;
-    font-size: 1.12rem !important;
-    font-weight: 800 !important;
 }
 
 .tuition-metrics-grid {
@@ -4631,29 +4640,6 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
     margin-bottom: 22px;
-}
-
-.tuition-metric-card {
-    min-height: auto;
-    padding: 18px 20px;
-    border-top: 3px solid transparent;
-}
-
-.tuition-metric-card:nth-child(1) { border-top-color: #16a34a; }
-.tuition-metric-card:nth-child(2) { border-top-color: #dc2626; }
-.tuition-metric-card:nth-child(3) { border-top-color: #2563eb; }
-
-.tuition-metric-card > div:first-child {
-    color: var(--text-muted) !important;
-    font-size: 0.68rem !important;
-    font-weight: 700 !important;
-    letter-spacing: 0.05em;
-}
-
-.tuition-metric-card > div:last-child {
-    margin-top: 6px !important;
-    font-size: 1.45rem !important;
-    letter-spacing: -0.04em;
 }
 
 .logs-workspace { padding: 20px; }
@@ -5052,6 +5038,7 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     color: #1e3a8a !important;
     border-color: #bfdbfe !important;
 }
+
 .log-export-capture.is-exporting .custom-table td,
 [data-theme-mode="dark"] .log-export-capture.is-exporting .custom-table td {
     background: transparent !important;
@@ -5865,6 +5852,19 @@ body.request-image-viewer-open { overflow: hidden; }
 
 [data-theme-mode="dark"] ::-webkit-scrollbar-track { background: var(--dark-surface-inset) !important; }
 [data-theme-mode="dark"] ::-webkit-scrollbar-thumb { background: #52627a !important; }
+
+/* Keep overview metrics visually consistent with the score summary cards. */
+.glass-card.score-summary-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), var(--primary-soft));
+    border: 1px solid var(--border-color);
+    box-shadow: none;
+}
+
+[data-theme-mode=dark] .glass-card.score-summary-card {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), var(--primary-soft)) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    box-shadow: none !important;
+}
 
 /* Ảnh xuất nhật ký luôn giữ nền sáng, không nhận bảng màu giao diện tối. */
 [data-theme-mode="dark"] .log-export-capture.is-exporting,

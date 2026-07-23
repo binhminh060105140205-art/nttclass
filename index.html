@@ -227,19 +227,19 @@
         <section id="view-dashboard" class="view-section active-view">
             <!-- Stats Dashboard Grid -->
             <div class="stats-grid">
-                <div class="glass-card stat-card" style="cursor:pointer;" onclick="app.switchView('view-students')" title="Xem hồ sơ học sinh">
+                <div class="glass-card stat-card score-summary-card" style="cursor:pointer;" onclick="app.switchView('view-students')" title="Xem hồ sơ học sinh">
                     <div class="stat-value" id="stat-total-students">0</div>
                     <div class="stat-label">Học sinh đang theo học</div>
                 </div>
-                <div class="glass-card stat-card" style="cursor:pointer;" onclick="app.switchView('view-scheduler')" title="Xem lịch dạy & chấm công">
+                <div class="glass-card stat-card score-summary-card" style="cursor:pointer;" onclick="app.switchView('view-scheduler')" title="Xem lịch dạy & chấm công">
                     <div class="stat-value" id="stat-total-sessions">0</div>
                     <div class="stat-label">Tổng số buổi dạy</div>
                 </div>
-                <div class="glass-card stat-card" style="cursor:pointer;" onclick="app.showToast('Bạn tôi giỏi quá dạy ít thôi nghỉ đi b', 'success')" title="???">
+                <div class="glass-card stat-card score-summary-card" style="cursor:pointer;" onclick="app.showToast('Bạn tôi giỏi quá dạy ít thôi nghỉ đi b', 'success')" title="???">
                     <div class="stat-value" id="stat-total-hours">0h</div>
                     <div class="stat-label">Tổng thời gian tích lũy</div>
                 </div>
-                <div class="glass-card stat-card" style="cursor:pointer;" onclick="app.switchView('view-tuition')" title="Xem báo cáo học phí">
+                <div class="glass-card stat-card score-summary-card" style="cursor:pointer;" onclick="app.switchView('view-tuition')" title="Xem báo cáo học phí">
                     <div class="stat-value" id="stat-unpaid-tuition">0đ</div>
                     <div class="stat-label">Học phí chưa thanh toán</div>
                 </div>
@@ -560,19 +560,19 @@
 
                 <!-- mini statistics banner (tính theo khoảng thời gian đang xem: ngày/tuần/tháng) -->
                 <div class="stats-grid scheduler-metrics-grid">
-                    <div class="glass-card metric-card">
+                    <div class="glass-card metric-card score-summary-card">
                         <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Tổng buổi</div>
                         <div style="font-size: 18px; font-weight: 700; color: var(--primary);" id="summary-total-sessions">0</div>
                     </div>
-                    <div class="glass-card metric-card">
+                    <div class="glass-card metric-card score-summary-card">
                         <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Tổng giờ</div>
                         <div style="font-size: 18px; font-weight: 700; color: var(--primary);" id="summary-total-hours">0</div>
                     </div>
-                    <div class="glass-card metric-card">
+                    <div class="glass-card metric-card score-summary-card">
                         <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">1-1/Lớp học</div>
                         <div style="font-size: 18px; font-weight: 700; color: var(--primary);" id="summary-ratio">0/0</div>
                     </div>
-                    <div class="glass-card metric-card" id="admin-summary-money-card">
+                    <div class="glass-card metric-card score-summary-card" id="admin-summary-money-card">
                         <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Tổng tiền</div>
                         <div style="font-size: 18px; font-weight: 700; color: var(--primary);" id="summary-total-money">0đ</div>
                     </div>
@@ -741,15 +741,15 @@
                 </div>
 
                 <div class="tuition-metrics-grid">
-                    <div class="glass-card stat-card tuition-metric-card">
+                    <div class="glass-card stat-card tuition-metric-card score-summary-card">
                         <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Học phí Đã Thu</div>
                         <div style="font-size: 24px; font-weight: 700; color: #16a34a; margin-top: 5px;" id="tuition-paid-sum">0đ</div>
                     </div>
-                    <div class="glass-card stat-card tuition-metric-card">
+                    <div class="glass-card stat-card tuition-metric-card score-summary-card">
                         <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Học phí Chưa Thu</div>
                         <div style="font-size: 24px; font-weight: 700; color: #dc2626; margin-top: 5px;" id="tuition-unpaid-sum">0đ</div>
                     </div>
-                    <div class="glass-card stat-card tuition-metric-card">
+                    <div class="glass-card stat-card tuition-metric-card score-summary-card">
                         <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Tổng cộng học phí</div>
                         <div style="font-size: 24px; font-weight: 700; color: var(--primary); margin-top: 5px;" id="tuition-total-sum">0đ</div>
                     </div>
