@@ -3735,42 +3735,6 @@ textarea.form-control {
     .undo-deletion-stack { right: 12px; bottom: 12px; width: calc(100vw - 24px); }
 }
 
-/* Bảng tóm tắt điểm trung bình theo từng loại (BTVN / Kiểm tra / Thái độ / Chung) */
-.score-summary-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 12px;
-    margin-top: 16px;
-    margin-bottom: 16px;
-}
-
-.score-summary-card {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), var(--primary-soft));
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    padding: 14px 16px;
-    text-align: center;
-}
-
-.score-summary-card .score-summary-label {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
-    color: var(--text-muted);
-    margin-bottom: 6px;
-}
-
-.score-summary-card .score-summary-value {
-    font-size: 22px;
-    font-weight: 800;
-    color: var(--primary);
-}
-
-.score-summary-card.score-summary-overall .score-summary-value {
-    color: #16a34a;
-}
-
 /* Hộp nhận xét tự động, sinh ra từ điểm trung bình chung của học sinh */
 .score-auto-comment {
     display: flex;
@@ -3831,9 +3795,6 @@ textarea.form-control {
 }
 
 @media (min-width: 768px) and (max-width: 1024px) {
-    .score-summary-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
     .score-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .score-batch-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .score-test-header { grid-template-columns: 95px minmax(180px, 1fr) 90px; }
@@ -4168,10 +4129,6 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
         min-width: 760px;
     }
     
-    /* Score summary list view */
-    .score-summary-grid {
-        grid-template-columns: 1fr !important;
-    }
 }
 
 /* Login: quieter, more trustworthy and product-focused. */
@@ -4555,10 +4512,6 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
 }
 [data-theme-mode="dark"] .channel-option-card .channel-info strong {
     color: #f8fafc !important;
-}
-[data-theme-mode="dark"] .score-summary-card {
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), var(--primary-soft)) !important;
-    border-color: rgba(255, 255, 255, 0.08) !important;
 }
 [data-theme-mode="dark"] .score-view-switch,
 [data-theme-mode="dark"] .score-filter-panel,

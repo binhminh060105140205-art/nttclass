@@ -20,7 +20,6 @@ Object.assign(PinkyClassApp.prototype, {
             resultCount.innerText = `${filteredScores.length} lượt điểm · ${testCount} bài kiểm tra`;
         }
 
-        this.renderScoreSummary(filteredScores);
         const results = document.getElementById('scoreResults');
         if (!results) return;
         results.innerHTML = this.scoreViewMode === 'students'
@@ -125,33 +124,6 @@ Object.assign(PinkyClassApp.prototype, {
 
     getScoreTestTitle(score) {
         return String(score.testName || '').trim() || this.scoreTypeLabel(score.scoreType) || 'Bài kiểm tra';
-    },
-
-    renderScoreSummary(scores) {
-        const summaryGrid = document.getElementById('scoreSummaryGrid');
-        if (!summaryGrid) return;
-        const groups = new Set(scores.map(score => this.getScoreTestGroupId(score)));
-        const students = new Set(scores.map(score => score.studentId));
-        const normalized = scores.map(score => this.getScoreNormalizedToTen(score)).filter(Number.isFinite);
-        const average = normalized.length ? normalized.reduce((sum, value) => sum + value, 0) / normalized.length : null;
-
-        summaryGrid.innerHTML = `
-            <div class="score-summary-card">
-                <div class="score-summary-label">Bài kiểm tra</div>
-                <div class="score-summary-value">${groups.size}</div>
-            </div>
-            <div class="score-summary-card">
-                <div class="score-summary-label">Lượt điểm</div>
-                <div class="score-summary-value">${scores.length}</div>
-            </div>
-            <div class="score-summary-card">
-                <div class="score-summary-label">Học sinh có điểm</div>
-                <div class="score-summary-value">${students.size}</div>
-            </div>
-            <div class="score-summary-card score-summary-overall">
-                <div class="score-summary-label">Trung bình quy đổi /10</div>
-                <div class="score-summary-value">${average === null ? '-' : average.toFixed(1)}</div>
-            </div>`;
     },
 
     renderScoresByTests(scores) {
