@@ -144,8 +144,17 @@ class PinkyClassApp {
     }
 
     async init() {
+        let savedUser = null;
         const savedUserJson = localStorage.getItem('pinky_current_user');
-        const savedUser = savedUserJson ? JSON.parse(savedUserJson) : null;
+        if (savedUserJson) {
+            try {
+                savedUser = JSON.parse(savedUserJson);
+            } catch (error) {
+                localStorage.removeItem('pinky_current_user');
+                console.warn('[init] Dữ liệu đăng nhập đã lưu không hợp lệ, đã xóa.', error.message);
+            }
+        }
+
         if (savedUser && savedUser.role) {
             // Set the current user BEFORE loading data so the auth token is
             // available to authFetch() for the protected /api endpoints.
@@ -154,13 +163,22 @@ class PinkyClassApp {
         }
 
         await this.loadAppTheme();
-        await this.loadData();
+
+        // Gắn sự kiện ngay sau khi tải giao diện để landing/login luôn hoạt động,
+        // không bị khóa trong lúc API dữ liệu hoặc cơ sở dữ liệu đang khởi động chậm.
         this.registerEvents();
 
         if (savedUser && savedUser.role) {
-            this.onLoginSuccess(savedUser, false);
+            await this.loadData();
+            await this.onLoginSuccess(savedUser, false);
         } else {
-            this.showLandingPage();
+            // Người chưa đăng nhập không cần gọi các API dữ liệu được bảo vệ.
+            // Nếu họ đã bấm Đăng nhập trong lúc app đang khởi tạo, giữ nguyên trang login.
+            const loginRequested = window.__nttLoginRequested
+                || new URLSearchParams(window.location.search).get('login') === '1';
+            if (loginRequested) this.showLoginPage();
+            else this.showLandingPage();
+
             // Điền lại tên đăng nhập đã lưu (nếu người dùng từng tick "Ghi nhớ
             // đăng nhập") — không lưu mật khẩu vì lý do bảo mật.
             const rememberedUsername = localStorage.getItem('nttclass_remembered_username');

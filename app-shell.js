@@ -469,6 +469,11 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     showLandingPage() {
+        window.__nttLoginRequested = false;
+        const currentUrl = new URL(window.location.href);
+        if (currentUrl.searchParams.delete('login')) {
+            window.history.replaceState({}, '', currentUrl.pathname + currentUrl.search + currentUrl.hash);
+        }
         this.useLandingTheme();
         document.getElementById('landingPage').classList.remove('hidden');
         document.getElementById('loginPage').classList.add('hidden');
@@ -480,6 +485,7 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     showLoginPage() {
+        window.__nttLoginRequested = true;
         this.useLandingTheme();
         if (this.appTheme === 'velorah') this.setVelorahAppVideo(true);
         document.getElementById('landingPage').classList.add('hidden');
