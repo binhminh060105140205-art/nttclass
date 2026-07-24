@@ -130,3 +130,56 @@ html[data-app-theme="lithos"] :is(#view-dashboard, #view-scheduler, #view-tuitio
 html[data-app-theme="lithos"][data-theme-mode="light"] :is(#view-dashboard, #view-scheduler, #view-tuition) .stats-grid .stat-card {
     background-image: url('lithos-stat-bloom.svg'), linear-gradient(145deg, rgba(255, 253, 249, .98), rgba(250, 240, 231, .94)) !important;
 }
+
+
+html[data-app-theme="lithos"] .sidebar::before {
+    content: none !important;
+    display: none !important;
+    background: none !important;
+}
+
+html[data-app-theme="lithos"] .sidebar::after {
+    content: none !important;
+    display: none !important;
+    background: none !important;
+}
+
+html[data-app-theme="lithos"] #sidebarUserName {
+    isolation: isolate;
+    background: none !important;
+    overflow: visible !important;
+    padding: 7px 12px 8px;
+    text-shadow: 0 1px 6px rgba(7, 10, 13, .72);
+}
+
+html[data-app-theme="lithos"] #sidebarUserName::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: -18px -32px;
+    pointer-events: none;
+    background: url('lithos-name-vine.svg') center / 100% 82px no-repeat;
+    opacity: 1;
+    filter: saturate(1.45) contrast(1.1) drop-shadow(0 6px 9px rgba(232, 112, 42, .28));
+    transform: scale(1.04);
+    transition: transform .4s cubic-bezier(.2,.8,.2,1), filter .3s ease;
+}
+
+html[data-app-theme="lithos"] #sidebarUserName:hover::before {
+    transform: scale(1.12) rotate(.5deg);
+    filter: saturate(1.65) contrast(1.14) drop-shadow(0 8px 13px rgba(232, 112, 42, .4));
+}
+
+html[data-app-theme="lithos"][data-theme-mode="light"] #sidebarUserName::before {
+    mix-blend-mode: multiply;
+    filter: saturate(1.42) contrast(1.08) drop-shadow(0 6px 9px rgba(113, 48, 27, .22));
+}
+
+@media (max-width: 767px) {
+    html[data-app-theme="lithos"] #sidebarUserName { padding: 6px 9px 7px; }
+    html[data-app-theme="lithos"] #sidebarUserName::before { inset: -14px -24px; background-size: 100% 68px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html[data-app-theme="lithos"] #sidebarUserName::before { transition: none; transform: none; }
+}
