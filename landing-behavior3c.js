@@ -1,1 +1,1 @@
-if(location.hash==='#landingPreview'&&!matchMedia('(max-width: 850px), (max-height: 650px)').matches){history.replaceState(null,'',location.pathname+location.search);scrollTo(0,0)}var s=document.createElement('script');s.src='landing-behavior4.js';document.head.appendChild(s);
+var s=document.createElement('script');s.src='landing-behavior4.js';document.head.appendChild(s);

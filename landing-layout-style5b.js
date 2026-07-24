@@ -1,0 +1,1 @@
+var z=document.createElement('style');z.textContent='.landing-dashboard-section .landing-dashboard-card{position:relative;top:auto;left:auto;flex:0 0 100%;width:100%;max-width:940px;margin:0 auto;padding:26px;transform:none}';document.head.appendChild(z);var s=document.createElement('script');s.src='landing-layout-style6.js';document.head.appendChild(s);

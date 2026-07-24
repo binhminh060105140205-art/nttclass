@@ -1,0 +1,1 @@
+var z=document.createElement('style');z.textContent='.landing-dashboard-frame{position:relative;display:flex;flex-wrap:wrap;justify-content:center;gap:14px;max-width:1120px;margin:55px auto 0;padding:58px 72px}';document.head.appendChild(z);var s=document.createElement('script');s.src='landing-layout-style5ab.js';document.head.appendChild(s);
