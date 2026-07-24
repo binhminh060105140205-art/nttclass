@@ -42,7 +42,7 @@ class PinkyClassApp {
         this.requestFilter = 'pending';
         this.requestImageDraft = [];
         this.requestsLoaded = false;
-        this.appTheme = 'velorah';
+        this.appTheme = 'lithos';
 
         // Áp dụng lại màu giao diện đã lưu (nếu có) ngay từ đầu, trước khi vẽ
         // bất cứ gì, để tránh bị "chớp" màu mặc định rồi mới đổi màu.
@@ -62,7 +62,7 @@ class PinkyClassApp {
     }
 
     normalizeAppTheme(theme) {
-        return ['blue', 'lithos', 'velorah'].includes(theme) ? theme : 'velorah';
+        return ['blue', 'lithos', 'velorah'].includes(theme) ? theme : 'lithos';
     }
 
     getPersonalAppThemeKey() {

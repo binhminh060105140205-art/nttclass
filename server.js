@@ -437,8 +437,18 @@ let poolPromise = pgPool.query('SELECT 1')
                 UpdatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             )`);
             await pgPool.query(`INSERT INTO AppSettings (SettingKey, SettingValue)
-                VALUES ('app_theme', 'velorah')
+                VALUES ('app_theme', 'lithos')
                 ON CONFLICT (SettingKey) DO NOTHING`);
+            await pgPool.query(`WITH migration AS (
+                    INSERT INTO AppSettings (SettingKey, SettingValue)
+                    VALUES ('app_theme_default_lithos_v1', 'done')
+                    ON CONFLICT (SettingKey) DO NOTHING
+                    RETURNING SettingKey
+                )
+                UPDATE AppSettings
+                SET SettingValue = 'lithos', UpdatedAt = CURRENT_TIMESTAMP
+                WHERE SettingKey = 'app_theme'
+                  AND EXISTS (SELECT 1 FROM migration)`);
         } catch (migErr) {
             console.error('AppSettings migration error:', migErr.message);
         }
@@ -531,7 +541,7 @@ app.get('/api/app-settings/theme', async (req, res) => {
         );
         const theme = ['blue', 'lithos', 'velorah'].includes(result.rows[0]?.theme)
             ? result.rows[0].theme
-            : 'velorah';
+            : 'lithos';
         res.json({ theme });
     } catch (err) {
         console.error('[GET /api/app-settings/theme]', err);
