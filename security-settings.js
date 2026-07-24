@@ -420,7 +420,8 @@ Object.assign(PinkyClassApp.prototype, {
 
             const data = await response.json();
             this.applyAppTheme(data.theme);
-            this.showToast(`Đã áp dụng giao diện ${data.theme === 'blue' ? 'Xanh gốc' : 'Đỏ cành đá'} cho toàn hệ thống.`, 'success');
+            const themeLabel = data.theme === 'blue' ? 'Xanh gốc' : data.theme === 'lithos' ? 'Đỏ cành đá' : 'Where Dreams';
+            this.showToast(`Đã áp dụng giao diện ${themeLabel} cho toàn hệ thống.`, 'success');
         } catch (error) {
             this.showToast(error.message || 'Không thể lưu giao diện hệ thống.', 'error');
         }
@@ -430,11 +431,14 @@ Object.assign(PinkyClassApp.prototype, {
         const theme = this.normalizeAppTheme(this.appTheme);
         const btnBlue = document.getElementById('btnAppThemeBlue');
         const btnLithos = document.getElementById('btnAppThemeLithos');
-        if (btnBlue && btnLithos) {
+        const btnVelorah = document.getElementById('btnAppThemeVelorah');
+        if (btnBlue && btnLithos && btnVelorah) {
             btnBlue.classList.toggle('btn-primary', theme === 'blue');
             btnBlue.classList.toggle('btn-secondary', theme !== 'blue');
             btnLithos.classList.toggle('btn-primary', theme === 'lithos');
             btnLithos.classList.toggle('btn-secondary', theme !== 'lithos');
+            btnVelorah.classList.toggle('btn-primary', theme === 'velorah');
+            btnVelorah.classList.toggle('btn-secondary', theme !== 'velorah');
         }
     },
 

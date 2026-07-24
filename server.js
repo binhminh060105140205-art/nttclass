@@ -437,7 +437,7 @@ let poolPromise = pgPool.query('SELECT 1')
                 UpdatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             )`);
             await pgPool.query(`INSERT INTO AppSettings (SettingKey, SettingValue)
-                VALUES ('app_theme', 'lithos')
+                VALUES ('app_theme', 'velorah')
                 ON CONFLICT (SettingKey) DO NOTHING`);
         } catch (migErr) {
             console.error('AppSettings migration error:', migErr.message);
@@ -529,7 +529,9 @@ app.get('/api/app-settings/theme', async (req, res) => {
             'SELECT SettingValue AS "theme" FROM AppSettings WHERE SettingKey = $1',
             ['app_theme']
         );
-        const theme = result.rows[0]?.theme === 'blue' ? 'blue' : 'lithos';
+        const theme = ['blue', 'lithos', 'velorah'].includes(result.rows[0]?.theme)
+            ? result.rows[0].theme
+            : 'velorah';
         res.json({ theme });
     } catch (err) {
         console.error('[GET /api/app-settings/theme]', err);
@@ -539,7 +541,7 @@ app.get('/api/app-settings/theme', async (req, res) => {
 
 app.put('/api/app-settings/theme', requireRole('admin'), async (req, res) => {
     const theme = String(req.body?.theme || '').trim();
-    if (!['blue', 'lithos'].includes(theme)) {
+    if (!['blue', 'lithos', 'velorah'].includes(theme)) {
         return res.status(400).json({ error: 'Giao diện không hợp lệ.' });
     }
 

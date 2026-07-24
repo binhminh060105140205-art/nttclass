@@ -1,0 +1,38 @@
+(function () {
+    const VIDEO_URL = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260314_131748_f2ca2a28-fed7-44c8-b9a9-bd9acdd5ec31.mp4';
+
+    window.renderVelorahLanding = function renderVelorahLanding() {
+        const page = document.getElementById('landingPage');
+        if (!page) return;
+
+        page.className = 'velorah-page';
+        page.innerHTML = `
+            <section class="velorah-hero">
+                <video class="velorah-video" autoplay loop muted playsinline preload="auto" aria-hidden="true">
+                    <source src="${VIDEO_URL}" type="video/mp4">
+                </video>
+                <nav class="velorah-nav" aria-label="Điều hướng NttClass">
+                    <a class="velorah-logo" href="#velorahHome">NttClass<sup>®</sup></a>
+                    <div class="velorah-links velorah-liquid-glass">
+                        <a class="is-active" href="#velorahHome">Trang chủ</a>
+                        <button type="button" data-open-login>Học sinh</button>
+                        <button type="button" data-open-login>Điểm số</button>
+                        <button type="button" data-open-login>Lịch dạy</button>
+                        <button type="button" data-open-login>Học phí</button>
+                    </div>
+                    <button type="button" class="velorah-nav-cta velorah-liquid-glass" data-open-login>Đăng nhập</button>
+                </nav>
+                <div class="velorah-content" id="velorahHome">
+                    <h1 class="velorah-fade-rise">Where <em>dreams</em> rise<br><em>through the silence.</em></h1>
+                    <p class="velorah-subtext velorah-fade-rise-delay">NttClass kết nối hồ sơ học sinh, lịch dạy, điểm số và học phí trong một không gian tập trung, rõ ràng và nhẹ nhàng.</p>
+                    <button type="button" class="velorah-hero-cta velorah-liquid-glass velorah-fade-rise-delay-2" data-open-login>Đăng nhập NttClass</button>
+                </div>
+            </section>
+        `;
+
+        page.querySelectorAll('[data-open-login]').forEach((button) => {
+            button.addEventListener('click', () => window.app?.showLoginPage());
+        });
+        page.querySelector('.velorah-video')?.play().catch(() => {});
+    };
+})();

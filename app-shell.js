@@ -481,6 +481,7 @@ Object.assign(PinkyClassApp.prototype, {
 
     showLoginPage() {
         this.useLandingTheme();
+        if (this.appTheme === 'velorah') this.setVelorahAppVideo(true);
         document.getElementById('landingPage').classList.add('hidden');
         document.getElementById('loginPage').classList.remove('hidden');
         document.querySelector('.sidebar').classList.add('hidden');

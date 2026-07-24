@@ -42,7 +42,7 @@ class PinkyClassApp {
         this.requestFilter = 'pending';
         this.requestImageDraft = [];
         this.requestsLoaded = false;
-        this.appTheme = 'lithos';
+        this.appTheme = 'velorah';
 
         // Áp dụng lại màu giao diện đã lưu (nếu có) ngay từ đầu, trước khi vẽ
         // bất cứ gì, để tránh bị "chớp" màu mặc định rồi mới đổi màu.
@@ -62,7 +62,18 @@ class PinkyClassApp {
     }
 
     normalizeAppTheme(theme) {
-        return theme === 'blue' ? 'blue' : 'lithos';
+        return ['blue', 'lithos', 'velorah'].includes(theme) ? theme : 'velorah';
+    }
+
+    setVelorahAppVideo(active) {
+        const video = document.getElementById('velorahAppBackground');
+        if (!video) return;
+        video.style.display = active ? 'block' : 'none';
+        if (active) {
+            video.play().catch(() => {});
+        } else {
+            video.pause();
+        }
     }
 
     applyAppTheme(theme) {
@@ -71,8 +82,11 @@ class PinkyClassApp {
         localStorage.setItem('nttclass_app_theme', normalizedTheme);
         document.documentElement.setAttribute('data-app-theme', normalizedTheme);
 
-        const stylesheet = document.getElementById('appThemeStylesheet');
-        if (stylesheet) stylesheet.disabled = normalizedTheme === 'blue';
+        const lithosStylesheet = document.getElementById('appThemeStylesheet');
+        const velorahStylesheet = document.getElementById('velorahAppThemeStylesheet');
+        if (lithosStylesheet) lithosStylesheet.disabled = normalizedTheme !== 'lithos';
+        if (velorahStylesheet) velorahStylesheet.disabled = normalizedTheme !== 'velorah';
+        this.setVelorahAppVideo(normalizedTheme === 'velorah');
 
         if (typeof this.updateAppThemeActiveButtons === 'function') {
             this.updateAppThemeActiveButtons();
@@ -80,9 +94,16 @@ class PinkyClassApp {
     }
 
     useLandingTheme() {
-        document.documentElement.setAttribute('data-app-theme', 'lithos');
-        const stylesheet = document.getElementById('appThemeStylesheet');
-        if (stylesheet) stylesheet.disabled = false;
+        const landingTheme = this.appTheme === 'velorah' ? 'velorah' : 'lithos';
+        document.documentElement.setAttribute('data-app-theme', landingTheme);
+        const lithosStylesheet = document.getElementById('appThemeStylesheet');
+        const velorahStylesheet = document.getElementById('velorahAppThemeStylesheet');
+        if (lithosStylesheet) lithosStylesheet.disabled = landingTheme !== 'lithos';
+        if (velorahStylesheet) velorahStylesheet.disabled = landingTheme !== 'velorah';
+        this.setVelorahAppVideo(false);
+        if (typeof window.renderLandingTheme === 'function') {
+            window.renderLandingTheme(landingTheme);
+        }
     }
 
     async loadAppTheme() {

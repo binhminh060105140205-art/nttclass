@@ -11,9 +11,14 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="landing-orbis.css">
     <link rel="stylesheet" href="landing-orbis-fixes.css">
-    <link id="appThemeStylesheet" rel="stylesheet" href="lithos-app-theme.css">
+    <link id="appThemeStylesheet" rel="stylesheet" href="lithos-app-theme.css" disabled>
+    <link id="velorahAppThemeStylesheet" rel="stylesheet" href="velorah-app-theme.css">
 </head>
 <body>
+
+    <video id="velorahAppBackground" class="velorah-app-video" autoplay loop muted playsinline preload="auto" style="display: none;" aria-hidden="true">
+        <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260314_131748_f2ca2a28-fed7-44c8-b9a9-bd9acdd5ec31.mp4" type="video/mp4">
+    </video>
 
     <!-- Public Landing Page -->
     <section id="landingPage" class="orbis-page">
@@ -1456,9 +1461,10 @@
                 <div class="settings-section" id="adminAppThemeSection" style="display: none; margin-bottom: 20px;">
                     <h4 class="settings-section-title">Giao diện toàn hệ thống</h4>
                     <p class="settings-section-desc">Chỉ Admin được đổi giao diện áp dụng cho tất cả tài khoản.</p>
-                    <div style="display: flex; gap: 8px; margin-top: 12px;">
-                        <button type="button" class="btn btn-secondary btn-sm" id="btnAppThemeBlue" onclick="app.setAppTheme('blue')" style="flex: 1; justify-content: center; border-radius: 8px;">Xanh gốc</button>
-                        <button type="button" class="btn btn-secondary btn-sm" id="btnAppThemeLithos" onclick="app.setAppTheme('lithos')" style="flex: 1; justify-content: center; border-radius: 8px;">Đỏ cành đá</button>
+                    <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-secondary btn-sm" id="btnAppThemeBlue" onclick="app.setAppTheme('blue')" style="flex: 1 1 130px; justify-content: center; border-radius: 8px;">Xanh gốc</button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btnAppThemeLithos" onclick="app.setAppTheme('lithos')" style="flex: 1 1 130px; justify-content: center; border-radius: 8px;">Đỏ cành đá</button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btnAppThemeVelorah" onclick="app.setAppTheme('velorah')" style="flex: 1 1 130px; justify-content: center; border-radius: 8px;">Where Dreams</button>
                     </div>
                 </div>
 
@@ -1600,6 +1606,7 @@
          load đầu tiên, và main.js (khởi tạo app) phải load SAU CÙNG. Các
          file ở giữa (app-shell, users, dashboard...) load trước/sau nhau
          thoải mái, không phụ thuộc lẫn nhau. -->
+    <script src="landing-velorah.js"></script>
     <script src="landing-orbis.js"></script>
     <script src="core.js"></script>
     <script src="app-shell.js"></script>

@@ -1,0 +1,215 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500&display=swap');
+
+.velorah-page {
+    --velorah-background: 201 100% 13%;
+    --velorah-foreground: 0 0% 100%;
+    --velorah-muted-foreground: 240 4% 66%;
+    display: block;
+    width: 100%;
+    min-height: 100vh;
+    background: hsl(var(--velorah-background));
+    color: hsl(var(--velorah-foreground));
+    font-family: 'Inter', sans-serif;
+}
+
+.velorah-page,
+.velorah-page * {
+    box-sizing: border-box;
+}
+
+.velorah-hero {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: hidden;
+    background: hsl(var(--velorah-background));
+}
+
+.velorah-video {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.velorah-nav {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    width: min(100%, 1280px);
+    margin: 0 auto;
+    padding: 24px 32px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.velorah-logo {
+    color: hsl(var(--velorah-foreground));
+    font-family: 'Instrument Serif', serif;
+    font-size: 30px;
+    line-height: 1;
+    letter-spacing: -.035em;
+    text-decoration: none;
+    text-shadow: 0 2px 18px rgba(0, 0, 0, .28);
+}
+
+.velorah-logo sup {
+    margin-left: 2px;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0;
+    vertical-align: super;
+}
+
+.velorah-links {
+    display: flex;
+    padding: 6px;
+    align-items: center;
+    gap: 2px;
+    border-radius: 999px;
+}
+
+.velorah-links a,
+.velorah-links button {
+    border: 0;
+    padding: 8px 14px;
+    color: hsl(var(--velorah-muted-foreground));
+    background: transparent;
+    font: 500 14px/1 'Inter', sans-serif;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color .2s ease, background .2s ease;
+}
+
+.velorah-links a:hover,
+.velorah-links button:hover,
+.velorah-links .is-active {
+    color: hsl(var(--velorah-foreground));
+    background: rgba(255, 255, 255, .08);
+    border-radius: 999px;
+}
+
+.velorah-nav-cta,
+.velorah-hero-cta {
+    border: 0;
+    border-radius: 999px;
+    color: hsl(var(--velorah-foreground));
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: transform .2s ease, background .2s ease;
+}
+
+.velorah-nav-cta {
+    padding: 10px 24px;
+    font-size: 14px;
+}
+
+.velorah-hero-cta {
+    margin-top: 48px;
+    padding: 20px 56px;
+    font-size: 16px;
+}
+
+.velorah-nav-cta:hover,
+.velorah-hero-cta:hover {
+    transform: scale(1.03);
+    background: rgba(255, 255, 255, .07);
+}
+
+.velorah-content {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    min-height: calc(100vh - 96px);
+    min-height: calc(100dvh - 96px);
+    padding: 70px 24px 160px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.velorah-content h1 {
+    width: min(100%, 800px);
+    max-width: 800px;
+    margin: 0;
+    padding: 0 8px;
+    color: hsl(var(--velorah-foreground));
+    font-family: 'Instrument Serif', serif;
+    font-size: clamp(52px, 5.3vw, 76px);
+    font-weight: 400;
+    line-height: .95;
+    letter-spacing: -2.46px;
+    text-wrap: balance;
+    text-shadow: 0 4px 34px rgba(0, 0, 0, .38);
+}
+
+.velorah-content h1 em {
+    color: hsl(var(--velorah-muted-foreground));
+    font-style: normal;
+}
+
+.velorah-subtext {
+    max-width: 672px;
+    margin: 32px 0 0;
+    color: hsl(var(--velorah-muted-foreground));
+    font-size: clamp(16px, 1.8vw, 18px);
+    line-height: 1.75;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, .5);
+}
+
+.velorah-liquid-glass {
+    position: relative;
+    overflow: hidden;
+    border: none;
+    background: rgba(255, 255, 255, .01);
+    background-blend-mode: luminosity;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, .1), 0 12px 32px rgba(0, 0, 0, .12);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.velorah-liquid-glass::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.4px;
+    background: linear-gradient(180deg, rgba(255,255,255,.45) 0%, rgba(255,255,255,.15) 20%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%, rgba(255,255,255,.15) 80%, rgba(255,255,255,.45) 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+@keyframes velorah-fade-rise {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.velorah-fade-rise { animation: velorah-fade-rise .8s ease-out both; }
+.velorah-fade-rise-delay { animation: velorah-fade-rise .8s ease-out .2s both; }
+.velorah-fade-rise-delay-2 { animation: velorah-fade-rise .8s ease-out .4s both; }
+
+@media (max-width: 767px) {
+    .velorah-nav { padding: 18px 20px; }
+    .velorah-links { display: none; }
+    .velorah-logo { font-size: 27px; }
+    .velorah-nav-cta { padding: 10px 18px; }
+    .velorah-content { min-height: calc(100dvh - 76px); padding: 54px 20px 110px; }
+    .velorah-content h1 { font-size: clamp(50px, 15vw, 76px); letter-spacing: -1.8px; }
+    .velorah-subtext { margin-top: 26px; font-size: 15px; line-height: 1.65; }
+    .velorah-hero-cta { margin-top: 36px; padding: 17px 38px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .velorah-fade-rise,
+    .velorah-fade-rise-delay,
+    .velorah-fade-rise-delay-2 {
+        animation: none;
+    }
+}
