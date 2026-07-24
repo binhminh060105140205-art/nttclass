@@ -429,6 +429,19 @@ let poolPromise = pgPool.query('SELECT 1')
         } catch (migErr) {
             console.error('TaskRequests migration error:', migErr.message);
         }
+
+        try {
+            await pgPool.query(`CREATE TABLE IF NOT EXISTS AppSettings (
+                SettingKey VARCHAR(60) PRIMARY KEY,
+                SettingValue TEXT NOT NULL,
+                UpdatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )`);
+            await pgPool.query(`INSERT INTO AppSettings (SettingKey, SettingValue)
+                VALUES ('app_theme', 'lithos')
+                ON CONFLICT (SettingKey) DO NOTHING`);
+        } catch (migErr) {
+            console.error('AppSettings migration error:', migErr.message);
+        }
         return { request: () => new sql.Request(pgPool) };
     })
     .catch(err => {
@@ -508,6 +521,41 @@ function requireTeacherContext(req, res, next) {
 // ==========================================
 // AUTH API
 // ==========================================
+
+app.get('/api/app-settings/theme', async (req, res) => {
+    try {
+        await poolPromise;
+        const result = await pgPool.query(
+            'SELECT SettingValue AS "theme" FROM AppSettings WHERE SettingKey = $1',
+            ['app_theme']
+        );
+        const theme = result.rows[0]?.theme === 'blue' ? 'blue' : 'lithos';
+        res.json({ theme });
+    } catch (err) {
+        console.error('[GET /api/app-settings/theme]', err);
+        res.status(500).json({ error: 'Không thể tải giao diện hệ thống.' });
+    }
+});
+
+app.put('/api/app-settings/theme', requireRole('admin'), async (req, res) => {
+    const theme = String(req.body?.theme || '').trim();
+    if (!['blue', 'lithos'].includes(theme)) {
+        return res.status(400).json({ error: 'Giao diện không hợp lệ.' });
+    }
+
+    try {
+        await poolPromise;
+        const result = await pgPool.query(`INSERT INTO AppSettings (SettingKey, SettingValue, UpdatedAt)
+            VALUES ($1, $2, CURRENT_TIMESTAMP)
+            ON CONFLICT (SettingKey)
+            DO UPDATE SET SettingValue = EXCLUDED.SettingValue, UpdatedAt = CURRENT_TIMESTAMP
+            RETURNING SettingValue AS "theme"`, ['app_theme', theme]);
+        res.json({ theme: result.rows[0].theme });
+    } catch (err) {
+        console.error('[PUT /api/app-settings/theme]', err);
+        res.status(500).json({ error: 'Không thể lưu giao diện hệ thống.' });
+    }
+});
 
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body || {};

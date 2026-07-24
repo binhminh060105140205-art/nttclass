@@ -469,6 +469,7 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     showLandingPage() {
+        this.useLandingTheme();
         document.getElementById('landingPage').classList.remove('hidden');
         document.getElementById('loginPage').classList.add('hidden');
         document.querySelector('.sidebar').classList.add('hidden');
@@ -479,6 +480,7 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     showLoginPage() {
+        this.useLandingTheme();
         document.getElementById('landingPage').classList.add('hidden');
         document.getElementById('loginPage').classList.remove('hidden');
         document.querySelector('.sidebar').classList.add('hidden');
@@ -491,6 +493,7 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     showAppPage() {
+        this.applyAppTheme(this.appTheme);
         document.getElementById('landingPage').classList.add('hidden');
         document.getElementById('loginPage').classList.add('hidden');
         document.querySelector('.sidebar').classList.remove('hidden');

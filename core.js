@@ -42,6 +42,7 @@ class PinkyClassApp {
         this.requestFilter = 'pending';
         this.requestImageDraft = [];
         this.requestsLoaded = false;
+        this.appTheme = 'lithos';
 
         // Áp dụng lại màu giao diện đã lưu (nếu có) ngay từ đầu, trước khi vẽ
         // bất cứ gì, để tránh bị "chớp" màu mặc định rồi mới đổi màu.
@@ -60,6 +61,48 @@ class PinkyClassApp {
         document.documentElement.setAttribute('data-theme-mode', mode);
     }
 
+    normalizeAppTheme(theme) {
+        return theme === 'blue' ? 'blue' : 'lithos';
+    }
+
+    applyAppTheme(theme) {
+        const normalizedTheme = this.normalizeAppTheme(theme);
+        this.appTheme = normalizedTheme;
+        localStorage.setItem('nttclass_app_theme', normalizedTheme);
+        document.documentElement.setAttribute('data-app-theme', normalizedTheme);
+
+        const stylesheet = document.getElementById('appThemeStylesheet');
+        if (stylesheet) stylesheet.disabled = normalizedTheme === 'blue';
+
+        if (typeof this.updateAppThemeActiveButtons === 'function') {
+            this.updateAppThemeActiveButtons();
+        }
+    }
+
+    useLandingTheme() {
+        document.documentElement.setAttribute('data-app-theme', 'lithos');
+        const stylesheet = document.getElementById('appThemeStylesheet');
+        if (stylesheet) stylesheet.disabled = false;
+    }
+
+    async loadAppTheme() {
+        const cachedTheme = this.normalizeAppTheme(localStorage.getItem('nttclass_app_theme'));
+        this.appTheme = cachedTheme;
+        if (this.currentUser) this.applyAppTheme(cachedTheme);
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/app-settings/theme`, { cache: 'no-store' });
+            if (!response.ok) throw new Error('Không thể tải giao diện hệ thống.');
+            const data = await response.json();
+            this.appTheme = this.normalizeAppTheme(data.theme);
+            localStorage.setItem('nttclass_app_theme', this.appTheme);
+        } catch (error) {
+            console.warn('[GET /api/app-settings/theme]', error.message);
+        }
+
+        if (this.currentUser) this.applyAppTheme(this.appTheme);
+    }
+
     // Đồng bộ trạng thái nút Sáng/Tối trong modal.
     bindThemeSwitcher() {
         this.updateThemeModeActiveButtons();
@@ -75,6 +118,7 @@ class PinkyClassApp {
             this.currentRole = savedUser.role;
         }
 
+        await this.loadAppTheme();
         await this.loadData();
         this.registerEvents();
 

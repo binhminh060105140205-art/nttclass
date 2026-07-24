@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="landing-orbis.css">
     <link rel="stylesheet" href="landing-orbis-fixes.css">
+    <link id="appThemeStylesheet" rel="stylesheet" href="lithos-app-theme.css">
 </head>
 <body>
 
@@ -1449,6 +1450,15 @@
                                 <button type="button" class="btn btn-secondary btn-sm" id="btnThemeDark" onclick="app.setThemeMode('dark')" style="flex: 1; justify-content: center; border-radius: 8px;">🌙 Tối</button>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div class="settings-section" id="adminAppThemeSection" style="display: none; margin-bottom: 20px;">
+                    <h4 class="settings-section-title">Giao diện toàn hệ thống</h4>
+                    <p class="settings-section-desc">Chỉ Admin được đổi giao diện áp dụng cho tất cả tài khoản.</p>
+                    <div style="display: flex; gap: 8px; margin-top: 12px;">
+                        <button type="button" class="btn btn-secondary btn-sm" id="btnAppThemeBlue" onclick="app.setAppTheme('blue')" style="flex: 1; justify-content: center; border-radius: 8px;">Xanh gốc</button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btnAppThemeLithos" onclick="app.setAppTheme('lithos')" style="flex: 1; justify-content: center; border-radius: 8px;">Đỏ cành đá</button>
                     </div>
                 </div>
 

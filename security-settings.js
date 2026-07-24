@@ -10,6 +10,12 @@ Object.assign(PinkyClassApp.prototype, {
             return;
         }
 
+        const adminThemeSection = document.getElementById('adminAppThemeSection');
+        if (adminThemeSection) {
+            adminThemeSection.style.display = this.currentRole === 'admin' ? 'block' : 'none';
+        }
+        this.updateAppThemeActiveButtons();
+
         // Reset các trường nhập mật khẩu
         document.getElementById('settingsCurrentPassword').value = '';
         document.getElementById('settingsNewPassword').value = '';
@@ -391,6 +397,44 @@ Object.assign(PinkyClassApp.prototype, {
         } finally {
             resetBtn.disabled = false;
             resetBtn.innerText = 'Đặt lại mật khẩu';
+        }
+    },
+
+    async setAppTheme(theme) {
+        if (this.currentRole !== 'admin') {
+            this.showToast('Chỉ Admin được đổi giao diện toàn hệ thống.', 'error');
+            return;
+        }
+
+        const normalizedTheme = this.normalizeAppTheme(theme);
+        try {
+            const response = await this.authFetch(`${API_BASE_URL}/api/app-settings/theme`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ theme: normalizedTheme })
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Không thể lưu giao diện hệ thống.');
+            }
+
+            const data = await response.json();
+            this.applyAppTheme(data.theme);
+            this.showToast(`Đã áp dụng giao diện ${data.theme === 'blue' ? 'Xanh gốc' : 'Đỏ cành đá'} cho toàn hệ thống.`, 'success');
+        } catch (error) {
+            this.showToast(error.message || 'Không thể lưu giao diện hệ thống.', 'error');
+        }
+    },
+
+    updateAppThemeActiveButtons() {
+        const theme = this.normalizeAppTheme(this.appTheme);
+        const btnBlue = document.getElementById('btnAppThemeBlue');
+        const btnLithos = document.getElementById('btnAppThemeLithos');
+        if (btnBlue && btnLithos) {
+            btnBlue.classList.toggle('btn-primary', theme === 'blue');
+            btnBlue.classList.toggle('btn-secondary', theme !== 'blue');
+            btnLithos.classList.toggle('btn-primary', theme === 'lithos');
+            btnLithos.classList.toggle('btn-secondary', theme !== 'lithos');
         }
     },
 
