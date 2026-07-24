@@ -1,0 +1,84 @@
+.lithos-petal-fall {
+    position: fixed;
+    z-index: 18;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    contain: strict;
+    isolation: isolate;
+}
+
+.lithos-petal-fall[hidden] {
+    display: none !important;
+}
+
+.lithos-falling-blossom {
+    position: absolute;
+    top: -70px;
+    left: var(--flower-x);
+    width: var(--flower-size);
+    height: var(--flower-size);
+    opacity: 0;
+    pointer-events: none;
+    will-change: transform, opacity;
+    animation: lithos-blossom-fall var(--fall-duration) linear forwards;
+}
+
+.lithos-falling-blossom__sprite {
+    display: block;
+    width: 100%;
+    height: 100%;
+    transform-origin: center;
+    will-change: transform;
+    animation: lithos-blossom-flutter var(--flutter-duration) ease-in-out infinite alternate;
+}
+
+.lithos-falling-blossom.is-flower .lithos-falling-blossom__sprite {
+    background: url('lithos-falling-blossom.svg?v=20260724-petal1') center / contain no-repeat;
+    filter: saturate(1.16) drop-shadow(0 3px 4px rgba(55, 11, 31, .28));
+}
+
+.lithos-falling-blossom.is-petal .lithos-falling-blossom__sprite {
+    border-radius: 76% 24% 68% 32% / 63% 31% 69% 37%;
+    background: radial-gradient(circle at 34% 28%, #fff8fc 0 8%, #ffafd3 28%, #ef5aa2 66%, #bc2167 100%);
+    box-shadow: inset -2px -2px 3px rgba(113, 18, 61, .18), 0 3px 5px rgba(55, 11, 31, .24);
+}
+
+html[data-app-theme="lithos"][data-theme-mode="light"] .lithos-falling-blossom {
+    filter: saturate(1.08) contrast(1.04);
+}
+
+@keyframes lithos-blossom-fall {
+    0% {
+        opacity: 0;
+        transform: translate3d(0, -40px, 0) rotate(var(--rotate-start));
+    }
+    8% { opacity: var(--flower-opacity); }
+    30% {
+        transform: translate3d(var(--sway-one), 30vh, 0) rotate(var(--rotate-one));
+    }
+    61% {
+        opacity: var(--flower-opacity);
+        transform: translate3d(var(--sway-two), 63vh, 0) rotate(var(--rotate-two));
+    }
+    88% { opacity: .48; }
+    100% {
+        opacity: 0;
+        transform: translate3d(var(--drift-end), calc(100vh + 80px), 0) rotate(var(--rotate-end));
+    }
+}
+
+@keyframes lithos-blossom-flutter {
+    0% { transform: perspective(80px) rotateX(10deg) rotateY(-24deg) scale(.92); }
+    50% { transform: perspective(80px) rotateX(-18deg) rotateY(58deg) scale(1.04); }
+    100% { transform: perspective(80px) rotateX(24deg) rotateY(-56deg) scale(.88); }
+}
+
+@media (max-width: 767px) {
+    .lithos-petal-fall { z-index: 14; }
+    .lithos-falling-blossom { opacity: .9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lithos-petal-fall { display: none !important; }
+}
