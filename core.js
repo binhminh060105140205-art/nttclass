@@ -58,32 +58,6 @@ class PinkyClassApp {
         // Khởi tạo chế độ sáng/tối
         const mode = localStorage.getItem('nttclass_theme_mode') || 'light';
         document.documentElement.setAttribute('data-theme-mode', mode);
-
-        let savedUser = null;
-        try {
-            savedUser = JSON.parse(localStorage.getItem('pinky_current_user') || 'null');
-        } catch (error) {
-            savedUser = null;
-        }
-        this.applyAccountTheme(savedUser);
-    }
-
-    applyAccountTheme(user) {
-        const matchesLinh = (value) => {
-            const normalized = String(value || '')
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .trim()
-                .toLowerCase();
-            return /(^|[\s._-])linh($|[\s._-])/.test(normalized);
-        };
-
-        const isLinhAccount = Boolean(user) && [user.username, user.name].some(matchesLinh);
-        if (isLinhAccount) {
-            document.documentElement.setAttribute('data-account-theme', 'linh');
-        } else {
-            document.documentElement.removeAttribute('data-account-theme');
-        }
     }
 
     // Đồng bộ trạng thái nút Sáng/Tối trong modal.

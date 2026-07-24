@@ -469,7 +469,6 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     showLandingPage() {
-        this.applyAccountTheme(null);
         document.getElementById('landingPage').classList.remove('hidden');
         document.getElementById('loginPage').classList.add('hidden');
         document.querySelector('.sidebar').classList.add('hidden');
@@ -480,7 +479,6 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     showLoginPage() {
-        this.applyAccountTheme(null);
         document.getElementById('landingPage').classList.add('hidden');
         document.getElementById('loginPage').classList.remove('hidden');
         document.querySelector('.sidebar').classList.add('hidden');
@@ -503,7 +501,6 @@ Object.assign(PinkyClassApp.prototype, {
     async onLoginSuccess(user, save = true) {
         this.currentUser = user;
         this.currentRole = user.role;
-        this.applyAccountTheme(user);
         this.requests = [];
         this.requestsLoaded = false;
         this.requestFilter = 'pending';
