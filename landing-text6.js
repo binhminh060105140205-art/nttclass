@@ -1,1 +1,0 @@
-document.querySelector('.landing-hero-copy p').textContent='Một không gian tập trung cho lịch dạy, nhật ký học tập, điểm số và học phí để mỗi buổi học tiến về phía trước rõ ràng hơn.';var s=document.createElement('script');s.src='landing-text6b.js';document.head.appendChild(s);

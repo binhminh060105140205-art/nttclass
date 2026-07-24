@@ -1,1 +1,0 @@
-var a=document.querySelectorAll('.landing-nav-links a');a[1].addEventListener('click',function(v){v.preventDefault();closeLandingMenu();document.getElementById('landingDashboard').scrollIntoView({behavior:'smooth',block:'start'})},true);var s=document.createElement('script');s.src='landing-behavior3b.js';document.head.appendChild(s);

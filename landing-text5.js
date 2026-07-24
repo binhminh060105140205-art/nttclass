@@ -1,1 +1,0 @@
-document.querySelector('.landing-nav-note').textContent='Kh\u00f4ng gian h\u1ecdc t\u1eadp cho gi\u00e1o vi\u00ean v\u00e0 h\u1ecdc sinh';var s=document.createElement('script');s.src='landing-text5b.js';document.head.appendChild(s);

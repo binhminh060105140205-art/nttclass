@@ -1,1 +1,0 @@
-document.querySelector('.landing-floating-score small').textContent='Bài kiểm tra chương 2';document.querySelector('.landing-floating-payment strong').textContent='Học phí đã cập nhật';document.querySelector('.landing-floating-payment small').textContent='Vừa xong';var s=document.createElement('script');s.src='landing-text9c.js';document.head.appendChild(s);

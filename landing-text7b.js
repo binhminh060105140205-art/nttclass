@@ -1,1 +1,0 @@
-document.querySelector('.landing-stage-meta small').textContent='CÁCH DẠY HỌC RÕ RÀNG HƠN';document.querySelector('.landing-dashboard-status').lastChild.nodeValue='Đang hoạt động';var s=document.createElement('script');s.src='landing-text8.js';document.head.appendChild(s);

@@ -7,124 +7,71 @@
     <!-- Comfortaa dùng cho giao diện chính; Be Vietnam Pro dùng riêng cho phiếu học phí. -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Comfortaa:wght@400;500;600;700&family=Condiment&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="landing-aethera.css">
+    <link rel="stylesheet" href="landing-orbis.css">
+    <link rel="stylesheet" href="landing-orbis-fixes.css">
 </head>
 <body>
 
     <!-- Public Landing Page -->
-    <section id="landingPage" class="landing-page">
-        <div class="landing-cinematic-bg" aria-hidden="true">
-            <span class="landing-noise"></span>
-            <span class="landing-star landing-star-one"></span>
-            <span class="landing-star landing-star-two"></span>
-            <span class="landing-star landing-star-three"></span>
-            <span class="landing-aurora landing-aurora-one"></span>
-            <span class="landing-aurora landing-aurora-two"></span>
-            <span class="landing-horizon-glow"></span>
-        </div>
-
-        <header class="landing-nav">
-            <a href="#landingPage" class="landing-brand" aria-label="NttClass - Trang gi&#7899;i thi&#7879;u">
-                <span class="landing-brand-mark">N</span>
-                <span class="landing-brand-copy">
-                    <strong>NttClass</strong>
-                    <small>Learning, made clear.</small>
-                </span>
-            </a>
-            <nav class="landing-nav-links" aria-label="?i?u h??ng landing page">
-                <a href="#landingPage">Trang ch?</a>
-                <a href="#landingFeatures">T?nh n?ng</a>
-                <a href="#landingStory">C?ch ho?t ??ng</a>
-            </nav>
-            <div class="landing-nav-actions">
-                <span class="landing-nav-note">Learning space for teachers and students</span>
-                <button type="button" class="landing-glass landing-login-nav" data-open-login>Login <span aria-hidden="true">&#8599;</span></button>
-                <button type="button" class="landing-mobile-menu" aria-label="Open menu">&#9776;</button>
+    <section id="landingPage" class="orbis-page">
+        <svg class="orbis-icon-sprite" aria-hidden="true">
+            <symbol id="orbis-icon-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3 7 9 6 9-6"></path></symbol>
+            <symbol id="orbis-icon-twitter" viewBox="0 0 24 24"><path d="M22 4.01c-.96.68-2 1.2-3.12 1.53A4.48 4.48 0 0 0 11 8.54v1A10.66 10.66 0 0 1 3 5.01s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 22 4.01Z"></path></symbol>
+            <symbol id="orbis-icon-github" viewBox="0 0 24 24"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3.3-.37 6.8-1.62 6.8-7.4A5.8 5.8 0 0 0 19.3 3a5.4 5.4 0 0 0-.1-4S18 1 15 2.5a13.4 13.4 0 0 0-6 0C6 1 4.8-1 4.8-1a5.4 5.4 0 0 0-.1 4A5.8 5.8 0 0 0 3.2 7.1c0 5.77 3.5 7.02 6.8 7.4A4.8 4.8 0 0 0 9 18v4"></path><path d="M9 18c-5 .5-5-2.5-7-3"></path></symbol>
+            <symbol id="orbis-icon-arrow" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></symbol>
+        </svg>
+        <div class="orbis-texture" aria-hidden="true"></div>
+        <section class="orbis-hero" id="orbisHome">
+            <video class="orbis-section-video" autoplay loop muted playsinline preload="auto" aria-hidden="true"><source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260331_045634_e1c98c76-1265-4f5c-882a-4276f2080894.mp4" type="video/mp4"></video>
+            <div class="orbis-video-shade" aria-hidden="true"></div>
+            <div class="orbis-shell orbis-hero-shell">
+                <header class="orbis-header">
+                    <a class="orbis-logo" href="#orbisHome">ORBIS.NFT</a>
+                    <nav class="orbis-nav liquid-glass" aria-label="Orbis navigation"><a href="#orbisHome">HOMEPAGE</a><a href="#orbisGallery">GALLERY</a><button type="button" data-open-login>BUY NFT</button><a href="#orbisAbout">FAQ</a><a href="#orbisContact">CONTACT</a></nav>
+                    <button type="button" class="orbis-mobile-entry liquid-glass" data-open-login>ENTER</button>
+                </header>
+                <div class="orbis-social-stack orbis-social-desktop"><a class="orbis-social-button liquid-glass" href="#orbisContact" aria-label="Email"><svg><use href="#orbis-icon-mail"></use></svg></a><a class="orbis-social-button liquid-glass" href="#orbisContact" aria-label="Twitter"><svg><use href="#orbis-icon-twitter"></use></svg></a><a class="orbis-social-button liquid-glass" href="#orbisContact" aria-label="Github"><svg><use href="#orbis-icon-github"></use></svg></a></div>
+                <div class="orbis-hero-content">
+                    <div class="orbis-hero-title-wrap"><h1>BEYOND EARTH<br>AND <span>( ITS )</span> FAMILIAR<br>BOUNDARIES</h1><span class="orbis-script orbis-hero-script">Nft collection</span></div>
+                    <div class="orbis-social-mobile"><a class="orbis-social-button liquid-glass" href="#orbisContact" aria-label="Email"><svg><use href="#orbis-icon-mail"></use></svg></a><a class="orbis-social-button liquid-glass" href="#orbisContact" aria-label="Twitter"><svg><use href="#orbis-icon-twitter"></use></svg></a><a class="orbis-social-button liquid-glass" href="#orbisContact" aria-label="Github"><svg><use href="#orbis-icon-github"></use></svg></a></div>
+                </div>
             </div>
-        </header>
-
-        <main class="landing-main">
-            <section class="landing-hero" id="landingStory">
-                <div class="landing-hero-copy">
-                    <span class="landing-kicker"><i></i>NTTCLASS / LEARNING OPERATING SYSTEM</span>
-                    <h1>Qu&#7843;n l&#253; l&#7899;p h&#7885;c.<br><em>Nh&#7865; nh&#224;ng h&#417;n.</em></h1>
-                    <p>Mot khong gian tap trung cho lich day, nhat ky hoc tap, diem so va hoc phi de moi buoi hoc tien ve phia truoc ro rang hon.</p>
-                    <div class="landing-hero-actions">
-                        <button type="button" class="landing-button landing-button-primary" data-open-login>
-                            <span>Dang nhap de bat dau</span>
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13m0 0-5-5m5 5-5 5"/></svg>
-                        </button>
-                        <button type="button" class="landing-button landing-button-link" id="landingExploreBtn" data-open-login>
-                            Explore platform
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v13m0 0-5-5m5 5 5-5"/></svg>
-                        </button>
-                    </div>
-                    <div class="landing-proof-list hidden" aria-label="Highlights">
-                        <span><i>?</i>G?n trong m?t m?n h?nh</span>
-                        <span><i>?</i>D? li?u lu?n r? r?ng</span>
-                    </div>
+        </section>
+        <section class="orbis-about" id="orbisAbout">
+            <video class="orbis-section-video" autoplay loop muted playsinline preload="metadata" aria-hidden="true"><source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260331_151551_992053d1-3d3e-4b8c-abac-45f22158f411.mp4" type="video/mp4"></video>
+            <div class="orbis-video-shade orbis-about-shade" aria-hidden="true"></div>
+            <div class="orbis-shell orbis-about-shell">
+                <div class="orbis-about-top">
+                    <div class="orbis-section-title orbis-about-title"><h2>HELLO!<br>I'M ORBIS</h2><span class="orbis-script">Orbis</span></div>
+                    <p class="orbis-mono orbis-about-copy">A DIGITAL OBJECT FIXED BEYOND TIME AND PLACE. AN EXPLORATION OF DISTANCE, FORM, AND SILENCE IN SPACE</p>
                 </div>
-
-                <div class="landing-hero-stage" aria-label="Minh h?a kh?ng gian l?m vi?c NttClass">
-                    <div class="landing-stage-meta"><span>01</span><i></i><span>04</span><small>THE CLEARER WAY TO TEACH</small></div>
-                    <div class="landing-scene">
-                        <span class="landing-sun"></span>
-                        <span class="landing-cloud landing-cloud-one"></span>
-                        <span class="landing-cloud landing-cloud-two"></span>
-                        <span class="landing-mountain landing-mountain-left"></span>
-                        <span class="landing-mountain landing-mountain-right"></span>
-                        <span class="landing-portal-glow"></span>
-                        <span class="landing-portal landing-portal-left"></span>
-                        <span class="landing-portal landing-portal-right"></span>
-                        <span class="landing-path"></span>
-                        <span class="landing-scene-grain"></span>
-
-                        <div class="landing-dashboard-card">
-                            <div class="landing-dashboard-topbar">
-                                <div class="landing-dashboard-brand"><span>N</span><strong>NttClass</strong></div>
-                                <span class="landing-dashboard-status"><i></i>Dang hoat dong</span>
-                            </div>
-                            <div class="landing-dashboard-heading"><small>TONG QUAN</small><strong>Chao buoi sang, Thuy.</strong></div>
-                            <div class="landing-dashboard-metrics">
-                                <div><small>STUDENTS</small><strong>24</strong><span>+3 this week</span></div>
-                                <div><small>SESSIONS</small><strong>18</strong><span>96% complete</span></div>
-                                <div><small>AVERAGE SCORE</small><strong>8.6</strong><span>+0.4 vs last month</span></div>
-                            </div>
-                            <div class="landing-dashboard-chart">
-                                <div class="landing-chart-heading"><strong>Learning progress</strong><span>Last 7 days</span></div>
-                                <div class="landing-chart-bars" aria-hidden="true"><i style="height:34%"></i><i style="height:52%"></i><i style="height:42%"></i><i style="height:68%"></i><i style="height:58%"></i><i style="height:82%"></i><i style="height:94%"></i></div>
-                                <div class="landing-chart-labels"><span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="landing-floating-note landing-floating-score"><span>NEW SCORE</span><strong>9.0</strong><small>Chapter 2 test</small></div>
-                    <div class="landing-floating-note landing-floating-payment"><span class="landing-check">&#10003;</span><div><strong>Tuition updated</strong><small>Just now</small></div></div>
+                <div class="orbis-about-bottom" aria-hidden="true">
+                    <div class="orbis-ghost-column"><p>A DIGITAL OBJECT FIXED BEYOND TIME AND PLACE. AN EXPLORATION OF DISTANCE, FORM, AND SILENCE IN SPACE</p><p>A DIGITAL OBJECT FIXED BEYOND TIME AND PLACE. AN EXPLORATION OF DISTANCE, FORM, AND SILENCE IN SPACE</p></div>
+                    <div class="orbis-ghost-column orbis-ghost-column-right"><p>A DIGITAL OBJECT FIXED BEYOND TIME AND PLACE. AN EXPLORATION OF DISTANCE, FORM, AND SILENCE IN SPACE</p><p>A DIGITAL OBJECT FIXED BEYOND TIME AND PLACE. AN EXPLORATION OF DISTANCE, FORM, AND SILENCE IN SPACE</p></div>
                 </div>
-            </section>
-
-            <section class="landing-feature-section hidden" id="landingFeatures">
-                <div class="landing-section-heading">
-                    <span>M?I TH? ? ??NG N?I</span>
-                    <h2>T?p trung v?o vi?c d?y,<br>?? NttClass lo ph?n qu?n l?.</h2>
-                    <p>Thi?t k? g?n, d? li?u li?n m?ch v? nh?ng th?ng tin quan tr?ng lu?n n?m trong t?m m?t.</p>
+            </div>
+        </section>
+        <section class="orbis-gallery" id="orbisGallery">
+            <div class="orbis-shell orbis-gallery-shell">
+                <div class="orbis-gallery-header">
+                    <div class="orbis-section-title orbis-gallery-title"><h2>COLLECTION OF</h2><div class="orbis-gallery-title-line"><span class="orbis-script">Space</span><strong>OBJECTS</strong></div></div>
+                    <button type="button" class="orbis-creators-button" data-open-login><span class="orbis-creators-see">SEE</span><span class="orbis-creators-stack"><b>ALL</b><b>CREATORS</b></span><i aria-hidden="true"></i></button>
                 </div>
-                <div class="landing-feature-grid">
-                    <article class="landing-feature-card"><span class="landing-feature-icon landing-feature-blue">01</span><h3>L?ch d?y tr?c quan</h3><p>S?p x?p ca h?c theo ng?y, tu?n ho?c th?ng v? ghi nh?n n?i dung ngay sau bu?i h?c.</p></article>
-                    <article class="landing-feature-card"><span class="landing-feature-icon landing-feature-violet">02</span><h3>Nh?t k? h?c t?p</h3><p>Theo d?i b?i t?p, ? th?c v? nh?n x?t ri?ng c?a t?ng h?c sinh qua t?ng bu?i.</p></article>
-                    <article class="landing-feature-card"><span class="landing-feature-icon landing-feature-teal">03</span><h3>?i?m s? r? r?ng</h3><p>Qu?n l? b?i ki?m tra, l?c k?t qu? v? xem ti?n ?? h?c t?p theo t?ng h?c sinh.</p></article>
-                    <article class="landing-feature-card"><span class="landing-feature-icon landing-feature-amber">04</span><h3>H?c ph? minh b?ch</h3><p>T? ??ng t?ng h?p s? bu?i, s? gi?, kho?n ?? thu v? h?c ph? c?n l?i.</p></article>
+                <div class="orbis-card-grid">
+                    <article class="orbis-nft-card liquid-glass"><div class="orbis-card-media"><video autoplay loop muted playsinline preload="metadata" aria-label="Orbis NFT object one"><source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260331_053923_22c0a6a5-313c-474c-85ff-3b50d25e944a.mp4" type="video/mp4"></video><div class="orbis-card-overlay liquid-glass"><div><small>RARITY SCORE:</small><strong>8.7/10</strong></div><button type="button" data-open-login aria-label="Open NFT one"><svg><use href="#orbis-icon-arrow"></use></svg></button></div></div></article>
+                    <article class="orbis-nft-card liquid-glass"><div class="orbis-card-media"><video autoplay loop muted playsinline preload="metadata" aria-label="Orbis NFT object two"><source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260331_054411_511c1b7a-fb2f-42ef-bf6c-32c0b1a06e79.mp4" type="video/mp4"></video><div class="orbis-card-overlay liquid-glass"><div><small>RARITY SCORE:</small><strong>9/10</strong></div><button type="button" data-open-login aria-label="Open NFT two"><svg><use href="#orbis-icon-arrow"></use></svg></button></div></div></article>
+                    <article class="orbis-nft-card liquid-glass"><div class="orbis-card-media"><video autoplay loop muted playsinline preload="metadata" aria-label="Orbis NFT object three"><source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260331_055427_ac7035b5-9f3b-4289-86fc-941b2432317d.mp4" type="video/mp4"></video><div class="orbis-card-overlay liquid-glass"><div><small>RARITY SCORE:</small><strong>8.2/10</strong></div><button type="button" data-open-login aria-label="Open NFT three"><svg><use href="#orbis-icon-arrow"></use></svg></button></div></div></article>
                 </div>
-            </section>
-
-            <section class="landing-cta-section hidden">
-                <div><span>S?N S?NG B?T ??U?</span><h2>M? l?p h?c c?a b?n tr?n NttClass.</h2><p>??ng nh?p ?? ti?p t?c qu?n l? h?c sinh v? ti?n tr?nh h?c t?p.</p></div>
-                <button type="button" class="landing-button landing-button-light" data-open-login>?i t?i ??ng nh?p <span aria-hidden="true">?</span></button>
-            </section>
-        </main>
-
-        <footer class="landing-footer hidden"></footer>
+            </div>
+        </section>
+        <section class="orbis-contact" id="orbisContact">
+            <video class="orbis-contact-video" autoplay loop muted playsinline preload="metadata" aria-hidden="true"><source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260331_055729_72d66327-b59e-4ae9-bb70-de6ccb5ecdb0.mp4" type="video/mp4"></video>
+            <div class="orbis-contact-shade" aria-hidden="true"></div>
+            <div class="orbis-contact-copy"><span class="orbis-script orbis-contact-script">Go beyond</span><button type="button" class="orbis-join-button" data-open-login>JOIN US.</button><h2>REVEAL WHAT'S HIDDEN.<br>DEFINE WHAT'S NEXT.<br>FOLLOW THE SIGNAL.</h2></div>
+            <div class="orbis-contact-socials liquid-glass"><a href="#orbisContact" aria-label="Email"><svg><use href="#orbis-icon-mail"></use></svg></a><a href="#orbisContact" aria-label="Twitter"><svg><use href="#orbis-icon-twitter"></use></svg></a><a href="#orbisContact" aria-label="Github"><svg><use href="#orbis-icon-github"></use></svg></a></div>
+        </section>
     </section>
 
     <!-- Login Page -->
@@ -1643,7 +1590,7 @@
          load đầu tiên, và main.js (khởi tạo app) phải load SAU CÙNG. Các
          file ở giữa (app-shell, users, dashboard...) load trước/sau nhau
          thoải mái, không phụ thuộc lẫn nhau. -->
-    <script src="landing-copy.js"></script>
+    <script src="landing-orbis.js"></script>
     <script src="core.js"></script>
     <script src="app-shell.js"></script>
     <script src="users.js"></script>

@@ -1,1 +1,0 @@
-document.querySelector('.landing-button-primary span').textContent='\u0110\u0103ng nh\u1eadp \u0111\u1ec3 b\u1eaft \u0111\u1ea7u';var e=document.getElementById('landingExploreBtn');e.removeAttribute('data-open-login');var s=document.createElement('script');s.src='landing-text6c.js';document.head.appendChild(s);

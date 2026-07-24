@@ -1,1 +1,0 @@
-var z=document.createElement('style');z.textContent='.landing-hero-stage{min-height:0;height:clamp(430px,66vh,585px)}.landing-nav-links a{white-space:nowrap}';document.head.appendChild(z);var s=document.createElement('script');s.src='landing-style3.js';document.head.appendChild(s);

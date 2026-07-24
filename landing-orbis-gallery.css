@@ -1,0 +1,1 @@
+@import url('landing-orbis-about.css');@import url('landing-orbis-gallery-head.css');@import url('landing-orbis-cards.css');.orbis-gallery{position:relative;background:var(--orbis-bg)}.orbis-gallery-shell{padding-top:clamp(72px,8vw,150px);padding-bottom:clamp(80px,9vw,170px)}
