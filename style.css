@@ -4212,6 +4212,52 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
 }
 
 .login-card-icon svg { width: 22px; height: 22px; }
+.login-back-button {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 7px;
+    width: auto;
+    min-height: 34px;
+    margin: 0 0 20px;
+    padding: 7px 11px;
+    border: 1px solid #d8e1ec;
+    border-radius: 9px;
+    background: transparent;
+    color: #64748b;
+    font: inherit;
+    font-size: .76rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color .18s ease, background .18s ease, color .18s ease;
+}
+.login-back-button svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.login-back-button:hover,
+.login-back-button:focus-visible {
+    border-color: #93c5fd;
+    background: #eff6ff;
+    color: #1d4ed8;
+    outline: none;
+}
+[data-theme-mode='dark'] .login-back-button {
+    border-color: rgba(148, 163, 184, .35);
+    color: #cbd5e1;
+}
+[data-theme-mode='dark'] .login-back-button:hover,
+[data-theme-mode='dark'] .login-back-button:focus-visible {
+    border-color: rgba(96, 165, 250, .65);
+    background: rgba(37, 99, 235, .16);
+    color: #93c5fd;
+}
 .login-welcome { text-align: left; font-size: 1.45rem; letter-spacing: -.045em; color: #0f172a; }
 .login-welcome-sub { text-align: left; margin: 7px 0 30px; color: #64748b; line-height: 1.5; }
 .login-form { gap: 17px; }
