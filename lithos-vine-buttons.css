@@ -1,52 +1,121 @@
-
-html[data-app-theme="lithos"] :is(#btnOpenCreateSession, #addNewStudentBtn, #requestSubmitBtn, #saveBatchScoresBtn) {
+html[data-app-theme="lithos"] .lithos-vine-button-wrap {
     position: relative;
-    isolation: isolate;
+    display: inline-flex;
+    align-items: stretch;
+    flex: 0 0 auto;
     overflow: visible;
-    z-index: 1;
+    isolation: isolate;
 }
 
-html[data-app-theme="lithos"] :is(#btnOpenCreateSession, #addNewStudentBtn, #requestSubmitBtn, #saveBatchScoresBtn)::before {
-    content: '' !important;
-    display: block !important;
+html[data-app-theme="lithos"] .lithos-vine-button-wrap > .btn {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    overflow: visible;
+    isolation: isolate;
+}
+
+html[data-app-theme="lithos"] .lithos-vine-button-wrap > .btn::before,
+html[data-app-theme="lithos"] .lithos-vine-button-wrap > .btn::after {
+    content: none !important;
+    display: none !important;
+}
+
+html[data-app-theme="lithos"] .lithos-vine-layer {
     position: absolute;
-    z-index: 2;
-    inset: -29px -42px;
+    display: block;
+    inset: -25px -39px;
     pointer-events: none;
-    background: url('lithos-button-vine-wrap.svg?v=20260724-pink1') center / 100% 100% no-repeat !important;
-    opacity: .82;
-    filter: saturate(1.3) contrast(1.08) drop-shadow(0 6px 9px rgba(48,15,30,.28));
-    transform: scale(.98);
+    background-position: center;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
     transform-origin: center;
     transition: opacity .3s ease, transform .45s cubic-bezier(.2,.8,.2,1), filter .3s ease;
 }
 
-html[data-app-theme="lithos"] :is(#btnOpenCreateSession, #addNewStudentBtn, #requestSubmitBtn, #saveBatchScoresBtn):hover::before,
-html[data-app-theme="lithos"] :is(#btnOpenCreateSession, #addNewStudentBtn, #requestSubmitBtn, #saveBatchScoresBtn):focus-visible::before {
-    opacity: 1;
-    filter: saturate(1.5) contrast(1.12) drop-shadow(0 8px 12px rgba(232,42,127,.34));
-    transform: scale(1.045) rotate(.45deg);
+html[data-app-theme="lithos"] .lithos-vine-layer-back {
+    z-index: 0;
+    background-image: url('lithos-button-vine-back.svg?v=20260724-vine-depth1');
+    opacity: .94;
+    filter: saturate(1.2) contrast(1.08) drop-shadow(0 7px 10px rgba(6,22,16,.34));
 }
 
-html[data-app-theme="lithos"][data-theme-mode="light"] :is(#btnOpenCreateSession, #addNewStudentBtn, #requestSubmitBtn, #saveBatchScoresBtn)::before {
+html[data-app-theme="lithos"] .lithos-vine-layer-front {
+    z-index: 2;
+    background-image: url('lithos-button-vine-front.svg?v=20260724-vine-depth1');
+    opacity: 1;
+    filter: saturate(1.36) contrast(1.12) drop-shadow(0 6px 9px rgba(35,10,22,.38));
+}
+
+html[data-app-theme="lithos"] .lithos-vine-button-label {
+    position: relative;
+    z-index: 3;
+    min-width: 0;
+    color: inherit !important;
+    pointer-events: none;
+}
+
+html[data-app-theme="lithos"] .lithos-vine-button-wrap:hover .lithos-vine-layer-back,
+html[data-app-theme="lithos"] .lithos-vine-button-wrap:focus-within .lithos-vine-layer-back {
+    opacity: 1;
+    filter: saturate(1.35) contrast(1.12) drop-shadow(0 9px 13px rgba(6,22,16,.42));
+    transform: scale(1.025) rotate(-.3deg);
+}
+
+html[data-app-theme="lithos"] .lithos-vine-button-wrap:hover .lithos-vine-layer-front,
+html[data-app-theme="lithos"] .lithos-vine-button-wrap:focus-within .lithos-vine-layer-front {
+    filter: saturate(1.55) contrast(1.14) drop-shadow(0 8px 12px rgba(232,42,127,.42));
+    transform: scale(1.055) rotate(.45deg);
+}
+
+html[data-app-theme="lithos"][data-theme-mode="light"] .lithos-vine-layer-back {
     mix-blend-mode: multiply;
-    filter: saturate(1.35) contrast(1.06) drop-shadow(0 5px 8px rgba(113,27,66,.2));
+    filter: saturate(1.2) contrast(1.08) drop-shadow(0 5px 8px rgba(26,67,49,.24));
+}
+
+html[data-app-theme="lithos"][data-theme-mode="light"] .lithos-vine-layer-front {
+    mix-blend-mode: multiply;
+    filter: saturate(1.35) contrast(1.1) drop-shadow(0 5px 8px rgba(126,25,70,.24));
+}
+
+html[data-app-theme="lithos"] .lithos-vine-button-wrap:has(> #btnOpenCreateSession[style*="display: none"]) {
+    display: none;
+}
+
+html[data-app-theme="lithos"] .score-batch-actions > .lithos-vine-button-wrap,
+html[data-app-theme="lithos"] .students-profile-toolbar > .lithos-vine-button-wrap {
+    flex: none;
 }
 
 @media (max-width: 767px) {
-    html[data-app-theme="lithos"] :is(#btnOpenCreateSession, #addNewStudentBtn, #requestSubmitBtn, #saveBatchScoresBtn)::before {
-        inset: -22px -28px;
-        opacity: .72;
+    html[data-app-theme="lithos"] .lithos-vine-layer {
+        inset: -21px -29px;
+    }
+
+    html[data-app-theme="lithos"] .score-batch-actions > .lithos-vine-button-wrap,
+    html[data-app-theme="lithos"] .students-profile-toolbar > .lithos-vine-button-wrap {
+        width: 100%;
+    }
+
+    html[data-app-theme="lithos"] .score-batch-actions > .lithos-vine-button-wrap > .btn,
+    html[data-app-theme="lithos"] .students-profile-toolbar > .lithos-vine-button-wrap > .btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 640px) {
+    html[data-app-theme="lithos"] .request-composer-actions > .lithos-vine-button-wrap {
+        flex: 1 1 auto;
+        min-width: 132px;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    html[data-app-theme="lithos"] :is(#btnOpenCreateSession, #addNewStudentBtn, #requestSubmitBtn, #saveBatchScoresBtn)::before {
+    html[data-app-theme="lithos"] .lithos-vine-layer {
         transition: none;
-        transform: none;
+        transform: none !important;
     }
 }
-
 
 html[data-app-theme="lithos"] #sidebarUserName {
     display: inline-block;

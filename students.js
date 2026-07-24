@@ -133,12 +133,13 @@ Object.assign(PinkyClassApp.prototype, {
     setBtnLoading(btnId, isLoading, loadingText = 'Đang lưu...') {
         const btn = document.getElementById(btnId);
         if (!btn) return;
+        const textTarget = btn.querySelector('.lithos-vine-button-label') || btn;
         if (isLoading) {
-            btn.dataset.originalText = btn.dataset.originalText || btn.innerText;
-            btn.innerText = loadingText;
+            btn.dataset.originalText = btn.dataset.originalText || textTarget.textContent.trim();
+            textTarget.textContent = loadingText;
             btn.disabled = true;
         } else {
-            btn.innerText = btn.dataset.originalText || btn.innerText;
+            textTarget.textContent = btn.dataset.originalText || textTarget.textContent;
             btn.disabled = false;
         }
     },

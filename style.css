@@ -156,6 +156,27 @@ body {
     box-shadow: none;
 }
 
+.lithos-vine-button-wrap {
+    display: inline-flex;
+    align-items: stretch;
+    max-width: 100%;
+}
+
+.lithos-vine-layer {
+    display: none;
+}
+
+.lithos-vine-button-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: inherit !important;
+    font: inherit !important;
+    line-height: inherit;
+    margin: 0 !important;
+    pointer-events: none;
+}
+
 .btn-primary { background: linear-gradient(135deg, #2563eb, #0284c7); box-shadow: 0 7px 16px rgba(37, 99, 235, 0.19); }
 .btn-primary:hover { box-shadow: 0 10px 22px rgba(37, 99, 235, 0.28); transform: translateY(-1px); }
 .btn-secondary { background: #fff; border-color: #d9e2ee; color: #334155; }
@@ -5536,9 +5557,13 @@ body.request-image-viewer-open { overflow: hidden; }
     gap: 7px;
 }
 
-.students-add-btn > span {
+.students-add-btn .students-add-icon {
     font-size: 1.25em;
     line-height: 0.8;
+}
+
+.students-add-btn > .lithos-vine-button-label {
+    gap: 7px;
 }
 
 .student-profile-table-wrap {
@@ -5701,6 +5726,7 @@ body.request-image-viewer-open { overflow: hidden; }
     }
 
     .student-grade-filter,
+    .students-profile-toolbar > .lithos-vine-button-wrap,
     .students-add-btn {
         width: 100%;
     }
@@ -5719,5 +5745,27 @@ body.request-image-viewer-open { overflow: hidden; }
     .student-modal-action-group,
     .student-modal-submit-group {
         justify-content: flex-end;
+    }
+}
+
+
+@media (max-width: 767px) {
+    .score-batch-actions > .lithos-vine-button-wrap {
+        width: 100%;
+    }
+
+    .score-batch-actions > .lithos-vine-button-wrap > .btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 640px) {
+    .request-composer-actions > .lithos-vine-button-wrap {
+        flex: 1 1 auto;
+        min-width: 132px;
+    }
+
+    .request-composer-actions > .lithos-vine-button-wrap > .btn {
+        width: 100%;
     }
 }
