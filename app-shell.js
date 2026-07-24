@@ -737,7 +737,7 @@ Object.assign(PinkyClassApp.prototype, {
             titleEl.innerText = "Báo cáo Học phí";
             subtitleEl.innerText = "Xem thông tin đóng học phí của tất cả học sinh.";
         } else if (viewId === 'view-students') {
-            titleEl.innerText = "Hồ sơ Học sinh";
+            titleEl.innerText = "HỒ SƠ HỌC SINH";
             subtitleEl.innerText = "Quản lý thông tin liên hệ và học phí cơ bản.";
         } else if (viewId === 'view-users') {
             titleEl.innerText = "Quản lý Tài khoản";

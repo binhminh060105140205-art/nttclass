@@ -3,116 +3,129 @@
 // a================================================================
 Object.assign(PinkyClassApp.prototype, {
     renderStudentList() {
-        const tbody = document.getElementById('studentsTableBody');
-        tbody.innerHTML = '';
+        const tbody = document.getElementById("studentsTableBody");
+        if (!tbody) return;
+        tbody.innerHTML = "";
 
-        const filterEl = document.getElementById('studentGradeFilter');
-        const gradeFilter = filterEl ? filterEl.value : '';
-
-        let list = this.students;
-        if (gradeFilter) {
-            list = list.filter(st => st.gradeLevel === parseInt(gradeFilter));
-        }
+        const filterEl = document.getElementById("studentGradeFilter");
+        const gradeFilter = filterEl ? filterEl.value : "";
+        let list = this.students || [];
+        if (gradeFilter) list = list.filter(student => student.gradeLevel === parseInt(gradeFilter, 10));
 
         if (list.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" style="text-align: center; padding: 30px; color: var(--text-muted);">
-                        Chưa có học sinh nào${gradeFilter ? ' trong khối lớp này' : ''}. Bấm nút phía trên để thêm mới!
+                    <td colspan="7" class="student-empty-cell">
+                        Chưa có học sinh${gradeFilter ? " trong khối lớp này" : ""}. Bấm nút phía trên để thêm mới!
                     </td>
                 </tr>
             `;
             return;
         }
 
-        // Nhóm theo khối lớp (6 -> 12, khối chưa xác định đưa xuống cuối)
         const sorted = [...list].sort((a, b) => {
-            const ga = a.gradeLevel || 999;
-            const gb = b.gradeLevel || 999;
-            if (ga !== gb) return ga - gb;
-            return (a.name || '').localeCompare(b.name || '', 'vi');
+            const gradeCompare = Number(a.gradeLevel || 999) - Number(b.gradeLevel || 999);
+            if (gradeCompare !== 0) return gradeCompare;
+            return String(a.name || "").localeCompare(String(b.name || ""), "vi");
         });
 
         let lastGrade = null;
-        sorted.forEach((st, idx) => {
-            if (st.gradeLevel !== lastGrade) {
-                lastGrade = st.gradeLevel;
-                const groupRow = document.createElement('tr');
-                groupRow.innerHTML = `
-                    <td colspan="7" style="background:var(--primary-soft); color:var(--primary); font-weight:700; padding:8px 14px; font-size:13px;"> ${st.gradeLevel ? 'Lớp ' + st.gradeLevel : 'Chưa xác định khối lớp'}
-                    </td>`;
+        sorted.forEach((student, index) => {
+            if (student.gradeLevel !== lastGrade) {
+                lastGrade = student.gradeLevel;
+                const groupRow = document.createElement("tr");
+                groupRow.className = "student-grade-group-row";
+                groupRow.innerHTML = `<td colspan="7">${student.gradeLevel ? `Lớp ${student.gradeLevel}` : "Chưa xác định khối lớp"}</td>`;
                 tbody.appendChild(groupRow);
             }
 
-            const tr = document.createElement('tr');
-
-            const actionsHTML = `
-                <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
-                    <button class="btn btn-secondary btn-sm" onclick="app.openEditStudentModal('${st.id}')"> Sửa
-                    </button>
-                    <button class="btn btn-secondary btn-sm" onclick="app.openStudentAccountModal('${st.id}')" title="Tạo/quản lý tài khoản đăng nhập cho học sinh này">
-                        🔑 ${st.username ? 'Tài khoản' : 'Tạo TK'}
-                    </button>
-                    <button class="btn btn-danger btn-sm" onclick="app.deleteStudent('${st.id}')"> Xóa
-                    </button>
+            const dobLabel = (() => {
+                if (!student.dob) return "-";
+                const [year, month, day] = String(student.dob).split("T")[0].split("-");
+                return year && month && day ? `${day}/${month}/${year}` : "-";
+            })();
+            const studentId = this.escapeHtmlAttr(student.id);
+            const classLabel = student.class || (student.gradeLevel ? `Lớp ${student.gradeLevel}` : "-");
+            const actionsHtml = `
+                <div class="student-table-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="app.openEditStudentModal('${studentId}')">Sửa</button>
                 </div>
             `;
 
-            // Hiển thị ngày sinh dạng dd/mm/yyyy (dễ đọc) — "-" nếu chưa nhập
-            // (học sinh cũ trước khi có tính năng này).
-            const dobLabel = (() => {
-                if (!st.dob) return '-';
-                const [y, m, d] = st.dob.split('-');
-                return `${d}/${m}/${y}`;
-            })();
-
-            tr.innerHTML = `
-                <td style="text-align:center; font-weight:700; color:var(--text-muted);">${idx + 1}</td>
-                <td><strong>${st.name}</strong></td>
-                <td>${st.class}</td>
-                <td><span class="badge" style="background:var(--primary-soft); color:var(--primary); border-color:var(--primary-light);">${st.subject}</span></td>
-                <td style="text-align:center;">${dobLabel}</td>
-                <td class="role-restricted admin-only" style="text-align:right; font-weight:700;">${this.formatVND(st.basePrice)}</td>
-                <td style="text-align:center;">${actionsHTML}</td>
+            const row = document.createElement("tr");
+            row.className = "student-data-row";
+            row.innerHTML = `
+                <td class="student-stt-cell">${index + 1}</td>
+                <td class="student-name-cell">${this.escapeHtml(student.name || "-")}</td>
+                <td>${this.escapeHtml(classLabel)}</td>
+                <td><span class="student-subject-badge">${this.escapeHtml(student.subject || "-")}</span></td>
+                <td class="student-dob-cell">${dobLabel}</td>
+                <td class="role-restricted admin-only student-price-cell">${this.formatVND(student.basePrice)}</td>
+                <td class="student-actions-cell">${actionsHtml}</td>
             `;
-
-            tbody.appendChild(tr);
+            tbody.appendChild(row);
         });
     },
 
     // --- FORM & DATA HANDLERS ---
 
-    // Mở modal ở chế độ "Thêm mới"
-    openAddStudentModal() {
-        document.getElementById('addStudentForm').reset();
-        document.getElementById('editStudentId').value = '';
-        document.getElementById('studentModalTitle').innerText = 'Thêm Học Sinh Mới';
-        document.getElementById('saveStudentBtn').innerText = 'Thêm học sinh';
-        document.getElementById('studentGrade').value = '8';
-        document.getElementById('studentBasePrice').value = 250000;
-        this.openModal('addStudentModal');
+    setStudentModalActions(isEditing, student = null) {
+        const actions = document.getElementById("studentModalEditActions");
+        const accountButton = document.getElementById("studentModalAccountBtn");
+        if (!actions) return;
+        actions.hidden = !isEditing;
+        if (accountButton) accountButton.innerText = student?.username ? "Quản lý tài khoản" : "Tạo tài khoản";
     },
 
-    // Mở modal ở chế độ "Chỉnh sửa", điền sẵn dữ liệu học sinh hiện tại
-    openEditStudentModal(id) {
+    openStudentAccountFromEdit() {
+        const studentId = document.getElementById("editStudentId")?.value;
+        if (!studentId) return;
+        this.closeModal("addStudentModal");
+        this.openStudentAccountModal(studentId);
+    },
+
+    deleteStudentFromEdit() {
+        const studentId = document.getElementById("editStudentId")?.value;
+        if (!studentId) return;
         if (this.currentRole !== 'teacher') {
+            this.showToast("Chỉ Giáo viên mới có quyền xóa học sinh!", "error");
+            return;
+        }
+        if (!confirm('Xóa học sinh này cùng toàn bộ ca học liên quan? Bạn có 7 giây để hoàn tác.')) return;
+        this.closeModal("addStudentModal");
+        this.queueDeletion('Học sinh', () => this.commitDeleteStudent(studentId));
+    },
+
+    openAddStudentModal() {
+        document.getElementById("addStudentForm").reset();
+        document.getElementById("editStudentId").value = "";
+        document.getElementById("studentModalTitle").innerText = "Thêm Học Sinh Mới";
+        document.getElementById("saveStudentBtn").innerText = "Thêm học sinh";
+        document.getElementById("studentGrade").value = "8";
+        document.getElementById("studentBasePrice").value = 250000;
+        this.setStudentModalActions(false);
+        this.openModal("addStudentModal");
+    },
+
+    openEditStudentModal(id) {
+        if (this.currentRole !== "teacher") {
             this.showToast("Chỉ Giáo viên mới có quyền chỉnh sửa học sinh!", "error");
             return;
         }
-        const student = this.students.find(s => s.id === id);
+        const student = this.students.find(item => item.id === id);
         if (!student) return;
 
-        document.getElementById('editStudentId').value = student.id;
-        document.getElementById('studentModalTitle').innerText = 'Chỉnh Sửa Học Sinh';
-        document.getElementById('saveStudentBtn').innerText = 'Lưu thay đổi';
-        document.getElementById('studentName').value = student.name;
-        document.getElementById('studentGrade').value = student.gradeLevel || 8;
-        document.getElementById('studentSubject').value = student.subject;
-        document.getElementById('studentDob').value = student.dob || '';
-        document.getElementById('studentBasePrice').value = student.basePrice;
-        this.openModal('addStudentModal');
+        document.getElementById("editStudentId").value = student.id;
+        document.getElementById("studentModalTitle").innerText = "Chỉnh Sửa Học Sinh";
+        document.getElementById("saveStudentBtn").innerText = "Lưu thay đổi";
+        document.getElementById("studentName").value = student.name;
+        document.getElementById("studentGrade").value = student.gradeLevel || 8;
+        document.getElementById("studentSubject").value = student.subject;
+        document.getElementById("studentDob").value = student.dob || "";
+        document.getElementById("studentBasePrice").value = student.basePrice;
+        this.setStudentModalActions(true, student);
+        this.openModal("addStudentModal");
     },
-
     // 1. Thêm / Sửa học sinh (dùng chung 1 form — editStudentId rỗng nghĩa là thêm mới)
     // Bật/tắt trạng thái "Đang lưu..." cho nút submit — vô hiệu hóa nút trong
     // lúc chờ API phản hồi để tránh double-submit (bấm 2 lần liên tiếp tạo ra

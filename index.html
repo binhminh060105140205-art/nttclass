@@ -819,23 +819,10 @@
 
         <!-- SECTION 5: STUDENT PROFILE MANAGEMENT -->
         <section id="view-students" class="view-section">
-            <div class="glass-card" style="padding: 24px;">
-                <div class="evaluation-header" style="margin-bottom: 20px;">
-                    <div>
-                        <h2 style="color: var(--primary); font-weight: 700;"> Hồ Sơ & Thông Tin Học Sinh</h2>
-                        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
-                            Quản lý danh mục học sinh cá nhân, thiết lập mức học phí cơ bản của từng em.
-                        </p>
-                    </div>
-                    <button class="btn btn-primary" id="addNewStudentBtn"> Thêm Học Sinh Mới
-                    </button>
-                </div>
-
-                <div class="evaluation-header" style="margin-bottom: 16px; gap: 10px; flex-wrap: wrap;">
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <label for="studentGradeFilter" style="font-size:13px; font-weight:600; color: var(--text-muted);"> Lọc theo lớp:
-                        </label>
-                        <select id="studentGradeFilter" class="form-select" style="width:auto; min-width:160px;">
+            <div class="glass-card students-profile-card">
+                <div class="students-profile-toolbar">
+                    <div class="students-profile-filter">
+                        <select id="studentGradeFilter" class="form-select student-grade-filter" aria-label="Chọn lớp học sinh">
                             <option value="">Tất cả các lớp</option>
                             <option value="6">Lớp 6</option>
                             <option value="7">Lớp 7</option>
@@ -846,19 +833,20 @@
                             <option value="12">Lớp 12</option>
                         </select>
                     </div>
+                    <button class="btn btn-primary students-add-btn" id="addNewStudentBtn"><span aria-hidden="true">+</span> Thêm học sinh</button>
                 </div>
 
-                <div class="table-wrapper" style="border-radius: 16px;">
-                    <table class="custom-table">
+                <div class="table-wrapper student-profile-table-wrap">
+                    <table class="custom-table student-profile-table">
                         <thead>
                             <tr>
-                                <th style="width: 80px; text-align: center;">ID</th>
-                                <th>Họ và Tên</th>
-                                <th>Lớp học</th>
-                                <th>Môn học</th>
-                                <th style="text-align: center; width: 120px;">Ngày sinh</th>
-                                <th class="role-restricted admin-only" style="text-align: right;">Học phí cơ bản / buổi</th>
-                                <th style="text-align: center; width: 180px;">Thao tác</th>
+                                <th>STT</th>
+                                <th>HỌ TÊN HỌC SINH</th>
+                                <th>LỚP</th>
+                                <th>MÔN HỌC</th>
+                                <th>NGÀY SINH</th>
+                                <th class="role-restricted admin-only">HỌC PHÍ/BUỔI</th>
+                                <th>THAO TÁC</th>
                             </tr>
                         </thead>
                         <tbody id="studentsTableBody">
@@ -902,48 +890,58 @@
 
     <!-- MODAL 1: ADD / EDIT STUDENT (dùng chung 1 modal, editStudentId rỗng = thêm mới) -->
     <div class="modal-backdrop" id="addStudentModal">
-        <div class="modal-container">
+        <div class="modal-container student-modal-container">
             <div class="modal-header">
                 <h3 class="modal-title" id="studentModalTitle">Thêm Học Sinh Mới</h3>
                 <button class="modal-close" onclick="app.closeModal('addStudentModal')">&times;</button>
             </div>
             <form id="addStudentForm">
                 <input type="hidden" id="editStudentId" value="">
-                <div class="modal-body">
-                    <div class="grid-form">
-                        <div class="form-group form-group-half">
-                            <label for="studentName">Họ và Tên học sinh <span style="color:red;">*</span></label>
-                            <input type="text" id="studentName" class="form-control" maxlength="200" placeholder="Ví dụ: Quỳnh Anh" required>
+                <div class="modal-body student-modal-body">
+                    <div class="student-form-layout">
+                        <div class="student-form-row student-form-row-main">
+                            <div class="form-group">
+                                <label for="studentName">Họ và Tên học sinh <span style="color:red;">*</span></label>
+                                <input type="text" id="studentName" class="form-control" maxlength="200" placeholder="Ví dụ: Quỳnh Anh" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="studentDob">Ngày sinh</label>
+                                <input type="date" id="studentDob" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="studentGrade">Khối lớp <span style="color:red;">*</span></label>
+                                <select id="studentGrade" class="form-control" required>
+                                    <option value="6">Lớp 6</option>
+                                    <option value="7">Lớp 7</option>
+                                    <option value="8" selected>Lớp 8</option>
+                                    <option value="9">Lớp 9</option>
+                                    <option value="10">Lớp 10</option>
+                                    <option value="11">Lớp 11</option>
+                                    <option value="12">Lớp 12</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="studentGrade">Khối lớp <span style="color:red;">*</span></label>
-                            <select id="studentGrade" class="form-control" required>
-                                <option value="6">Lớp 6</option>
-                                <option value="7">Lớp 7</option>
-                                <option value="8" selected>Lớp 8</option>
-                                <option value="9">Lớp 9</option>
-                                <option value="10">Lớp 10</option>
-                                <option value="11">Lớp 11</option>
-                                <option value="12">Lớp 12</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="studentSubject">Môn học <span style="color:red;">*</span></label>
-                            <input type="text" id="studentSubject" class="form-control" maxlength="200" placeholder="Ví dụ: Toán" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="studentDob">Ngày sinh</label>
-                            <input type="date" id="studentDob" class="form-control">
-                        </div>
-                        <div class="form-group form-group-half">
-                            <label for="studentBasePrice">Đơn giá học phí/buổi (VNĐ) <span style="color:red;">*</span></label>
-                            <input type="number" id="studentBasePrice" class="form-control" value="250000" step="1000" required>
+                        <div class="student-form-row student-form-row-secondary">
+                            <div class="form-group">
+                                <label for="studentSubject">Môn học <span style="color:red;">*</span></label>
+                                <input type="text" id="studentSubject" class="form-control" maxlength="200" placeholder="Ví dụ: Toán" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="studentBasePrice">Đơn giá học phí/buổi (VNĐ) <span style="color:red;">*</span></label>
+                                <input type="number" id="studentBasePrice" class="form-control" value="250000" step="1000" required>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="app.closeModal('addStudentModal')">Hủy bỏ</button>
-                    <button type="submit" class="btn btn-primary" id="saveStudentBtn">Thêm học sinh</button>
+                <div class="modal-footer student-modal-footer">
+                    <div class="student-modal-action-group" id="studentModalEditActions" hidden>
+                        <button type="button" class="btn btn-secondary btn-sm" id="studentModalAccountBtn" onclick="app.openStudentAccountFromEdit()">Tạo tài khoản</button>
+                        <button type="button" class="btn btn-danger btn-sm" id="studentModalDeleteBtn" onclick="app.deleteStudentFromEdit()">Xóa học sinh</button>
+                    </div>
+                    <div class="student-modal-submit-group">
+                        <button type="button" class="btn btn-secondary" onclick="app.closeModal('addStudentModal')">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-primary" id="saveStudentBtn">Thêm học sinh</button>
+                    </div>
                 </div>
             </form>
         </div>

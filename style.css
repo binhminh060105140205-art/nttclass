@@ -5503,3 +5503,221 @@ body.request-image-viewer-open { overflow: hidden; }
     color: #1e3a8a !important;
     border-color: #bfdbfe !important;
 }
+
+
+/* Student profile layout requested in TaskRequests */
+.students-profile-card {
+    padding: 24px;
+}
+
+.students-profile-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.students-profile-filter {
+    display: flex;
+    align-items: center;
+}
+
+.student-grade-filter {
+    width: auto;
+    min-width: 180px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.students-add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.students-add-btn > span {
+    font-size: 1.25em;
+    line-height: 0.8;
+}
+
+.student-profile-table-wrap {
+    border-radius: 16px;
+    overflow-x: auto;
+}
+
+.student-profile-table {
+    min-width: 1040px;
+    table-layout: fixed;
+}
+
+.student-profile-table th,
+.student-profile-table td {
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.student-profile-table th {
+    font-size: 0.71rem;
+    font-weight: 800;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+}
+
+.student-profile-table th:nth-child(1),
+.student-profile-table td:nth-child(1) { width: 7%; text-align: center; }
+.student-profile-table th:nth-child(2),
+.student-profile-table td:nth-child(2) { width: 22%; }
+.student-profile-table th:nth-child(3),
+.student-profile-table td:nth-child(3) { width: 11%; }
+.student-profile-table th:nth-child(4),
+.student-profile-table td:nth-child(4) { width: 16%; }
+.student-profile-table th:nth-child(5),
+.student-profile-table td:nth-child(5) { width: 14%; }
+.student-profile-table th:nth-child(6),
+.student-profile-table td:nth-child(6) { width: 16%; }
+.student-profile-table th:nth-child(7),
+.student-profile-table td:nth-child(7) { width: 14%; }
+
+.student-profile-table tbody .student-data-row td {
+    font-size: 0.95rem;
+    text-transform: none;
+}
+
+.student-stt-cell {
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+.student-name-cell {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+.student-subject-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 4px 11px;
+    border: 1px solid var(--primary-light);
+    border-radius: 999px;
+    color: var(--primary);
+    background: var(--primary-soft);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.student-dob-cell {
+    text-align: center;
+}
+
+.student-price-cell {
+    text-align: right;
+    font-weight: 700;
+}
+
+.student-actions-cell {
+    text-align: center;
+}
+
+.student-table-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.student-table-actions .btn {
+    min-width: 76px;
+}
+
+.student-grade-group-row td {
+    padding: 9px 14px;
+    color: var(--primary);
+    background: var(--primary-soft);
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.student-empty-cell {
+    padding: 30px !important;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.student-modal-container {
+    max-width: 860px;
+}
+
+.student-form-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.student-form-row {
+    display: grid;
+    gap: 16px;
+}
+
+.student-form-row-main {
+    grid-template-columns: minmax(0, 1.45fr) minmax(160px, 0.9fr) minmax(150px, 0.8fr);
+}
+
+.student-form-row-secondary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.student-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.student-modal-action-group,
+.student-modal-submit-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.student-modal-action-group {
+    margin-right: auto;
+}
+
+.student-modal-action-group[hidden] {
+    display: none !important;
+}
+
+@media (max-width: 767px) {
+    .students-profile-card {
+        padding: 16px;
+    }
+
+    .students-profile-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .student-grade-filter,
+    .students-add-btn {
+        width: 100%;
+    }
+
+    .student-form-row-main,
+    .student-form-row-secondary {
+        grid-template-columns: 1fr;
+    }
+
+    .student-modal-footer,
+    .student-modal-action-group,
+    .student-modal-submit-group {
+        width: 100%;
+    }
+
+    .student-modal-action-group,
+    .student-modal-submit-group {
+        justify-content: flex-end;
+    }
+}
