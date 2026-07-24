@@ -10,6 +10,8 @@
     <path stroke-width="5" d="M18 244C66 213 83 175 116 145c37-34 83-43 124-80 24-22 38-42 48-64"/>
     <path stroke-width="3.4" d="M83 190c-2-31-15-55-36-76M119 145c-8-27-4-52 12-76M174 107c16-25 38-40 65-47M224 77c8 21 23 37 46 48M275 36c21 4 40 14 57 31"/>
     <path stroke-width="2.4" opacity=".72" d="M61 214c25-8 48-7 69 4M148 125c24 5 42 16 56 34M203 93c-8-20-7-39 4-56M282 53c-2 19 3 35 15 49"/>
+    <path stroke-width="2.8" d="M52 219c-11-24-9-44 7-61M93 178c28 4 51 17 68 39M163 114c-4-30 6-53 30-70M240 66c29 8 50 25 64 50M311 58c28 12 51 32 68 58"/>
+    <path stroke-width="1.8" opacity=".68" d="M35 231c-7-16-5-29 7-40M76 198c17 5 30 15 39 29M134 137c17-7 32-7 46 1M186 99c15 11 25 25 31 43M250 58c8-15 19-26 34-32M327 72c18 1 34 8 48 21"/>
   </g>
   <g fill="#6c7269" opacity=".88">
     <path d="M44 114c-18-10-30-8-39 4 15 11 28 10 39-4Z"/>
@@ -19,14 +21,36 @@
     <path d="M263 42c-10-17-9-29 2-38 11 13 11 26-2 38Z"/>
     <path d="M286 56c17-5 28-1 34 11-15 7-27 3-34-11Z"/>
     <path d="M324 78c16-6 28-3 35 8-15 9-27 6-35-8Z"/>
+    <path d="M36 161c-14-13-26-15-37-7 9 15 22 18 37 7Z"/>
+    <path d="M60 166c15-11 28-10 38 1-13 12-26 12-38-1Z"/>
+    <path d="M89 205c-17-7-29-4-36 8 15 9 27 6 36-8Z"/>
+    <path d="M111 196c17-9 29-7 37 5-15 10-27 9-37-5Z"/>
+    <path d="M168 43c-14-13-27-15-38-6 10 15 23 17 38 6Z"/>
+    <path d="M195 50c15-11 28-10 38 1-13 12-26 12-38-1Z"/>
+    <path d="M233 145c-16-10-29-9-38 2 12 13 25 12 38-2Z"/>
+    <path d="M263 139c16-9 29-7 37 5-15 10-27 8-37-5Z"/>
+    <path d="M363 104c17-6 29-3 36 9-16 8-28 5-36-9Z"/>
+    <path d="M381 123c-6-17-3-29 9-36 8 16 5 28-9 36Z"/>
   </g>
   <g fill="#e8702a" opacity=".94">
     <circle cx="161" cy="65" r="5"/><circle cx="161" cy="51" r="5"/><circle cx="148" cy="58" r="5"/><circle cx="174" cy="58" r="5"/><circle cx="161" cy="58" r="3" fill="#f2a45a"/>
     <circle cx="258" cy="109" r="5"/><circle cx="258" cy="96" r="5"/><circle cx="246" cy="103" r="5"/><circle cx="270" cy="103" r="5"/><circle cx="258" cy="103" r="3" fill="#f2a45a"/>
     <circle cx="335" cy="113" r="4.5"/><circle cx="335" cy="101" r="4.5"/><circle cx="324" cy="107" r="4.5"/><circle cx="346" cy="107" r="4.5"/><circle cx="335" cy="107" r="2.7" fill="#f2a45a"/>
+    <circle cx="58" cy="151" r="4.5"/><circle cx="58" cy="139" r="4.5"/><circle cx="47" cy="145" r="4.5"/><circle cx="69" cy="145" r="4.5"/><circle cx="58" cy="145" r="2.7" fill="#f2a45a"/>
+    <circle cx="137" cy="205" r="4.5"/><circle cx="137" cy="193" r="4.5"/><circle cx="126" cy="199" r="4.5"/><circle cx="148" cy="199" r="4.5"/><circle cx="137" cy="199" r="2.7" fill="#f2a45a"/>
+    <circle cx="198" cy="39" r="4.5"/><circle cx="198" cy="27" r="4.5"/><circle cx="187" cy="33" r="4.5"/><circle cx="209" cy="33" r="4.5"/><circle cx="198" cy="33" r="2.7" fill="#f2a45a"/>
+    <circle cx="225" cy="158" r="4.5"/><circle cx="225" cy="146" r="4.5"/><circle cx="214" cy="152" r="4.5"/><circle cx="236" cy="152" r="4.5"/><circle cx="225" cy="152" r="2.7" fill="#f2a45a"/>
+    <circle cx="306" cy="83" r="4.5"/><circle cx="306" cy="71" r="4.5"/><circle cx="295" cy="77" r="4.5"/><circle cx="317" cy="77" r="4.5"/><circle cx="306" cy="77" r="2.7" fill="#f2a45a"/>
+    <circle cx="383" cy="118" r="4.5"/><circle cx="383" cy="106" r="4.5"/><circle cx="372" cy="112" r="4.5"/><circle cx="394" cy="112" r="4.5"/><circle cx="383" cy="112" r="2.7" fill="#f2a45a"/>
   </g>
   <g fill="#f2a45a" opacity=".88">
     <circle cx="101" cy="176" r="3.2"/><circle cx="112" cy="169" r="3.2"/><circle cx="123" cy="177" r="3.2"/>
     <circle cx="226" cy="70" r="3"/><circle cx="236" cy="63" r="3"/><circle cx="246" cy="70" r="3"/>
+    <circle cx="34" cy="190" r="3"/><circle cx="44" cy="183" r="3"/><circle cx="54" cy="190" r="3"/>
+    <circle cx="78" cy="226" r="3"/><circle cx="89" cy="220" r="3"/><circle cx="100" cy="227" r="3"/>
+    <circle cx="154" cy="109" r="3"/><circle cx="164" cy="102" r="3"/><circle cx="174" cy="109" r="3"/>
+    <circle cx="277" cy="130" r="3"/><circle cx="287" cy="123" r="3"/><circle cx="297" cy="130" r="3"/>
+    <circle cx="342" cy="66" r="3"/><circle cx="352" cy="59" r="3"/><circle cx="362" cy="66" r="3"/>
+    <circle cx="365" cy="145" r="3"/><circle cx="375" cy="138" r="3"/><circle cx="385" cy="145" r="3"/>
   </g>
 </svg>

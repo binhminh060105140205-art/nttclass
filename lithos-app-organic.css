@@ -13,11 +13,11 @@
     width: min(82vw, 1240px);
     height: calc(100vh - 72px);
     pointer-events: none;
-    opacity: .2;
-    background-image: url('https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260609_195923_b0ba8ace-1d1d-4f2c-9a28-1ab84b330680.png&w=1280&q=85');
-    background-repeat: no-repeat;
-    background-position: right center;
-    background-size: contain;
+    opacity: .24;
+    background-image: url('lithos-botanical.svg'), url('lithos-botanical.svg'), url('https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260609_195923_b0ba8ace-1d1d-4f2c-9a28-1ab84b330680.png&w=1280&q=85');
+    background-repeat: no-repeat, no-repeat, no-repeat;
+    background-position: 6% 12%, 52% 94%, right center;
+    background-size: clamp(230px, 26vw, 360px) auto, clamp(180px, 20vw, 280px) auto, contain;
     filter: brightness(1.18) saturate(1.15) contrast(1.16) drop-shadow(0 0 28px rgba(232, 112, 42, .12));
     mix-blend-mode: screen;
 }
@@ -32,26 +32,26 @@
     content: '';
     position: absolute;
     z-index: 0;
-    width: 190px;
-    height: 118px;
+    width: 252px;
+    height: 156px;
     pointer-events: none;
     background: url('lithos-botanical.svg') center / contain no-repeat;
-    opacity: .24;
+    opacity: .34;
     mix-blend-mode: screen;
     filter: saturate(1.08) drop-shadow(0 0 16px rgba(232, 112, 42, .18));
 }
 
 .top-header::before {
-    top: -16px;
-    right: 104px;
+    top: -30px;
+    right: 96px;
     transform: rotate(5deg);
 }
 
 .top-header::after {
-    right: -24px;
-    bottom: -38px;
+    right: -38px;
+    bottom: -50px;
     transform: scaleX(-1) rotate(-8deg);
-    opacity: .15;
+    opacity: .24;
 }
 
 .top-header > * {
@@ -78,18 +78,18 @@
 .sidebar::before {
     left: -62px;
     bottom: 88px;
-    width: 238px;
-    height: 148px;
-    opacity: .19;
+    width: 286px;
+    height: 178px;
+    opacity: .3;
     transform: rotate(-13deg);
 }
 
 .sidebar::after {
     right: -66px;
     bottom: 250px;
-    width: 174px;
-    height: 108px;
-    opacity: .09;
+    width: 228px;
+    height: 142px;
+    opacity: .19;
     transform: scaleX(-1) rotate(12deg);
 }
 
@@ -101,16 +101,16 @@
 [data-user-role="teacher"] .sidebar::before,
 [data-user-role="assistant"] .sidebar::before {
     bottom: 46px;
-    opacity: .075;
+    opacity: .14;
 }
 
 [data-user-role="teacher"] .sidebar::after,
 [data-user-role="assistant"] .sidebar::after {
-    display: none;
+    opacity: .08;
 }
 
 [data-user-role="student"] .sidebar::before {
-    opacity: .13;
+    opacity: .22;
 }
 
 .view-section.active-view {
@@ -121,12 +121,12 @@
 .view-section.active-view::after {
     content: '';
     position: absolute;
-    z-index: -1;
-    width: 238px;
-    height: 148px;
+    z-index: 2;
+    width: 304px;
+    height: 190px;
     pointer-events: none;
     background: url('lithos-botanical.svg') center / contain no-repeat;
-    opacity: .09;
+    opacity: .15;
     mix-blend-mode: screen;
     filter: saturate(1.05) drop-shadow(0 0 18px rgba(232, 112, 42, .16));
 }
@@ -141,7 +141,7 @@
     bottom: -22px;
     left: -48px;
     transform: scaleX(-1) rotate(-10deg);
-    opacity: .07;
+    opacity: .12;
 }
 
 #view-scheduler .week-calendar-wrapper::before,
