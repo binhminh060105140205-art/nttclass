@@ -24,7 +24,6 @@
     width: 100%;
     min-height: 100vh;
     min-height: 100dvh;
-    min-height: max(100dvh, 55.94vw);
     overflow: hidden;
     background: hsl(var(--velorah-background));
 }

@@ -1,6 +1,4 @@
 (function () {
-    const VIDEO_URL = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260314_131748_f2ca2a28-fed7-44c8-b9a9-bd9acdd5ec31.mp4';
-
     window.renderVelorahLanding = function renderVelorahLanding() {
         const page = document.getElementById('landingPage');
         if (!page) return;
@@ -8,9 +6,6 @@
         page.className = 'velorah-page';
         page.innerHTML = `
             <section class="velorah-hero">
-                <video class="velorah-video" autoplay loop muted playsinline preload="auto" aria-hidden="true">
-                    <source src="${VIDEO_URL}" type="video/mp4">
-                </video>
                 <nav class="velorah-nav" aria-label="Điều hướng NttClass">
                     <a class="velorah-logo" href="#velorahHome">NttClass<sup>®</sup></a>
                     <div class="velorah-links velorah-liquid-glass">
@@ -33,6 +28,5 @@
         page.querySelectorAll('[data-open-login]').forEach((button) => {
             button.addEventListener('click', () => window.app?.showLoginPage());
         });
-        page.querySelector('.velorah-video')?.play().catch(() => {});
     };
 })();

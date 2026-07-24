@@ -16,10 +16,6 @@
 </head>
 <body>
 
-    <video id="velorahAppBackground" class="velorah-app-video" autoplay loop muted playsinline preload="auto" style="display: none;" aria-hidden="true">
-        <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260314_131748_f2ca2a28-fed7-44c8-b9a9-bd9acdd5ec31.mp4" type="video/mp4">
-    </video>
-
     <!-- Public Landing Page -->
     <section id="landingPage" class="orbis-page">
         <svg class="orbis-icon-sprite" aria-hidden="true">
@@ -1458,9 +1454,20 @@
                     </div>
                 </div>
 
+                <div class="settings-section" id="accountAppThemeSection" style="margin-bottom: 20px;">
+                    <h4 class="settings-section-title">Giao diện tài khoản</h4>
+                    <p class="settings-section-desc">Chọn giao diện riêng cho tài khoản này. Thay đổi không ảnh hưởng dữ liệu hoặc tài khoản khác.</p>
+                    <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-secondary btn-sm" id="btnPersonalAppThemeBlue" onclick="app.setPersonalAppTheme('blue')" style="flex: 1 1 130px; justify-content: center; border-radius: 8px;">Xanh gốc</button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btnPersonalAppThemeLithos" onclick="app.setPersonalAppTheme('lithos')" style="flex: 1 1 130px; justify-content: center; border-radius: 8px;">Đỏ cành đá</button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btnPersonalAppThemeVelorah" onclick="app.setPersonalAppTheme('velorah')" style="flex: 1 1 130px; justify-content: center; border-radius: 8px;">Where Dreams</button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btnPersonalAppThemeReset" onclick="app.resetPersonalAppTheme()" style="flex: 1 1 130px; justify-content: center; border-radius: 8px;">Theo hệ thống</button>
+                    </div>
+                </div>
+
                 <div class="settings-section" id="adminAppThemeSection" style="display: none; margin-bottom: 20px;">
                     <h4 class="settings-section-title">Giao diện toàn hệ thống</h4>
-                    <p class="settings-section-desc">Chỉ Admin được đổi giao diện áp dụng cho tất cả tài khoản.</p>
+                    <p class="settings-section-desc">Admin đặt giao diện mặc định cho toàn hệ thống; tài khoản có lựa chọn riêng vẫn giữ giao diện của mình.</p>
                     <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
                         <button type="button" class="btn btn-secondary btn-sm" id="btnAppThemeBlue" onclick="app.setAppTheme('blue')" style="flex: 1 1 130px; justify-content: center; border-radius: 8px;">Xanh gốc</button>
                         <button type="button" class="btn btn-secondary btn-sm" id="btnAppThemeLithos" onclick="app.setAppTheme('lithos')" style="flex: 1 1 130px; justify-content: center; border-radius: 8px;">Đỏ cành đá</button>
@@ -1619,6 +1626,7 @@
     <script src="students.js"></script>
     <script src="ai-chat.js"></script>
     <script src="requests.js"></script>
+    <script src="requests-edit.js"></script>
     <script src="security-settings.js"></script>
     <script src="main.js"></script>
     <script src="invoice-export.js"></script>

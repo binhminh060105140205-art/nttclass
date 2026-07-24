@@ -330,4 +330,3 @@ Object.assign(PinkyClassApp.prototype, {
         });
     }
 });
-document.write('\x3cscript src=requests-edit.js\x3e\x3c/script\x3e');

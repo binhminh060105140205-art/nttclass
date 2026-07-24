@@ -10,6 +10,9 @@ Object.assign(PinkyClassApp.prototype, {
             return;
         }
 
+        const accountThemeSection = document.getElementById('accountAppThemeSection');
+        if (accountThemeSection) accountThemeSection.style.display = 'block';
+
         const adminThemeSection = document.getElementById('adminAppThemeSection');
         if (adminThemeSection) {
             adminThemeSection.style.display = this.currentRole === 'admin' ? 'block' : 'none';
@@ -400,6 +403,27 @@ Object.assign(PinkyClassApp.prototype, {
         }
     },
 
+    setPersonalAppTheme(theme) {
+        if (!this.currentUser) {
+            this.showToast('Vui lòng đăng nhập để đổi giao diện.', 'error');
+            return;
+        }
+        const normalizedTheme = this.normalizeAppTheme(theme);
+        const key = this.getPersonalAppThemeKey();
+        if (!key) return;
+        localStorage.setItem(key, normalizedTheme);
+        this.applyAppTheme(normalizedTheme, { persist: false });
+        const themeLabel = normalizedTheme === 'blue' ? 'Xanh gốc' : normalizedTheme === 'lithos' ? 'Đỏ cành đá' : 'Where Dreams';
+        this.showToast(`Đã áp dụng giao diện ${themeLabel} cho tài khoản này.`, 'success');
+    },
+
+    resetPersonalAppTheme() {
+        if (!this.currentUser) return;
+        this.clearPersonalAppTheme();
+        const globalTheme = this.normalizeAppTheme(localStorage.getItem('nttclass_app_theme'));
+        this.applyAppTheme(globalTheme, { persist: false });
+        this.showToast('Đã dùng lại giao diện hệ thống.', 'success');
+    },
     async setAppTheme(theme) {
         if (this.currentRole !== 'admin') {
             this.showToast('Chỉ Admin được đổi giao diện toàn hệ thống.', 'error');
@@ -419,9 +443,10 @@ Object.assign(PinkyClassApp.prototype, {
             }
 
             const data = await response.json();
+            this.clearPersonalAppTheme();
             this.applyAppTheme(data.theme);
             const themeLabel = data.theme === 'blue' ? 'Xanh gốc' : data.theme === 'lithos' ? 'Đỏ cành đá' : 'Where Dreams';
-            this.showToast(`Đã áp dụng giao diện ${themeLabel} cho toàn hệ thống.`, 'success');
+            this.showToast(`Đã cập nhật giao diện mặc định ${themeLabel} cho hệ thống.`, 'success');
         } catch (error) {
             this.showToast(error.message || 'Không thể lưu giao diện hệ thống.', 'error');
         }
@@ -429,17 +454,24 @@ Object.assign(PinkyClassApp.prototype, {
 
     updateAppThemeActiveButtons() {
         const theme = this.normalizeAppTheme(this.appTheme);
-        const btnBlue = document.getElementById('btnAppThemeBlue');
-        const btnLithos = document.getElementById('btnAppThemeLithos');
-        const btnVelorah = document.getElementById('btnAppThemeVelorah');
-        if (btnBlue && btnLithos && btnVelorah) {
-            btnBlue.classList.toggle('btn-primary', theme === 'blue');
-            btnBlue.classList.toggle('btn-secondary', theme !== 'blue');
-            btnLithos.classList.toggle('btn-primary', theme === 'lithos');
-            btnLithos.classList.toggle('btn-secondary', theme !== 'lithos');
-            btnVelorah.classList.toggle('btn-primary', theme === 'velorah');
-            btnVelorah.classList.toggle('btn-secondary', theme !== 'velorah');
-        }
+        const buttonGroups = [
+            ['btnAppThemeBlue', 'btnAppThemeLithos', 'btnAppThemeVelorah'],
+            ['btnPersonalAppThemeBlue', 'btnPersonalAppThemeLithos', 'btnPersonalAppThemeVelorah']
+        ];
+        buttonGroups.forEach(([blueId, lithosId, velorahId]) => {
+            const buttons = [
+                document.getElementById(blueId),
+                document.getElementById(lithosId),
+                document.getElementById(velorahId)
+            ];
+            if (!buttons.every(Boolean)) return;
+            buttons[0].classList.toggle('btn-primary', theme === 'blue');
+            buttons[0].classList.toggle('btn-secondary', theme !== 'blue');
+            buttons[1].classList.toggle('btn-primary', theme === 'lithos');
+            buttons[1].classList.toggle('btn-secondary', theme !== 'lithos');
+            buttons[2].classList.toggle('btn-primary', theme === 'velorah');
+            buttons[2].classList.toggle('btn-secondary', theme !== 'velorah');
+        });
     },
 
     setThemeMode(mode) {

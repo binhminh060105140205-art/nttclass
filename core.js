@@ -65,21 +65,34 @@ class PinkyClassApp {
         return ['blue', 'lithos', 'velorah'].includes(theme) ? theme : 'velorah';
     }
 
-    setVelorahAppVideo(active) {
-        const video = document.getElementById('velorahAppBackground');
-        if (!video) return;
-        video.style.display = active ? 'block' : 'none';
-        if (active) {
-            video.play().catch(() => {});
-        } else {
-            video.pause();
-        }
+    getPersonalAppThemeKey() {
+        if (!this.currentUser?.id || !this.currentUser?.role) return null;
+        return 'nttclass_app_theme_' + encodeURIComponent(`${this.currentUser.role}:${this.currentUser.id}`);
     }
 
-    applyAppTheme(theme) {
+    getPersonalAppTheme() {
+        const key = this.getPersonalAppThemeKey();
+        if (!key) return null;
+        const savedTheme = localStorage.getItem(key);
+        return savedTheme ? this.normalizeAppTheme(savedTheme) : null;
+    }
+
+    clearPersonalAppTheme() {
+        const key = this.getPersonalAppThemeKey();
+        if (key) localStorage.removeItem(key);
+    }
+
+    setVelorahAppVideo() {
+        const video = document.getElementById('velorahAppBackground');
+        if (!video) return;
+        video.pause();
+        video.style.display = 'none';
+    }
+
+    applyAppTheme(theme, options = {}) {
         const normalizedTheme = this.normalizeAppTheme(theme);
         this.appTheme = normalizedTheme;
-        localStorage.setItem('nttclass_app_theme', normalizedTheme);
+        if (options.persist !== false) localStorage.setItem('nttclass_app_theme', normalizedTheme);
         document.documentElement.setAttribute('data-app-theme', normalizedTheme);
 
         const lithosStylesheet = document.getElementById('appThemeStylesheet');
@@ -108,20 +121,21 @@ class PinkyClassApp {
 
     async loadAppTheme() {
         const cachedTheme = this.normalizeAppTheme(localStorage.getItem('nttclass_app_theme'));
-        this.appTheme = cachedTheme;
-        if (this.currentUser) this.applyAppTheme(cachedTheme);
+        this.appTheme = this.getPersonalAppTheme() || cachedTheme;
+        if (this.currentUser) this.applyAppTheme(this.appTheme, { persist: false });
 
         try {
             const response = await fetch(`${API_BASE_URL}/api/app-settings/theme`, { cache: 'no-store' });
             if (!response.ok) throw new Error('Không thể tải giao diện hệ thống.');
             const data = await response.json();
-            this.appTheme = this.normalizeAppTheme(data.theme);
-            localStorage.setItem('nttclass_app_theme', this.appTheme);
+            const globalTheme = this.normalizeAppTheme(data.theme);
+            localStorage.setItem('nttclass_app_theme', globalTheme);
+            this.appTheme = this.getPersonalAppTheme() || globalTheme;
         } catch (error) {
             console.warn('[GET /api/app-settings/theme]', error.message);
         }
 
-        if (this.currentUser) this.applyAppTheme(this.appTheme);
+        if (this.currentUser) this.applyAppTheme(this.appTheme, { persist: false });
     }
 
     // Đồng bộ trạng thái nút Sáng/Tối trong modal.
