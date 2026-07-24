@@ -36,24 +36,24 @@ if (!localStorage.pinky_current_user) {
         <div class='aethera-video-gradient' aria-hidden='true'></div>
 
         <header class='aethera-nav'>
-            <a class='aethera-logo' href='#landingPage' aria-label='Aethera home'>Aethera<sup aria-hidden='true'>®</sup></a>
+            <a class='aethera-logo' href='#landingPage' aria-label='NttClass home'>NttClass</a>
 
-            <nav class='aethera-nav-menu' aria-label='Primary navigation'>
-                <a class='aethera-nav-link is-active' href='#landingPage'>Home</a>
-                <a class='aethera-nav-link' href='#landingPage'>Studio</a>
-                <a class='aethera-nav-link' href='#landingPage'>About</a>
-                <a class='aethera-nav-link' href='#landingPage'>Journal</a>
-                <a class='aethera-nav-link' href='#landingPage'>Reach Us</a>
+            <nav class='aethera-nav-menu' aria-label='NttClass navigation'>
+                <a class='aethera-nav-link is-active' href='#landingPage'>Trang ch&#7911;</a>
+                <a class='aethera-nav-link' href='#landingPage'>T&#237;nh n&#259;ng</a>
+                <a class='aethera-nav-link' href='#landingPage'>L&#7883;ch d&#7841;y</a>
+                <a class='aethera-nav-link' href='#landingPage'>&#272;i&#7875;m s&#7889;</a>
+                <a class='aethera-nav-link' href='#landingPage'>H&#7885;c ph&#237;</a>
             </nav>
 
-            <button type='button' class='aethera-button aethera-nav-button' data-open-login>Begin Journey</button>
+            <button type='button' class='aethera-button aethera-nav-button' data-open-login>&#272;&#259;ng nh&#7853;p</button>
         </header>
 
         <main class='aethera-hero'>
-            <h1 class='aethera-headline animate-fade-rise'>Beyond <em>silence,</em> we build <em>the eternal.</em></h1>
-            <p class='aethera-description animate-fade-rise-delay'>Building platforms for brilliant minds, fearless makers, and thoughtful souls. Through the noise, we craft digital havens for deep work and pure flows.</p>
+            <h1 class='aethera-headline animate-fade-rise'>Qu&#7843;n l&#253; l&#7899;p h&#7885;c.<br><em>Nh&#7865; nh&#224;ng h&#417;n.</em></h1>
+            <p class='aethera-description animate-fade-rise-delay'>M&#7897;t kh&#244;ng gian t&#7853;p trung cho l&#7883;ch d&#7841;y, nh&#7853;t k&#253; h&#7885;c t&#7853;p, &#273;i&#7875;m s&#7889; v&#224; h&#7885;c ph&#237; &#273;&#7875; m&#7895;i bu&#7893;i h&#7885;c ti&#7871;n v&#7873; ph&#237;a tr&#432;&#7899;c r&#245; r&#224;ng h&#417;n.</p>
             <div class='aethera-hero-action animate-fade-rise-delay-2'>
-                <button type='button' class='aethera-button aethera-hero-button' data-open-login>Begin Journey</button>
+                <button type='button' class='aethera-button aethera-hero-button' data-open-login>&#272;&#259;ng nh&#7853;p &#273;&#7875; b&#7855;t &#273;&#7847;u</button>
             </div>
         </main>
     `;
