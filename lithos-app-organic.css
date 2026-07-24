@@ -22,6 +22,128 @@
     mix-blend-mode: screen;
 }
 
+.top-header {
+    position: relative;
+    overflow: hidden;
+}
+
+.top-header::before,
+.top-header::after {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    width: 190px;
+    height: 118px;
+    pointer-events: none;
+    background: url('lithos-botanical.svg') center / contain no-repeat;
+    opacity: .24;
+    mix-blend-mode: screen;
+    filter: saturate(1.08) drop-shadow(0 0 16px rgba(232, 112, 42, .18));
+}
+
+.top-header::before {
+    top: -16px;
+    right: 104px;
+    transform: rotate(5deg);
+}
+
+.top-header::after {
+    right: -24px;
+    bottom: -38px;
+    transform: scaleX(-1) rotate(-8deg);
+    opacity: .15;
+}
+
+.top-header > * {
+    position: relative;
+    z-index: 1;
+}
+
+.sidebar {
+    isolation: isolate;
+    overflow: hidden;
+}
+
+.sidebar::before,
+.sidebar::after {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    background: url('lithos-botanical.svg') center / contain no-repeat;
+    mix-blend-mode: screen;
+    filter: saturate(1.08) drop-shadow(0 0 18px rgba(232, 112, 42, .2));
+}
+
+.sidebar::before {
+    left: -62px;
+    bottom: 88px;
+    width: 238px;
+    height: 148px;
+    opacity: .19;
+    transform: rotate(-13deg);
+}
+
+.sidebar::after {
+    right: -66px;
+    bottom: 250px;
+    width: 174px;
+    height: 108px;
+    opacity: .09;
+    transform: scaleX(-1) rotate(12deg);
+}
+
+.sidebar > * {
+    position: relative;
+    z-index: 1;
+}
+
+[data-user-role="teacher"] .sidebar::before,
+[data-user-role="assistant"] .sidebar::before {
+    bottom: 46px;
+    opacity: .075;
+}
+
+[data-user-role="teacher"] .sidebar::after,
+[data-user-role="assistant"] .sidebar::after {
+    display: none;
+}
+
+[data-user-role="student"] .sidebar::before {
+    opacity: .13;
+}
+
+.view-section.active-view {
+    isolation: isolate;
+}
+
+.view-section.active-view::before,
+.view-section.active-view::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    width: 238px;
+    height: 148px;
+    pointer-events: none;
+    background: url('lithos-botanical.svg') center / contain no-repeat;
+    opacity: .09;
+    mix-blend-mode: screen;
+    filter: saturate(1.05) drop-shadow(0 0 18px rgba(232, 112, 42, .16));
+}
+
+.view-section.active-view::before {
+    top: 4px;
+    right: -48px;
+    transform: rotate(7deg);
+}
+
+.view-section.active-view::after {
+    bottom: -22px;
+    left: -48px;
+    transform: scaleX(-1) rotate(-10deg);
+    opacity: .07;
+}
+
 #view-scheduler .week-calendar-wrapper::before,
 #view-scheduler .month-calendar-grid::before,
 #view-requests .requests-card::before {
@@ -50,6 +172,30 @@
 }
 
 @media (max-width: 767px) {
+    .sidebar::before,
+    .sidebar::after {
+        opacity: .08;
+    }
+
+    .top-header::before,
+    .top-header::after {
+        width: 130px;
+        height: 82px;
+        opacity: .1;
+    }
+
+    .top-header::before {
+        right: 8px;
+        top: -28px;
+    }
+
+    .view-section.active-view::before,
+    .view-section.active-view::after {
+        width: 160px;
+        height: 102px;
+        opacity: .055;
+    }
+
     .main-content::after {
         top: 64px;
         right: -55vw;

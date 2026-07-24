@@ -604,6 +604,7 @@ Object.assign(PinkyClassApp.prototype, {
 
     switchRole(role) {
         this.currentRole = role;
+        document.documentElement.setAttribute('data-user-role', role);
 
         // Update top badge
         const badge = document.getElementById('roleBadge');
