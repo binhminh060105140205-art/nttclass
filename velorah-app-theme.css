@@ -47,9 +47,13 @@ body {
 .sidebar,
 .main-content,
 .login-screen {
-    position: relative;
     z-index: 1;
     font-family: 'Inter', sans-serif;
+}
+
+.main-content,
+.login-screen {
+    position: relative;
 }
 
 .main-content {
