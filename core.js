@@ -100,6 +100,7 @@ class PinkyClassApp {
         if (lithosStylesheet) lithosStylesheet.disabled = normalizedTheme !== 'lithos';
         if (velorahStylesheet) velorahStylesheet.disabled = normalizedTheme !== 'velorah';
         this.setVelorahAppVideo(normalizedTheme === 'velorah');
+        if (typeof window.refreshLithosPetals === 'function') window.refreshLithosPetals();
 
         if (typeof this.updateAppThemeActiveButtons === 'function') {
             this.updateAppThemeActiveButtons();
@@ -114,6 +115,7 @@ class PinkyClassApp {
         if (lithosStylesheet) lithosStylesheet.disabled = landingTheme !== 'lithos';
         if (velorahStylesheet) velorahStylesheet.disabled = landingTheme !== 'velorah';
         this.setVelorahAppVideo(false);
+        if (typeof window.refreshLithosPetals === 'function') window.refreshLithosPetals();
         if (typeof window.renderLandingTheme === 'function') {
             window.renderLandingTheme(landingTheme);
         }

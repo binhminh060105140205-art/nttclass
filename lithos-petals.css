@@ -1,6 +1,6 @@
 .lithos-petal-fall {
     position: fixed;
-    z-index: 18;
+    z-index: 80;
     inset: 0;
     overflow: hidden;
     pointer-events: none;
@@ -34,8 +34,8 @@
 }
 
 .lithos-falling-blossom.is-flower .lithos-falling-blossom__sprite {
-    background: url('lithos-falling-blossom.svg?v=20260724-petal1') center / contain no-repeat;
-    filter: saturate(1.16) drop-shadow(0 3px 4px rgba(55, 11, 31, .28));
+    background: url('lithos-falling-blossom.svg?v=20260724-petal3') center / contain no-repeat;
+    filter: brightness(1.08) saturate(1.26) drop-shadow(0 4px 6px rgba(55, 11, 31, .34));
 }
 
 .lithos-falling-blossom.is-petal .lithos-falling-blossom__sprite {
@@ -79,6 +79,12 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .lithos-falling-blossom {
     .lithos-falling-blossom { opacity: .9; }
 }
 
+.lithos-falling-blossom.is-reduced-motion .lithos-falling-blossom__sprite {
+    animation: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .lithos-petal-fall { display: none !important; }
+    .lithos-falling-blossom__sprite {
+        animation: none;
+    }
 }

@@ -22,7 +22,6 @@
 
     const isEnabled = () => (
         document.documentElement.getAttribute('data-app-theme') === 'lithos'
-        && !reducedMotionQuery.matches
         && !document.hidden
     );
 
@@ -43,40 +42,50 @@
 
     const chooseHorizontalPosition = () => {
         const zones = mobileQuery.matches
-            ? [[5, 20], [80, 95]]
-            : [[3, 16], [24, 37], [63, 76], [84, 97]];
+            ? [[6, 22], [78, 94]]
+            : [[4, 18], [27, 40], [60, 73], [82, 96]];
         const zone = zones[Math.floor(Math.random() * zones.length)];
         return randomBetween(zone[0], zone[1]);
     };
 
-    const spawnBlossom = () => {
+    const spawnBlossom = (forceWholeFlower = false) => {
         if (!isEnabled()) return;
         const container = getContainer();
         if (!container) return;
-        const maximumVisible = mobileQuery.matches ? 5 : 9;
+        const maximumVisible = reducedMotionQuery.matches ? 3 : (mobileQuery.matches ? 4 : 7);
         if (container.childElementCount >= maximumVisible) return;
 
-        const isWholeFlower = Math.random() < 0.56;
+        const isWholeFlower = forceWholeFlower || Math.random() < 0.72;
         const blossom = document.createElement('span');
         const sprite = document.createElement('span');
-        blossom.className = 'lithos-falling-blossom ' + (isWholeFlower ? 'is-flower' : 'is-petal');
+        blossom.className = 'lithos-falling-blossom '
+            + (isWholeFlower ? 'is-flower' : 'is-petal')
+            + (reducedMotionQuery.matches ? ' is-reduced-motion' : '');
         sprite.className = 'lithos-falling-blossom__sprite';
         blossom.appendChild(sprite);
 
         const baseSize = isWholeFlower
-            ? randomBetween(mobileQuery.matches ? 11 : 13, mobileQuery.matches ? 17 : 21)
-            : randomBetween(mobileQuery.matches ? 7 : 8, mobileQuery.matches ? 11 : 14);
-        const direction = randomSigned(28, mobileQuery.matches ? 62 : 105);
+            ? randomBetween(mobileQuery.matches ? 15 : 18, mobileQuery.matches ? 22 : 27)
+            : randomBetween(mobileQuery.matches ? 9 : 12, mobileQuery.matches ? 14 : 18);
+        const directionLimit = mobileQuery.matches ? 64 : 112;
+        const direction = reducedMotionQuery.matches
+            ? randomSigned(18, directionLimit * .45)
+            : randomSigned(32, directionLimit);
         const swayOne = direction * randomBetween(.28, .52);
         const swayTwo = -direction * randomBetween(.2, .48);
-        const startRotation = randomBetween(-80, 80);
-        const rotationTravel = randomSigned(260, 620);
+        const startRotation = randomBetween(-70, 70);
+        const rotationTravel = reducedMotionQuery.matches
+            ? randomSigned(45, 120)
+            : randomSigned(300, 680);
+        const fallDuration = reducedMotionQuery.matches
+            ? randomBetween(13.5, 17.5)
+            : randomBetween(9.2, 13.4);
 
         blossom.style.setProperty('--flower-x', chooseHorizontalPosition().toFixed(2) + 'vw');
         blossom.style.setProperty('--flower-size', baseSize.toFixed(1) + 'px');
-        blossom.style.setProperty('--fall-duration', randomBetween(8.8, 13.8).toFixed(2) + 's');
-        blossom.style.setProperty('--flutter-duration', randomBetween(1.15, 2.4).toFixed(2) + 's');
-        blossom.style.setProperty('--flower-opacity', randomBetween(.58, .86).toFixed(2));
+        blossom.style.setProperty('--fall-duration', fallDuration.toFixed(2) + 's');
+        blossom.style.setProperty('--flutter-duration', randomBetween(1.05, 2.1).toFixed(2) + 's');
+        blossom.style.setProperty('--flower-opacity', randomBetween(.82, .98).toFixed(2));
         blossom.style.setProperty('--sway-one', swayOne.toFixed(1) + 'px');
         blossom.style.setProperty('--sway-two', swayTwo.toFixed(1) + 'px');
         blossom.style.setProperty('--drift-end', direction.toFixed(1) + 'px');
@@ -87,27 +96,31 @@
 
         const removeBlossom = () => blossom.remove();
         blossom.addEventListener('animationend', removeBlossom, { once: true });
-        window.setTimeout(removeBlossom, 15000);
+        window.setTimeout(removeBlossom, 18500);
         container.appendChild(blossom);
     };
 
-    const spawnBurst = () => {
+    const spawnBurst = (isInitialBurst = false) => {
         if (!isEnabled()) return;
         const randomValue = Math.random();
-        const blossomCount = mobileQuery.matches
-            ? (randomValue < .28 ? 2 : 1)
-            : (randomValue < .12 ? 3 : randomValue < .48 ? 2 : 1);
+        const blossomCount = isInitialBurst
+            ? (mobileQuery.matches ? 1 : 2)
+            : reducedMotionQuery.matches
+                ? 1
+                : mobileQuery.matches
+                    ? (randomValue < .34 ? 2 : 1)
+                    : (randomValue < .18 ? 3 : randomValue < .7 ? 2 : 1);
 
         for (let blossomIndex = 0; blossomIndex < blossomCount; blossomIndex += 1) {
             const timerId = window.setTimeout(() => {
                 delayedSpawnTimers.delete(timerId);
-                spawnBlossom();
-            }, blossomIndex * randomBetween(180, 520));
+                spawnBlossom(isInitialBurst && blossomIndex === 0);
+            }, blossomIndex * randomBetween(150, 420));
             delayedSpawnTimers.add(timerId);
         }
     };
 
-    const scheduleNextBurst = () => {
+    const scheduleNextBurst = (isInitialBurst = false) => {
         window.clearTimeout(scheduleTimer);
         const container = getContainer();
         if (!container) return;
@@ -117,19 +130,25 @@
         }
 
         container.hidden = false;
-        const delay = mobileQuery.matches
-            ? randomBetween(4800, 9000)
-            : randomBetween(3400, 7600);
+        const delay = isInitialBurst
+            ? randomBetween(450, 900)
+            : reducedMotionQuery.matches
+                ? randomBetween(7200, 10500)
+                : mobileQuery.matches
+                    ? randomBetween(4500, 7600)
+                    : randomBetween(3500, 6500);
         scheduleTimer = window.setTimeout(() => {
-            spawnBurst();
-            scheduleNextBurst();
+            spawnBurst(isInitialBurst);
+            scheduleNextBurst(false);
         }, delay);
     };
 
     const refreshPetalState = () => {
-        if (isEnabled()) scheduleNextBurst();
+        if (isEnabled()) scheduleNextBurst(true);
         else stopPetals();
     };
+
+    window.refreshLithosPetals = refreshPetalState;
 
     const themeObserver = new MutationObserver(refreshPetalState);
     themeObserver.observe(document.documentElement, {
@@ -139,10 +158,8 @@
     document.addEventListener('visibilitychange', refreshPetalState);
     reducedMotionQuery.addEventListener?.('change', refreshPetalState);
     mobileQuery.addEventListener?.('change', refreshPetalState);
-    window.addEventListener('pagehide', () => {
-        stopPetals();
-        themeObserver.disconnect();
-    }, { once: true });
+    window.addEventListener('pagehide', stopPetals);
+    window.addEventListener('pageshow', refreshPetalState);
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', refreshPetalState, { once: true });
