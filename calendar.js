@@ -481,36 +481,62 @@ Object.assign(PinkyClassApp.prototype, {
         }
         document.getElementById('quickEntryContent').value = sess.content || '';
 
+        const linkedScores = (this.scores || []).filter(score =>
+            score.sessionId === sess.id && sess.studentIds.includes(score.studentId)
+        );
+        const firstLinkedScore = linkedScores[0] || null;
+        const scoreTypeLabels = {
+            BTVN: 'Bài tập về nhà (BTVN)',
+            KTTX: 'Kiểm tra thường xuyên',
+            CuoiChuong: 'Kiểm tra cuối chương',
+            KiemTra: 'Kiểm tra (dữ liệu cũ)',
+            ThaiDo: 'Thái độ (dữ liệu cũ)'
+        };
+        const sharedScoreType = firstLinkedScore?.scoreType || 'BTVN';
+        const sharedTestName = firstLinkedScore?.testName || sess.sessionName || '';
+        const sharedMaxScore = Number(firstLinkedScore?.maxScore) > 0 ? Number(firstLinkedScore.maxScore) : 10;
+        const scoreTypeInput = document.getElementById('quickEntryScoreType');
+        if (scoreTypeInput && ![...scoreTypeInput.options].some(option => option.value === sharedScoreType)) {
+            scoreTypeInput.add(new Option(scoreTypeLabels[sharedScoreType] || sharedScoreType, sharedScoreType));
+        }
+        if (scoreTypeInput) scoreTypeInput.value = sharedScoreType;
+        document.getElementById('quickEntryScoreTestName').value = sharedTestName;
+        document.getElementById('quickEntryScoreMax').value = sharedMaxScore;
+
         const scoreListWrap = document.getElementById('quickEntryScoresList');
         scoreListWrap.innerHTML = sess.studentIds.map(stId => {
-            const linkedScore = (this.scores || []).find(score => score.sessionId === sess.id && score.studentId === stId);
-            const linkedScoreType = linkedScore?.scoreType || '';
+            const linkedScore = linkedScores.find(score => score.studentId === stId);
             const linkedScoreValue = linkedScore?.scoreValue ?? '';
             const linkedScoreNote = linkedScore?.note || '';
+            const student = (this.students || []).find(item => item.id === stId);
+            const studentClass = student?.class || (student?.gradeLevel ? `Lớp ${student.gradeLevel}` : '-');
             const name = this.getStudentName(stId);
             return `
-                <div class="qe-score-row" data-student-id="${stId}">
-                    <div class="qe-score-student">${this.escapeHtml(name)}</div>
-                    <div class="qe-score-grid">
-                        <label>Loại điểm
-                            <select class="qe-score-type">
-                                <option value="" ${linkedScoreType === '' ? 'selected' : ''}>Chưa nhập điểm</option>
-                                <option value="BTVN" ${linkedScoreType === 'BTVN' ? 'selected' : ''}>Bài tập về nhà (BTVN)</option>
-                                <option value="KTTX" ${['KTTX', 'KiemTra'].includes(linkedScoreType) ? 'selected' : ''}>Kiểm tra thường xuyên</option>
-                                <option value="CuoiChuong" ${linkedScoreType === 'CuoiChuong' ? 'selected' : ''}>Kiểm tra cuối chương</option>
-                                <option value="ThaiDo" ${linkedScoreType === 'ThaiDo' ? 'selected' : ''}>Thái độ</option>
-                            </select>
-                        </label>
-                        <label>Điểm (0–10)
-                            <input type="number" class="qe-score-value" min="0" max="10" step="0.1" placeholder="Ví dụ: 8.5" value="${this.escapeHtmlAttr(linkedScoreValue)}">
-                        </label>
-                        <label>Ghi chú điểm
-                            <input type="text" class="qe-score-note" placeholder="Ví dụ: Bài kiểm tra 15 phút..." value="${this.escapeHtmlAttr(linkedScoreNote)}">
-                        </label>
-                    </div>
-                </div>
+                <tr class="batch-score-row qe-score-row" data-student-id="${this.escapeHtmlAttr(stId)}">
+                    <td><strong>${this.escapeHtml(name)}</strong></td>
+                    <td>${this.escapeHtml(studentClass)}</td>
+                    <td><input type="number" class="form-control batch-score-value qe-score-value" min="0" max="${sharedMaxScore}" step="0.01" inputmode="decimal" placeholder="-" value="${this.escapeHtmlAttr(linkedScoreValue)}" aria-label="Điểm của ${this.escapeHtmlAttr(name)}"></td>
+                    <td><input type="text" class="form-control batch-score-student-note qe-score-note" maxlength="500" placeholder="Không bắt buộc" value="${this.escapeHtmlAttr(linkedScoreNote)}" aria-label="Ghi chú của ${this.escapeHtmlAttr(name)}"></td>
+                </tr>
             `;
         }).join('');
+
+        const scoreToggle = document.getElementById('quickEntryScoreToggle');
+        if (scoreToggle) {
+            scoreToggle.dataset.hasScores = String(linkedScores.some(score => score.scoreValue !== null && score.scoreValue !== undefined && String(score.scoreValue).trim() !== ''));
+            scoreToggle.onclick = () => {
+                const expanded = scoreToggle.getAttribute('aria-expanded') === 'true';
+                this.setQuickEntryScoreExpanded(!expanded);
+            };
+        }
+        const scoreMaxInput = document.getElementById('quickEntryScoreMax');
+        if (scoreMaxInput) scoreMaxInput.oninput = () => this.updateQuickEntryScoreMax();
+        if (scoreListWrap) scoreListWrap.oninput = event => {
+            if (event.target.matches('.qe-score-value')) this.updateQuickEntryScoreCount();
+        };
+        this.updateQuickEntryScoreMax();
+        this.updateQuickEntryScoreCount();
+        this.setQuickEntryScoreExpanded(false);
 
         // Sinh 1 thẻ nhập liệu RIÊNG cho từng học sinh trong ca, dữ liệu khởi
         // tạo lấy từ studentDetails hiện có của đúng em đó (nếu có).
@@ -554,6 +580,45 @@ Object.assign(PinkyClassApp.prototype, {
         this.openModal('quickSessionEntryModal');
     },
 
+    setQuickEntryScoreExpanded(expanded) {
+        const toggle = document.getElementById('quickEntryScoreToggle');
+        const panel = document.getElementById('quickEntryScorePanel');
+        if (!toggle || !panel) return;
+        const hasScores = toggle.dataset.hasScores === 'true';
+        toggle.setAttribute('aria-expanded', String(expanded));
+        toggle.querySelector('span').innerText = expanded
+            ? '− Thu gọn nhập điểm buổi học'
+            : (hasScores ? '+ Xem và sửa điểm buổi học' : '+ Nhập điểm buổi học');
+        panel.hidden = !expanded;
+        panel.querySelectorAll('input, select, textarea').forEach(control => { control.disabled = !expanded; });
+        if (expanded) window.setTimeout(() => document.getElementById('quickEntryScoreType')?.focus(), 0);
+    },
+
+    updateQuickEntryScoreMax() {
+        const maxInput = document.getElementById('quickEntryScoreMax');
+        const maxLabel = document.getElementById('quickEntryScoreMaxLabel');
+        if (!maxInput) return;
+        const maxScore = Number(String(maxInput.value || '').replace(',', '.'));
+        if (Number.isFinite(maxScore) && maxScore > 0) {
+            document.querySelectorAll('#quickEntryScoresList .qe-score-value').forEach(input => { input.max = String(maxScore); });
+            if (maxLabel) maxLabel.innerText = String(maxScore);
+        }
+    },
+
+    updateQuickEntryScoreCount() {
+        const count = [...document.querySelectorAll('#quickEntryScoresList .qe-score-value')]
+            .filter(input => input.value.trim() !== '').length;
+        const label = document.getElementById('quickEntryScoreCount');
+        if (label) label.innerText = `${count} học sinh có điểm`;
+        const toggle = document.getElementById('quickEntryScoreToggle');
+        if (toggle) {
+            toggle.dataset.hasScores = String(count > 0);
+            if (toggle.getAttribute('aria-expanded') !== 'true') {
+                toggle.querySelector('span').innerText = count > 0 ? '+ Xem và sửa điểm buổi học' : '+ Nhập điểm buổi học';
+            }
+        }
+    },
+
     // Escape giá trị chèn vào thuộc tính value="" để tránh vỡ HTML khi nội
     // dung có chứa dấu ngoặc kép
     escapeHtmlAttr(str) {
@@ -587,22 +652,32 @@ Object.assign(PinkyClassApp.prototype, {
 
         const content = document.getElementById('quickEntryContent').value.trim();
         const sessionName = document.getElementById('quickEntrySessionName').value.trim();
+        const scoreType = document.getElementById('quickEntryScoreType')?.value || '';
+        const scoreTestName = document.getElementById('quickEntryScoreTestName')?.value.trim() || '';
+        const scoreMaxRaw = document.getElementById('quickEntryScoreMax')?.value || '';
+        const scoreMax = Number(String(scoreMaxRaw).replace(',', '.'));
         const newStudentDetails = {};
         const scoreDetailsByStudent = new Map();
         let scoreValidationError = '';
         document.querySelectorAll('#quickEntryScoresList .qe-score-row').forEach(row => {
             const stId = row.getAttribute('data-student-id');
-            const scoreType = row.querySelector('.qe-score-type').value;
             const scoreValueRaw = row.querySelector('.qe-score-value').value.trim();
             const scoreNote = row.querySelector('.qe-score-note').value.trim();
             const scoreValue = scoreValueRaw === '' ? null : Number(scoreValueRaw.replace(',', '.'));
-            if (!scoreValidationError && scoreValueRaw !== '' && !scoreType) {
-                scoreValidationError = `Vui lòng chọn loại điểm cho ${this.getStudentName(stId)}.`;
-            } else if (!scoreValidationError && scoreValueRaw !== '' && (!Number.isFinite(scoreValue) || scoreValue < 0 || scoreValue > 10)) {
-                scoreValidationError = `Điểm của ${this.getStudentName(stId)} phải từ 0 đến 10.`;
+            if (!scoreValidationError && scoreValueRaw !== '' && (!Number.isFinite(scoreValue) || scoreValue < 0 || !Number.isFinite(scoreMax) || scoreMax <= 0 || scoreValue > scoreMax)) {
+                scoreValidationError = `Điểm của ${this.getStudentName(stId)} phải từ 0 đến ${Number.isFinite(scoreMax) && scoreMax > 0 ? scoreMax : 'thang điểm đã chọn'}.`;
             }
-            scoreDetailsByStudent.set(stId, { scoreType, scoreValue, scoreNote });
+            scoreDetailsByStudent.set(stId, { scoreValue, scoreNote });
         });
+
+        const hasAnyScore = [...scoreDetailsByStudent.values()].some(detail => detail.scoreValue !== null);
+        if (!scoreValidationError && hasAnyScore && !scoreType) {
+            scoreValidationError = 'Vui lòng chọn loại điểm.';
+        } else if (!scoreValidationError && hasAnyScore && (!scoreTestName || scoreTestName.length > 150)) {
+            scoreValidationError = 'Vui lòng nhập tên bài kiểm tra, tối đa 150 ký tự.';
+        } else if (!scoreValidationError && hasAnyScore && (!Number.isFinite(scoreMax) || scoreMax <= 0 || scoreMax > 1000)) {
+            scoreValidationError = 'Thang điểm phải lớn hơn 0 và không vượt quá 1000.';
+        }
 
         document.querySelectorAll('#quickEntryStudentsList .qe-student-card').forEach(card => {
             const stId = card.getAttribute('data-student-id');
@@ -649,6 +724,11 @@ Object.assign(PinkyClassApp.prototype, {
                     content,
                     sessionName,
                     generalComment: finalGeneralComment,
+                    scoreMeta: {
+                        scoreType,
+                        testName: scoreTestName,
+                        maxScore: Number.isFinite(scoreMax) && scoreMax > 0 ? scoreMax : 10
+                    },
                     studentDetails: newStudentDetails
                 })
             });
@@ -663,7 +743,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         this.closeModal('quickSessionEntryModal');
         this.updateAllViews();
-        this.showToast("Đã lưu nhận xét riêng cho từng học sinh và đồng bộ sang Nhật ký học tập!", "success");
+        this.showToast("Đã lưu nội dung, nhận xét và điểm của buổi học!", "success");
     },
 
 

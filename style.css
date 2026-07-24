@@ -2960,78 +2960,38 @@ textarea.form-control {
     border-color: var(--primary);
 }
 
+.quick-entry-score-entry {
+    margin: 0;
+}
+
+#quickEntryScorePanel[hidden] {
+    display: none !important;
+}
+
 .quick-entry-score-panel {
-    border: 1px solid var(--primary-light);
-    border-radius: 12px;
-    padding: 14px;
-    background: var(--primary-soft);
+    margin-top: 10px;
 }
 
-.quick-entry-score-header strong {
+.score-batch-table.quick-entry-score-table {
+    min-width: 620px;
+}
+
+.quick-entry-score-table td:first-child strong {
     color: var(--primary);
-    font-size: 0.9375rem;
-    font-weight: 800;
 }
 
-.quick-entry-score-header p {
-    color: var(--text-muted);
-    font-size: 0.75rem;
-    margin: 4px 0 0;
+.quick-entry-score-table .qe-score-value {
+    min-width: 96px;
+    text-align: center;
+    font-weight: 700;
 }
 
-.quick-entry-scores-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 12px;
+.quick-entry-score-table .qe-score-note {
+    min-width: 190px;
 }
 
-.qe-score-row {
-    display: grid;
-    grid-template-columns: minmax(120px, 0.8fr) minmax(0, 2.4fr);
-    align-items: end;
-    gap: 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 12px;
-    background: var(--card-bg);
-}
-
-.qe-score-student {
-    align-self: center;
-    color: var(--primary);
-    font-size: 0.875rem;
-    font-weight: 800;
-}
-
-.qe-score-grid {
-    display: grid;
-    grid-template-columns: 1.25fr 0.7fr 1.4fr;
-    gap: 10px;
-}
-
-.qe-score-row label {
-    color: var(--text-muted);
-    display: block;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.qe-score-row input,
-.qe-score-row select {
-    width: 100%;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 7px 10px;
-    font-family: inherit;
-    font-size: 0.8125rem;
-    outline: none;
-    margin-top: 4px;
-}
-
-.qe-score-row input:focus,
-.qe-score-row select:focus {
-    border-color: var(--primary);
+.quick-entry-score-actions {
+    justify-content: flex-start;
 }
 
 /* ==========================================================================
@@ -3046,11 +3006,6 @@ textarea.form-control {
 
 /* ---- Mobile-only refinements (< 768px) -------------------------------- */
 @media (max-width: 767px) {
-    .qe-score-row,
-    .qe-score-grid {
-        grid-template-columns: 1fr;
-    }
-
     .top-header {
         flex-direction: column;
         align-items: stretch;
@@ -3784,10 +3739,6 @@ textarea.form-control {
 }
 
 @media (max-width: 720px) {
-    .qe-score-grid {
-        grid-template-columns: 1fr;
-    }
-
     .qe-score-heading span {
         display: block;
         margin: 3px 0 0;

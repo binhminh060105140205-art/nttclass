@@ -1547,7 +1547,7 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
 // nhờ vậy học phí, trạng thái thanh toán và các giá trị nhật ký không bị reset.
 app.put('/api/sessions/:id/quick-entry', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     const { id } = req.params;
-    const { content, sessionName, generalComment, studentDetails } = req.body || {};
+    const { content, sessionName, generalComment, studentDetails, scoreMeta } = req.body || {};
     if (!studentDetails || typeof studentDetails !== 'object' || Array.isArray(studentDetails)) {
         return res.status(400).json({ error: 'Thiếu dữ liệu nhật ký của học sinh.' });
     }
@@ -1583,18 +1583,48 @@ app.put('/api/sessions/:id/quick-entry', requireRole('teacher', 'assistant'), re
             return res.status(400).json({ error: 'Danh sách học sinh không khớp với buổi học.' });
         }
 
+        const usesSharedScoreMeta = !!scoreMeta && typeof scoreMeta === 'object' && !Array.isArray(scoreMeta);
+        const sharedScoreType = usesSharedScoreMeta ? String(scoreMeta.scoreType || '').trim() : '';
+        const sharedTestName = usesSharedScoreMeta ? String(scoreMeta.testName || '').trim() : '';
+        const sharedMaxScore = usesSharedScoreMeta
+            ? Number(scoreMeta.maxScore === undefined || scoreMeta.maxScore === null || scoreMeta.maxScore === '' ? 10 : scoreMeta.maxScore)
+            : 10;
+        const hasAnySharedScore = usesSharedScoreMeta && detailEntries.some(([, rawDetail]) => {
+            const rawScoreValue = rawDetail && typeof rawDetail === 'object' ? rawDetail.scoreValue : null;
+            return rawScoreValue !== null && rawScoreValue !== undefined && String(rawScoreValue).trim() !== '';
+        });
+        if (hasAnySharedScore && !SCORE_TYPES.includes(sharedScoreType)) {
+            await transaction.rollback();
+            transaction = null;
+            return res.status(400).json({ error: 'Loại điểm không hợp lệ.' });
+        }
+        if (hasAnySharedScore && (!sharedTestName || sharedTestName.length > 150)) {
+            await transaction.rollback();
+            transaction = null;
+            return res.status(400).json({ error: 'Tên bài kiểm tra là bắt buộc và không vượt quá 150 ký tự.' });
+        }
+        if (hasAnySharedScore && (!Number.isFinite(sharedMaxScore) || sharedMaxScore <= 0 || sharedMaxScore > MAX_SCORE_SCALE)) {
+            await transaction.rollback();
+            transaction = null;
+            return res.status(400).json({ error: `Thang điểm phải lớn hơn 0 và không vượt quá ${MAX_SCORE_SCALE}.` });
+        }
+
         const scoreEntries = new Map();
         for (const [studentId, rawDetail] of detailEntries) {
             const detail = rawDetail && typeof rawDetail === 'object' ? rawDetail : {};
-            const scoreType = String(detail.scoreType || '').trim();
             const rawScoreValue = detail.scoreValue;
             const hasScoreValue = rawScoreValue !== null && rawScoreValue !== undefined && String(rawScoreValue).trim() !== '';
             if (!hasScoreValue) {
-                if (!scoreType) {
+                if (usesSharedScoreMeta) {
+                    scoreEntries.set(studentId, { remove: true });
+                    continue;
+                }
+                const legacyScoreType = String(detail.scoreType || '').trim();
+                if (!legacyScoreType) {
                     scoreEntries.set(studentId, null);
                     continue;
                 }
-                if (!SCORE_TYPES.includes(scoreType)) {
+                if (!SCORE_TYPES.includes(legacyScoreType)) {
                     await transaction.rollback();
                     transaction = null;
                     return res.status(400).json({ error: 'Loại điểm không hợp lệ.' });
@@ -1602,21 +1632,32 @@ app.put('/api/sessions/:id/quick-entry', requireRole('teacher', 'assistant'), re
                 scoreEntries.set(studentId, { remove: true });
                 continue;
             }
+            const scoreType = usesSharedScoreMeta ? sharedScoreType : String(detail.scoreType || '').trim();
+            const testName = usesSharedScoreMeta ? sharedTestName : '';
+            const maxScore = usesSharedScoreMeta ? sharedMaxScore : 10;
             if (!SCORE_TYPES.includes(scoreType)) {
                 await transaction.rollback();
                 transaction = null;
                 return res.status(400).json({ error: 'Loại điểm không hợp lệ.' });
             }
             const scoreValue = Number(String(rawScoreValue).replace(',', '.'));
-            if (!Number.isFinite(scoreValue) || scoreValue < 0 || scoreValue > 10) {
+            if (!Number.isFinite(scoreValue) || scoreValue < 0 || scoreValue > maxScore) {
                 await transaction.rollback();
                 transaction = null;
-                return res.status(400).json({ error: 'Điểm số phải nằm trong khoảng từ 0 đến 10.' });
+                return res.status(400).json({ error: `Điểm số phải nằm trong khoảng từ 0 đến ${maxScore}.` });
+            }
+            const scoreNote = String(detail.scoreNote ?? '').trim();
+            if (scoreNote.length > 500) {
+                await transaction.rollback();
+                transaction = null;
+                return res.status(400).json({ error: 'Ghi chú điểm không được vượt quá 500 ký tự.' });
             }
             scoreEntries.set(studentId, {
                 scoreType,
+                testName,
                 scoreValue,
-                note: String(detail.scoreNote ?? '')
+                maxScore,
+                note: scoreNote
             });
         }
 
@@ -1657,9 +1698,9 @@ app.put('/api/sessions/:id/quick-entry', requireRole('teacher', 'assistant'), re
                     .input('sessionId', sql.VarChar, id)
                     .input('testGroupId', sql.VarChar, `session:${id}`)
                     .input('scoreType', sql.VarChar, scoreEntry.scoreType)
-                    .input('testName', sql.NVarChar, '')
+                    .input('testName', sql.NVarChar, scoreEntry.testName)
                     .input('scoreValue', sql.Decimal(), scoreEntry.scoreValue)
-                    .input('maxScore', sql.Decimal(), 10)
+                    .input('maxScore', sql.Decimal(), scoreEntry.maxScore)
                     .input('scoreDate', sql.Date, String(owner.recordset[0].SessionDate).slice(0, 10))
                     .input('note', sql.NVarChar, scoreEntry.note)
                     .query('INSERT INTO Scores (Id, StudentId, TeacherId, SessionId, TestGroupId, ScoreType, TestName, ScoreValue, MaxScore, ScoreDate, Note) VALUES (@id, @studentId, @teacherId, @sessionId, @testGroupId, @scoreType, @testName, @scoreValue, @maxScore, @scoreDate, @note) ON CONFLICT (SessionId, StudentId) DO UPDATE SET TeacherId = EXCLUDED.TeacherId, TestGroupId = EXCLUDED.TestGroupId, ScoreType = EXCLUDED.ScoreType, TestName = EXCLUDED.TestName, ScoreValue = EXCLUDED.ScoreValue, MaxScore = EXCLUDED.MaxScore, ScoreDate = EXCLUDED.ScoreDate, Note = EXCLUDED.Note');

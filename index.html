@@ -1226,15 +1226,49 @@
                         <textarea id="quickEntryContent" class="form-control" placeholder="Ví dụ: Ôn tam giác, luyện đề..." rows="2"></textarea>
                     </div>
 
-                    <section class="quick-entry-score-panel" aria-labelledby="quickEntryScoresHeading">
-                        <div class="quick-entry-score-header">
-                            <div>
-                                <strong id="quickEntryScoresHeading">Nhập điểm</strong>
-                                <p>Điểm được gắn trực tiếp với buổi học này. Để trống nếu buổi học không chấm điểm.</p>
+                    <div class="score-outside-entry quick-entry-score-entry">
+                        <button type="button" class="score-outside-toggle quick-entry-score-toggle" id="quickEntryScoreToggle" aria-expanded="false" aria-controls="quickEntryScorePanel">
+                            <span>+ Nhập điểm buổi học</span>
+                            <small>Chỉ hiện học sinh có trong buổi học này</small>
+                        </button>
+                        <div id="quickEntryScorePanel" hidden>
+                            <div class="score-batch-panel quick-entry-score-panel" aria-labelledby="quickEntryScoresHeading">
+                                <div class="score-batch-heading">
+                                    <div>
+                                        <h3 id="quickEntryScoresHeading">Điểm buổi học</h3>
+                                        <p>Ô điểm để trống sẽ không lưu điểm cho học sinh đó.</p>
+                                    </div>
+                                    <span class="score-batch-status" id="quickEntryScoreCount">0 học sinh có điểm</span>
+                                </div>
+                                <div class="score-batch-controls">
+                                    <label>Loại điểm
+                                        <select id="quickEntryScoreType" class="form-control">
+                                            <option value="BTVN">Bài tập về nhà (BTVN)</option>
+                                            <option value="KTTX">Kiểm tra thường xuyên</option>
+                                            <option value="CuoiChuong">Kiểm tra cuối chương</option>
+                                            <option value="KiemTra">Kiểm tra (dữ liệu cũ)</option>
+                                            <option value="ThaiDo">Thái độ (dữ liệu cũ)</option>
+                                        </select>
+                                    </label>
+                                    <label class="score-batch-test-name">Tên bài kiểm tra
+                                        <input type="text" id="quickEntryScoreTestName" class="form-control" maxlength="150" placeholder="Ví dụ: Kiểm tra 15 phút chương 2">
+                                    </label>
+                                    <label>Thang điểm
+                                        <input type="number" id="quickEntryScoreMax" class="form-control" min="0.01" max="1000" step="0.01" value="10">
+                                    </label>
+                                </div>
+                                <div class="table-wrapper score-batch-table-wrap">
+                                    <table class="custom-table score-batch-table quick-entry-score-table">
+                                        <thead><tr><th>Học sinh</th><th>Lớp</th><th>Điểm (<span id="quickEntryScoreMaxLabel">10</span>)</th><th>Ghi chú riêng</th></tr></thead>
+                                        <tbody id="quickEntryScoresList"></tbody>
+                                    </table>
+                                </div>
+                                <div class="score-batch-actions quick-entry-score-actions">
+                                    <span>Điểm sẽ được lưu cùng nội dung buổi học bằng nút Lưu bên dưới.</span>
+                                </div>
                             </div>
                         </div>
-                        <div id="quickEntryScoresList" class="quick-entry-scores-list"></div>
-                    </section>
+                    </div>
 
                     <div>
                         <label style="font-weight:700; display:block; margin-bottom:8px;"> Chấm riêng cho từng học sinh
