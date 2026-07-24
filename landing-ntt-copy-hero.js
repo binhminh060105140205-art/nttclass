@@ -1,1 +1,0 @@
-(function(){var title=document.querySelector('.orbis-hero-title-wrap h1'),script=document.querySelector('.orbis-hero-script');if(title)title.innerHTML='DẠY HỌC DỄ DÀNG<br>QUẢN LÝ <span>( GỌN )</span> RÕ RÀNG<br>MỖI NGÀY';if(script)script.textContent='NttClass'})();

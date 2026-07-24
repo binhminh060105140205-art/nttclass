@@ -1,0 +1,1 @@
+(function(){var hero=document.querySelector('.lithos-hero');if(!hero)return;hero.insertAdjacentHTML('beforeend','<nav class=lithos-nav><a class=lithos-brand href=#lithosHero aria-label=NttClass><svg viewBox=0,0,256,256 aria-hidden=true><path d=M256,256H128L0,128H128ZM256,128H128L0,0H128Z></path></svg><span class=lithos-wordmark>NttClass</span></a></nav>')})();

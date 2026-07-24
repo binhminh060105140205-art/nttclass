@@ -1,0 +1,1 @@
+(function(){var page=document.getElementById('landingPage');if(!page)return;page.innerHTML='<section class=lithos-hero id=lithosHero><div class=lithos-base aria-hidden=true></div><div class=lithos-reveal aria-hidden=true></div></section>'})();

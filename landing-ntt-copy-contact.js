@@ -1,1 +1,0 @@
-(function(){var script=document.querySelector('.orbis-contact-script'),button=document.querySelector('.orbis-join-button'),title=document.querySelector('.orbis-contact-copy h2');if(script)script.textContent='Bắt đầu';if(button)button.textContent='ĐĂNG NHẬP.';if(title)title.innerHTML='HỌC SINH RÕ RÀNG.<br>LỊCH DẠY CHỦ ĐỘNG.<br>HỌC PHÍ MINH BẠCH.'})();
