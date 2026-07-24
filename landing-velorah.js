@@ -25,7 +25,6 @@
                 <div class="velorah-content" id="velorahHome">
                     <h1 class="velorah-fade-rise">Where <em>dreams</em> rise<br><em>through the silence.</em></h1>
                     <p class="velorah-subtext velorah-fade-rise-delay">NttClass kết nối hồ sơ học sinh, lịch dạy, điểm số và học phí trong một không gian tập trung, rõ ràng và nhẹ nhàng.</p>
-                    <button type="button" class="velorah-hero-cta velorah-liquid-glass velorah-fade-rise-delay-2" data-open-login>Đăng nhập NttClass</button>
                 </div>
             </section>
         `;
