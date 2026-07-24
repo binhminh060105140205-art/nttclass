@@ -188,7 +188,7 @@ html[data-app-theme="lithos"] #view-logs .student-log-header::after {
     max-width: 38%;
     height: 82px;
     pointer-events: none;
-    background: url('lithos-log-header-branch.svg?v=20260724-log-branch1') right center / contain no-repeat;
+    background: url('lithos-log-header-branch.svg?v=20260724-log-branch2') right center / contain no-repeat;
     opacity: .96;
     filter: saturate(1.18) contrast(1.08) drop-shadow(0 5px 8px rgba(54,16,33,.28));
     transform: translateY(-50%);
