@@ -1,0 +1,72 @@
+.main-content::after {
+    content: '';
+    position: fixed;
+    z-index: 0;
+    right: -8vw;
+    bottom: -12vh;
+    width: min(76vw, 1120px);
+    height: min(62vh, 680px);
+    pointer-events: none;
+    opacity: .105;
+    background-image: url('https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260609_195923_b0ba8ace-1d1d-4f2c-9a28-1ab84b330680.png&w=1280&q=85');
+    background-repeat: no-repeat;
+    background-position: right bottom;
+    background-size: contain;
+    filter: saturate(.82) contrast(1.08);
+    mix-blend-mode: screen;
+}
+
+#view-scheduler .week-calendar-wrapper::before,
+#view-scheduler .month-calendar-grid::before,
+#view-requests .requests-card::before {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    right: -150px;
+    bottom: -105px;
+    width: min(70%, 760px);
+    height: 420px;
+    pointer-events: none;
+    opacity: .115;
+    background-image: url('https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260609_195923_b0ba8ace-1d1d-4f2c-9a28-1ab84b330680.png&w=1280&q=85');
+    background-repeat: no-repeat;
+    background-position: right bottom;
+    background-size: contain;
+    filter: saturate(.9) contrast(1.12);
+    mix-blend-mode: screen;
+}
+
+#view-scheduler .week-calendar-scroll,
+#view-scheduler .month-weekday-row,
+#view-scheduler .month-days-grid {
+    position: relative;
+    z-index: 1;
+}
+
+@media (max-width: 767px) {
+    .main-content::after {
+        right: -38vw;
+        bottom: -5vh;
+        width: 132vw;
+        opacity: .08;
+    }
+
+    #view-scheduler .week-calendar-wrapper::before,
+    #view-scheduler .month-calendar-grid::before,
+    #view-requests .requests-card::before {
+        right: -220px;
+        width: 680px;
+        opacity: .08;
+    }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .main-content::after {
+        animation: lithos-organic-drift 18s ease-in-out infinite alternate;
+    }
+}
+
+@keyframes lithos-organic-drift {
+    from { transform: translate3d(0, 0, 0) scale(1); }
+    to { transform: translate3d(-16px, -10px, 0) scale(1.018); }
+}

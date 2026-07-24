@@ -1,0 +1,159 @@
+#view-scheduler > .glass-card {
+    background: linear-gradient(145deg, rgba(27, 29, 27, .97), rgba(13, 15, 13, .97)) !important;
+    border-color: rgba(232, 112, 42, .24) !important;
+}
+
+#view-scheduler .calendar-view-switcher {
+    background: #0d0f0d;
+    border: 1px solid rgba(255, 255, 255, .1);
+}
+
+#view-scheduler .cal-view-btn {
+    color: #999f99;
+}
+
+#view-scheduler .cal-view-btn:hover {
+    color: #f2a45a;
+    background: rgba(232, 112, 42, .08);
+}
+
+#view-scheduler .cal-view-btn.active {
+    color: #fff;
+    background: linear-gradient(135deg, #e8702a, #bd491a);
+    box-shadow: 0 8px 22px rgba(232, 112, 42, .22);
+}
+
+#view-scheduler .week-calendar-wrapper,
+#view-scheduler .month-calendar-grid {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    color: #ece9e2;
+    background: linear-gradient(155deg, rgba(21, 23, 21, .97), rgba(8, 10, 8, .98)) !important;
+    border-color: rgba(255, 255, 255, .1) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .035), 0 18px 40px rgba(0, 0, 0, .3);
+}
+
+#view-scheduler .week-calendar-scroll,
+#view-scheduler .week-calendar-body,
+#view-scheduler .week-hour-gutter,
+#view-scheduler .week-hour-lines,
+#view-scheduler .month-days-grid {
+    background: transparent !important;
+}
+
+#view-scheduler .week-calendar-header-row,
+#view-scheduler .month-weekday-row {
+    background: rgba(10, 12, 10, .95) !important;
+    border-color: rgba(255, 255, 255, .09) !important;
+    backdrop-filter: blur(16px);
+}
+
+#view-scheduler .week-day-header,
+#view-scheduler .week-day-column,
+#view-scheduler .month-day-cell {
+    border-color: rgba(255, 255, 255, .075) !important;
+}
+
+#view-scheduler .week-day-column {
+    background: linear-gradient(180deg, rgba(255, 255, 255, .018), rgba(255, 255, 255, .005));
+}
+
+#view-scheduler .week-day-column:nth-child(even) {
+    background: rgba(255, 255, 255, .012);
+}
+
+#view-scheduler .week-hour-line {
+    background: rgba(255, 255, 255, .065) !important;
+}
+
+#view-scheduler .week-hour-label,
+#view-scheduler .week-day-header .day-date,
+#view-scheduler .month-day-more {
+    color: #858b85 !important;
+}
+
+#view-scheduler .week-day-header .day-name,
+#view-scheduler .month-weekday-label,
+#view-scheduler .month-day-number {
+    color: #e5e2db !important;
+}
+
+#view-scheduler .week-day-header.is-today {
+    background: linear-gradient(180deg, rgba(232, 112, 42, .2), rgba(232, 112, 42, .07)) !important;
+    box-shadow: inset 0 -2px 0 #e8702a;
+}
+
+#view-scheduler .week-day-header.is-today .day-name,
+#view-scheduler .week-day-header.is-today .day-date {
+    color: #ff9a55 !important;
+}
+
+#view-scheduler .month-day-cell {
+    background: rgba(14, 16, 14, .7) !important;
+}
+
+#view-scheduler .month-day-cell:hover {
+    background: rgba(232, 112, 42, .1) !important;
+}
+
+#view-scheduler .month-day-cell.is-outside-month {
+    background: rgba(4, 5, 4, .72) !important;
+    opacity: .48;
+}
+
+#view-scheduler .month-day-cell.is-today {
+    box-shadow: inset 0 0 0 1px rgba(232, 112, 42, .7);
+}
+
+#view-scheduler .month-day-cell.is-today .month-day-number {
+    color: #fff !important;
+    background: linear-gradient(135deg, #e8702a, #bd491a) !important;
+}
+
+#view-scheduler .week-event-block,
+#view-scheduler .month-day-event {
+    border: 1px solid rgba(255, 255, 255, .16);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, .28);
+}
+
+#view-scheduler .week-event-block.type-rieng,
+#view-scheduler .month-day-event.type-rieng {
+    color: #fff7ef !important;
+    background: linear-gradient(145deg, #a95428, #71351f) !important;
+    border-left-color: #f1a166 !important;
+}
+
+#view-scheduler .week-event-block.type-chung,
+#view-scheduler .month-day-event.type-chung {
+    color: #fff !important;
+    background: linear-gradient(145deg, #ef7c32, #b84318) !important;
+    border-left-color: #ffd0ad !important;
+}
+
+#view-scheduler .week-event-block:hover {
+    filter: brightness(1.08) saturate(1.05);
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, .34);
+}
+
+#view-scheduler .week-calendar-scroll::-webkit-scrollbar-track {
+    background: #0a0c0a !important;
+}
+
+#view-scheduler .week-calendar-scroll::-webkit-scrollbar-thumb {
+    background: linear-gradient(#6e3822, #e8702a) !important;
+    border: 3px solid #0a0c0a;
+    border-radius: 999px;
+}
+
+@media (max-width: 720px) {
+    #view-scheduler > .glass-card {
+        padding: 14px !important;
+    }
+
+    #view-scheduler .week-calendar-wrapper,
+    #view-scheduler .month-calendar-grid {
+        border-radius: 14px;
+    }
+}
