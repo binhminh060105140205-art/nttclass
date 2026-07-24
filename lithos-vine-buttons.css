@@ -46,3 +46,87 @@ html[data-app-theme="lithos"][data-theme-mode="light"] :is(#btnOpenCreateSession
         transform: none;
     }
 }
+
+
+html[data-app-theme="lithos"] #sidebarUserName {
+    display: inline-block;
+    position: relative;
+    z-index: 1;
+    padding: 4px 18px 5px 8px;
+    background: url('lithos-name-vine.svg') center / 100% 54px no-repeat;
+    text-shadow: 0 1px 5px rgba(9, 12, 14, .58);
+    transition: background-size .4s cubic-bezier(.2,.8,.2,1), filter .3s ease;
+}
+
+html[data-app-theme="lithos"] #sidebarUserName:hover {
+    background-size: 106% 58px;
+    filter: saturate(1.18) drop-shadow(0 5px 8px rgba(232, 112, 42, .2));
+}
+
+html[data-app-theme="lithos"] :is(#btnExportInvoice, #aiChatSendBtn, #saveSessionBtn)::after {
+    content: '' !important;
+    display: block !important;
+    position: absolute;
+    z-index: 2;
+    top: auto;
+    right: -26px;
+    bottom: -14px;
+    width: 62px;
+    height: 48px;
+    pointer-events: none;
+    background: url('lithos-corner-bloom.svg') center / contain no-repeat !important;
+    opacity: .78;
+    filter: saturate(1.26) drop-shadow(0 4px 7px rgba(48, 23, 15, .24));
+    transform: rotate(7deg);
+    transition: opacity .25s ease, transform .35s ease;
+}
+
+html[data-app-theme="lithos"] :is(#btnExportInvoice, #aiChatSendBtn, #saveSessionBtn):hover::after,
+html[data-app-theme="lithos"] :is(#btnExportInvoice, #aiChatSendBtn, #saveSessionBtn):focus-visible::after {
+    opacity: 1;
+    transform: rotate(0deg) scale(1.08);
+}
+
+html[data-app-theme="lithos"][data-theme-mode="light"] #sidebarUserName {
+    filter: saturate(1.12) drop-shadow(0 4px 7px rgba(113, 48, 27, .16));
+}
+
+html[data-app-theme="lithos"][data-theme-mode="light"] :is(#btnExportInvoice, #aiChatSendBtn, #saveSessionBtn)::after {
+    mix-blend-mode: multiply;
+    filter: saturate(1.28) drop-shadow(0 4px 7px rgba(113, 48, 27, .16));
+}
+
+@media (max-width: 767px) {
+    html[data-app-theme="lithos"] #sidebarUserName { background-size: 100% 48px; padding-inline: 6px 14px; }
+    html[data-app-theme="lithos"] :is(#btnExportInvoice, #aiChatSendBtn, #saveSessionBtn)::after { width: 48px; height: 38px; top: auto; right: -12px; bottom: -10px; }
+}
+
+
+html[data-app-theme="lithos"] .stats-grid .stat-card {
+    background-image: url('lithos-stat-bloom.svg'), linear-gradient(145deg, rgba(38, 40, 36, .96), rgba(18, 20, 18, .96)) !important;
+    background-repeat: no-repeat, no-repeat;
+    background-position: right -8px bottom -8px, 0 0;
+    background-size: 76px 52px, auto;
+}
+
+html[data-app-theme="lithos"][data-theme-mode="light"] .stats-grid .stat-card {
+    background-image: url('lithos-stat-bloom.svg'), linear-gradient(145deg, rgba(255, 253, 249, .98), rgba(250, 240, 231, .94)) !important;
+    background-position: right -8px bottom -8px, 0 0;
+    background-size: 76px 52px, auto;
+}
+
+@media (max-width: 767px) {
+    html[data-app-theme="lithos"] .stats-grid .stat-card { background-size: 62px 42px, auto; }
+}
+
+
+html[data-app-theme="lithos"] :is(#view-dashboard, #view-scheduler, #view-tuition) .stats-grid .stat-card {
+    background-image: url('lithos-stat-bloom.svg'), linear-gradient(145deg, rgba(38, 40, 36, .96), rgba(18, 20, 18, .96)) !important;
+    background-repeat: no-repeat, no-repeat !important;
+    background-position: right -8px bottom -8px, 0 0 !important;
+    background-size: 76px 52px, auto !important;
+}
+
+html[data-app-theme="lithos"][data-theme-mode="light"] :is(#view-dashboard, #view-scheduler, #view-tuition) .stats-grid .stat-card {
+    background-image: url('lithos-stat-bloom.svg'), linear-gradient(145deg, rgba(255, 253, 249, .98), rgba(250, 240, 231, .94)) !important;
+}
