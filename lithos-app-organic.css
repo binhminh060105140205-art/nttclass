@@ -76,21 +76,26 @@
 }
 
 .sidebar::before {
-    left: -62px;
-    bottom: 88px;
-    width: 286px;
-    height: 178px;
-    opacity: .3;
-    transform: rotate(-13deg);
+    top: -22px;
+    right: -108px;
+    width: 238px;
+    height: 208px;
+    opacity: .48;
+    background-image: url('lithos-botanical-vine.svg');
+    background-position: center;
+    transform: rotate(8deg);
 }
 
 .sidebar::after {
-    right: -66px;
-    bottom: 250px;
-    width: 228px;
-    height: 142px;
-    opacity: .19;
-    transform: scaleX(-1) rotate(12deg);
+    left: -116px;
+    right: auto;
+    bottom: -126px;
+    width: 248px;
+    height: 188px;
+    opacity: .42;
+    background-image: url('lithos-botanical.svg');
+    background-position: center;
+    transform: scaleX(-1) rotate(-18deg);
 }
 
 .sidebar > * {
@@ -100,13 +105,17 @@
 
 [data-user-role="teacher"] .sidebar::before,
 [data-user-role="assistant"] .sidebar::before {
-    bottom: 46px;
-    opacity: .14;
+    top: -18px;
+    right: -112px;
+    bottom: auto;
+    opacity: .44;
 }
 
 [data-user-role="teacher"] .sidebar::after,
 [data-user-role="assistant"] .sidebar::after {
-    opacity: .08;
+    left: -124px;
+    bottom: -132px;
+    opacity: .36;
 }
 
 [data-user-role="student"] .sidebar::before {
@@ -237,4 +246,86 @@
 @keyframes lithos-branch-float {
     from { transform: translate3d(0, 0, 0) scale(1); }
     to { transform: translate3d(-28px, -16px, 0) scale(1.035); }
+}
+
+.sidebar .menu-item {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    transition: color .25s ease, background .25s ease, border-color .25s ease, transform .25s ease, box-shadow .25s ease;
+}
+
+.sidebar .menu-item > * {
+    position: relative;
+    z-index: 1;
+}
+
+.sidebar .menu-item::before {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    background: linear-gradient(105deg, rgba(232, 112, 42, .2), transparent 70%);
+    transition: opacity .25s ease;
+}
+
+.sidebar .menu-item::after {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    right: -34px;
+    top: -24px;
+    width: 86px;
+    height: 76px;
+    pointer-events: none;
+    opacity: 0;
+    background: url('lithos-botanical-vine.svg') center / contain no-repeat;
+    filter: saturate(1.35) drop-shadow(0 4px 8px rgba(48, 23, 15, .28));
+    transform: rotate(-14deg) scale(.8);
+    transition: opacity .3s ease, transform .3s ease;
+}
+
+.sidebar .menu-item:hover {
+    transform: translateX(4px);
+    box-shadow: inset 3px 0 0 rgba(232, 112, 42, .8), 0 8px 18px rgba(32, 18, 13, .12);
+}
+
+.sidebar .menu-item:hover::before,
+.sidebar .menu-item:hover::after {
+    opacity: 1;
+}
+
+.sidebar .menu-item:hover::after {
+    transform: rotate(-4deg) scale(1);
+}
+
+.sidebar .menu-item.active::after {
+    opacity: .24;
+    transform: rotate(-4deg) scale(.92);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sidebar .menu-item { transition: none; }
+    .sidebar .menu-item::before,
+    .sidebar .menu-item::after { transition: none; }
+}
+
+@media (max-width: 767px) {
+    .sidebar::before {
+        top: -18px;
+        right: -116px;
+        width: 194px;
+        height: 170px;
+        opacity: .34;
+    }
+
+    .sidebar::after {
+        left: -104px;
+        bottom: -118px;
+        width: 204px;
+        height: 154px;
+        opacity: .28;
+    }
 }

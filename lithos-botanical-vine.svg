@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 320" fill="none">
+  <defs>
+    <linearGradient id="vineTwig" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#75402d"/>
+      <stop offset=".52" stop-color="#b9562e"/>
+      <stop offset="1" stop-color="#e9853f"/>
+    </linearGradient>
+    <linearGradient id="vineLeaf" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#39483f"/>
+      <stop offset="1" stop-color="#748060"/>
+    </linearGradient>
+  </defs>
+  <g stroke="url(#vineTwig)" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke-width="5" d="M28 306C76 273 78 226 119 195c38-29 78-29 103-69 20-32 24-77 18-112"/>
+    <path stroke-width="3" d="M70 266c-5-32-20-53-46-68M101 210c-6-30-1-55 16-76M157 177c-19-23-23-48-14-74M208 129c27-8 48-25 63-49M228 102c23 4 42 17 56 39M241 59c-12-19-14-38-5-57"/>
+    <path stroke-width="2" opacity=".8" d="M46 285c23-8 43-7 61 4M121 193c22 8 38 21 48 40M180 154c-4-19 1-36 14-51M232 121c-4 17-1 33 10 48M253 76c21 2 37 10 49 25"/>
+  </g>
+  <g fill="url(#vineLeaf)">
+    <path d="M46 238c-25-13-40-11-49 3 19 17 35 16 49-3Z"/>
+    <path d="M67 249c21-14 38-13 49 1-17 17-34 17-49-1Z"/>
+    <path d="M92 160c-22-15-39-14-51-1 16 19 33 20 51 1Z"/>
+    <path d="M112 172c22-13 39-10 49 5-18 15-34 13-49-5Z"/>
+    <path d="M147 105c-19-18-36-20-49-9 13 22 30 26 49 9Z"/>
+    <path d="M175 126c22-10 38-5 47 11-20 12-35 8-47-11Z"/>
+    <path d="M234 78c-18-18-22-34-12-47 19 12 24 27 12 47Z"/>
+    <path d="M257 91c20-4 34 3 41 18-19 7-32 1-41-18Z"/>
+    <path d="M247 30c-6-19-1-32 14-40 8 17 3 31-14 40Z"/>
+  </g>
+  <g fill="#dc6a30" stroke="#f2a45a" stroke-width="2">
+    <g transform="translate(83 218)">
+      <circle cx="0" cy="-14" r="8"/><circle cx="13" cy="-5" r="8"/><circle cx="8" cy="11" r="8"/><circle cx="-8" cy="11" r="8"/><circle cx="-13" cy="-5" r="8"/><circle cx="0" cy="0" r="5" fill="#ffd38f"/>
+    </g>
+    <g transform="translate(173 161) scale(.82)">
+      <circle cx="0" cy="-14" r="8"/><circle cx="13" cy="-5" r="8"/><circle cx="8" cy="11" r="8"/><circle cx="-8" cy="11" r="8"/><circle cx="-13" cy="-5" r="8"/><circle cx="0" cy="0" r="5" fill="#ffd38f"/>
+    </g>
+    <g transform="translate(247 113) scale(.7)">
+      <circle cx="0" cy="-14" r="8"/><circle cx="13" cy="-5" r="8"/><circle cx="8" cy="11" r="8"/><circle cx="-8" cy="11" r="8"/><circle cx="-13" cy="-5" r="8"/><circle cx="0" cy="0" r="5" fill="#ffd38f"/>
+    </g>
+    <g transform="translate(265 43) scale(.58)">
+      <circle cx="0" cy="-14" r="8"/><circle cx="13" cy="-5" r="8"/><circle cx="8" cy="11" r="8"/><circle cx="-8" cy="11" r="8"/><circle cx="-13" cy="-5" r="8"/><circle cx="0" cy="0" r="5" fill="#ffd38f"/>
+    </g>
+  </g>
+  <g fill="#f3a052">
+    <circle cx="35" cy="274" r="4"/><circle cx="53" cy="267" r="3"/><circle cx="116" cy="184" r="3.5"/><circle cx="133" cy="176" r="3"/><circle cx="199" cy="137" r="3.5"/><circle cx="218" cy="124" r="3"/><circle cx="277" cy="92" r="3.5"/><circle cx="291" cy="81" r="3"/>
+  </g>
+</svg>
