@@ -1,11 +1,11 @@
 html[data-app-theme="lithos"][data-theme-mode="light"]:has(.main-content:not(.hidden)),
 html[data-app-theme="lithos"][data-theme-mode="light"]:has(.login-screen:not(.hidden)) {
     --primary: #a82d64;
-    --primary-rgb: 168, 63, 45;
+    --primary-rgb: 168, 45, 100;
     --primary-light: rgba(168,45,100,.2);
     --primary-soft: rgba(168,45,100,.1);
     --accent: #c93e7d;
-    --accent-rgb: 201, 109, 62;
+    --accent-rgb: 201, 62, 125;
     --accent-strong: #87224f;
     --text-main: #3f2923;
     --text-muted: #765f56;
@@ -160,7 +160,7 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .btn-primary {
 }
 
 html[data-app-theme="lithos"][data-theme-mode="light"] .btn-primary:hover {
-    background: linear-gradient(135deg, #8f3022, #c93276);
+    background: linear-gradient(135deg, #922657, #c93276);
     box-shadow: 0 14px 30px rgba(168,45,100,.32);
 }
 
@@ -729,3 +729,81 @@ html[data-app-theme="lithos"] .sidebar::before { opacity: .46; }
 html[data-app-theme="lithos"] .sidebar::after { opacity: .34; }
 html[data-app-theme="lithos"] .view-section.active-view::before { opacity: .52; }
 html[data-app-theme="lithos"] .view-section.active-view::after { opacity: .4; }
+
+
+/* Hoàn thiện light mode: giữ toàn bộ card số liệu và control ở bảng màu sáng. */
+html[data-app-theme="lithos"][data-theme-mode="light"] #view-scheduler .stats-grid > .glass-card,
+html[data-app-theme="lithos"][data-theme-mode="light"] #view-tuition .grid-form > .glass-card.stat-card {
+    color: #4a2c3a;
+    background-color: #fff8fb !important;
+    background-image: url('lithos-stat-bloom.svg?v=20260724-pink1'), linear-gradient(145deg, rgba(255,253,249,.99), rgba(249,224,236,.96)) !important;
+    background-repeat: no-repeat, no-repeat !important;
+    background-position: right -8px bottom -8px, 0 0 !important;
+    background-size: 76px 52px, auto !important;
+    border-color: rgba(168,45,100,.2) !important;
+    box-shadow: 0 10px 24px rgba(104,35,66,.1) !important;
+}
+
+html[data-app-theme="lithos"][data-theme-mode="light"] #view-scheduler .stats-grid > .glass-card:hover,
+html[data-app-theme="lithos"][data-theme-mode="light"] #view-tuition .grid-form > .glass-card.stat-card:hover {
+    border-color: rgba(168,45,100,.36) !important;
+    box-shadow: 0 14px 30px rgba(104,35,66,.16) !important;
+}
+
+html[data-app-theme="lithos"][data-theme-mode="light"] .stat-card::before {
+    background: radial-gradient(circle at 32% 68%, rgba(255,255,255,.3), rgba(201,62,125,.2)) !important;
+}
+
+html[data-app-theme="lithos"][data-theme-mode="light"] :is(.main-content, .modal-container, .login-card) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):hover,
+html[data-app-theme="lithos"][data-theme-mode="light"] :is(.main-content, .modal-container, .login-card) select:hover,
+html[data-app-theme="lithos"][data-theme-mode="light"] :is(.main-content, .modal-container, .login-card) textarea:hover {
+    border-color: #d88eaf !important;
+}
+
+html[data-app-theme="lithos"][data-theme-mode="light"] :is(.main-content, .modal-container, .login-card) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):disabled,
+html[data-app-theme="lithos"][data-theme-mode="light"] :is(.main-content, .modal-container, .login-card) input:not([type="checkbox"]):not([type="radio"]):not([type="range"])[readonly],
+html[data-app-theme="lithos"][data-theme-mode="light"] :is(.main-content, .modal-container, .login-card) select:disabled,
+html[data-app-theme="lithos"][data-theme-mode="light"] :is(.main-content, .modal-container, .login-card) textarea:disabled,
+html[data-app-theme="lithos"][data-theme-mode="light"] :is(.main-content, .modal-container, .login-card) textarea[readonly] {
+    color: #8b6e7b !important;
+    background: #f4e5ec !important;
+    border-color: #dfc4d0 !important;
+    opacity: 1;
+    cursor: not-allowed;
+}
+
+html[data-app-theme="lithos"][data-theme-mode="light"] input[type="checkbox"],
+html[data-app-theme="lithos"][data-theme-mode="light"] input[type="radio"] {
+    accent-color: #c93e7d;
+}
+
+html[data-app-theme="lithos"][data-theme-mode="light"] select option,
+html[data-app-theme="lithos"][data-theme-mode="light"] select optgroup {
+    color: #4a2c3a;
+    background-color: #fff9fc;
+}
+
+html[data-app-theme="lithos"][data-theme-mode="light"] select option:checked {
+    color: #fff;
+    background-color: #b62f6d;
+}
+
+html[data-app-theme="lithos"][data-theme-mode="light"] .tuition-status-select.status-paid {
+    color: #147a3d !important;
+    background: #ecf9f0 !important;
+    border-color: #9dd8b1 !important;
+}
+
+html[data-app-theme="lithos"][data-theme-mode="light"] .tuition-status-select.status-unpaid {
+    color: #b4234e !important;
+    background: #fff0f4 !important;
+    border-color: #efb3c5 !important;
+}
+
+html[data-app-theme="lithos"][data-theme-mode="light"] input:-webkit-autofill,
+html[data-app-theme="lithos"][data-theme-mode="light"] input:-webkit-autofill:hover,
+html[data-app-theme="lithos"][data-theme-mode="light"] input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #4a2c3a !important;
+    box-shadow: 0 0 0 1000px #fffdf9 inset !important;
+    caret-color: #a82d64;
+}
