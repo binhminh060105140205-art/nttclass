@@ -1,0 +1,127 @@
+
+html[data-app-theme="lithos"] .btn-primary::before,
+html[data-app-theme="lithos"] .btn-primary::after,
+html[data-app-theme="lithos"] .btn-danger::before,
+html[data-app-theme="lithos"] .btn-danger::after,
+html[data-app-theme="lithos"] .btn-secondary::before {
+    content: none !important;
+    display: none !important;
+    background: none !important;
+}
+
+html[data-app-theme="lithos"] .btn-primary,
+html[data-app-theme="lithos"] .btn-secondary,
+html[data-app-theme="lithos"] .btn-danger {
+    overflow: visible;
+}
+
+html[data-app-theme="lithos"] .btn-primary:hover,
+html[data-app-theme="lithos"] .btn-secondary:hover,
+html[data-app-theme="lithos"] .btn-danger:hover {
+    transform: translateY(-2px) scale(1.015);
+    filter: saturate(1.08) brightness(1.04);
+}
+
+html[data-app-theme="lithos"] .main-content:not(.hidden)::after {
+    top: auto !important;
+    right: -116px !important;
+    bottom: 10px !important;
+    width: 190px !important;
+    height: 130px !important;
+    background-image: url('lithos-corner-bloom.svg') !important;
+    background-position: right bottom !important;
+    background-size: contain !important;
+    opacity: .56 !important;
+    mix-blend-mode: screen !important;
+    filter: saturate(1.2) drop-shadow(0 0 18px rgba(232, 112, 42, .16)) !important;
+}
+
+html[data-app-theme="lithos"] .top-header::before {
+    top: -22px !important;
+    right: -42px !important;
+    width: 142px !important;
+    height: 96px !important;
+    background-image: url('lithos-corner-bloom.svg') !important;
+    opacity: .62 !important;
+}
+
+html[data-app-theme="lithos"] .top-header::after {
+    right: auto !important;
+    left: -44px !important;
+    bottom: -52px !important;
+    width: 118px !important;
+    height: 82px !important;
+    background-image: url('lithos-corner-bloom.svg') !important;
+    opacity: .38 !important;
+}
+
+html[data-app-theme="lithos"] .view-section.active-view::before,
+html[data-app-theme="lithos"] .view-section.active-view::after {
+    z-index: 0 !important;
+    width: 142px !important;
+    height: 96px !important;
+    background-image: url('lithos-corner-bloom.svg') !important;
+    opacity: .5 !important;
+    mix-blend-mode: screen !important;
+}
+
+html[data-app-theme="lithos"] .view-section.active-view::before {
+    top: -18px !important;
+    right: -56px !important;
+    transform: rotate(8deg) !important;
+}
+
+html[data-app-theme="lithos"] .view-section.active-view::after {
+    left: -56px !important;
+    bottom: -28px !important;
+    transform: scaleX(-1) rotate(-8deg) !important;
+}
+
+html[data-app-theme="lithos"] .view-section.active-view > *,
+html[data-app-theme="lithos"] #view-requests .requests-card > *,
+html[data-app-theme="lithos"] #view-scheduler > .glass-card > * {
+    position: relative;
+    z-index: 1;
+}
+
+html[data-app-theme="lithos"] #view-scheduler .week-calendar-wrapper::before,
+html[data-app-theme="lithos"] #view-scheduler .month-calendar-grid::before,
+html[data-app-theme="lithos"] #view-requests .requests-card::before,
+html[data-app-theme="lithos"] #view-requests .requests-card::after,
+html[data-app-theme="lithos"] #view-scheduler > .glass-card::after {
+    right: -28px !important;
+    bottom: -24px !important;
+    width: 126px !important;
+    height: 86px !important;
+    background-image: url('lithos-corner-bloom.svg') !important;
+    background-position: right bottom !important;
+    background-size: contain !important;
+    opacity: .44 !important;
+    mix-blend-mode: screen !important;
+    filter: saturate(1.18) drop-shadow(0 0 14px rgba(232, 112, 42, .14)) !important;
+}
+
+html[data-app-theme="lithos"] #view-requests .requests-card::after,
+html[data-app-theme="lithos"] #view-scheduler > .glass-card::after {
+    z-index: 0 !important;
+}
+
+@media (max-width: 767px) {
+    html[data-app-theme="lithos"] .main-content:not(.hidden)::after { width: 132px !important; height: 92px !important; right: -84px !important; opacity: .42 !important; }
+    html[data-app-theme="lithos"] .view-section.active-view::before,
+    html[data-app-theme="lithos"] .view-section.active-view::after { width: 104px !important; height: 70px !important; opacity: .4 !important; }
+}
+
+html[data-app-theme="lithos"][data-theme-mode="light"] .main-content:not(.hidden)::after,
+html[data-app-theme="lithos"][data-theme-mode="light"] .top-header::before,
+html[data-app-theme="lithos"][data-theme-mode="light"] .top-header::after,
+html[data-app-theme="lithos"][data-theme-mode="light"] .view-section.active-view::before,
+html[data-app-theme="lithos"][data-theme-mode="light"] .view-section.active-view::after,
+html[data-app-theme="lithos"][data-theme-mode="light"] #view-scheduler .week-calendar-wrapper::before,
+html[data-app-theme="lithos"][data-theme-mode="light"] #view-scheduler .month-calendar-grid::before,
+html[data-app-theme="lithos"][data-theme-mode="light"] #view-requests .requests-card::before,
+html[data-app-theme="lithos"][data-theme-mode="light"] #view-requests .requests-card::after,
+html[data-app-theme="lithos"][data-theme-mode="light"] #view-scheduler > .glass-card::after {
+    mix-blend-mode: multiply !important;
+    filter: saturate(1.35) contrast(1.08) drop-shadow(0 5px 10px rgba(113, 48, 27, .18)) !important;
+}
