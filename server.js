@@ -2587,6 +2587,39 @@ app.post('/api/requests', requireAuth, async (req, res) => {
     }
 });
 
+app.put('/api/requests/:id', requireAuth, async (req, res) => {
+    const text = String(req.body?.text || '').trim();
+    const imageName = String(req.body?.imageName || '').trim().slice(0, 255);
+    const priority = req.body?.priority ?? false;
+    const rawImages = Array.isArray(req.body?.images)
+        ? req.body.images
+        : (req.body?.imageData ? [{ dataUrl: req.body.imageData, name: imageName }] : []);
+    const imageList = validateRequestImages(rawImages);
+    if (imageList.error) return res.status(400).json({ error: imageList.error });
+    if (typeof priority !== 'boolean') return res.status(400).json({ error: 'Trạng thái ưu tiên không hợp lệ.' });
+    if (!text && imageList.value.length === 0) return res.status(400).json({ error: 'Hãy nhập nội dung hoặc chọn một ảnh.' });
+    if (text.length > 5000) return res.status(400).json({ error: 'Nội dung yêu cầu không được vượt quá 5.000 ký tự.' });
+
+    const firstImage = imageList.value[0] || { dataUrl: null, name: imageName || null };
+    try {
+        const result = await pgPool.query(`
+            UPDATE TaskRequests
+            SET TextContent = $1, ImageData = $2, ImageName = $3, ImagesData = $4,
+                Priority = $5, UpdatedAt = CURRENT_TIMESTAMP
+            WHERE Id = $6 AND OwnerId = $7 AND OwnerRole = $8
+            RETURNING Id AS id, TextContent AS text, ImageData AS imageData,
+                      ImageName AS imageName, ImagesData AS imagesData, Completed AS completed, Priority AS priority,
+                      CreatedAt AS createdAt, UpdatedAt AS updatedAt, CompletedAt AS completedAt`,
+        [text, firstImage.dataUrl, firstImage.name || null, JSON.stringify(imageList.value), priority,
+         req.params.id, req.authUser.userId, req.authUser.role]);
+        if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy yêu cầu.' });
+        res.json(normalizeRequestRow(result.rows[0]));
+    } catch (err) {
+        console.error('[PUT /api/requests/:id]', err);
+        res.status(500).json({ error: 'Không thể cập nhật yêu cầu.' });
+    }
+});
+
 app.put('/api/requests/:id/status', requireAuth, async (req, res) => {
     const { completed } = req.body || {};
     if (typeof completed !== 'boolean') {

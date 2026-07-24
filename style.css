@@ -5019,6 +5019,33 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     min-width: 118px;
 }
 
+.request-edit-button {
+    min-height: 30px;
+    padding: 5px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--surface-soft, rgba(248, 250, 252, .72));
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color .18s ease, color .18s ease, background .18s ease;
+}
+
+.request-edit-button:hover,
+.request-edit-button:focus-visible {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    color: var(--primary);
+    outline: none;
+}
+
+.request-composer.is-editing {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
 .request-item:hover {
     border-color: var(--primary-light);
     transform: translateY(-1px);
