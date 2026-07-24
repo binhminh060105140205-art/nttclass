@@ -166,3 +166,55 @@ html[data-app-theme="lithos"][data-theme-mode="light"] #view-requests .requests-
     mix-blend-mode: normal !important;
     filter: brightness(1.55) saturate(.75) contrast(.82) !important;
 }
+
+html[data-app-theme="lithos"] #view-logs .student-log-header {
+    position: relative;
+    isolation: isolate;
+}
+
+html[data-app-theme="lithos"] #view-logs .student-log-header > div {
+    position: relative;
+    z-index: 2;
+    min-width: 0;
+}
+
+html[data-app-theme="lithos"] #view-logs .student-log-header::after {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    top: 50%;
+    right: 16px;
+    width: clamp(210px, 24vw, 350px);
+    max-width: 38%;
+    height: 82px;
+    pointer-events: none;
+    background: url('lithos-log-header-branch.svg?v=20260724-log-branch1') right center / contain no-repeat;
+    opacity: .96;
+    filter: saturate(1.18) contrast(1.08) drop-shadow(0 5px 8px rgba(54,16,33,.28));
+    transform: translateY(-50%);
+    transform-origin: right center;
+    transition: transform .45s cubic-bezier(.2,.8,.2,1), filter .3s ease;
+}
+
+html[data-app-theme="lithos"] #view-logs .student-log-header:hover::after {
+    transform: translateY(-50%) scale(1.025) rotate(-.35deg);
+    filter: saturate(1.32) contrast(1.1) drop-shadow(0 7px 10px rgba(54,16,33,.34));
+}
+
+html[data-app-theme="lithos"][data-theme-mode="light"] #view-logs .student-log-header::after {
+    mix-blend-mode: multiply;
+    filter: saturate(1.14) contrast(1.06) drop-shadow(0 4px 7px rgba(113,27,66,.2));
+}
+
+@media (max-width: 899px) {
+    html[data-app-theme="lithos"] #view-logs .student-log-header::after {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html[data-app-theme="lithos"] #view-logs .student-log-header::after {
+        transition: none;
+        transform: translateY(-50%);
+    }
+}

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 100" fill="none">
+  <defs>
+    <linearGradient id="logStem" x1="1" y1="0" x2="0" y2="1">
+      <stop stop-color="#173a2e"/>
+      <stop offset=".52" stop-color="#315f43"/>
+      <stop offset="1" stop-color="#244b39"/>
+    </linearGradient>
+    <filter id="logShadow" x="-18%" y="-32%" width="136%" height="170%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#431026" flood-opacity=".34"/>
+    </filter>
+  </defs>
+  <g filter="url(#logShadow)">
+    <path d="M370 16C329 14 310 36 281 47C247 60 222 42 191 43C153 44 135 70 99 72C63 74 39 54-8 61" stroke="url(#logStem)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M321 31C320 17 326 7 340 0M287 45C297 28 310 20 326 20M252 52C245 35 247 21 260 9M202 43C211 27 224 20 240 20M163 54C154 38 154 24 165 12M119 69C126 52 137 42 153 38M72 68C63 52 50 44 32 43M37 58C23 45 9 41-7 46" stroke="#487653" stroke-width="2.6" stroke-linecap="round"/>
+    <g fill="#547f58">
+      <path d="M338 3C346-10 359-14 373-8 364 6 352 10 338 3Z"/>
+      <path d="M310 23C320 8 334 4 349 11 339 26 325 30 310 23Z"/>
+      <path d="M259 10C246-3 233-4 223 6 235 20 248 21 259 10Z"/>
+      <path d="M217 24C229 11 243 8 257 16 245 30 232 33 217 24Z"/>
+      <path d="M165 13C151 1 138 2 129 13 143 25 155 25 165 13Z"/>
+      <path d="M136 45C150 34 163 35 174 46 161 59 148 58 136 45Z"/>
+      <path d="M59 51C44 39 30 40 20 51 34 64 48 64 59 51Z"/>
+      <path d="M31 45C17 33 4 33-6 44 7 57 20 57 31 45Z"/>
+    </g>
+    <g fill="#7da16e">
+      <path d="M329 19C337 8 348 5 360 10 352 22 341 25 329 19Z"/>
+      <path d="M239 29C229 18 218 18 209 27 219 39 230 40 239 29Z"/>
+      <path d="M151 37C139 27 128 28 120 38 132 49 143 48 151 37Z"/>
+      <path d="M89 66C79 54 67 52 57 60 67 73 78 75 89 66Z"/>
+    </g>
+    <g fill="#f28ab9" stroke="#ffcae1" stroke-width="1.4">
+      <g transform="translate(316 34) scale(.58)"><circle cy="-13" r="7"/><circle cx="12" cy="-4" r="7"/><circle cx="7" cy="10" r="7"/><circle cx="-7" cy="10" r="7"/><circle cx="-12" cy="-4" r="7"/><circle r="4" fill="#ffe0ee"/></g>
+      <g transform="translate(248 51) scale(.48)"><circle cy="-13" r="7"/><circle cx="12" cy="-4" r="7"/><circle cx="7" cy="10" r="7"/><circle cx="-7" cy="10" r="7"/><circle cx="-12" cy="-4" r="7"/><circle r="4" fill="#ffe0ee"/></g>
+      <g transform="translate(177 44) scale(.54)"><circle cy="-13" r="7"/><circle cx="12" cy="-4" r="7"/><circle cx="7" cy="10" r="7"/><circle cx="-7" cy="10" r="7"/><circle cx="-12" cy="-4" r="7"/><circle r="4" fill="#ffe0ee"/></g>
+      <g transform="translate(107 70) scale(.43)"><circle cy="-13" r="7"/><circle cx="12" cy="-4" r="7"/><circle cx="7" cy="10" r="7"/><circle cx="-7" cy="10" r="7"/><circle cx="-12" cy="-4" r="7"/><circle r="4" fill="#ffe0ee"/></g>
+    </g>
+    <g fill="#ffaad0"><circle cx="348" cy="15" r="3"/><circle cx="273" cy="43" r="2.8"/><circle cx="213" cy="43" r="2.7"/><circle cx="145" cy="57" r="2.8"/><circle cx="49" cy="63" r="2.6"/></g>
+  </g>
+</svg>
