@@ -2,8 +2,8 @@
   <defs>
     <linearGradient id="vineTwig" x1="0" y1="1" x2="1" y2="0">
       <stop offset="0" stop-color="#75402d"/>
-      <stop offset=".52" stop-color="#b9562e"/>
-      <stop offset="1" stop-color="#e9853f"/>
+      <stop offset=".52" stop-color="#b92e6d"/>
+      <stop offset="1" stop-color="#e93f8b"/>
     </linearGradient>
     <linearGradient id="vineLeaf" x1="0" y1="1" x2="1" y2="0">
       <stop offset="0" stop-color="#39483f"/>
@@ -26,21 +26,21 @@
     <path d="M257 91c20-4 34 3 41 18-19 7-32 1-41-18Z"/>
     <path d="M247 30c-6-19-1-32 14-40 8 17 3 31-14 40Z"/>
   </g>
-  <g fill="#dc6a30" stroke="#f2a45a" stroke-width="2">
+  <g fill="#dc307d" stroke="#f25a9e" stroke-width="2">
     <g transform="translate(83 218)">
-      <circle cx="0" cy="-14" r="8"/><circle cx="13" cy="-5" r="8"/><circle cx="8" cy="11" r="8"/><circle cx="-8" cy="11" r="8"/><circle cx="-13" cy="-5" r="8"/><circle cx="0" cy="0" r="5" fill="#ffd38f"/>
+      <circle cx="0" cy="-14" r="8"/><circle cx="13" cy="-5" r="8"/><circle cx="8" cy="11" r="8"/><circle cx="-8" cy="11" r="8"/><circle cx="-13" cy="-5" r="8"/><circle cx="0" cy="0" r="5" fill="#ff8fc1"/>
     </g>
     <g transform="translate(173 161) scale(.82)">
-      <circle cx="0" cy="-14" r="8"/><circle cx="13" cy="-5" r="8"/><circle cx="8" cy="11" r="8"/><circle cx="-8" cy="11" r="8"/><circle cx="-13" cy="-5" r="8"/><circle cx="0" cy="0" r="5" fill="#ffd38f"/>
+      <circle cx="0" cy="-14" r="8"/><circle cx="13" cy="-5" r="8"/><circle cx="8" cy="11" r="8"/><circle cx="-8" cy="11" r="8"/><circle cx="-13" cy="-5" r="8"/><circle cx="0" cy="0" r="5" fill="#ff8fc1"/>
     </g>
     <g transform="translate(247 113) scale(.7)">
-      <circle cx="0" cy="-14" r="8"/><circle cx="13" cy="-5" r="8"/><circle cx="8" cy="11" r="8"/><circle cx="-8" cy="11" r="8"/><circle cx="-13" cy="-5" r="8"/><circle cx="0" cy="0" r="5" fill="#ffd38f"/>
+      <circle cx="0" cy="-14" r="8"/><circle cx="13" cy="-5" r="8"/><circle cx="8" cy="11" r="8"/><circle cx="-8" cy="11" r="8"/><circle cx="-13" cy="-5" r="8"/><circle cx="0" cy="0" r="5" fill="#ff8fc1"/>
     </g>
     <g transform="translate(265 43) scale(.58)">
-      <circle cx="0" cy="-14" r="8"/><circle cx="13" cy="-5" r="8"/><circle cx="8" cy="11" r="8"/><circle cx="-8" cy="11" r="8"/><circle cx="-13" cy="-5" r="8"/><circle cx="0" cy="0" r="5" fill="#ffd38f"/>
+      <circle cx="0" cy="-14" r="8"/><circle cx="13" cy="-5" r="8"/><circle cx="8" cy="11" r="8"/><circle cx="-8" cy="11" r="8"/><circle cx="-13" cy="-5" r="8"/><circle cx="0" cy="0" r="5" fill="#ff8fc1"/>
     </g>
   </g>
-  <g fill="#f3a052">
+  <g fill="#f3529a">
     <circle cx="35" cy="274" r="4"/><circle cx="53" cy="267" r="3"/><circle cx="116" cy="184" r="3.5"/><circle cx="133" cy="176" r="3"/><circle cx="199" cy="137" r="3.5"/><circle cx="218" cy="124" r="3"/><circle cx="277" cy="92" r="3.5"/><circle cx="291" cy="81" r="3"/>
   </g>
 </svg>

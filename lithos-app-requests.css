@@ -3,7 +3,7 @@
     isolation: isolate;
     overflow: hidden;
     background: linear-gradient(145deg, rgba(24, 26, 24, .97), rgba(10, 12, 10, .98)) !important;
-    border-color: rgba(232, 112, 42, .28) !important;
+    border-color: rgba(232,42,127,.28) !important;
     box-shadow: 0 18px 46px rgba(0, 0, 0, .3);
 }
 
@@ -32,14 +32,14 @@
 }
 
 #view-requests .request-tab:hover {
-    color: #f2a45a;
-    background: rgba(232, 112, 42, .08);
+    color: #f25a9e;
+    background: rgba(232,42,127,.08);
 }
 
 #view-requests .request-tab.active {
     color: #fff !important;
-    background: linear-gradient(135deg, #ed7a32, #c34c1b) !important;
-    box-shadow: 0 9px 22px rgba(232, 112, 42, .24);
+    background: linear-gradient(135deg, #ed3286, #c31b67) !important;
+    box-shadow: 0 9px 22px rgba(232,42,127,.24);
 }
 
 #view-requests .request-tab span {
@@ -70,8 +70,8 @@
 }
 
 #view-requests .request-text-input:focus {
-    border-color: #e8702a !important;
-    box-shadow: 0 0 0 4px rgba(232, 112, 42, .12), inset 0 1px 8px rgba(0, 0, 0, .24) !important;
+    border-color: #e82a7f !important;
+    box-shadow: 0 0 0 4px rgba(232,42,127,.12), inset 0 1px 8px rgba(0, 0, 0, .24) !important;
 }
 
 #view-requests .request-composer-actions {
@@ -86,8 +86,8 @@
 }
 
 #view-requests .request-compose-priority:hover {
-    color: #f2a45a;
-    background: rgba(232, 112, 42, .07);
+    color: #f25a9e;
+    background: rgba(232,42,127,.07);
 }
 
 #view-requests .request-checkmark {
@@ -96,12 +96,12 @@
 }
 
 #view-requests .request-status-control input:checked + .request-checkmark {
-    background: linear-gradient(135deg, #e8702a, #bd491a) !important;
-    border-color: #f29455 !important;
+    background: linear-gradient(135deg, #e82a7f, #bd1a63) !important;
+    border-color: #f2559c !important;
 }
 
 #view-requests .request-image-preview-item img {
-    border-color: rgba(232, 112, 42, .34);
+    border-color: rgba(232,42,127,.34);
     box-shadow: 0 8px 20px rgba(0, 0, 0, .3);
 }
 
@@ -133,19 +133,19 @@
 }
 
 #view-requests .request-item:hover {
-    border-color: rgba(232, 112, 42, .34) !important;
+    border-color: rgba(232,42,127,.34) !important;
     transform: translateY(-2px);
 }
 
 #view-requests .request-item.is-priority {
-    border-color: rgba(242, 164, 90, .5) !important;
-    box-shadow: inset 3px 0 0 #e8702a, 0 12px 28px rgba(0, 0, 0, .24) !important;
+    border-color: rgba(242,90,158,.5) !important;
+    box-shadow: inset 3px 0 0 #e82a7f, 0 12px 28px rgba(0, 0, 0, .24) !important;
 }
 
 #view-requests .request-sequence {
     color: #fff;
-    background: linear-gradient(135deg, #e8702a, #a43d17);
-    box-shadow: 0 7px 16px rgba(232, 112, 42, .2);
+    background: linear-gradient(135deg, #e82a7f, #a41756);
+    box-shadow: 0 7px 16px rgba(232,42,127,.2);
 }
 
 #view-requests .request-item-text {
@@ -157,7 +157,7 @@
 }
 
 #view-requests .request-priority-label {
-    color: #f2a45a !important;
+    color: #f25a9e !important;
 }
 
 @media (max-width: 640px) {

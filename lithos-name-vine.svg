@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 72" fill="none">
-  <defs><linearGradient id="nameStem" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#70402f"/><stop offset=".55" stop-color="#c65d31"/><stop offset="1" stop-color="#ef9c4d"/></linearGradient></defs>
+  <defs><linearGradient id="nameStem" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#70402f"/><stop offset=".55" stop-color="#c63174"/><stop offset="1" stop-color="#ef4d96"/></linearGradient></defs>
   <path d="M3 50C20 65 39 65 54 51c15-14 16-31 34-39 22-10 38 7 58 8 24 2 39-15 62-12 26 3 42 18 64 10 12-4 20-10 25-15" stroke="url(#nameStem)" stroke-width="4" stroke-linecap="round"/>
   <path d="M3 22C22 7 42 8 58 18c14 9 26 7 38-2M182 17c19-11 36-10 52 1M246 30c16 5 29 3 43-8" stroke="#76513f" stroke-width="2" stroke-linecap="round"/>
   <g fill="#52604d">
     <path d="M31 14C18 2 7 2-2 11c11 14 22 15 33 3Z"/><path d="M54 53c15-8 26-6 33 4-13 10-24 8-33-4Z"/><path d="M105 20C94 6 83 4 73 12c9 15 20 17 32 8Z"/><path d="M151 14c13-10 25-9 34 2-12 12-23 11-34-2Z"/><path d="M211 18c-7-13-5-23 5-30 9 12 8 22-5 30Z"/><path d="M269 24c13-8 25-6 32 5-12 9-23 7-32-5Z"/>
   </g>
-  <g fill="#dd6b32" stroke="#f4aa60" stroke-width="1.5">
-    <g transform="translate(63 47) scale(.43)"><circle cy="-13" r="7"/><circle cx="12" cy="-4" r="7"/><circle cx="7" cy="10" r="7"/><circle cx="-7" cy="10" r="7"/><circle cx="-12" cy="-4" r="7"/><circle r="4" fill="#ffd590"/></g>
-    <g transform="translate(166 19) scale(.38)"><circle cy="-13" r="7"/><circle cx="12" cy="-4" r="7"/><circle cx="7" cy="10" r="7"/><circle cx="-7" cy="10" r="7"/><circle cx="-12" cy="-4" r="7"/><circle r="4" fill="#ffd590"/></g>
-    <g transform="translate(254 22) scale(.36)"><circle cy="-13" r="7"/><circle cx="12" cy="-4" r="7"/><circle cx="7" cy="10" r="7"/><circle cx="-7" cy="10" r="7"/><circle cx="-12" cy="-4" r="7"/><circle r="4" fill="#ffd590"/></g>
+  <g fill="#dd327f" stroke="#f460a3" stroke-width="1.5">
+    <g transform="translate(63 47) scale(.43)"><circle cy="-13" r="7"/><circle cx="12" cy="-4" r="7"/><circle cx="7" cy="10" r="7"/><circle cx="-7" cy="10" r="7"/><circle cx="-12" cy="-4" r="7"/><circle r="4" fill="#ff90c2"/></g>
+    <g transform="translate(166 19) scale(.38)"><circle cy="-13" r="7"/><circle cx="12" cy="-4" r="7"/><circle cx="7" cy="10" r="7"/><circle cx="-7" cy="10" r="7"/><circle cx="-12" cy="-4" r="7"/><circle r="4" fill="#ff90c2"/></g>
+    <g transform="translate(254 22) scale(.36)"><circle cy="-13" r="7"/><circle cx="12" cy="-4" r="7"/><circle cx="7" cy="10" r="7"/><circle cx="-7" cy="10" r="7"/><circle cx="-12" cy="-4" r="7"/><circle r="4" fill="#ff90c2"/></g>
   </g>
 </svg>

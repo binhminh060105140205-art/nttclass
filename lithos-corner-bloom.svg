@@ -2,8 +2,8 @@
   <defs>
     <linearGradient id="cornerStem" x1="0" y1="1" x2="1" y2="0">
       <stop offset="0" stop-color="#75402d"/>
-      <stop offset=".6" stop-color="#c45c31"/>
-      <stop offset="1" stop-color="#e99a52"/>
+      <stop offset=".6" stop-color="#c43173"/>
+      <stop offset="1" stop-color="#e95296"/>
     </linearGradient>
   </defs>
   <path d="M-8 148C38 133 57 111 80 88c25-25 47-34 72-36 24-2 43-13 66-45" stroke="url(#cornerStem)" stroke-width="5" stroke-linecap="round"/>
@@ -16,10 +16,10 @@
     <path d="M151 25c-9-14-8-25 1-33 10 11 10 22-1 33Z"/>
     <path d="M181 43c13-8 25-6 32 5-13 9-24 7-32-5Z"/>
   </g>
-  <g fill="#dd6b32" stroke="#f4ab62" stroke-width="2">
-    <g transform="translate(78 91) scale(.78)"><circle cy="-13" r="7"/><circle cx="12" cy="-4" r="7"/><circle cx="7" cy="10" r="7"/><circle cx="-7" cy="10" r="7"/><circle cx="-12" cy="-4" r="7"/><circle r="4" fill="#ffd58e"/></g>
-    <g transform="translate(153 52) scale(.62)"><circle cy="-13" r="7"/><circle cx="12" cy="-4" r="7"/><circle cx="7" cy="10" r="7"/><circle cx="-7" cy="10" r="7"/><circle cx="-12" cy="-4" r="7"/><circle r="4" fill="#ffd58e"/></g>
-    <g transform="translate(194 36) scale(.46)"><circle cy="-13" r="7"/><circle cx="12" cy="-4" r="7"/><circle cx="7" cy="10" r="7"/><circle cx="-7" cy="10" r="7"/><circle cx="-12" cy="-4" r="7"/><circle r="4" fill="#ffd58e"/></g>
+  <g fill="#dd327f" stroke="#f462a4" stroke-width="2">
+    <g transform="translate(78 91) scale(.78)"><circle cy="-13" r="7"/><circle cx="12" cy="-4" r="7"/><circle cx="7" cy="10" r="7"/><circle cx="-7" cy="10" r="7"/><circle cx="-12" cy="-4" r="7"/><circle r="4" fill="#ff8ec1"/></g>
+    <g transform="translate(153 52) scale(.62)"><circle cy="-13" r="7"/><circle cx="12" cy="-4" r="7"/><circle cx="7" cy="10" r="7"/><circle cx="-7" cy="10" r="7"/><circle cx="-12" cy="-4" r="7"/><circle r="4" fill="#ff8ec1"/></g>
+    <g transform="translate(194 36) scale(.46)"><circle cy="-13" r="7"/><circle cx="12" cy="-4" r="7"/><circle cx="7" cy="10" r="7"/><circle cx="-7" cy="10" r="7"/><circle cx="-12" cy="-4" r="7"/><circle r="4" fill="#ff8ec1"/></g>
   </g>
-  <g fill="#f2a45a"><circle cx="31" cy="116" r="3"/><circle cx="101" cy="66" r="3"/><circle cx="132" cy="44" r="2.8"/><circle cx="173" cy="25" r="2.7"/></g>
+  <g fill="#f25a9e"><circle cx="31" cy="116" r="3"/><circle cx="101" cy="66" r="3"/><circle cx="132" cy="44" r="2.8"/><circle cx="173" cy="25" r="2.7"/></g>
 </svg>

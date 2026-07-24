@@ -28,12 +28,12 @@ html[data-app-theme="lithos"] .main-content:not(.hidden)::after {
     bottom: auto !important;
     width: min(82vw, 1240px) !important;
     height: calc(100vh - 72px) !important;
-    background-image: url('https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260609_195923_b0ba8ace-1d1d-4f2c-9a28-1ab84b330680.png&w=1280&q=85') !important;
+    background-image: url('lithos-wood-pink.webp?v=20260724-pink1') !important;
     background-position: right center !important;
     background-size: contain !important;
     opacity: .24 !important;
     mix-blend-mode: screen !important;
-    filter: brightness(1.18) saturate(1.15) contrast(1.16) drop-shadow(0 0 28px rgba(232, 112, 42, .12)) !important;
+    filter: brightness(1.18) saturate(1.15) contrast(1.16) drop-shadow(0 0 28px rgba(232,42,127,.12)) !important;
 }
 
 html[data-app-theme="lithos"] .top-header::before {
@@ -41,7 +41,7 @@ html[data-app-theme="lithos"] .top-header::before {
     right: -42px !important;
     width: 142px !important;
     height: 96px !important;
-    background-image: url('lithos-corner-bloom.svg') !important;
+    background-image: url('lithos-corner-bloom.svg?v=20260724-pink1') !important;
     opacity: .62 !important;
 }
 
@@ -51,7 +51,7 @@ html[data-app-theme="lithos"] .top-header::after {
     bottom: -52px !important;
     width: 118px !important;
     height: 82px !important;
-    background-image: url('lithos-corner-bloom.svg') !important;
+    background-image: url('lithos-corner-bloom.svg?v=20260724-pink1') !important;
     opacity: .38 !important;
 }
 
@@ -60,7 +60,7 @@ html[data-app-theme="lithos"] .view-section.active-view::after {
     z-index: 0 !important;
     width: 142px !important;
     height: 96px !important;
-    background-image: url('lithos-corner-bloom.svg') !important;
+    background-image: url('lithos-corner-bloom.svg?v=20260724-pink1') !important;
     opacity: .5 !important;
     mix-blend-mode: screen !important;
 }
@@ -91,12 +91,12 @@ html[data-app-theme="lithos"] #view-requests .requests-card::before {
     bottom: -34px !important;
     width: 96% !important;
     height: 94% !important;
-    background-image: url('https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260609_195923_b0ba8ace-1d1d-4f2c-9a28-1ab84b330680.png&w=1280&q=85') !important;
+    background-image: url('lithos-wood-pink.webp?v=20260724-pink1') !important;
     background-position: center bottom !important;
     background-size: contain !important;
     opacity: .34 !important;
     mix-blend-mode: screen !important;
-    filter: brightness(1.3) saturate(1.25) contrast(1.22) drop-shadow(0 0 24px rgba(232, 112, 42, .18)) !important;
+    filter: brightness(1.3) saturate(1.25) contrast(1.22) drop-shadow(0 0 24px rgba(232,42,127,.18)) !important;
 }
 
 html[data-app-theme="lithos"] #view-requests .requests-card::after,
@@ -105,12 +105,12 @@ html[data-app-theme="lithos"] #view-scheduler > .glass-card::after {
     bottom: -24px !important;
     width: 126px !important;
     height: 86px !important;
-    background-image: url('lithos-corner-bloom.svg') !important;
+    background-image: url('lithos-corner-bloom.svg?v=20260724-pink1') !important;
     background-position: right bottom !important;
     background-size: contain !important;
     opacity: .44 !important;
     mix-blend-mode: screen !important;
-    filter: saturate(1.18) drop-shadow(0 0 14px rgba(232, 112, 42, .14)) !important;
+    filter: saturate(1.18) drop-shadow(0 0 14px rgba(232,42,127,.14)) !important;
 }
 
 html[data-app-theme="lithos"] #view-requests .requests-card::after,
@@ -149,7 +149,7 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .view-section.active-view
 html[data-app-theme="lithos"][data-theme-mode="light"] #view-requests .requests-card::after,
 html[data-app-theme="lithos"][data-theme-mode="light"] #view-scheduler > .glass-card::after {
     mix-blend-mode: multiply !important;
-    filter: saturate(1.35) contrast(1.08) drop-shadow(0 5px 10px rgba(113, 48, 27, .18)) !important;
+    filter: saturate(1.35) contrast(1.08) drop-shadow(0 5px 10px rgba(113,27,66,.18)) !important;
 }
 
 

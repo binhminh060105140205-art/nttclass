@@ -13,9 +13,9 @@ html[data-app-theme="lithos"] :is(#btnOpenCreateSession, #addNewStudentBtn, #req
     z-index: 2;
     inset: -29px -42px;
     pointer-events: none;
-    background: url('lithos-button-vine-wrap.svg') center / 100% 100% no-repeat !important;
+    background: url('lithos-button-vine-wrap.svg?v=20260724-pink1') center / 100% 100% no-repeat !important;
     opacity: .82;
-    filter: saturate(1.3) contrast(1.08) drop-shadow(0 6px 9px rgba(48, 23, 15, .28));
+    filter: saturate(1.3) contrast(1.08) drop-shadow(0 6px 9px rgba(48,15,30,.28));
     transform: scale(.98);
     transform-origin: center;
     transition: opacity .3s ease, transform .45s cubic-bezier(.2,.8,.2,1), filter .3s ease;
@@ -24,13 +24,13 @@ html[data-app-theme="lithos"] :is(#btnOpenCreateSession, #addNewStudentBtn, #req
 html[data-app-theme="lithos"] :is(#btnOpenCreateSession, #addNewStudentBtn, #requestSubmitBtn, #saveBatchScoresBtn):hover::before,
 html[data-app-theme="lithos"] :is(#btnOpenCreateSession, #addNewStudentBtn, #requestSubmitBtn, #saveBatchScoresBtn):focus-visible::before {
     opacity: 1;
-    filter: saturate(1.5) contrast(1.12) drop-shadow(0 8px 12px rgba(232, 112, 42, .34));
+    filter: saturate(1.5) contrast(1.12) drop-shadow(0 8px 12px rgba(232,42,127,.34));
     transform: scale(1.045) rotate(.45deg);
 }
 
 html[data-app-theme="lithos"][data-theme-mode="light"] :is(#btnOpenCreateSession, #addNewStudentBtn, #requestSubmitBtn, #saveBatchScoresBtn)::before {
     mix-blend-mode: multiply;
-    filter: saturate(1.35) contrast(1.06) drop-shadow(0 5px 8px rgba(113, 48, 27, .2));
+    filter: saturate(1.35) contrast(1.06) drop-shadow(0 5px 8px rgba(113,27,66,.2));
 }
 
 @media (max-width: 767px) {
@@ -53,14 +53,14 @@ html[data-app-theme="lithos"] #sidebarUserName {
     position: relative;
     z-index: 1;
     padding: 4px 18px 5px 8px;
-    background: url('lithos-name-vine.svg') center / 100% 54px no-repeat;
+    background: url('lithos-name-vine.svg?v=20260724-pink1') center / 100% 54px no-repeat;
     text-shadow: 0 1px 5px rgba(9, 12, 14, .58);
     transition: background-size .4s cubic-bezier(.2,.8,.2,1), filter .3s ease;
 }
 
 html[data-app-theme="lithos"] #sidebarUserName:hover {
     background-size: 106% 58px;
-    filter: saturate(1.18) drop-shadow(0 5px 8px rgba(232, 112, 42, .2));
+    filter: saturate(1.18) drop-shadow(0 5px 8px rgba(232,42,127,.2));
 }
 
 html[data-app-theme="lithos"] :is(#btnExportInvoice, #aiChatSendBtn, #saveSessionBtn)::after {
@@ -74,9 +74,9 @@ html[data-app-theme="lithos"] :is(#btnExportInvoice, #aiChatSendBtn, #saveSessio
     width: 62px;
     height: 48px;
     pointer-events: none;
-    background: url('lithos-corner-bloom.svg') center / contain no-repeat !important;
+    background: url('lithos-corner-bloom.svg?v=20260724-pink1') center / contain no-repeat !important;
     opacity: .78;
-    filter: saturate(1.26) drop-shadow(0 4px 7px rgba(48, 23, 15, .24));
+    filter: saturate(1.26) drop-shadow(0 4px 7px rgba(48,15,30,.24));
     transform: rotate(7deg);
     transition: opacity .25s ease, transform .35s ease;
 }
@@ -88,12 +88,12 @@ html[data-app-theme="lithos"] :is(#btnExportInvoice, #aiChatSendBtn, #saveSessio
 }
 
 html[data-app-theme="lithos"][data-theme-mode="light"] #sidebarUserName {
-    filter: saturate(1.12) drop-shadow(0 4px 7px rgba(113, 48, 27, .16));
+    filter: saturate(1.12) drop-shadow(0 4px 7px rgba(113,27,66,.16));
 }
 
 html[data-app-theme="lithos"][data-theme-mode="light"] :is(#btnExportInvoice, #aiChatSendBtn, #saveSessionBtn)::after {
     mix-blend-mode: multiply;
-    filter: saturate(1.28) drop-shadow(0 4px 7px rgba(113, 48, 27, .16));
+    filter: saturate(1.28) drop-shadow(0 4px 7px rgba(113,27,66,.16));
 }
 
 @media (max-width: 767px) {
@@ -103,14 +103,14 @@ html[data-app-theme="lithos"][data-theme-mode="light"] :is(#btnExportInvoice, #a
 
 
 html[data-app-theme="lithos"] .stats-grid .stat-card {
-    background-image: url('lithos-stat-bloom.svg'), linear-gradient(145deg, rgba(38, 40, 36, .96), rgba(18, 20, 18, .96)) !important;
+    background-image: url('lithos-stat-bloom.svg?v=20260724-pink1'), linear-gradient(145deg, rgba(38, 40, 36, .96), rgba(18, 20, 18, .96)) !important;
     background-repeat: no-repeat, no-repeat;
     background-position: right -8px bottom -8px, 0 0;
     background-size: 76px 52px, auto;
 }
 
 html[data-app-theme="lithos"][data-theme-mode="light"] .stats-grid .stat-card {
-    background-image: url('lithos-stat-bloom.svg'), linear-gradient(145deg, rgba(255, 253, 249, .98), rgba(250, 240, 231, .94)) !important;
+    background-image: url('lithos-stat-bloom.svg?v=20260724-pink1'), linear-gradient(145deg, rgba(255, 253, 249, .98), rgba(250,231,240,.94)) !important;
     background-position: right -8px bottom -8px, 0 0;
     background-size: 76px 52px, auto;
 }
@@ -121,14 +121,14 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .stats-grid .stat-card {
 
 
 html[data-app-theme="lithos"] :is(#view-dashboard, #view-scheduler, #view-tuition) .stats-grid .stat-card {
-    background-image: url('lithos-stat-bloom.svg'), linear-gradient(145deg, rgba(38, 40, 36, .96), rgba(18, 20, 18, .96)) !important;
+    background-image: url('lithos-stat-bloom.svg?v=20260724-pink1'), linear-gradient(145deg, rgba(38, 40, 36, .96), rgba(18, 20, 18, .96)) !important;
     background-repeat: no-repeat, no-repeat !important;
     background-position: right -8px bottom -8px, 0 0 !important;
     background-size: 76px 52px, auto !important;
 }
 
 html[data-app-theme="lithos"][data-theme-mode="light"] :is(#view-dashboard, #view-scheduler, #view-tuition) .stats-grid .stat-card {
-    background-image: url('lithos-stat-bloom.svg'), linear-gradient(145deg, rgba(255, 253, 249, .98), rgba(250, 240, 231, .94)) !important;
+    background-image: url('lithos-stat-bloom.svg?v=20260724-pink1'), linear-gradient(145deg, rgba(255, 253, 249, .98), rgba(250,231,240,.94)) !important;
 }
 
 
@@ -158,21 +158,21 @@ html[data-app-theme="lithos"] #sidebarUserName::before {
     z-index: -1;
     inset: -18px -32px;
     pointer-events: none;
-    background: url('lithos-name-vine.svg') center / 100% 82px no-repeat;
+    background: url('lithos-name-vine.svg?v=20260724-pink1') center / 100% 82px no-repeat;
     opacity: 1;
-    filter: saturate(1.45) contrast(1.1) drop-shadow(0 6px 9px rgba(232, 112, 42, .28));
+    filter: saturate(1.45) contrast(1.1) drop-shadow(0 6px 9px rgba(232,42,127,.28));
     transform: scale(1.04);
     transition: transform .4s cubic-bezier(.2,.8,.2,1), filter .3s ease;
 }
 
 html[data-app-theme="lithos"] #sidebarUserName:hover::before {
     transform: scale(1.12) rotate(.5deg);
-    filter: saturate(1.65) contrast(1.14) drop-shadow(0 8px 13px rgba(232, 112, 42, .4));
+    filter: saturate(1.65) contrast(1.14) drop-shadow(0 8px 13px rgba(232,42,127,.4));
 }
 
 html[data-app-theme="lithos"][data-theme-mode="light"] #sidebarUserName::before {
     mix-blend-mode: multiply;
-    filter: saturate(1.42) contrast(1.08) drop-shadow(0 6px 9px rgba(113, 48, 27, .22));
+    filter: saturate(1.42) contrast(1.08) drop-shadow(0 6px 9px rgba(113,27,66,.22));
 }
 
 @media (max-width: 767px) {

@@ -1,6 +1,6 @@
 #view-scheduler > .glass-card {
     background: linear-gradient(145deg, rgba(27, 29, 27, .97), rgba(13, 15, 13, .97)) !important;
-    border-color: rgba(232, 112, 42, .24) !important;
+    border-color: rgba(232,42,127,.24) !important;
 }
 
 #view-scheduler .calendar-view-switcher {
@@ -13,14 +13,14 @@
 }
 
 #view-scheduler .cal-view-btn:hover {
-    color: #f2a45a;
-    background: rgba(232, 112, 42, .08);
+    color: #f25a9e;
+    background: rgba(232,42,127,.08);
 }
 
 #view-scheduler .cal-view-btn.active {
     color: #fff;
-    background: linear-gradient(135deg, #e8702a, #bd491a);
-    box-shadow: 0 8px 22px rgba(232, 112, 42, .22);
+    background: linear-gradient(135deg, #e82a7f, #bd1a63);
+    box-shadow: 0 8px 22px rgba(232,42,127,.22);
 }
 
 #view-scheduler .week-calendar-wrapper,
@@ -80,13 +80,13 @@
 }
 
 #view-scheduler .week-day-header.is-today {
-    background: linear-gradient(180deg, rgba(232, 112, 42, .2), rgba(232, 112, 42, .07)) !important;
-    box-shadow: inset 0 -2px 0 #e8702a;
+    background: linear-gradient(180deg, rgba(232,42,127,.2), rgba(232,42,127,.07)) !important;
+    box-shadow: inset 0 -2px 0 #e82a7f;
 }
 
 #view-scheduler .week-day-header.is-today .day-name,
 #view-scheduler .week-day-header.is-today .day-date {
-    color: #ff9a55 !important;
+    color: #ff55a1 !important;
 }
 
 #view-scheduler .month-day-cell {
@@ -94,7 +94,7 @@
 }
 
 #view-scheduler .month-day-cell:hover {
-    background: rgba(232, 112, 42, .1) !important;
+    background: rgba(232,42,127,.1) !important;
 }
 
 #view-scheduler .month-day-cell.is-outside-month {
@@ -103,12 +103,12 @@
 }
 
 #view-scheduler .month-day-cell.is-today {
-    box-shadow: inset 0 0 0 1px rgba(232, 112, 42, .7);
+    box-shadow: inset 0 0 0 1px rgba(232,42,127,.7);
 }
 
 #view-scheduler .month-day-cell.is-today .month-day-number {
     color: #fff !important;
-    background: linear-gradient(135deg, #e8702a, #bd491a) !important;
+    background: linear-gradient(135deg, #e82a7f, #bd1a63) !important;
 }
 
 #view-scheduler .week-event-block,
@@ -119,16 +119,16 @@
 
 #view-scheduler .week-event-block.type-rieng,
 #view-scheduler .month-day-event.type-rieng {
-    color: #fff7ef !important;
-    background: linear-gradient(145deg, #a95428, #71351f) !important;
-    border-left-color: #f1a166 !important;
+    color: #ffeff6 !important;
+    background: linear-gradient(145deg, #a92862, #711f44) !important;
+    border-left-color: #f166a5 !important;
 }
 
 #view-scheduler .week-event-block.type-chung,
 #view-scheduler .month-day-event.type-chung {
     color: #fff !important;
-    background: linear-gradient(145deg, #ef7c32, #b84318) !important;
-    border-left-color: #ffd0ad !important;
+    background: linear-gradient(145deg, #ef3287, #b81860) !important;
+    border-left-color: #ffadd2 !important;
 }
 
 #view-scheduler .week-event-block:hover {
@@ -142,7 +142,7 @@
 }
 
 #view-scheduler .week-calendar-scroll::-webkit-scrollbar-thumb {
-    background: linear-gradient(#6e3822, #e8702a) !important;
+    background: linear-gradient(#6e2244, #e82a7f) !important;
     border: 3px solid #0a0c0a;
     border-radius: 999px;
 }
