@@ -1054,7 +1054,6 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     async handleLogSession() {
-        const type = document.getElementById('sessionType').value;
         const sessionName = document.getElementById('sessionName').value.trim();
         const date = document.getElementById('sessionDate').value;
         const startTime = document.getElementById('sessionStartTime').value;
@@ -1087,10 +1086,8 @@ Object.assign(PinkyClassApp.prototype, {
             this.showToast("Vui lòng chọn ít nhất một học sinh tham gia!", "error");
             return;
         }
-        if (type === 'riêng' && checkedBoxes.length > 1) {
-            this.showToast("Loại 1-1 chỉ được chọn đúng 1 học sinh!", "error");
-            return;
-        }
+        const type = checkedBoxes.length > 1 ? 'chung' : 'riêng';
+        document.getElementById('sessionType').value = type;
 
         // Cảnh báo trùng lịch: cùng ngày, khung giờ giao nhau với 1 buổi học
         // khác đã có — trước đây không kiểm tra nên rất dễ vô tình xếp 2 ca
@@ -1253,7 +1250,6 @@ Object.assign(PinkyClassApp.prototype, {
         const sess = this.sessions.find(x => x.id === id);
         if (!sess) return;
 
-        const type = document.getElementById('editSessionType').value;
         const sessionName = document.getElementById('editSessionName').value.trim();
         const date = document.getElementById('editSessionDate').value;
         const startTime = document.getElementById('editSessionStartTime').value;
@@ -1285,10 +1281,8 @@ Object.assign(PinkyClassApp.prototype, {
             this.showToast("Vui lòng chọn ít nhất một học sinh tham gia!", "error");
             return;
         }
-        if (type === 'riêng' && checkedBoxes.length > 1) {
-            this.showToast("Loại 1-1 chỉ được chọn đúng 1 học sinh!", "error");
-            return;
-        }
+        const type = checkedBoxes.length > 1 ? 'chung' : 'riêng';
+        document.getElementById('editSessionType').value = type;
 
         // Cảnh báo trùng lịch (loại trừ chính buổi học đang sửa)
         const overlap = this.findOverlappingSession(date, startTime, endTime, id);
@@ -1596,12 +1590,9 @@ Object.assign(PinkyClassApp.prototype, {
     // mới (tự tick đúng học sinh đang được lọc ở trang Nhật ký học tập, nếu có).
     renderStudentSelectionGrid(containerId, preselectedIds = null) {
         const prefix = containerId === 'studentsCheckboxGrid' ? 'session' : 'editSession';
-        const typeSelectId = prefix === 'session' ? 'sessionType' : 'editSessionType';
         const grid = document.getElementById(containerId);
         if (!grid) return;
         grid.innerHTML = '';
-
-        const isGroupTypeNow = document.getElementById(typeSelectId).value === 'chung';
 
         // Gom học sinh theo lớp, giữ nguyên thứ tự học sinh trong từng lớp;
         // sắp xếp các lớp theo số lớp tăng dần (lớp không xác định được số thì xếp cuối).
@@ -1646,7 +1637,6 @@ Object.assign(PinkyClassApp.prototype, {
             const selectAllCheckbox = document.createElement('input');
             selectAllCheckbox.type = 'checkbox';
             selectAllCheckbox.className = 'select-all-class-checkbox';
-            selectAllCheckbox.disabled = !isGroupTypeNow;
             const selectAllText = document.createElement('span');
             selectAllText.innerText = 'Chọn cả lớp';
             selectAllLabel.appendChild(selectAllCheckbox);
@@ -1682,23 +1672,14 @@ Object.assign(PinkyClassApp.prototype, {
                     anyCheckedInGroup = true;
                 }
 
-                // Học riêng (private) => chỉ được chọn đúng 1 học sinh: hành xử như radio.
-                // QUAN TRỌNG: đọc lại giá trị "riêng/chung" MỚI NHẤT ngay trong lúc bấm,
-                // thay vì dùng biến đã "chốt cứng" từ lúc vẽ checkbox lần đầu.
                 checkbox.addEventListener('change', () => {
-                    const isPrivateNow = document.getElementById(typeSelectId).value !== 'chung';
-                    if (isPrivateNow && checkbox.checked) {
-                        grid.querySelectorAll('input[type="checkbox"]').forEach(other => {
-                            if (other !== checkbox) other.checked = false;
-                        });
-                    }
                     // Học sinh vừa đổi -> cho phép gợi ý lại học phí cơ bản của
                     // học sinh MỚI (xóa cờ "người dùng đã tự sửa" của lần chọn trước).
                     const priceInputId = prefix === 'session' ? 'sessionPrice' : 'editSessionPrice';
                     const priceEl = document.getElementById(priceInputId);
                     if (priceEl) delete priceEl.dataset.userEdited;
                     selectAllCheckbox.checked = Array.from(body.querySelectorAll('input[type="checkbox"]')).every(cb => cb.checked);
-                    this.updateSessionPricing(prefix);
+                    this.syncSessionTypeFromSelection(prefix);
                     this.updateSessionNameFromSelectedClasses(prefix);
                 });
 
@@ -1724,17 +1705,11 @@ Object.assign(PinkyClassApp.prototype, {
             });
 
             selectAllCheckbox.addEventListener('change', () => {
-                const isPrivateNow = document.getElementById(typeSelectId).value !== 'chung';
-                if (isPrivateNow) {
-                    selectAllCheckbox.checked = false;
-                    this.showToast('Loại 1-1 chỉ được chọn 1 học sinh, không thể chọn cả lớp.', 'error');
-                    return;
-                }
                 body.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = selectAllCheckbox.checked; });
                 const priceInputId = prefix === 'session' ? 'sessionPrice' : 'editSessionPrice';
                 const priceEl = document.getElementById(priceInputId);
                 if (priceEl) delete priceEl.dataset.userEdited;
-                this.updateSessionPricing(prefix);
+                this.syncSessionTypeFromSelection(prefix);
                 this.updateSessionNameFromSelectedClasses(prefix);
             });
 
@@ -1749,7 +1724,7 @@ Object.assign(PinkyClassApp.prototype, {
         const searchInput = document.getElementById(searchInputId);
         if (searchInput) this.filterStudentCheckboxGrid(containerId, searchInput.value);
 
-        this.updateSessionPricing(prefix);
+        this.syncSessionTypeFromSelection(prefix);
         this.updateSessionNameFromSelectedClasses(prefix);
     },
 
@@ -1820,8 +1795,18 @@ Object.assign(PinkyClassApp.prototype, {
         });
     },
 
-    // Áp dụng quy tắc "Học riêng chỉ 1 học sinh / Học chung nhiều học sinh" khi
-    // đổi loại buổi học, và cập nhật lại nhãn + đơn giá tương ứng.
+    // Tự xác định loại buổi theo số học sinh: 1 em là học riêng, từ 2 em là
+    // học chung. Giá trị này vẫn được lưu để tương thích dữ liệu cũ.
+    syncSessionTypeFromSelection(prefix) {
+        const typeSelectId = prefix === 'session' ? 'sessionType' : 'editSessionType';
+        const gridName = prefix === 'session' ? 'sessionStudents' : 'editSessionStudents';
+        const typeEl = document.getElementById(typeSelectId);
+        if (!typeEl) return;
+        const checkedCount = document.querySelectorAll(`input[name="${gridName}"]:checked`).length;
+        typeEl.value = checkedCount > 1 ? 'chung' : 'riêng';
+        this.applySessionTypeRules(prefix);
+    },
+
     syncSessionTypeChoice(prefix) {
         const selectId = prefix === 'session' ? 'sessionType' : 'editSessionType';
         const choiceName = prefix === 'session' ? 'sessionTypeChoice' : 'editSessionTypeChoice';
@@ -1842,22 +1827,9 @@ Object.assign(PinkyClassApp.prototype, {
             priceLabel.innerText = isGroup ? 'Đơn giá buổi học (VNĐ/học sinh)' : 'Học phí buổi học (VNĐ)';
         }
 
-        if (!isGroup) {
-            // Chuyển sang "riêng": nếu đang chọn nhiều hơn 1 học sinh thì chỉ giữ lại học sinh đầu tiên.
-            const checked = document.querySelectorAll(`#${gridId} input[type="checkbox"]:checked`);
-            checked.forEach((cb, idx) => { if (idx > 0) cb.checked = false; });
-        }
-
-        // "Chọn cả lớp" chỉ có ý nghĩa với Học chung — khoá lại khi chuyển sang Học riêng.
         document.querySelectorAll(`#${gridId} .select-all-class-checkbox`).forEach(cb => {
-            cb.disabled = !isGroup;
-            if (!isGroup) cb.checked = false;
+            cb.disabled = false;
         });
-
-        // Đổi loại buổi học -> cho phép gợi ý lại học phí (xóa cờ "đã tự sửa").
-        const priceInputId = prefix === 'session' ? 'sessionPrice' : 'editSessionPrice';
-        const priceEl = document.getElementById(priceInputId);
-        if (priceEl) delete priceEl.dataset.userEdited;
 
         this.updateSessionPricing(prefix);
     },

@@ -661,27 +661,13 @@
                 <form id="sessionLoggerForm" style="display: flex; flex-direction: column; min-height: 0;">
                     <div class="modal-body" style="overflow-y: auto; min-height: 0;">
                         <div class="grid-form">
-                            <!-- Session Type (1-on-1 vs Group) -->
-                            <div class="form-group">
-                                <label>Loại buổi học <span style="color:red;">*</span></label>
-                                <div class="session-type-choice-group" role="radiogroup" aria-label="Loại buổi học">
-                                    <label class="session-type-choice">
-                                        <input type="radio" name="sessionTypeChoice" value="riêng" checked>
-                                        <span>1-1</span>
-                                    </label>
-                                    <label class="session-type-choice">
-                                        <input type="radio" name="sessionTypeChoice" value="chung">
-                                        <span>Lớp học</span>
-                                    </label>
-                                </div>
-                                <select id="sessionType" class="session-type-select-hidden" required aria-hidden="true" tabindex="-1">
-                                    <option value="riêng">1-1</option>
-                                    <option value="chung">Lớp học</option>
-                                </select>
-                            </div>
+                            <select id="sessionType" class="session-type-select-hidden" required aria-hidden="true" tabindex="-1">
+                                <option value="riêng">1-1</option>
+                                <option value="chung">Lớp học</option>
+                            </select>
 
                             <!-- Students selection grid -->
-                            <div class="form-group form-group-half">
+                            <div class="form-group form-group-full">
                                 <label>Chọn học sinh tham gia <span style="color:red;">*</span></label>
                                 <input type="text" id="studentsCheckboxSearch" class="form-control student-check-search"
                                        placeholder="Tìm theo tên hoặc lớp (VD: Lớp 6, 6, Khánh Hà...)">
@@ -1273,25 +1259,12 @@
                 <input type="hidden" id="editSessionId">
                 <div class="modal-body" style="overflow-y: auto; min-height: 0;">
                     <div class="grid-form">
-                        <div class="form-group">
-                            <label>Loại buổi học <span style="color:red;">*</span></label>
-                            <div class="session-type-choice-group" role="radiogroup" aria-label="Loại buổi học">
-                                <label class="session-type-choice">
-                                    <input type="radio" name="editSessionTypeChoice" value="riêng" checked>
-                                    <span>1-1</span>
-                                </label>
-                                <label class="session-type-choice">
-                                    <input type="radio" name="editSessionTypeChoice" value="chung">
-                                    <span>Lớp học</span>
-                                </label>
-                            </div>
-                            <select id="editSessionType" class="session-type-select-hidden" required aria-hidden="true" tabindex="-1">
-                                <option value="riêng">1-1</option>
-                                <option value="chung">Lớp học</option>
-                            </select>
-                        </div>
+                        <select id="editSessionType" class="session-type-select-hidden" required aria-hidden="true" tabindex="-1">
+                            <option value="riêng">1-1</option>
+                            <option value="chung">Lớp học</option>
+                        </select>
                         
-                        <div class="form-group form-group-half">
+                        <div class="form-group form-group-full">
                             <label>Học sinh tham gia <span style="color:red;">*</span></label>
                             <input type="text" id="editStudentsCheckboxSearch" class="form-control student-check-search"
                                    placeholder="Tìm theo tên hoặc lớp (VD: Lớp 6, 6, Khánh Hà...)">
@@ -1644,7 +1617,7 @@
     <script src="dashboard.js"></script>
     <script src="student-logs.js"></script>
     <script src="scores.js"></script>
-    <script src="calendar.js"></script>
+    <script src="calendar.js?v=20260725-auto-session-type1"></script>
     <script src="tuition-export.js"></script>
     <script src="students.js"></script>
     <script src="ai-chat.js"></script>
