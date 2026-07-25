@@ -316,7 +316,11 @@ Object.assign(PinkyClassApp.prototype, {
             this.clearAiChat();
         });
 
-        this.initRequestsFeature();
+        try {
+            this.initRequestsFeature();
+        } catch (error) {
+            console.error('[initRequestsFeature]', error);
+        }
 
         // Tải ảnh QR thanh toán lên phiếu học phí (tuỳ chọn) — đọc file thành
         // base64 để nhúng thẳng vào ảnh xuất ra (không cần lưu file lên server).
