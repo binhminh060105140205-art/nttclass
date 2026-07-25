@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Comfortaa:wght@400;500;600;700&family=Condiment&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=20260725-session-layout1">
     <link rel="stylesheet" href="landing-orbis.css?v=20260724-pink1">
     <link rel="stylesheet" href="landing-orbis-fixes.css?v=20260724-click-fix1">
     <link id="appThemeStylesheet" rel="stylesheet" href="lithos-app-theme.css?v=20260724-light-audit1" disabled>
@@ -603,7 +603,7 @@
                 </div>
                 <form id="sessionLoggerForm" style="display: flex; flex-direction: column; min-height: 0;">
                     <div class="modal-body" style="overflow-y: auto; min-height: 0;">
-                        <div class="grid-form">
+                        <div class="grid-form session-form-grid">
                             <select id="sessionType" class="session-type-select-hidden" required aria-hidden="true" tabindex="-1">
                                 <option value="riêng">1-1</option>
                                 <option value="chung">Lớp học</option>
@@ -619,37 +619,17 @@
                                 </div>
                             </div>
 
-                            <!-- Tên ca học -->
+                            <!-- Dòng 1: Tên ca học - Ngày học - Học phí/buổi -->
                             <div class="form-group">
                                 <label for="sessionName">Tên ca học</label>
                                 <input type="text" id="sessionName" class="form-control" maxlength="100" placeholder="Ví dụ: Ca sáng, Ôn thi giữa kỳ...">
                             </div>
 
-                            <!-- Date picker -->
                             <div class="form-group">
                                 <label for="sessionDate">Ngày học <span style="color:red;">*</span></label>
                                 <input type="date" id="sessionDate" class="form-control" required>
                             </div>
 
-                            <!-- Start time -->
-                            <div class="form-group">
-                                <label for="sessionStartTime">Giờ bắt đầu <span style="color:red;">*</span></label>
-                                <input type="time" id="sessionStartTime" class="form-control" value="16:00" required>
-                            </div>
-
-                            <!-- End time -->
-                            <div class="form-group">
-                                <label for="sessionEndTime">Giờ kết thúc <span style="color:red;">*</span></label>
-                                <input type="time" id="sessionEndTime" class="form-control" value="18:00" required>
-                            </div>
-
-                            <!-- Calculated Hours -->
-                            <div class="form-group">
-                                <label for="sessionHours">Số giờ học</label>
-                                <input type="number" id="sessionHours" class="form-control" step="0.1" value="2.0" placeholder="Tự động tính...">
-                            </div>
-
-                            <!-- Unit price -->
                             <div class="form-group">
                                 <label for="sessionPrice" id="sessionPriceLabel">Đơn giá buổi học (VNĐ/học sinh)</label>
                                 <input type="text" inputmode="numeric" id="sessionPrice" class="form-control" list="sessionPriceOptions" value="250.000 ₫">
@@ -661,6 +641,21 @@
                                     <option value="200.000 ₫"></option>
                                     <option value="250.000 ₫"></option>
                                 </datalist>
+                            </div>
+
+                            <!-- Dòng 2: Khung giờ - Số giờ học - Tổng thu -->
+                            <div class="form-group session-time-range-group">
+                                <label id="sessionTimeRangeLabel">Giờ bắt đầu – kết thúc <span style="color:red;">*</span></label>
+                                <div class="session-time-range-control" role="group" aria-labelledby="sessionTimeRangeLabel">
+                                    <input type="time" id="sessionStartTime" class="form-control session-time-input" value="16:00" aria-label="Giờ bắt đầu" required>
+                                    <span class="session-time-separator" aria-hidden="true">–</span>
+                                    <input type="time" id="sessionEndTime" class="form-control session-time-input" value="18:00" aria-label="Giờ kết thúc" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="sessionHours">Số giờ học</label>
+                                <input type="number" id="sessionHours" class="form-control" step="0.1" value="2.0" placeholder="Tự động tính...">
                             </div>
 
                             <div class="form-group">
@@ -1201,7 +1196,7 @@
             <form id="editSessionForm" style="display: flex; flex-direction: column; min-height: 0;">
                 <input type="hidden" id="editSessionId">
                 <div class="modal-body" style="overflow-y: auto; min-height: 0;">
-                    <div class="grid-form">
+                    <div class="grid-form session-form-grid">
                         <select id="editSessionType" class="session-type-select-hidden" required aria-hidden="true" tabindex="-1">
                             <option value="riêng">1-1</option>
                             <option value="chung">Lớp học</option>
@@ -1227,23 +1222,22 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="editSessionStartTime">Giờ bắt đầu <span style="color:red;">*</span></label>
-                            <input type="time" id="editSessionStartTime" class="form-control" required>
+                            <label for="editSessionPrice" id="editSessionPriceLabel">Đơn giá buổi học (VNĐ/học sinh)</label>
+                            <input type="text" inputmode="numeric" id="editSessionPrice" class="form-control" list="sessionPriceOptions">
                         </div>
 
-                        <div class="form-group">
-                            <label for="editSessionEndTime">Giờ kết thúc <span style="color:red;">*</span></label>
-                            <input type="time" id="editSessionEndTime" class="form-control" required>
+                        <div class="form-group session-time-range-group">
+                            <label id="editSessionTimeRangeLabel">Giờ bắt đầu – kết thúc <span style="color:red;">*</span></label>
+                            <div class="session-time-range-control" role="group" aria-labelledby="editSessionTimeRangeLabel">
+                                <input type="time" id="editSessionStartTime" class="form-control session-time-input" aria-label="Giờ bắt đầu" required>
+                                <span class="session-time-separator" aria-hidden="true">–</span>
+                                <input type="time" id="editSessionEndTime" class="form-control session-time-input" aria-label="Giờ kết thúc" required>
+                            </div>
                         </div>
 
                         <div class="form-group">
                             <label for="editSessionHours">Số giờ học</label>
                             <input type="number" id="editSessionHours" class="form-control" step="0.1">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="editSessionPrice" id="editSessionPriceLabel">Đơn giá buổi học (VNĐ/học sinh)</label>
-                            <input type="text" inputmode="numeric" id="editSessionPrice" class="form-control" list="sessionPriceOptions">
                         </div>
 
                         <div class="form-group">
