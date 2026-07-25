@@ -1041,6 +1041,7 @@ Object.assign(PinkyClassApp.prototype, {
     // Điền sẵn ngày + khung giờ vừa kéo-chọn trên lịch tuần vào form "Ghi Buổi
     // Học Mới", rồi MỞ MODAL ngay tại chỗ (không cuộn/nhảy trang như trước).
     openCreateSessionQuickForm(dateStr, startTime, endTime) {
+        this.resetSessionLoggerForm();
         document.getElementById('sessionDate').value = dateStr;
         document.getElementById('sessionStartTime').value = startTime;
         document.getElementById('sessionEndTime').value = endTime;
@@ -1585,9 +1586,8 @@ Object.assign(PinkyClassApp.prototype, {
     // Dựng lưới chọn học sinh, GOM THEO LỚP (mỗi lớp 1 khối thu gọn/mở rộng
     // được + nút "Chọn cả lớp") thay vì 1 danh sách phẳng — để đỡ rối mắt và
     // dễ tìm khi giáo viên dạy nhiều lớp/nhiều học sinh.
-    // preselectedIds: mảng id học sinh cần tick sẵn (dùng khi mở modal Sửa
-    // buổi học); để null/không truyền thì dùng hành vi mặc định của form tạo
-    // mới (tự tick đúng học sinh đang được lọc ở trang Nhật ký học tập, nếu có).
+    // preselectedIds: mảng id học sinh cần tick sẵn (chỉ dùng khi mở modal Sửa
+    // buổi học); để null/không truyền thì form tạo mới không chọn sẵn học sinh nào.
     renderStudentSelectionGrid(containerId, preselectedIds = null) {
         const prefix = containerId === 'studentsCheckboxGrid' ? 'session' : 'editSession';
         const grid = document.getElementById(containerId);
@@ -1664,9 +1664,7 @@ Object.assign(PinkyClassApp.prototype, {
                 checkbox.value = st.id;
                 checkbox.name = containerId === 'studentsCheckboxGrid' ? 'sessionStudents' : 'editSessionStudents';
 
-                const shouldCheck = Array.isArray(preselectedIds)
-                    ? preselectedIds.includes(st.id)
-                    : (st.id === this.currentStudentId && containerId === 'studentsCheckboxGrid');
+                const shouldCheck = Array.isArray(preselectedIds) && preselectedIds.includes(st.id);
                 if (shouldCheck) {
                     checkbox.checked = true;
                     anyCheckedInGroup = true;
