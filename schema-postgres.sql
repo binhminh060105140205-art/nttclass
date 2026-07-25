@@ -60,6 +60,8 @@ CREATE TABLE Sessions (
     Content TEXT NULL,
     GeneralComment TEXT NULL,
     Completed SMALLINT NOT NULL DEFAULT 1, -- 1: Đã dạy, 0: Chưa dạy/Lên lịch
+    RecurrenceGroupId VARCHAR(80) NULL,
+    RecurrenceSequence INT NULL,
     TeacherId VARCHAR(50) NOT NULL,
     CONSTRAINT FK_Sessions_Teacher FOREIGN KEY (TeacherId) REFERENCES Users(Id)
 );

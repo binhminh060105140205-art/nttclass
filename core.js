@@ -324,6 +324,17 @@ class PinkyClassApp {
         });
     }
 
+    // Dùng cho công nợ: lấy mọi buổi học từ trước tới hết kỳ đang chọn để nợ
+    // chưa thanh toán của tháng trước tự động được cộng tiếp vào tháng sau.
+    filterThroughMonth(sessions) {
+        if (!this.currentMonthFilter) return sessions || [];
+        const [yearValue, monthValue] = this.currentMonthFilter.split('-').map(Number);
+        const nextYear = monthValue === 12 ? yearValue + 1 : yearValue;
+        const nextMonth = monthValue === 12 ? 1 : monthValue + 1;
+        const endExclusive = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+        return (sessions || []).filter(session => session.date && String(session.date).slice(0, 10) < endExclusive);
+    }
+
     // API /api/sessions trả về 1 dòng cho MỖI (buổi học, học sinh) do LEFT JOIN
     // với SessionDetails -> cần gộp lại theo SessionId thành 1 object buổi học
     // có mảng studentIds + object studentDetails.
@@ -341,6 +352,8 @@ class PinkyClassApp {
                     duration: row.Duration,
                     content: row.Content,
                     generalComment: row.GeneralComment,
+                    recurrenceGroupId: row.RecurrenceGroupId || null,
+                    recurrenceSequence: row.RecurrenceSequence === null || row.RecurrenceSequence === undefined ? null : Number(row.RecurrenceSequence),
                     completed: !!row.Completed,
                     paid: !!row.Paid,
                     studentIds: [],

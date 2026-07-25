@@ -161,6 +161,7 @@ const COLUMN_CASE_MAP = {
     sessiondate: 'SessionDate', starttime: 'StartTime', endtime: 'EndTime',
     sessiontype: 'SessionType', price: 'Price', duration: 'Duration',
     sessionname: 'SessionName',
+    recurrencegroupid: 'RecurrenceGroupId', recurrencesequence: 'RecurrenceSequence',
     content: 'Content', generalcomment: 'GeneralComment', completed: 'Completed',
     paid: 'Paid', feeamount: 'FeeAmount',
     sessionid: 'SessionId', studentid: 'StudentId', homework: 'Homework',
@@ -258,6 +259,17 @@ let poolPromise = pgPool.query('SELECT 1')
             console.log('Đã kiểm tra/đảm bảo cột Sessions.SessionName tồn tại.');
         } catch (migErr) {
             console.error('Lỗi khi tự động thêm cột SessionName:', migErr.message);
+        }
+
+        // Nhận diện các buổi thuộc cùng một chuỗi lặp. Lịch cũ giữ NULL nên
+        // không bị gom nhầm; chỉ các chuỗi tạo từ phiên bản mới mới có metadata.
+        try {
+            await pgPool.query('ALTER TABLE Sessions ADD COLUMN IF NOT EXISTS RecurrenceGroupId VARCHAR(80)');
+            await pgPool.query('ALTER TABLE Sessions ADD COLUMN IF NOT EXISTS RecurrenceSequence INTEGER');
+            await pgPool.query('CREATE INDEX IF NOT EXISTS idx_sessions_recurrence ON Sessions (TeacherId, RecurrenceGroupId, RecurrenceSequence)');
+            console.log('Đã kiểm tra/đảm bảo metadata lịch lặp tồn tại.');
+        } catch (migErr) {
+            console.error('Lỗi khi tự động thêm metadata lịch lặp:', migErr.message);
         }
 
         // PHƯƠNG ÁN A (tối ưu tốc độ trang Lịch dạy & Chấm công): tự động đảm
@@ -1429,6 +1441,7 @@ app.get('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCont
             SELECT
                 s.Id, s.SessionDate, s.StartTime, s.EndTime, s.SessionType, s.SessionName,
                 s.Price, s.Duration, s.Content, s.GeneralComment, s.Completed,
+                s.RecurrenceGroupId, s.RecurrenceSequence,
                 sd.StudentId, sd.Homework, sd.Attitude, sd.IndividualComment, sd.Note, sd.FeeAmount, sd.Paid
             FROM Sessions s
             LEFT JOIN SessionDetails sd ON s.Id = sd.SessionId
@@ -1459,6 +1472,10 @@ app.get('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCont
                     content:        row.Content        || '',
                     generalComment: row.GeneralComment || '',
                     completed:      row.Completed === true || row.Completed === 1,
+                    recurrenceGroupId: row.RecurrenceGroupId || null,
+                    recurrenceSequence: row.RecurrenceSequence === null || row.RecurrenceSequence === undefined
+                        ? null
+                        : Number(row.RecurrenceSequence),
                     // "paid" cấp buổi học không còn là nguồn dữ liệu chính (dễ gây
                     // lỗi với buổi học chung nhiều học sinh). Trường này sẽ được
                     // client tự tính lại = true khi TẤT CẢ học sinh trong buổi đã
@@ -1494,7 +1511,7 @@ app.get('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCont
 });
 
 app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
-    const { id, date, startTime, endTime, type, sessionName, studentIds, duration, price, content, generalComment, completed, paid, studentDetails } = req.body || {};
+    const { id, date, startTime, endTime, type, sessionName, studentIds, duration, price, content, generalComment, completed, paid, studentDetails, recurrenceGroupId, recurrenceSequence } = req.body || {};
     console.log('[POST /api/sessions] body nhận được:', JSON.stringify(req.body));
 
     if (!id || !date || !startTime || !endTime || !type || !Array.isArray(studentIds) || studentIds.length === 0) {
@@ -1506,6 +1523,13 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
     if (endTime <= startTime) {
         return res.status(400).json({ error: 'Giờ kết thúc phải sau giờ bắt đầu.' });
     }
+
+    const normalizedRecurrenceGroupId = recurrenceGroupId == null || recurrenceGroupId === ''
+        ? null
+        : String(recurrenceGroupId).trim().slice(0, 80);
+    const normalizedRecurrenceSequence = normalizedRecurrenceGroupId && Number.isInteger(Number(recurrenceSequence))
+        ? Number(recurrenceSequence)
+        : null;
 
     // Học phí buổi học được phép = 0 (buổi học miễn phí / học sinh 0đ),
     // chỉ chặn số âm hoặc giá trị không hợp lệ.
@@ -1569,8 +1593,10 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
             .input('content',        sql.NVarChar,      content        || '')
             .input('generalComment', sql.NVarChar,      generalComment || '')
             .input('completed',      sql.Bit,           completed ? 1 : 0)
-            .query(`INSERT INTO Sessions (Id, SessionDate, StartTime, EndTime, SessionType, SessionName, Price, Duration, Content, GeneralComment, Completed, TeacherId)
-                    VALUES (@id, @date, @startTime, @endTime, @type, @sessionName, @price, @duration, @content, @generalComment, @completed, @teacherId)`);
+            .input('recurrenceGroupId', sql.VarChar, normalizedRecurrenceGroupId)
+            .input('recurrenceSequence', sql.Int, normalizedRecurrenceSequence)
+            .query(`INSERT INTO Sessions (Id, SessionDate, StartTime, EndTime, SessionType, SessionName, Price, Duration, Content, GeneralComment, Completed, RecurrenceGroupId, RecurrenceSequence, TeacherId)
+                    VALUES (@id, @date, @startTime, @endTime, @type, @sessionName, @price, @duration, @content, @generalComment, @completed, @recurrenceGroupId, @recurrenceSequence, @teacherId)`);
 
         for (const stId of studentIds) {
             const detail = preparedDetails[stId];
@@ -1780,102 +1806,175 @@ app.put('/api/sessions/:id/quick-entry', requireRole('teacher', 'assistant'), re
 
 app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     const { id } = req.params;
-    const { date, startTime, endTime, type, sessionName, studentIds, duration, price, content, generalComment, completed, paid, studentDetails, pricingChanged, repriceExistingFees } = req.body || {};
+    const { date, startTime, endTime, type, sessionName, studentIds, duration, price, content, generalComment, completed, studentDetails, pricingChanged, repriceExistingFees, updateScope } = req.body || {};
 
     if (!date || !startTime || !endTime || !type || !Array.isArray(studentIds) || studentIds.length === 0) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
     }
-
     if (endTime <= startTime) {
         return res.status(400).json({ error: 'Giờ kết thúc phải sau giờ bắt đầu.' });
     }
 
-    // Học phí buổi học được phép = 0 (buổi học miễn phí / học sinh 0đ),
-    // chỉ chặn số âm hoặc giá trị không hợp lệ.
     const parsedPrice = parseInt(price);
     if (isNaN(parsedPrice) || parsedPrice < 0) {
         return res.status(400).json({ error: 'Học phí buổi học không được là số âm.' });
     }
 
+    const scope = updateScope === 'following' ? 'following' : 'single';
+    const utcDay = value => {
+        const [year, month, day] = String(value || '').slice(0, 10).split('-').map(Number);
+        return Date.UTC(year, month - 1, day);
+    };
+    const shiftDate = (value, days) => {
+        const shifted = new Date(utcDay(value));
+        shifted.setUTCDate(shifted.getUTCDate() + days);
+        return shifted.toISOString().slice(0, 10);
+    };
+
     let transaction;
     try {
-        const pool  = await poolPromise;
-
+        const pool = await poolPromise;
         const owner = await pool.request()
             .input('id', sql.VarChar, id)
-            .query('SELECT TeacherId, Price FROM Sessions WHERE Id = @id');
+            .query('SELECT Id, TeacherId, Price, SessionDate, Completed, RecurrenceGroupId, RecurrenceSequence FROM Sessions WHERE Id = @id');
         if (owner.recordset.length === 0) {
             return res.status(404).json({ error: 'Không tìm thấy buổi học.' });
         }
-        if (owner.recordset[0].TeacherId !== req.effectiveTeacherId) {
+        const selected = owner.recordset[0];
+        if (selected.TeacherId !== req.effectiveTeacherId) {
             return res.status(403).json({ error: 'Bạn không có quyền chỉnh sửa buổi học của giáo viên khác.' });
         }
-        const effectivePrice = pricingChanged ? parsedPrice : Number(owner.recordset[0].Price || 0);
+
+        const ownershipCheck = await pool.request()
+            .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+            .query('SELECT Id FROM Students WHERE TeacherId = @teacherId');
+        const ownedIds = new Set(ownershipCheck.recordset.map(row => row.Id));
+        if (studentIds.some(studentId => !ownedIds.has(studentId))) {
+            return res.status(403).json({ error: 'Một hoặc nhiều học sinh không thuộc quyền quản lý của bạn.' });
+        }
+
+        let targetRows = [selected];
+        const hasRecurrence = selected.RecurrenceGroupId
+            && selected.RecurrenceSequence !== null
+            && selected.RecurrenceSequence !== undefined;
+        if (scope === 'following' && hasRecurrence) {
+            const recurringRows = await pool.request()
+                .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+                .input('recurrenceGroupId', sql.VarChar, selected.RecurrenceGroupId)
+                .input('recurrenceSequence', sql.Int, Number(selected.RecurrenceSequence))
+                .query(`SELECT Id, TeacherId, Price, SessionDate, Completed, RecurrenceGroupId, RecurrenceSequence
+                        FROM Sessions
+                        WHERE TeacherId = @teacherId
+                          AND RecurrenceGroupId = @recurrenceGroupId
+                          AND RecurrenceSequence >= @recurrenceSequence
+                        ORDER BY RecurrenceSequence`);
+            if (recurringRows.recordset.length > 0) targetRows = recurringRows.recordset;
+        }
+
+        const selectedDate = String(selected.SessionDate).slice(0, 10);
+        const dateShiftDays = Math.round((utcDay(date) - utcDay(selectedDate)) / 86400000);
+        const targets = targetRows.map(row => ({
+            ...row,
+            targetDate: row.Id === id ? date : shiftDate(String(row.SessionDate).slice(0, 10), dateShiftDays)
+        }));
+        const targetIds = new Set(targets.map(row => row.Id));
 
         transaction = new sql.Transaction(pool);
         await transaction.begin();
 
-        await new sql.Request(transaction)
-            .input('id',             sql.VarChar,       id)
-            .input('date',           sql.Date,          date)
-            .input('startTime',      sql.VarChar,       startTime)
-            .input('endTime',        sql.VarChar,       endTime)
-            .input('type',           sql.VarChar,       type)
-            .input('sessionName',    sql.NVarChar,      sessionName    || '')
-            .input('price',          sql.Int,           effectivePrice)
-            .input('duration',       sql.Decimal(4, 2), parseFloat(duration) || 2.0)
-            .input('content',        sql.NVarChar,      content        || '')
-            .input('generalComment', sql.NVarChar,      generalComment || '')
-            .input('completed',      sql.Bit,           completed ? 1 : 0)
-            .query(`UPDATE Sessions
-                    SET SessionDate = @date, StartTime = @startTime, EndTime = @endTime,
-                        SessionType = @type, SessionName = @sessionName, Price = @price, Duration = @duration,
-                        Content = @content, GeneralComment = @generalComment, Completed = @completed
-                    WHERE Id = @id`);
+        for (const target of targets) {
+            const overlaps = await new sql.Request(transaction)
+                .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+                .input('targetDate', sql.Date, target.targetDate)
+                .input('startTime', sql.VarChar, startTime)
+                .input('endTime', sql.VarChar, endTime)
+                .query(`SELECT Id FROM Sessions
+                        WHERE TeacherId = @teacherId
+                          AND SessionDate = @targetDate
+                          AND StartTime < @endTime
+                          AND EndTime > @startTime`);
+            const externalOverlap = (overlaps.recordset || []).find(row => !targetIds.has(row.Id));
+            if (externalOverlap) {
+                await transaction.rollback();
+                transaction = null;
+                return res.status(409).json({ error: `Một buổi trong chuỗi sau khi đổi sẽ bị trùng lịch ngày ${target.targetDate}. Không có dữ liệu nào được thay đổi.` });
+            }
+        }
 
-        // Trước khi xóa/ghi lại SessionDetails, LƯU TẠM trạng thái Paid hiện có
-        // của từng học sinh trong buổi này lại — vì client không phải lúc nào
-        // cũng gửi kèm "paid" trong studentDetails (form sửa buổi học không có
-        // ô này), nếu không giữ lại thì mỗi lần sửa buổi học sẽ vô tình reset
-        // hết trạng thái đã đóng học phí của mọi học sinh về "chưa đóng".
-        const existingPaid = await new sql.Request(transaction)
-            .input('sessionId', sql.VarChar, id)
-            .query('SELECT StudentId, Paid, FeeAmount FROM SessionDetails WHERE SessionId = @sessionId');
-        const existingPaidMap = {};
-        const existingFeeMap = {};
-        (existingPaid.recordset || []).forEach(r => {
-            existingPaidMap[r.StudentId] = r.Paid === true || r.Paid === 1;
-            existingFeeMap[r.StudentId] = Number(r.FeeAmount || 0);
-        });
-
-        await new sql.Request(transaction)
-            .input('sessionId', sql.VarChar, id)
-            .query('DELETE FROM SessionDetails WHERE SessionId = @sessionId');
-
-        for (const stId of studentIds) {
-            const detail = (studentDetails && studentDetails[stId]) || { homework: null, attitude: '', individualComment: '', note: '' };
-            const keepPaid = (detail.paid !== undefined) ? !!detail.paid : !!existingPaidMap[stId];
-            const hasExistingFee = Object.prototype.hasOwnProperty.call(existingFeeMap, stId);
-            const hasIncomingFee = detail.feeAmount !== undefined && detail.feeAmount !== null
-                && Number.isFinite(Number(detail.feeAmount)) && Number(detail.feeAmount) >= 0;
-            const feeAmount = hasExistingFee && (keepPaid || !repriceExistingFees || !hasIncomingFee)
-                ? existingFeeMap[stId]
-                : (hasIncomingFee ? Math.round(Number(detail.feeAmount)) : 0);
+        for (const target of targets) {
+            const effectivePrice = pricingChanged ? parsedPrice : Number(target.Price || 0);
             await new sql.Request(transaction)
-                .input('sessionId',        sql.VarChar,  id)
-                .input('studentId',        sql.VarChar,  stId)
-                .input('homework',         sql.NVarChar, detail.homework          || '')
-                .input('attitude',         sql.NVarChar, String(detail.attitude ?? '').trim())
-                .input('individualComment',sql.NVarChar, detail.individualComment || '')
-                .input('note',             sql.NVarChar, detail.note              || '')
-                .input('feeAmount',         sql.Int,      feeAmount)
-                .input('paid',             sql.Bit,      keepPaid ? 1 : 0)
-                .query(`INSERT INTO SessionDetails (SessionId, StudentId, Homework, Attitude, IndividualComment, Note, FeeAmount, Paid)
-                        VALUES (@sessionId, @studentId, @homework, @attitude, @individualComment, @note, @feeAmount, @paid)`);
+                .input('id', sql.VarChar, target.Id)
+                .input('date', sql.Date, target.targetDate)
+                .input('startTime', sql.VarChar, startTime)
+                .input('endTime', sql.VarChar, endTime)
+                .input('type', sql.VarChar, type)
+                .input('sessionName', sql.NVarChar, sessionName || '')
+                .input('price', sql.Int, effectivePrice)
+                .input('duration', sql.Decimal(4, 2), parseFloat(duration) || 2.0)
+                .input('content', sql.NVarChar, content || '')
+                .input('generalComment', sql.NVarChar, generalComment || '')
+                .input('completed', sql.Bit, target.Id === id ? (completed ? 1 : 0) : (target.Completed ? 1 : 0))
+                .query(`UPDATE Sessions
+                        SET SessionDate = @date, StartTime = @startTime, EndTime = @endTime,
+                            SessionType = @type, SessionName = @sessionName, Price = @price, Duration = @duration,
+                            Content = @content, GeneralComment = @generalComment, Completed = @completed
+                        WHERE Id = @id`);
+
+            const existingDetailsResult = await new sql.Request(transaction)
+                .input('sessionId', sql.VarChar, target.Id)
+                .query('SELECT StudentId, Homework, Attitude, IndividualComment, Note, Paid, FeeAmount FROM SessionDetails WHERE SessionId = @sessionId');
+            const existingDetails = Object.fromEntries((existingDetailsResult.recordset || []).map(row => [row.StudentId, row]));
+            const removedStudentIds = Object.keys(existingDetails).filter(studentId => !studentIds.includes(studentId));
+
+            await new sql.Request(transaction)
+                .input('sessionId', sql.VarChar, target.Id)
+                .query('DELETE FROM SessionDetails WHERE SessionId = @sessionId');
+
+            for (const removedStudentId of removedStudentIds) {
+                await new sql.Request(transaction)
+                    .input('sessionId', sql.VarChar, target.Id)
+                    .input('studentId', sql.VarChar, removedStudentId)
+                    .query('DELETE FROM Scores WHERE SessionId = @sessionId AND StudentId = @studentId');
+            }
+
+            for (const studentId of studentIds) {
+                const incoming = (studentDetails && studentDetails[studentId]) || {};
+                const existing = existingDetails[studentId] || null;
+                const useIncomingLog = target.Id === id || !existing;
+                const keepPaid = existing
+                    ? (incoming.paid !== undefined && target.Id === id ? !!incoming.paid : !!existing.Paid)
+                    : !!incoming.paid;
+                const hasIncomingFee = incoming.feeAmount !== undefined && incoming.feeAmount !== null
+                    && Number.isFinite(Number(incoming.feeAmount)) && Number(incoming.feeAmount) >= 0;
+                const hasExistingFee = existing && Number.isFinite(Number(existing.FeeAmount));
+                const feeAmount = hasExistingFee && (keepPaid || !repriceExistingFees || !hasIncomingFee)
+                    ? Number(existing.FeeAmount)
+                    : (hasIncomingFee ? Math.round(Number(incoming.feeAmount)) : 0);
+
+                await new sql.Request(transaction)
+                    .input('sessionId', sql.VarChar, target.Id)
+                    .input('studentId', sql.VarChar, studentId)
+                    .input('homework', sql.NVarChar, useIncomingLog ? (incoming.homework || '') : (existing.Homework || ''))
+                    .input('attitude', sql.NVarChar, useIncomingLog ? String(incoming.attitude ?? '').trim() : String(existing.Attitude ?? '').trim())
+                    .input('individualComment', sql.NVarChar, useIncomingLog ? (incoming.individualComment || '') : (existing.IndividualComment || ''))
+                    .input('note', sql.NVarChar, useIncomingLog ? (incoming.note || '') : (existing.Note || ''))
+                    .input('feeAmount', sql.Int, feeAmount)
+                    .input('paid', sql.Bit, keepPaid ? 1 : 0)
+                    .query(`INSERT INTO SessionDetails (SessionId, StudentId, Homework, Attitude, IndividualComment, Note, FeeAmount, Paid)
+                            VALUES (@sessionId, @studentId, @homework, @attitude, @individualComment, @note, @feeAmount, @paid)`);
+            }
         }
 
         await transaction.commit();
-        res.json({ message: 'Cập nhật lịch học thành công!' });
+        transaction = null;
+        res.json({
+            message: scope === 'following' && targets.length > 1
+                ? `Đã cập nhật ${targets.length} buổi trong chuỗi lặp.`
+                : 'Cập nhật lịch học thành công!',
+            updatedCount: targets.length,
+            scope: scope === 'following' && hasRecurrence ? 'following' : 'single'
+        });
     } catch (err) {
         if (transaction) { try { await transaction.rollback(); } catch (_) {} }
         console.error('[PUT /api/sessions/:id]', err);
@@ -1885,21 +1984,45 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
 
 app.delete('/api/sessions/:id', requireRole('teacher'), requireTeacherContext, async (req, res) => {
     const { id } = req.params;
+    const scope = req.query.scope === 'following' ? 'following' : 'single';
     try {
         const pool = await poolPromise;
         const owner = await pool.request()
             .input('id', sql.VarChar, id)
-            .query('SELECT TeacherId FROM Sessions WHERE Id = @id');
+            .query('SELECT TeacherId, RecurrenceGroupId, RecurrenceSequence FROM Sessions WHERE Id = @id');
         if (owner.recordset.length === 0) {
             return res.status(404).json({ error: 'Không tìm thấy buổi học.' });
         }
-        if (owner.recordset[0].TeacherId !== req.effectiveTeacherId) {
+        const selected = owner.recordset[0];
+        if (selected.TeacherId !== req.effectiveTeacherId) {
             return res.status(403).json({ error: 'Bạn không có quyền xóa buổi học của giáo viên khác.' });
         }
-        await pool.request()
-            .input('id', sql.VarChar, id)
-            .query('DELETE FROM Sessions WHERE Id = @id');
-        res.json({ message: 'Đã xóa buổi học thành công!' });
+
+        let result;
+        const hasRecurrence = selected.RecurrenceGroupId
+            && selected.RecurrenceSequence !== null
+            && selected.RecurrenceSequence !== undefined;
+        if (scope === 'following' && hasRecurrence) {
+            result = await pool.request()
+                .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+                .input('recurrenceGroupId', sql.VarChar, selected.RecurrenceGroupId)
+                .input('recurrenceSequence', sql.Int, Number(selected.RecurrenceSequence))
+                .query(`DELETE FROM Sessions
+                        WHERE TeacherId = @teacherId
+                          AND RecurrenceGroupId = @recurrenceGroupId
+                          AND RecurrenceSequence >= @recurrenceSequence`);
+        } else {
+            result = await pool.request()
+                .input('id', sql.VarChar, id)
+                .query('DELETE FROM Sessions WHERE Id = @id');
+        }
+
+        const deletedCount = result.rowCount || 0;
+        res.json({
+            message: deletedCount > 1 ? `Đã xóa ${deletedCount} buổi học lặp lại.` : 'Đã xóa buổi học thành công!',
+            deletedCount,
+            scope: scope === 'following' && hasRecurrence ? 'following' : 'single'
+        });
     } catch (err) {
         console.error('[DELETE /api/sessions/:id]', err);
         res.status(500).json({ error: err.message });
@@ -1986,7 +2109,6 @@ app.post('/api/students/:studentId/monthly-payments', requireRole('teacher'), re
     const [year, monthNumber] = month.split('-').map(Number);
     const nextYear = monthNumber === 12 ? year + 1 : year;
     const nextMonthNumber = monthNumber === 12 ? 1 : monthNumber + 1;
-    const fromDate = `${month}-01`;
     const toDate = `${nextYear}-${String(nextMonthNumber).padStart(2, '0')}-01`;
     const paymentMethod = ['Tiền mặt', 'Chuyển khoản', 'Ví điện tử', 'Khác'].includes(method) ? method : 'Tiền mặt';
     let transaction;
@@ -2003,13 +2125,12 @@ app.post('/api/students/:studentId/monthly-payments', requireRole('teacher'), re
         const dueRows = await new sql.Request(transaction)
             .input('studentId', sql.VarChar, studentId)
             .input('teacherId', sql.VarChar, req.effectiveTeacherId)
-            .input('fromDate', sql.Date, fromDate)
             .input('toDate', sql.Date, toDate)
             .query(`SELECT sd.SessionId, sd.FeeAmount
                 FROM SessionDetails sd
                 JOIN Sessions s ON s.Id = sd.SessionId
                 WHERE sd.StudentId = @studentId AND s.TeacherId = @teacherId
-                  AND s.SessionDate >= @fromDate AND s.SessionDate < @toDate
+                  AND s.SessionDate < @toDate
                   AND sd.Paid = 0 AND sd.FeeAmount > 0
                   AND (s.SessionDate < (NOW() AT TIME ZONE 'Asia/Bangkok')::date
                        OR (s.SessionDate = (NOW() AT TIME ZONE 'Asia/Bangkok')::date
@@ -2018,7 +2139,7 @@ app.post('/api/students/:studentId/monthly-payments', requireRole('teacher'), re
         const dueAmount = due.reduce((sum, row) => sum + Number(row.FeeAmount || 0), 0);
         if (due.length === 0) {
             await transaction.rollback();
-            return res.status(400).json({ error: 'Tháng này không còn buổi học chưa thanh toán.' });
+            return res.status(400).json({ error: 'Đến kỳ này không còn buổi học chưa thanh toán.' });
         }
         if (Number(amount) !== dueAmount) {
             await transaction.rollback();

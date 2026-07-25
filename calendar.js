@@ -171,7 +171,11 @@ Object.assign(PinkyClassApp.prototype, {
                 const typeClass = sess.type === 'chung' ? 'type-chung' : 'type-rieng';
                 const unpaidClass = !sess.paid ? 'is-unpaid' : '';
                 const evtTitle = sess.sessionName ? sess.sessionName : names;
-                const evtTooltip = sess.sessionName ? `${sess.sessionName} — ${names}` : names;
+                const recurrenceIcon = sess.recurrenceGroupId
+                    ? '<span class="evt-repeat-icon" title="Buổi học thuộc chuỗi lặp" aria-label="Lịch lặp lại">↻</span>'
+                    : '';
+                const evtTooltip = (sess.sessionName ? `${sess.sessionName} — ${names}` : names)
+                    + (sess.recurrenceGroupId ? ' — Lịch lặp lại' : '');
 
                 // Buổi học đã diễn ra rồi (giờ bắt đầu đã ở quá khứ so với hiện
                 // tại) thì KHÔNG cho kéo-thả đổi lịch nữa — chỉ xem/chấm công.
@@ -186,6 +190,7 @@ Object.assign(PinkyClassApp.prototype, {
                          data-locked="${isPast ? '1' : '0'}"
                          onclick="app.openSessionQuickEntry('${sess.id}')"
                          title="${this.escapeHtmlAttr(isPast ? evtTooltip + ' (đã qua, không thể kéo)' : evtTooltip)}">
+                        ${recurrenceIcon}
                         <span class="evt-time">${sess.startTime}–${sess.endTime}</span>
                         <span class="evt-title">${this.escapeHtml(evtTitle)}</span>
                     </div>
@@ -267,7 +272,11 @@ Object.assign(PinkyClassApp.prototype, {
                 const typeClass = sess.type === 'chung' ? 'type-chung' : 'type-rieng';
                 const names = sess.studentIds.map(id => this.getStudentName(id)).join(', ');
                 const title = sess.sessionName ? sess.sessionName : names;
-                sessionsHTML += `<div class="month-day-event ${typeClass}" title="${this.escapeHtmlAttr(`${sess.startTime}-${sess.endTime} ${title}`)}">${sess.startTime} ${this.escapeHtml(title)}</div>`;
+                const repeatMark = sess.recurrenceGroupId
+                    ? '<span class="month-repeat-icon" aria-label="Lịch lặp lại">↻</span>'
+                    : '';
+                const tooltip = `${sess.startTime}-${sess.endTime} ${title}${sess.recurrenceGroupId ? ' — Lịch lặp lại' : ''}`;
+                sessionsHTML += `<div class="month-day-event ${typeClass}" title="${this.escapeHtmlAttr(tooltip)}">${repeatMark}<span>${sess.startTime} ${this.escapeHtml(title)}</span></div>`;
             });
             if (daySessions.length > maxShow) {
                 sessionsHTML += `<div class="month-day-more">+${daySessions.length - maxShow} buổi khác</div>`;
@@ -423,17 +432,6 @@ Object.assign(PinkyClassApp.prototype, {
                 return;
             }
 
-            // Trùng lịch với buổi khác -> chặn lại, trả buổi học về đúng vị trí cũ
-            const overlap = this.findOverlappingSession(newDate, newStartTime, newEndTime, sess.id);
-            if (overlap) {
-                this.showToast(
-                    `Khung giờ ${newStartTime}-${newEndTime} ngày ${this.formatDateVN(newDate)} đang trùng với buổi học khác, không thể đặt vào đây!`,
-                    "error"
-                );
-                this.renderCalendarView();
-                return;
-            }
-
             this.moveSessionByDrag(sess.id, newDate, newStartTime, newEndTime);
         };
         document.addEventListener('pointerup', endDrag);
@@ -446,7 +444,12 @@ Object.assign(PinkyClassApp.prototype, {
         const sess = this.sessions.find(s => s.id === sessionId);
         if (!sess) return;
 
-        const updatedSession = { ...sess, date: newDate, startTime: newStartTime, endTime: newEndTime };
+        const updateScope = await this.requestRecurrenceScope(sess, 'di chuyển');
+        if (!updateScope) {
+            this.renderCalendarView();
+            return;
+        }
+        const updatedSession = { ...sess, date: newDate, startTime: newStartTime, endTime: newEndTime, updateScope };
         try {
             const res = await this.authFetch(`${API_BASE_URL}/api/sessions/${sessionId}`, {
                 method: 'PUT',
@@ -867,12 +870,49 @@ Object.assign(PinkyClassApp.prototype, {
     // cho mỗi ngày trong danh sách lặp lại thủ công. Ngày nào bị trùng lịch
     // với 1 buổi học khác thì bỏ qua (không chặn các ngày còn lại), rồi báo
     // cáo tổng kết cho giáo viên biết đã tạo được bao nhiêu / bỏ qua bao nhiêu.
+    getFollowingRecurringSessions(session) {
+        if (!session?.recurrenceGroupId || session.recurrenceSequence === null || session.recurrenceSequence === undefined) return [];
+        return this.sessions
+            .filter(item => item.recurrenceGroupId === session.recurrenceGroupId
+                && Number(item.recurrenceSequence) >= Number(session.recurrenceSequence))
+            .sort((a, b) => Number(a.recurrenceSequence) - Number(b.recurrenceSequence));
+    },
+
+    requestRecurrenceScope(session, actionLabel) {
+        const following = this.getFollowingRecurringSessions(session);
+        if (following.length <= 1) return Promise.resolve('single');
+        if (this._recurrenceScopeResolver) {
+            this._recurrenceScopeResolver(null);
+            this._recurrenceScopeResolver = null;
+        }
+
+        const title = document.getElementById('recurrenceScopeTitle');
+        const message = document.getElementById('recurrenceScopeMessage');
+        const followingButton = document.getElementById('recurrenceScopeFollowingBtn');
+        if (title) title.innerText = `${actionLabel.charAt(0).toUpperCase() + actionLabel.slice(1)} lịch lặp lại`;
+        if (message) message.innerText = `Buổi này thuộc một chuỗi lặp. Bạn muốn ${actionLabel} riêng buổi này hay áp dụng cho buổi này và các buổi lặp lại phía sau?`
+            + (actionLabel === 'xóa' ? ' Sau khi chọn, bạn vẫn có 7 giây để hoàn tác.' : '');
+        if (followingButton) followingButton.innerText = `Buổi này và ${following.length - 1} buổi sau`;
+        this.openModal('recurrenceScopeModal');
+
+        return new Promise(resolve => {
+            this._recurrenceScopeResolver = resolve;
+        });
+    },
+
+    resolveRecurrenceScope(scope) {
+        this.closeModal('recurrenceScopeModal');
+        const resolve = this._recurrenceScopeResolver;
+        this._recurrenceScopeResolver = null;
+        if (resolve) resolve(scope === 'following' || scope === 'single' ? scope : null);
+    },
+
     async createRepeatedSessions(baseSession, extraDates) {
         let createdCount = 0;
         const skippedDates = [];
         const failedDates = [];
 
-        for (const extraDate of extraDates) {
+        for (const [repeatIndex, extraDate] of extraDates.entries()) {
             const overlap = this.findOverlappingSession(extraDate, baseSession.startTime, baseSession.endTime);
             if (overlap) {
                 skippedDates.push(extraDate);
@@ -898,7 +938,9 @@ Object.assign(PinkyClassApp.prototype, {
                 date: extraDate,
                 completed: this.isSessionCompleted({ date: extraDate, endTime: baseSession.endTime }),
                 paid: false,
-                studentDetails: clonedStudentDetails
+                studentDetails: clonedStudentDetails,
+                recurrenceGroupId: baseSession.recurrenceGroupId,
+                recurrenceSequence: repeatIndex + 1
             };
 
             try {
@@ -1124,6 +1166,18 @@ Object.assign(PinkyClassApp.prototype, {
         });
         const price = Object.values(studentDetails).reduce((sum, detail) => sum + Number(detail.feeAmount || 0), 0);
 
+        const repeatToggleEl = document.getElementById('sessionRepeatToggle');
+        if (repeatToggleEl?.checked && this.repeatExtraDates.length === 0) {
+            const frequency = document.getElementById('repeatFrequency')?.value;
+            this.showToast(frequency === 'custom'
+                ? 'Hãy thêm ít nhất một ngày lặp lại tùy chỉnh.'
+                : 'Hãy chọn ngày kết thúc cho lịch lặp lại.', 'error');
+            return;
+        }
+        const recurrenceGroupId = repeatToggleEl?.checked && this.repeatExtraDates.length > 0
+            ? "rec_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8)
+            : null;
+
         const newSession = {
             // ID sinh từ Date.now() có thể trùng nếu 2 request được gửi trong
             // cùng 1 mili-giây (double-click, mạng lag khiến bấm gửi 2 lần) —
@@ -1141,17 +1195,10 @@ Object.assign(PinkyClassApp.prototype, {
             generalComment: content ? `Cả lớp học: ${content.split('\n')[0]}` : "",
             completed: this.isSessionCompleted({ date, endTime }), // Tự động theo lịch, không cần chấm công thủ công
             paid: false,     // QUAN TRỌNG: học phí LUÔN mặc định "chưa thanh toán" khi mới lên lịch
-            studentDetails
+            studentDetails,
+            recurrenceGroupId,
+            recurrenceSequence: recurrenceGroupId ? 0 : null
         };
-
-        const repeatToggleEl = document.getElementById('sessionRepeatToggle');
-        if (repeatToggleEl?.checked && this.repeatExtraDates.length === 0) {
-            const frequency = document.getElementById('repeatFrequency')?.value;
-            this.showToast(frequency === 'custom'
-                ? 'Hãy thêm ít nhất một ngày lặp lại tùy chỉnh.'
-                : 'Hãy chọn ngày kết thúc cho lịch lặp lại.', 'error');
-            return;
-        }
 
         this.setBtnLoading('saveSessionBtn', true, 'Đang lưu...');
         try {
@@ -1285,9 +1332,17 @@ Object.assign(PinkyClassApp.prototype, {
         const type = checkedBoxes.length > 1 ? 'chung' : 'riêng';
         document.getElementById('editSessionType').value = type;
 
-        // Cảnh báo trùng lịch (loại trừ chính buổi học đang sửa)
+        const updateScope = await this.requestRecurrenceScope(sess, 'sửa');
+        if (!updateScope) return;
+
+        // Khi sửa cả chuỗi, một vị trí mới có thể đang trùng với chính buổi kế
+        // tiếp trong chuỗi ở vị trí cũ. Server sẽ dịch cả chuỗi trong một giao
+        // dịch nên bỏ qua trường hợp đó; mọi xung đột bên ngoài vẫn bị chặn.
         const overlap = this.findOverlappingSession(date, startTime, endTime, id);
-        if (overlap) {
+        const overlapMovesTogether = updateScope === 'following'
+            && overlap?.recurrenceGroupId === sess.recurrenceGroupId
+            && Number(overlap.recurrenceSequence) >= Number(sess.recurrenceSequence);
+        if (overlap && !overlapMovesTogether) {
             const proceed = confirm(
                 `Khung giờ ${startTime}-${endTime} ngày ${this.formatDateVN(date)} đang TRÙNG với 1 buổi học khác ` +
                 `(${overlap.startTime}-${overlap.endTime}${overlap.sessionName ? ' — ' + overlap.sessionName : ''}).\n\n` +
@@ -1339,6 +1394,7 @@ Object.assign(PinkyClassApp.prototype, {
             studentIds,
             pricingChanged,
             repriceExistingFees: priceWasChanged,
+            updateScope,
             studentDetails: newStudentDetails
         };
 
@@ -1367,15 +1423,29 @@ Object.assign(PinkyClassApp.prototype, {
             this.showToast("Chỉ Giáo viên mới có quyền xóa buổi học!", "error");
             return;
         }
-        if (!confirm('Xóa buổi học này? Bạn có 7 giây để hoàn tác.')) return;
-        this.queueDeletion('Buổi học', () => this.commitDeleteSession(id));
+        const session = this.sessions.find(item => item.id === id);
+        if (!session) return;
+
+        let deleteScope = 'single';
+        const following = this.getFollowingRecurringSessions(session);
+        if (following.length > 1) {
+            deleteScope = await this.requestRecurrenceScope(session, 'xóa');
+            if (!deleteScope) return;
+        } else if (!confirm('Xóa buổi học này? Bạn có 7 giây để hoàn tác.')) {
+            return;
+        }
+
+        const deletionCount = deleteScope === 'following' ? following.length : 1;
+        const label = deletionCount > 1 ? `${deletionCount} buổi học lặp lại` : 'Buổi học';
+        this.queueDeletion(label, () => this.commitDeleteSession(id, deleteScope));
     },
 
-    async commitDeleteSession(id) {
-        const res = await this.authFetch(`${API_BASE_URL}/api/sessions/${id}`, { method: 'DELETE' });
-        await this.requireApiSuccess(res, 'Không thể xóa buổi học.');
+    async commitDeleteSession(id, deleteScope = 'single') {
+        const query = deleteScope === 'following' ? '?scope=following' : '';
+        const res = await this.authFetch(`${API_BASE_URL}/api/sessions/${id}${query}`, { method: 'DELETE' });
+        const result = await this.requireApiSuccess(res, 'Không thể xóa buổi học.');
         await this.runDeletionRefresh(() => this.loadData());
-        this.showToast("Đã xóa buổi học thành công.", "success");
+        this.showToast(result?.message || "Đã xóa buổi học thành công.", "success");
     },
 
     // 4. Update Student Specific Evaluation Log (Homework, Attitude, Comments)
@@ -1446,14 +1516,14 @@ Object.assign(PinkyClassApp.prototype, {
         }
         const student = this.students.find(s => s.id === studentId);
         if (!student) return;
-        const dueAmount = this.filterByMonth(this.sessions)
+        const dueAmount = this.filterThroughMonth(this.sessions)
             .filter(sess => sess.studentIds.includes(studentId) && this.isSessionCompleted(sess))
             .reduce((sum, sess) => {
                 const detail = sess.studentDetails && sess.studentDetails[studentId];
                 return sum + (!detail || detail.paid ? 0 : this.getStudentSessionFee(sess, studentId));
             }, 0);
         if (dueAmount <= 0) {
-            this.showToast('Tháng này không còn học phí cần thu.', 'info');
+            this.showToast('Đến kỳ này không còn học phí cần thu.', 'info');
             return;
         }
         const [year, month] = this.currentMonthFilter.split('-');

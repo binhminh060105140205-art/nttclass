@@ -9,97 +9,76 @@ Object.assign(PinkyClassApp.prototype, {
 
         let paidSum = 0;
         let unpaidSum = 0;
+        let rowNumber = 0;
 
-        // If student role, only calculate and show theirs
         let studentsList = [...this.students];
         if (this.currentRole === 'student') {
-            studentsList = studentsList.filter(s => s.id === this.currentStudentId);
+            studentsList = studentsList.filter(student => student.id === this.currentStudentId);
         }
 
-        studentsList.forEach(st => {
-            // CHỈ tính các buổi học ĐÃ THỰC SỰ DIỄN RA (đã qua giờ kết thúc so
-            // với hiện tại) vào báo cáo học phí — buổi học nằm trong tương lai
-            // (kể cả ngày mai, tuần sau) sẽ KHÔNG được cộng vào số buổi/số giờ/
-            // tiền học phí ở đây nữa, dù đã có mặt trên lịch dạy.
-            const studentSessions = this.filterByMonth(this.sessions).filter(sess => sess.studentIds.includes(st.id) && this.isSessionCompleted(sess));
-            
-            const totalSessionsCount = studentSessions.length;
-            const totalHours = studentSessions.reduce((acc, curr) => acc + parseFloat(curr.duration), 0);
+        studentsList.forEach(student => {
+            const completedStudentSessions = this.sessions.filter(session =>
+                session.studentIds.includes(student.id) && this.isSessionCompleted(session)
+            );
+            const monthSessions = this.filterByMonth(completedStudentSessions);
+            const cumulativeSessions = this.filterThroughMonth(completedStudentSessions);
+            const totalSessionsCount = monthSessions.length;
+            const totalHours = monthSessions.reduce((sum, session) => sum + parseFloat(session.duration || 0), 0);
 
-            // Calculate money details
             let totalTuitionEarned = 0;
             let paidTuition = 0;
             let unpaidTuition = 0;
-
-            studentSessions.forEach(sess => {
-                // Học sinh học phí 0đ không đóng góp gì vào tổng thu/đã đóng/chưa
-                // đóng của chính mình — bỏ qua buổi này hoàn toàn cho em đó.
-                const sessionPricePortion = this.getStudentSessionFee(sess, st.id);
-                if (sessionPricePortion <= 0) return;
-                // Nếu là buổi học chung, chia đều theo SỐ HỌC SINH THỰC SỰ ĐÓNG
-                // HỌC PHÍ trong buổi (không tính các bạn học phí 0đ vào mẫu số).
-                totalTuitionEarned += sessionPricePortion;
-                // Dùng field Paid RIÊNG của chính học sinh này trong buổi học đó
-                // (sess.studentDetails[st.id].paid) — KHÔNG dùng cờ paid cấp cả
-                // buổi, vì với buổi học chung, trạng thái đóng tiền của mỗi học
-                // sinh phải độc lập với các bạn học cùng buổi.
-                const detail = sess.studentDetails && sess.studentDetails[st.id];
-                if (detail && detail.paid) {
-                    paidTuition += sessionPricePortion;
-                } else {
-                    unpaidTuition += sessionPricePortion;
-                }
+            cumulativeSessions.forEach(session => {
+                const sessionFee = this.getStudentSessionFee(session, student.id);
+                if (sessionFee <= 0) return;
+                totalTuitionEarned += sessionFee;
+                const detail = session.studentDetails && session.studentDetails[student.id];
+                if (detail?.paid) paidTuition += sessionFee;
+                else unpaidTuition += sessionFee;
             });
 
             paidSum += paidTuition;
             unpaidSum += unpaidTuition;
+            rowNumber += 1;
 
-            const tr = document.createElement('tr');
-
-            // Trạng thái học phí: dropdown đơn giản 2 lựa chọn (Đã thanh toán /
-            // Chưa thanh toán) áp dụng cho TẤT CẢ buổi học của học sinh này.
-            const isFullyPaid = totalSessionsCount > 0 && unpaidTuition === 0;
+            const isFullyPaid = totalTuitionEarned > 0 && unpaidTuition === 0;
             const statusSelect = `
                 <select class="tuition-status-select ${isFullyPaid ? 'status-paid' : 'status-unpaid'}"
-                        data-student="${st.id}"
-                        ${totalSessionsCount === 0 || this.currentRole === 'student' ? 'disabled' : ''}>
+                        data-student="${student.id}"
+                        ${totalTuitionEarned <= 0 || this.currentRole === 'student' ? 'disabled' : ''}>
                     <option value="unpaid" ${!isFullyPaid ? 'selected' : ''}>Chưa thanh toán</option>
                     <option value="paid" ${isFullyPaid ? 'selected' : ''}>Đã thanh toán</option>
                 </select>
             `;
 
+            const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><strong>${st.name}</strong></td>
-                <td>${st.class} - ${st.subject}</td>
-                <td style="text-align:center; font-weight:600;">${totalSessionsCount}</td>
-                <td style="text-align:center; font-weight:600; color:var(--primary);">${totalHours.toFixed(1)}</td>
-                
-                <td class="role-restricted admin-only" style="text-align:right; font-weight:600;">${this.formatVND(totalTuitionEarned)}</td>
-                <td class="role-restricted admin-only" style="text-align:right; color:#16a34a; font-weight:600;">${this.formatVND(paidTuition)}</td>
-                <td class="role-restricted admin-only" style="text-align:right; color:#dc2626; font-weight:600;">${this.formatVND(unpaidTuition)}</td>
-                
-                <td style="text-align:center;">${statusSelect}</td>
-                <td class="role-restricted admin-only" style="text-align:center;">
-                    <button type="button" class="btn btn-secondary btn-sm" style="padding:6px 14px;"
+                <td class="tuition-center">${rowNumber}</td>
+                <td class="tuition-student-name"><strong>${this.escapeHtml(student.name)}</strong></td>
+                <td class="tuition-center">${this.escapeHtml(student.class)} / ${this.escapeHtml(student.subject)}</td>
+                <td class="tuition-center tuition-number">${totalSessionsCount}</td>
+                <td class="tuition-center tuition-number tuition-hours">${totalHours.toFixed(1)}</td>
+                <td class="role-restricted admin-only tuition-center tuition-money">${this.formatVND(totalTuitionEarned)}</td>
+                <td class="role-restricted admin-only tuition-center tuition-money tuition-paid">${this.formatVND(paidTuition)}</td>
+                <td class="role-restricted admin-only tuition-center tuition-money tuition-unpaid">${this.formatVND(unpaidTuition)}</td>
+                <td class="tuition-center">${statusSelect}</td>
+                <td class="role-restricted admin-only tuition-center">
+                    <button type="button" class="btn btn-secondary btn-sm tuition-invoice-btn"
                             ${totalSessionsCount === 0 ? 'disabled' : ''}
-                            onclick="app.openInvoiceModal('${st.id}')">Xuất phiếu</button>
+                            onclick="app.openInvoiceModal('${student.id}')">Xuất phiếu</button>
                 </td>
             `;
-
             tbody.appendChild(tr);
         });
 
-        // Set top dashboard level sums
         document.getElementById('tuition-paid-sum').innerText = this.formatVND(paidSum);
         document.getElementById('tuition-unpaid-sum').innerText = this.formatVND(unpaidSum);
         document.getElementById('tuition-total-sum').innerText = this.formatVND(paidSum + unpaidSum);
 
-        // Hook up 2-state tuition toggle change events
-        document.querySelectorAll('.tuition-status-select').forEach(sel => {
-            sel.addEventListener('change', (e) => {
-                const studentId = sel.getAttribute('data-student');
-                const paid = e.target.value === 'paid';
-                this.setStudentPaidStatus(studentId, paid);
+        document.querySelectorAll('.tuition-status-select').forEach(select => {
+            select.addEventListener('change', event => {
+                const studentId = select.getAttribute('data-student');
+                this.setStudentPaidStatus(studentId, event.target.value === 'paid');
             });
         });
     },

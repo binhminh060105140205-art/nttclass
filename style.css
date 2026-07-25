@@ -5844,3 +5844,183 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .session-time-range-contr
         margin-left: 0;
     }
 }
+
+
+/* Recurring-session indicators and scope chooser. */
+.week-event-block .evt-repeat-icon {
+    position: absolute;
+    top: 4px;
+    right: 5px;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    color: currentColor;
+    background: rgba(255, 255, 255, .2);
+    font-size: .72rem;
+    font-weight: 900;
+    line-height: 1;
+    pointer-events: none;
+}
+
+.week-event-block .evt-repeat-icon ~ .evt-time,
+.week-event-block .evt-repeat-icon ~ .evt-title {
+    padding-right: 17px;
+}
+
+.month-day-event {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.month-day-event > span:last-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.month-repeat-icon {
+    flex: none;
+    font-size: .7rem;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.recurrence-scope-modal {
+    width: min(520px, calc(100vw - 28px));
+}
+
+.recurrence-scope-body {
+    display: grid;
+    justify-items: center;
+    gap: 14px;
+    padding-block: 28px;
+    text-align: center;
+}
+
+.recurrence-scope-symbol {
+    display: grid;
+    place-items: center;
+    width: 54px;
+    height: 54px;
+    border-radius: 18px;
+    color: var(--primary);
+    background: var(--primary-soft);
+    font-size: 2rem;
+    font-weight: 900;
+}
+
+.recurrence-scope-body p {
+    max-width: 420px;
+    margin: 0;
+    color: var(--text-main);
+    line-height: 1.6;
+}
+
+.recurrence-scope-options {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+}
+
+/* Tuition report: compact metrics and a no-wrap, content-sized table. */
+.tuition-report-card {
+    padding: 20px;
+}
+
+.tuition-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.tuition-summary-card {
+    min-height: 82px;
+    padding: 13px 16px !important;
+}
+
+.tuition-summary-label {
+    color: var(--text-muted);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .035em;
+    text-transform: uppercase;
+}
+
+.tuition-summary-value {
+    margin-top: 3px;
+    font-size: 1.25rem;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.tuition-summary-paid,
+#tuitionOverviewTable .tuition-paid { color: #16a34a; }
+.tuition-summary-unpaid,
+#tuitionOverviewTable .tuition-unpaid { color: #dc2626; }
+.tuition-summary-total,
+#tuitionOverviewTable .tuition-hours { color: var(--primary); }
+
+.tuition-table-wrapper {
+    border-radius: 16px;
+    overflow-x: auto;
+}
+
+#tuitionOverviewTable {
+    width: max-content;
+    min-width: 100%;
+    table-layout: auto;
+}
+
+#tuitionOverviewTable th,
+#tuitionOverviewTable td {
+    padding: 11px 10px;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+#tuitionOverviewTable th:nth-child(2),
+#tuitionOverviewTable td.tuition-student-name {
+    text-align: left;
+}
+
+#tuitionOverviewTable .tuition-number,
+#tuitionOverviewTable .tuition-money {
+    font-weight: 700;
+}
+
+.tuition-invoice-btn {
+    padding: 6px 12px;
+}
+
+@media (max-width: 640px) {
+    .recurrence-scope-options {
+        flex-direction: column;
+    }
+
+    .recurrence-scope-options .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .tuition-report-card {
+        padding: 14px;
+    }
+
+    .tuition-summary-grid {
+        grid-template-columns: 1fr;
+        gap: 9px;
+    }
+
+    .tuition-summary-card {
+        min-height: 70px;
+        padding: 10px 13px !important;
+    }
+}

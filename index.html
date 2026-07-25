@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Comfortaa:wght@400;500;600;700&family=Condiment&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260725-session-layout1">
+    <link rel="stylesheet" href="style.css?v=20260725-recurring-tuition1">
     <link rel="stylesheet" href="landing-orbis.css?v=20260724-pink1">
     <link rel="stylesheet" href="landing-orbis-fixes.css?v=20260724-click-fix1">
     <link id="appThemeStylesheet" rel="stylesheet" href="lithos-app-theme.css?v=20260724-light-audit1" disabled>
@@ -711,44 +711,36 @@
 
         <!-- SECTION 4: TUITION & PAYMENTS -->
         <section id="view-tuition" class="view-section">
-            <div class="glass-card" style="padding: 24px;">
-                <div class="evaluation-header" style="margin-bottom: 20px;">
-                    <div>
-                        <h2 style="color: var(--primary); font-weight: 700;"> Thống Kê Học Phí</h2>
-                        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
-                            Theo dõi tổng học phí, trạng thái đã thanh toán hoặc còn nợ của học sinh.
-                        </p>
+            <div class="glass-card tuition-report-card">
+                <div class="tuition-summary-grid">
+                    <div class="glass-card stat-card tuition-summary-card">
+                        <div class="tuition-summary-label">Học phí đã thu</div>
+                        <div class="tuition-summary-value tuition-summary-paid" id="tuition-paid-sum">0đ</div>
+                    </div>
+                    <div class="glass-card stat-card tuition-summary-card">
+                        <div class="tuition-summary-label">Học phí chưa thu</div>
+                        <div class="tuition-summary-value tuition-summary-unpaid" id="tuition-unpaid-sum">0đ</div>
+                    </div>
+                    <div class="glass-card stat-card tuition-summary-card">
+                        <div class="tuition-summary-label">Tổng học phí</div>
+                        <div class="tuition-summary-value tuition-summary-total" id="tuition-total-sum">0đ</div>
                     </div>
                 </div>
 
-                <div class="grid-form" style="margin-bottom: 25px;">
-                    <div class="glass-card stat-card" style="padding: 20px;">
-                        <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Học phí Đã Thu</div>
-                        <div style="font-size: 24px; font-weight: 700; color: #16a34a; margin-top: 5px;" id="tuition-paid-sum">0đ</div>
-                    </div>
-                    <div class="glass-card stat-card" style="padding: 20px;">
-                        <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Học phí Chưa Thu</div>
-                        <div style="font-size: 24px; font-weight: 700; color: #dc2626; margin-top: 5px;" id="tuition-unpaid-sum">0đ</div>
-                    </div>
-                    <div class="glass-card stat-card" style="padding: 20px;">
-                        <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Tổng cộng học phí</div>
-                        <div style="font-size: 24px; font-weight: 700; color: var(--primary); margin-top: 5px;" id="tuition-total-sum">0đ</div>
-                    </div>
-                </div>
-
-                <div class="table-wrapper" style="border-radius: 16px;">
+                <div class="table-wrapper tuition-table-wrapper">
                     <table class="custom-table" id="tuitionOverviewTable">
                         <thead>
                             <tr>
-                                <th>Học sinh</th>
-                                <th>Lớp/Môn</th>
-                                <th style="text-align: center;">Số buổi đã học</th>
-                                <th style="text-align: center;">Số giờ tích lũy</th>
-                                <th style="text-align: right;" class="role-restricted admin-only">Tổng học phí phát sinh</th>
-                                <th style="text-align: right;" class="role-restricted admin-only">Đã thanh toán</th>
-                                <th style="text-align: right;" class="role-restricted admin-only">Còn nợ</th>
-                                <th style="text-align: center; width: 170px;">Trạng thái</th>
-                                <th class="role-restricted admin-only" style="text-align: center; width: 130px;">Xuất phiếu</th>
+                                <th>STT</th>
+                                <th>HỌ TÊN HS</th>
+                                <th>LỚP / MÔN</th>
+                                <th>SỐ BUỔI</th>
+                                <th>SỐ GIỜ HỌC</th>
+                                <th class="role-restricted admin-only">TỔNG HỌC PHÍ</th>
+                                <th class="role-restricted admin-only">ĐÃ THANH TOÁN</th>
+                                <th class="role-restricted admin-only">CHƯA THANH TOÁN</th>
+                                <th>TRẠNG THÁI</th>
+                                <th class="role-restricted admin-only">XUẤT PHIẾU</th>
                             </tr>
                         </thead>
                         <tbody id="tuitionOverviewTableBody">
@@ -1530,6 +1522,27 @@
         </div>
     </div>
 
+    <!-- Chọn phạm vi khi sửa/xóa một buổi thuộc chuỗi lặp -->
+    <div class="modal-backdrop" id="recurrenceScopeModal">
+        <div class="modal-container recurrence-scope-modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="recurrenceScopeTitle">Thay đổi lịch lặp lại</h3>
+                <button type="button" class="modal-close" onclick="app.resolveRecurrenceScope(null)">&times;</button>
+            </div>
+            <div class="modal-body recurrence-scope-body">
+                <div class="recurrence-scope-symbol" aria-hidden="true">↻</div>
+                <p id="recurrenceScopeMessage">Chọn phạm vi muốn áp dụng.</p>
+                <div class="recurrence-scope-options">
+                    <button type="button" class="btn btn-secondary" onclick="app.resolveRecurrenceScope('single')">Chỉ buổi này</button>
+                    <button type="button" class="btn btn-primary" id="recurrenceScopeFollowingBtn" onclick="app.resolveRecurrenceScope('following')">Buổi này và các buổi sau</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="app.resolveRecurrenceScope(null)">Hủy bỏ</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Notification Toast -->
     <div id="toastNotification" class="notification">
         <button type="button" id="undoDeleteBtn" class="undo-delete-btn" hidden>Hoàn tác</button>
@@ -1549,13 +1562,13 @@
     <script src="landing-orbis.js?v=20260725-lithos-default2"></script>
     <script src="core.js?v=20260725-lithos-default2"></script>
     <script src="lithos-petals.js?v=20260724-petal3"></script>
-    <script src="app-shell.js?v=20260725-event-init1"></script>
+    <script src="app-shell.js?v=20260725-event-init2"></script>
     <script src="users.js"></script>
     <script src="dashboard.js"></script>
     <script src="student-logs.js"></script>
     <script src="scores.js"></script>
-    <script src="calendar.js?v=20260725-empty-session-students1"></script>
-    <script src="tuition-export.js"></script>
+    <script src="calendar.js?v=20260725-recurring-scope1"></script>
+    <script src="tuition-export.js?v=20260725-cumulative-report1"></script>
     <script src="students.js"></script>
     <script src="ai-chat.js"></script>
     <script src="requests.js"></script>

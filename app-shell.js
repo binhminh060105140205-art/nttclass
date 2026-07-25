@@ -744,7 +744,7 @@ Object.assign(PinkyClassApp.prototype, {
             titleEl.innerText = "Lịch dạy & Chấm công";
             subtitleEl.innerText = "Sắp xếp lịch dạy học và tính công dạy hàng tuần.";
         } else if (viewId === 'view-tuition') {
-            titleEl.innerText = "Báo cáo Học phí";
+            titleEl.innerText = "BÁO CÁO HỌC PHÍ";
             subtitleEl.innerText = "Xem thông tin đóng học phí của tất cả học sinh.";
         } else if (viewId === 'view-students') {
             titleEl.innerText = "HỒ SƠ HỌC SINH";
