@@ -4,10 +4,12 @@ var originalFetch=fetch.bind(window);if(!localStorage.pinky_current_user)fetch=f
     function renderLithosLanding(){
         var lithosPage=document.getElementById('landingPage');
         if(!lithosPage)return;
+        if(lithosPage.dataset.landingTheme==='lithos')return;
+        lithosPage.dataset.landingTheme='lithos';
         lithosPage.className='lithos-page';
         lithosPage.innerHTML='';
         var lithosLoader=document.createElement('script');
-        lithosLoader.src='landing-lithos-loader.js';
+        lithosLoader.src='landing-lithos-loader.js?v=20260725-lithos-default2';
         document.head.appendChild(lithosLoader);
     }
 
@@ -19,5 +21,5 @@ var originalFetch=fetch.bind(window);if(!localStorage.pinky_current_user)fetch=f
         renderLithosLanding();
     };
 
-    window.renderLandingTheme('velorah');
+    window.renderLandingTheme('lithos');
 })();

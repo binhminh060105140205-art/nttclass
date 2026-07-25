@@ -108,7 +108,7 @@ class PinkyClassApp {
     }
 
     useLandingTheme() {
-        const landingTheme = this.appTheme === 'velorah' ? 'velorah' : 'lithos';
+        const landingTheme = 'lithos';
         document.documentElement.setAttribute('data-app-theme', landingTheme);
         const lithosStylesheet = document.getElementById('appThemeStylesheet');
         const velorahStylesheet = document.getElementById('velorahAppThemeStylesheet');
