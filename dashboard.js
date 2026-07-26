@@ -116,17 +116,17 @@ Object.assign(PinkyClassApp.prototype, {
             item.title = 'Bấm để nhập/xem nội dung buổi học';
             item.addEventListener('click', () => this.openSessionQuickEntry(sess.id));
 
-            const names = sess.studentIds.map(id => this.getStudentName(id)).join(', ');
+            const names = this.escapeHtml(sess.studentIds.map(id => this.getStudentName(id)).join(', '));
             const badgeClass = sess.type === 'riêng' ? 'badge-rieng' : 'badge-chung';
 
             item.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-                    <span style="font-weight: 600; font-size: 13px; color: var(--primary);">${sess.startTime} - ${sess.endTime}</span>
+                    <span style="font-weight: 600; font-size: 13px; color: var(--primary);">${this.escapeHtml(sess.startTime)} - ${this.escapeHtml(sess.endTime)}</span>
                     <span class="badge ${badgeClass}" style="font-size: 10px; padding: 2px 8px;">${sess.type === 'chung' ? 'Lớp học' : '1-1'}</span>
                 </div>
                 <div style="font-size:14px; font-weight:700; color:var(--text-main);">${sess.sessionName ? this.escapeHtml(sess.sessionName) + ' — ' : ''}${names}</div>
                 <div style="font-size:12px; color:var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px;">
-                    ${sess.content ? sess.content.replace(/\n/g, ' | ') : 'Chưa có nội dung'}
+                    ${sess.content ? this.escapeHtml(sess.content).replace(/\n/g, ' | ') : 'Chưa có nội dung'}
                 </div>
             `;
             container.appendChild(item);

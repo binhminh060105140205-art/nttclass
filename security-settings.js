@@ -250,7 +250,8 @@ Object.assign(PinkyClassApp.prototype, {
         try {
             const res = await fetch(`${API_BASE_URL}/api/forgot-password/request`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-NTT-Client': 'web' },
                 body: JSON.stringify({ username })
             });
 
@@ -321,7 +322,8 @@ Object.assign(PinkyClassApp.prototype, {
         try {
             const res = await fetch(`${API_BASE_URL}/api/forgot-password/send-code`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-NTT-Client': 'web' },
                 body: JSON.stringify({ username, channel })
             });
 
@@ -380,7 +382,8 @@ Object.assign(PinkyClassApp.prototype, {
         try {
             const res = await fetch(`${API_BASE_URL}/api/forgot-password/reset`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-NTT-Client': 'web' },
                 body: JSON.stringify({ username, code, newPassword })
             });
 

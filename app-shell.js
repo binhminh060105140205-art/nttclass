@@ -519,8 +519,7 @@ Object.assign(PinkyClassApp.prototype, {
         this.requestsLoaded = false;
         this.requestFilter = 'pending';
         if (save) {
-            localStorage.setItem('pinky_current_user', JSON.stringify(user));
-            // Refresh data now that we have a valid auth token
+            // Phiên được giữ trong cookie HttpOnly; không lưu user/token/dữ liệu vào localStorage.
             await this.loadData();
         }
         // Học sinh chỉ được xem đúng hồ sơ của chính mình — khóa cứng
@@ -562,8 +561,8 @@ Object.assign(PinkyClassApp.prototype, {
         try {
             const res = await fetch(`${API_BASE_URL}/api/login`, {
                 method: 'POST',
-                mode: 'cors',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-NTT-Client': 'web' },
                 body: JSON.stringify({ username, password })
             });
 
@@ -604,8 +603,22 @@ Object.assign(PinkyClassApp.prototype, {
         }
     },
 
-    handleLogout() {
+    async handleLogout() {
+        try {
+            await fetch(`${API_BASE_URL}/api/logout`, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'X-NTT-Client': 'web' },
+                keepalive: true
+            });
+        } catch (error) {
+            console.warn('[logout] Không thể thông báo server:', error.message);
+        }
         localStorage.removeItem('pinky_current_user');
+        localStorage.removeItem('pinky_students');
+        localStorage.removeItem('pinky_sessions');
+        this.currentUser = null;
+        this.currentRole = null;
         this.requests = [];
         this.requestsLoaded = false;
         this.clearRequestImage();

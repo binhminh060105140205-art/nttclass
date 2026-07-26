@@ -146,43 +146,42 @@ class PinkyClassApp {
     }
 
     async init() {
-        let savedUser = null;
-        const savedUserJson = localStorage.getItem('pinky_current_user');
-        if (savedUserJson) {
-            try {
-                savedUser = JSON.parse(savedUserJson);
-            } catch (error) {
-                localStorage.removeItem('pinky_current_user');
-                console.warn('[init] Dữ liệu đăng nhập đã lưu không hợp lệ, đã xóa.', error.message);
-            }
-        }
-
-        if (savedUser && savedUser.role) {
-            // Set the current user BEFORE loading data so the auth token is
-            // available to authFetch() for the protected /api endpoints.
-            this.currentUser = savedUser;
-            this.currentRole = savedUser.role;
-        }
+        // Phiên xác thực nằm trong cookie HttpOnly; không khôi phục user/data từ localStorage.
+        localStorage.removeItem('pinky_current_user');
+        localStorage.removeItem('pinky_students');
+        localStorage.removeItem('pinky_sessions');
 
         await this.loadAppTheme();
 
-        // Gắn sự kiện ngay sau khi tải giao diện để landing/login luôn hoạt động,
-        // không bị khóa trong lúc API dữ liệu hoặc cơ sở dữ liệu đang khởi động chậm.
+        // Gắn sự kiện sớm để landing/login không bị khóa khi server đang khởi động.
         this.registerEvents();
 
+        let savedUser = null;
+        try {
+            const sessionResponse = await fetch(`${API_BASE_URL}/api/session`, {
+                cache: 'no-store',
+                credentials: 'same-origin'
+            });
+            if (sessionResponse.ok) {
+                savedUser = await sessionResponse.json();
+            }
+        } catch (error) {
+            console.warn('[init] Không thể kiểm tra phiên đăng nhập.', error.message);
+        }
+
         if (savedUser && savedUser.role) {
+            this.currentUser = savedUser;
+            this.currentRole = savedUser.role;
+            this.appTheme = this.getPersonalAppTheme() || this.appTheme;
+            this.applyAppTheme(this.appTheme, { persist: false });
             await this.loadData();
             await this.onLoginSuccess(savedUser, false);
         } else {
-            // Người chưa đăng nhập không cần gọi các API dữ liệu được bảo vệ.
-            // Nếu họ đã bấm Đăng nhập trong lúc app đang khởi tạo, giữ nguyên trang login.
             const loginRequested = window.__nttLoginRequested
                 || new URLSearchParams(window.location.search).get('login') === '1';
             if (loginRequested) this.showLoginPage();
             else this.showLandingPage();
 
-            // Điền lại tên đăng nhập đã lưu (nếu người dùng từng tick "Ghi nhớ
-            // đăng nhập") — không lưu mật khẩu vì lý do bảo mật.
             const rememberedUsername = localStorage.getItem('nttclass_remembered_username');
             const usernameInput = document.getElementById('loginUsername');
             const rememberCheckbox = document.getElementById('loginRemember');
@@ -194,30 +193,35 @@ class PinkyClassApp {
             }
         }
 
-        // Default date on scheduler to today
         const today = this.toISODateOnly(new Date());
         document.getElementById('sessionDate').value = today;
 
-        // Render initial view if already logged in
         if (this.currentUser) {
             this.switchView(this.currentRole === 'admin' ? 'view-users' : 'view-dashboard');
         }
     }
 
-    // Build headers with Authorization token (if logged in) for protected API calls
+    // Requests cùng origin mang cookie HttpOnly; frontend không còn giữ bearer token.
     authHeaders(extra = {}) {
-        const headers = { ...extra };
-        if (this.currentUser && this.currentUser.token) {
-            headers['Authorization'] = `Bearer ${this.currentUser.token}`;
-        }
-        return headers;
+        return { 'X-NTT-Client': 'web', ...extra };
     }
 
-    // Wrapper around fetch() that automatically attaches the auth token
     async authFetch(url, options = {}) {
-        const opts = { ...options };
+        const opts = { ...options, credentials: 'same-origin' };
         opts.headers = this.authHeaders(options.headers || {});
-        return fetch(url, opts);
+        const response = await fetch(url, opts);
+        if (response.status === 401 && this.currentUser && !this._sessionExpiredHandled) {
+            this._sessionExpiredHandled = true;
+            this.currentUser = null;
+            this.currentRole = null;
+            localStorage.removeItem('pinky_current_user');
+            localStorage.removeItem('pinky_students');
+            localStorage.removeItem('pinky_sessions');
+            this.showLoginPage();
+            this.showToast('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 'error');
+            setTimeout(() => { this._sessionExpiredHandled = false; }, 1000);
+        }
+        return response;
     }
 
     // Mọi thao tác ghi dữ liệu phải đi qua hàm này. Trước đây nhiều màn hình
@@ -499,25 +503,18 @@ class PinkyClassApp {
                 this.updateAllViews();
             }
         } catch (err) {
-            console.error("Lỗi khi kết nối API Server:", err.message);
-            // Fallback to localStorage if server is offline
-            if (!localStorage.getItem('pinky_students')) {
-                localStorage.setItem('pinky_students', JSON.stringify(MOCK_STUDENTS));
-                localStorage.setItem('pinky_sessions', JSON.stringify(MOCK_SESSIONS));
-            }
-            this.students = JSON.parse(localStorage.getItem('pinky_students')) || [];
-            this.sessions = JSON.parse(localStorage.getItem('pinky_sessions')) || [];
+            console.error('Lỗi khi kết nối API Server:', err.message);
+            this.students = [];
+            this.sessions = [];
+            this.scores = [];
             this.populateStudentPickers();
-            if (this.currentUser) {
-                this.updateAllViews();
-            }
+            if (this.currentUser) this.updateAllViews();
+
         }
     }
 
     async saveData() {
         this.computeSessionPaidFlags();
-        localStorage.setItem('pinky_students', JSON.stringify(this.students));
-        localStorage.setItem('pinky_sessions', JSON.stringify(this.sessions));
         this.updateAllViews();
     }
 

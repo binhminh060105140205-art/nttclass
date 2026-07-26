@@ -65,23 +65,24 @@ Object.assign(PinkyClassApp.prototype, {
         tbody.innerHTML = '';
         this.users.forEach(u => {
             const tr = document.createElement('tr');
+            const userIdArg = this.escapeHtmlAttr(JSON.stringify(String(u.Id)));
             const isProtected = u.Id === 'u_teacher';
             const activeBadge = u.Active
                 ? `<span class="badge" style="background: var(--hw-done-bg); color: var(--hw-done-text); border: 1px solid var(--hw-done-border);">Đang hoạt động</span>`
                 : `<span class="badge" style="background: var(--hw-not-done-bg); color: var(--hw-not-done-text); border: 1px solid var(--hw-not-done-border);">Đã vô hiệu hóa</span>`;
 
             tr.innerHTML = `
-                <td style="text-align:center; font-size:12px; color:var(--text-muted);">${u.Id}</td>
-                <td><strong>${u.Name}</strong><div style="font-size:11px; margin-top:2px;">${activeBadge}</div></td>
-                <td>${u.Username}</td>
+                <td style="text-align:center; font-size:12px; color:var(--text-muted);">${this.escapeHtml(u.Id)}</td>
+                <td><strong>${this.escapeHtml(u.Name)}</strong><div style="font-size:11px; margin-top:2px;">${activeBadge}</div></td>
+                <td>${this.escapeHtml(u.Username)}</td>
                 <td>${this.roleLabelText(u.Role)}</td>
-                <td>${u.Role === 'assistant' ? (this.assignedTeacherName(u.AssignedTeacherId) || '<span style="color:var(--text-muted);">Chưa gán</span>') : '<span style="color:var(--text-muted);">—</span>'}</td>
+                <td>${u.Role === 'assistant' ? (this.escapeHtml(this.assignedTeacherName(u.AssignedTeacherId)) || '<span style="color:var(--text-muted);">Chưa gán</span>') : '<span style="color:var(--text-muted);">—</span>'}</td>
                 <td style="text-align:center;">
-                    <button class="btn btn-secondary btn-sm" onclick="app.openEditUserModal('${u.Id}')"> Sửa
+                    <button class="btn btn-secondary btn-sm" onclick="app.openEditUserModal(${userIdArg})"> Sửa
                     </button>
-                    <button class="btn ${u.Active ? 'btn-secondary' : 'btn-primary'} btn-sm" onclick="app.toggleUserActive('${u.Id}', ${u.Active ? 'false' : 'true'})"> ${u.Active ? 'Khóa' : 'Mở khóa'}
+                    <button class="btn ${u.Active ? 'btn-secondary' : 'btn-primary'} btn-sm" onclick="app.toggleUserActive(${userIdArg}, ${u.Active ? 'false' : 'true'})"> ${u.Active ? 'Khóa' : 'Mở khóa'}
                     </button>
-                    <button class="btn btn-danger btn-sm" onclick="app.deleteUser('${u.Id}')"> Xóa
+                    <button class="btn btn-danger btn-sm" onclick="app.deleteUser(${userIdArg})"> Xóa
                     </button>
                 </td>
             `;

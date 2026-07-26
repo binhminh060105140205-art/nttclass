@@ -68,21 +68,23 @@ Object.assign(PinkyClassApp.prototype, {
             const commentHTML = `<div class="comment-text">${detail.individualComment ? this.nl2brText(detail.individualComment) : 'Chưa nhận xét.'}</div>`;
 
             // Actions for edit
+            const sessionIdArg = this.escapeHtmlAttr(JSON.stringify(String(sess.id)));
+            const studentIdArg = this.escapeHtmlAttr(JSON.stringify(String(studentId)));
             const actionsHTML = `
-                <button class="btn btn-secondary btn-sm" onclick="app.openUpdateLogModal('${sess.id}', '${studentId}')">Chỉnh sửa</button>
+                <button class="btn btn-secondary btn-sm" onclick="app.openUpdateLogModal(${sessionIdArg}, ${studentIdArg})">Chỉnh sửa</button>
             `;
 
             tr.innerHTML = `
                 <td class="session-number-cell">
                     <span class="session-number-val">Buổi ${idx + 1}</span>
-                    <span class="session-time-val">${sess.startTime} - ${sess.endTime}</span>
+                    <span class="session-time-val">${this.escapeHtml(sess.startTime)} - ${this.escapeHtml(sess.endTime)}</span>
                 </td>
                 <td class="session-date-cell">${dateStr}</td>
                 <td class="col-content-compact">${contentHTML}</td>
                 <td style="text-align:center;">${homeworkBadge}</td>
-                <td>${displayedAttitude || '-'}</td>
+                <td>${this.escapeHtml(displayedAttitude || '-')}</td>
                 <td>${commentHTML}</td>
-                <td class="student-log-note">${detail.note || '-'}</td>
+                <td class="student-log-note">${this.escapeHtml(detail.note || '-')}</td>
                 <td class="role-restricted admin-tutor log-export-hide">${actionsHTML}</td>
             `;
 

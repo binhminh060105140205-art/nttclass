@@ -44,11 +44,11 @@ Object.assign(PinkyClassApp.prototype, {
                 const [year, month, day] = String(student.dob).split("T")[0].split("-");
                 return year && month && day ? `${day}/${month}/${year}` : "-";
             })();
-            const studentId = this.escapeHtmlAttr(student.id);
+            const studentId = this.escapeHtmlAttr(JSON.stringify(String(student.id)));
             const classLabel = student.class || (student.gradeLevel ? `Lớp ${student.gradeLevel}` : "-");
             const actionsHtml = `
                 <div class="student-table-actions">
-                    <button class="btn btn-secondary btn-sm" onclick="app.openEditStudentModal('${studentId}')">Sửa</button>
+                    <button class="btn btn-secondary btn-sm" onclick="app.openEditStudentModal(${studentId})">Sửa</button>
                 </div>
             `;
 

@@ -42,9 +42,11 @@ Object.assign(PinkyClassApp.prototype, {
             rowNumber += 1;
 
             const isFullyPaid = totalTuitionEarned > 0 && unpaidTuition === 0;
+            const studentIdArg = this.escapeHtmlAttr(JSON.stringify(String(student.id)));
+
             const statusSelect = `
                 <select class="tuition-status-select ${isFullyPaid ? 'status-paid' : 'status-unpaid'}"
-                        data-student="${student.id}"
+                        data-student="${this.escapeHtmlAttr(student.id)}"
                         ${totalTuitionEarned <= 0 || this.currentRole === 'student' ? 'disabled' : ''}>
                     <option value="unpaid" ${!isFullyPaid ? 'selected' : ''}>Chưa thanh toán</option>
                     <option value="paid" ${isFullyPaid ? 'selected' : ''}>Đã thanh toán</option>
@@ -65,7 +67,7 @@ Object.assign(PinkyClassApp.prototype, {
                 <td class="role-restricted admin-only tuition-center">
                     <button type="button" class="btn btn-secondary btn-sm tuition-invoice-btn"
                             ${totalSessionsCount === 0 ? 'disabled' : ''}
-                            onclick="app.openInvoiceModal('${student.id}')">Xuất phiếu</button>
+                            onclick="app.openInvoiceModal(${studentIdArg})">Xuất phiếu</button>
                 </td>
             `;
             tbody.appendChild(tr);

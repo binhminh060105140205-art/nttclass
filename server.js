@@ -34,7 +34,6 @@ require('dotenv').config();
 
 const express = require('express');
 const { Pool, types } = require('pg');
-const cors    = require('cors');
 const path    = require('path');
 const bcrypt  = require('bcryptjs'); // Hash mật khẩu tài khoản học sinh (pure-JS, không cần build native — an toàn khi deploy Render)
 const crypto  = require('crypto');
@@ -66,6 +65,14 @@ const PROTECTED_OWNER_USER_ID = 'u_teacher';
 const MAX_USERNAME_LENGTH = 50;
 const MAX_PASSWORD_LENGTH = 200;
 const MIN_PASSWORD_LENGTH = 8;
+const IS_PRODUCTION = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true' || /^https:\/\//i.test(String(process.env.RENDER_EXTERNAL_URL || ''));
+const SESSION_COOKIE_NAME = IS_PRODUCTION ? '__Host-ntt_session' : 'ntt_session';
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const SESSION_CACHE_TTL_MS = 60 * 1000;
+const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
+
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
 
 function createOtpCode() {
     return String(crypto.randomInt(100000, 1000000));
@@ -117,21 +124,170 @@ async function passwordMatches(password, stored) {
 // MIDDLEWARE
 // ==========================================
 
-// CORS: cho phép mọi origin (cấu hình restrict thêm nếu production)
-app.use(cors({
-    origin: true,          // reflect request origin — thay bằng domain cụ thể khi deploy
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
-}));
+// Security headers are intentionally dependency-free and add no database work.
+function setSecurityHeaders(req, res, next) {
+    const csp = [
+        "default-src 'self'",
+        "base-uri 'self'",
+        "object-src 'none'",
+        "frame-ancestors 'none'",
+        "form-action 'self'",
+        "script-src 'self' https://cdnjs.cloudflare.com",
+        "script-src-attr 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' data: https://fonts.gstatic.com",
+        "img-src 'self' data: blob:",
+        "media-src 'self' https://d8j0ntlcm91z4.cloudfront.net",
+        "connect-src 'self'",
+        "worker-src 'self' blob:",
+        IS_PRODUCTION ? 'upgrade-insecure-requests' : ''
+    ].filter(Boolean).join('; ');
+    res.setHeader('Content-Security-Policy', csp);
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+    res.setHeader('Origin-Agent-Cluster', '?1');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+    if (IS_PRODUCTION) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    next();
+}
 
-// Ảnh đính kèm của trang Yêu cầu được gửi dưới dạng data URL. Body đủ rộng
-// cho nhiều ảnh; API bên dưới vẫn giới hạn từng ảnh và tổng dung lượng.
-app.use(express.json({ limit: '20mb' }));
-app.use(express.static(path.join(__dirname)));
+function requestOriginMatchesHost(req) {
+    const origin = req.get('origin');
+    if (!origin) return true;
+    try {
+        const parsed = new URL(origin);
+        const forwardedHost = String(req.get('x-forwarded-host') || req.get('host') || '').split(',')[0].trim();
+        const forwardedProto = String(req.get('x-forwarded-proto') || req.protocol || '').split(',')[0].trim();
+        return parsed.host === forwardedHost && parsed.protocol === forwardedProto + ':';
+    } catch {
+        return false;
+    }
+}
 
-// Serve index.html
+function enforceSameOriginApi(req, res, next) {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+    const fetchSite = req.get('sec-fetch-site');
+    if (fetchSite && !['same-origin', 'none'].includes(fetchSite)) {
+        return res.status(403).json({ error: 'Yêu cầu khác nguồn đã bị chặn.' });
+    }
+    if (!requestOriginMatchesHost(req) || req.get('x-ntt-client') !== 'web') {
+        return res.status(403).json({ error: 'Yêu cầu không hợp lệ.' });
+    }
+    next();
+}
+
+const rateLimitStores = new Set();
+function rateKeyPart(value) {
+    return crypto.createHash('sha256').update(String(value || '')).digest('hex').slice(0, 20);
+}
+function createRateLimiter({ windowMs, max, message, keyGenerator, skipSuccessfulRequests = false }) {
+    const store = new Map();
+    rateLimitStores.add(store);
+    return (req, res, next) => {
+        const now = Date.now();
+        const key = keyGenerator ? keyGenerator(req) : req.ip;
+        let record = store.get(key);
+        if (!record || record.resetAt <= now) {
+            record = { count: 0, resetAt: now + windowMs };
+            store.set(key, record);
+        }
+        record.count += 1;
+        res.setHeader('RateLimit-Limit', String(max));
+        res.setHeader('RateLimit-Remaining', String(Math.max(0, max - record.count)));
+        res.setHeader('RateLimit-Reset', String(Math.ceil(record.resetAt / 1000)));
+        if (record.count > max) {
+            res.setHeader('Retry-After', String(Math.max(1, Math.ceil((record.resetAt - now) / 1000))));
+            return res.status(429).json({ error: message || 'Bạn thao tác quá nhanh. Vui lòng thử lại sau.' });
+        }
+        if (skipSuccessfulRequests) {
+            res.once('finish', () => {
+                if (res.statusCode < 400 && store.get(key) === record) record.count = Math.max(0, record.count - 1);
+            });
+        }
+        next();
+    };
+}
+
+setInterval(() => {
+    const now = Date.now();
+    for (const store of rateLimitStores) {
+        for (const [key, record] of store) if (record.resetAt <= now) store.delete(key);
+    }
+}, 10 * 60 * 1000).unref();
+
+const apiRateLimit = createRateLimiter({ windowMs: 5 * 60 * 1000, max: 600 });
+const loginRateLimit = createRateLimiter({
+    windowMs: 15 * 60 * 1000, max: 12,
+    message: 'Đăng nhập sai quá nhiều lần. Vui lòng thử lại sau 15 phút.',
+    keyGenerator: req => `${req.ip}:${rateKeyPart(String(req.body?.username || "").trim().toLowerCase())}`,
+    skipSuccessfulRequests: true
+});
+const otpRateLimit = createRateLimiter({
+    windowMs: 15 * 60 * 1000, max: 8,
+    message: 'Bạn yêu cầu mã quá nhiều lần. Vui lòng thử lại sau.',
+    keyGenerator: req => `${req.ip}:${rateKeyPart(String(req.body?.username || req.authUser?.userId || "").trim().toLowerCase())}`
+});
+const aiRateLimit = createRateLimiter({
+    windowMs: 5 * 60 * 1000, max: 30,
+    message: 'Bạn đang gửi câu hỏi quá nhanh. Vui lòng chờ một lát.',
+    keyGenerator: req => req.authUser ? `${req.authUser.role}:${req.authUser.userId}` : req.ip
+});
+
+app.use(setSecurityHeaders);
+app.use('/api', (req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Pragma', 'no-cache');
+    next();
+}, enforceSameOriginApi, apiRateLimit);
+
+const requestImageJsonParser = express.json({ limit: '18mb', strict: true });
+app.use((req, res, next) => {
+    const isRequestWrite = ['POST', 'PUT'].includes(req.method)
+        && /^\/api\/requests(?:\/[^/]+)?$/.test(req.path);
+    return isRequestWrite ? requestImageJsonParser(req, res, next) : next();
+});
+app.use(express.json({ limit: '512kb', strict: true }));
+
+const PUBLIC_ROOT_FILES = new Set([
+    'ai-chat.js', 'app-shell.js', 'calendar.js', 'core.js', 'dashboard.js',
+    'invoice-export.js', 'landing-lithos-animations.css', 'landing-lithos-base.css',
+    'landing-lithos-button.css', 'landing-lithos-copy.css', 'landing-lithos-copy.js',
+    'landing-lithos-core.css', 'landing-lithos-dom.js', 'landing-lithos-fonts.css',
+    'landing-lithos-heading.css', 'landing-lithos-heading.js', 'landing-lithos-loader.js',
+    'landing-lithos-login.js', 'landing-lithos-motion.css', 'landing-lithos-nav-actions.css',
+    'landing-lithos-nav-menu.js', 'landing-lithos-nav.css', 'landing-lithos-nav.js',
+    'landing-lithos-responsive.css', 'landing-lithos-reveal.css', 'landing-lithos-spotlight.js',
+    'landing-orbis.css', 'landing-orbis-fixes.css', 'landing-orbis.js',
+    'landing-velorah.css', 'landing-velorah.js', 'lithos-app-background.css',
+    'lithos-app-cards.css', 'lithos-app-components.css', 'lithos-app-controls.css',
+    'lithos-app-dark.css', 'lithos-app-forms.css', 'lithos-app-header.css',
+    'lithos-app-light.css', 'lithos-app-login-fields.css', 'lithos-app-login-panel.css',
+    'lithos-app-login.css', 'lithos-app-menu.css', 'lithos-app-modal.css',
+    'lithos-app-organic.css', 'lithos-app-requests.css', 'lithos-app-responsive.css',
+    'lithos-app-scheduler.css', 'lithos-app-shell.css', 'lithos-app-sidebar.css',
+    'lithos-app-special.css', 'lithos-app-stat-fix.css', 'lithos-app-stats.css',
+    'lithos-app-tables.css', 'lithos-app-theme.css', 'lithos-app-tokens.css',
+    'lithos-botanical-vine.svg', 'lithos-botanical.svg', 'lithos-button-vine-back.svg',
+    'lithos-button-vine-front.svg', 'lithos-button-vine-wrap.svg', 'lithos-corner-bloom.svg',
+    'lithos-falling-blossom.svg', 'lithos-log-header-branch.svg', 'lithos-name-vine.svg',
+    'lithos-petals.css', 'lithos-petals.js', 'lithos-safe-decor.css',
+    'lithos-stat-bloom.svg', 'lithos-vine-buttons.css', 'lithos-wood-bloom-pink.webp',
+    'lithos-wood-pink.webp', 'main.js', 'requests-edit.js', 'requests.js', 'scores.js',
+    'security-settings.js', 'student-logs.js', 'students.js', 'style.css',
+    'tuition-export.js', 'users.js', 'velorah-app-theme.css'
+]);
+const staticOptions = { dotfiles: 'deny', index: false, redirect: false, maxAge: '1h' };
+app.use('/assets', express.static(path.join(__dirname, 'assets'), staticOptions));
+app.use('/src/styles', express.static(path.join(__dirname, 'src', 'styles'), staticOptions));
+app.get('/:file', (req, res, next) => {
+    if (!PUBLIC_ROOT_FILES.has(req.params.file)) return next();
+    res.sendFile(path.join(__dirname, req.params.file), { maxAge: '1h' });
+});
 app.get('/', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
@@ -464,6 +620,25 @@ let poolPromise = pgPool.query('SELECT 1')
         } catch (migErr) {
             console.error('AppSettings migration error:', migErr.message);
         }
+        try {
+            await pgPool.query(`CREATE TABLE IF NOT EXISTS AuthSessions (
+                SessionHash CHAR(64) PRIMARY KEY,
+                UserId VARCHAR(120) NOT NULL,
+                AccountType VARCHAR(20) NOT NULL,
+                Role VARCHAR(20) NOT NULL,
+                AssignedTeacherId VARCHAR(120) NULL,
+                CreatedAt TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                LastSeenAt TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                ExpiresAt TIMESTAMPTZ NOT NULL
+            )`);
+            await pgPool.query('CREATE INDEX IF NOT EXISTS idx_authsessions_user ON AuthSessions (AccountType, UserId)');
+            await pgPool.query('CREATE INDEX IF NOT EXISTS idx_authsessions_expiry ON AuthSessions (ExpiresAt)');
+            await pgPool.query('DELETE FROM AuthSessions WHERE ExpiresAt <= CURRENT_TIMESTAMP');
+        } catch (migrationError) {
+            console.error('AuthSessions migration error:', migrationError.message);
+            throw migrationError;
+        }
+
         return { request: () => new sql.Request(pgPool) };
     })
     .catch(err => {
@@ -476,68 +651,225 @@ let poolPromise = pgPool.query('SELECT 1')
 // AUTH MIDDLEWARE
 // ==========================================
 
-/**
- * Xác thực đơn giản qua header:  Authorization: Bearer <base64(userId:role:assignedTeacherId)>
- * assignedTeacherId chỉ có giá trị khi role = 'assistant'; rỗng với các role khác.
- * Frontend sẽ gửi token này sau khi login thành công.
- */
-function parseToken(req) {
-    const header = req.headers['authorization'] || '';
-    if (!header.startsWith('Bearer ')) return null;
-    try {
-        const decoded = Buffer.from(header.slice(7), 'base64').toString('utf8');
-        const [userId, role, assignedTeacherId] = decoded.split(':');
-        if (!userId || !role) return null;
-        return { userId, role, assignedTeacherId: assignedTeacherId || null };
-    } catch {
-        return null;
+const sessionCache = new Map();
+setInterval(() => {
+    const now = Date.now();
+    for (const [sessionHash, session] of sessionCache) {
+        if (session.expiresAt <= now) sessionCache.delete(sessionHash);
     }
-}
+}, 10 * 60 * 1000).unref();
 
-function requireAuth(req, res, next) {
-    const token = parseToken(req);
-    if (!token) return res.status(401).json({ error: 'Chưa đăng nhập hoặc phiên làm việc hết hạn.' });
-    req.authUser = token;
-    next();
-}
-
-function requireRole(...roles) {
-    return (req, res, next) => {
-        const token = parseToken(req);
-        if (!token) return res.status(401).json({ error: 'Chưa đăng nhập.' });
-        if (!roles.includes(token.role)) {
-            return res.status(403).json({ error: `Bạn không có quyền thực hiện hành động này. Yêu cầu vai trò: ${roles.join(' hoặc ')}.` });
+function parseCookies(req) {
+    const cookies = {};
+    const header = req.headers.cookie || '';
+    for (const part of header.split(';')) {
+        const separator = part.indexOf('=');
+        if (separator < 1) continue;
+        const name = part.slice(0, separator).trim();
+        const value = part.slice(separator + 1).trim();
+        try {
+            cookies[name] = decodeURIComponent(value);
+        } catch {
+            cookies[name] = value;
         }
-        req.authUser = token;
-        next();
+    }
+    return cookies;
+}
+
+function hashSessionToken(token) {
+    return crypto.createHash('sha256').update(String(token)).digest('hex');
+}
+
+function sessionCookieOptions() {
+    return {
+        httpOnly: true,
+        secure: IS_PRODUCTION,
+        sameSite: 'strict',
+        path: '/',
+        maxAge: SESSION_TTL_MS
     };
 }
 
-/**
- * "Giáo viên hiệu lực" của request hiện tại:
- *  - role = 'teacher'   -> chính họ (userId)
- *  - role = 'assistant' -> giáo viên mà họ được gán (assignedTeacherId)
- *  - role = 'admin'     -> không áp dụng (admin không truy cập dữ liệu dạy học)
- */
+function clearSessionCookie(res) {
+    res.clearCookie(SESSION_COOKIE_NAME, {
+        httpOnly: true,
+        secure: IS_PRODUCTION,
+        sameSite: 'strict',
+        path: '/'
+    });
+}
+
+async function createSession(res, authUser) {
+    await poolPromise;
+    const token = crypto.randomBytes(32).toString('base64url');
+    const sessionHash = hashSessionToken(token);
+    const now = Date.now();
+    const expiresAt = new Date(now + SESSION_TTL_MS);
+    await pgPool.query(`INSERT INTO AuthSessions
+        (SessionHash, UserId, AccountType, Role, AssignedTeacherId, CreatedAt, LastSeenAt, ExpiresAt)
+        VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $6)`, [
+        sessionHash,
+        authUser.userId,
+        authUser.accountType,
+        authUser.role,
+        authUser.assignedTeacherId || null,
+        expiresAt
+    ]);
+    sessionCache.set(sessionHash, {
+        ...authUser,
+        sessionHash,
+        expiresAt: expiresAt.getTime(),
+        lastTouchedAt: now,
+        validatedAt: now
+    });
+    res.cookie(SESSION_COOKIE_NAME, token, sessionCookieOptions());
+}
+
+async function deleteSessionByHash(sessionHash) {
+    if (!sessionHash) return;
+    sessionCache.delete(sessionHash);
+    await poolPromise;
+    await pgPool.query('DELETE FROM AuthSessions WHERE SessionHash = $1', [sessionHash]);
+}
+
+async function revokeSessionsForAccount(accountType, userId, exceptSessionHash = null) {
+    if (!accountType || !userId) return;
+    await poolPromise;
+    const params = [accountType, userId];
+    let query = 'DELETE FROM AuthSessions WHERE AccountType = $1 AND UserId = $2';
+    if (exceptSessionHash) {
+        params.push(exceptSessionHash);
+        query += ' AND SessionHash <> $3';
+    }
+    await pgPool.query(query, params);
+    for (const [sessionHash, session] of sessionCache) {
+        if (session.accountType === accountType && session.userId === userId && sessionHash !== exceptSessionHash) {
+            sessionCache.delete(sessionHash);
+        }
+    }
+}
+
+async function parseToken(req) {
+    const rawToken = parseCookies(req)[SESSION_COOKIE_NAME];
+    if (!rawToken || rawToken.length < 32 || rawToken.length > 100) return null;
+    const sessionHash = hashSessionToken(rawToken);
+    const now = Date.now();
+    let session = sessionCache.get(sessionHash);
+
+    if (!session || session.expiresAt <= now || now - session.validatedAt >= SESSION_CACHE_TTL_MS) {
+        await poolPromise;
+        const result = await pgPool.query(`SELECT SessionHash AS "sessionHash", UserId AS "userId",
+                AccountType AS "accountType", Role AS "role", AssignedTeacherId AS "assignedTeacherId",
+                LastSeenAt AS "lastSeenAt", ExpiresAt AS "expiresAt"
+            FROM AuthSessions
+            WHERE SessionHash = $1 AND ExpiresAt > CURRENT_TIMESTAMP`, [sessionHash]);
+        if (!result.rowCount) {
+            sessionCache.delete(sessionHash);
+            return null;
+        }
+        const row = result.rows[0];
+        session = {
+            sessionHash,
+            userId: row.userId,
+            accountType: row.accountType,
+            role: row.role,
+            assignedTeacherId: row.assignedTeacherId || null,
+            expiresAt: new Date(row.expiresAt).getTime(),
+            lastTouchedAt: new Date(row.lastSeenAt).getTime(),
+            validatedAt: now
+        };
+        sessionCache.set(sessionHash, session);
+    }
+
+    if (now - session.lastTouchedAt >= SESSION_TOUCH_INTERVAL_MS) {
+        session.lastTouchedAt = now;
+        pgPool.query('UPDATE AuthSessions SET LastSeenAt = CURRENT_TIMESTAMP WHERE SessionHash = $1', [sessionHash])
+            .catch(error => console.error('[SESSION TOUCH]', error.message));
+    }
+    req.authSessionHash = sessionHash;
+    return {
+        userId: session.userId,
+        accountType: session.accountType,
+        role: session.role,
+        assignedTeacherId: session.assignedTeacherId
+    };
+}
+
+async function requireAuth(req, res, next) {
+    try {
+        const authUser = await parseToken(req);
+        if (!authUser) {
+            clearSessionCookie(res);
+            return res.status(401).json({ error: 'Chưa đăng nhập hoặc phiên làm việc hết hạn.' });
+        }
+        req.authUser = authUser;
+        next();
+    } catch (error) {
+        console.error('[AUTH]', error);
+        res.status(500).json({ error: 'Không thể xác thực phiên đăng nhập.' });
+    }
+}
+
+function requireRole(...roles) {
+    return async (req, res, next) => {
+        try {
+            const authUser = await parseToken(req);
+            if (!authUser) {
+                clearSessionCookie(res);
+                return res.status(401).json({ error: 'Chưa đăng nhập hoặc phiên làm việc hết hạn.' });
+            }
+            if (!roles.includes(authUser.role)) {
+                return res.status(403).json({ error: 'Bạn không có quyền thực hiện hành động này.' });
+            }
+            req.authUser = authUser;
+            next();
+        } catch (error) {
+            console.error('[AUTH ROLE]', error);
+            res.status(500).json({ error: 'Không thể xác thực quyền truy cập.' });
+        }
+    };
+}
+
 function effectiveTeacherId(req) {
     if (req.authUser.role === 'teacher') return req.authUser.userId;
-    if (req.authUser.role === 'assistant') return req.authUser.assignedTeacherId;
-    // Học sinh: token mã hóa TeacherId (giáo viên sở hữu em học sinh này) vào
-    // đúng vị trí assignedTeacherId — tái dùng nguyên cơ chế của assistant,
-    // không cần đổi định dạng token hay parseToken().
-    if (req.authUser.role === 'student') return req.authUser.assignedTeacherId;
+    if (req.authUser.role === 'assistant' || req.authUser.role === 'student') {
+        return req.authUser.assignedTeacherId;
+    }
     return null;
 }
 
-// Đảm bảo trợ giảng (assistant) đã được Admin gán cho một giáo viên cụ thể
-// trước khi cho phép truy cập dữ liệu học sinh/buổi học.
 function requireTeacherContext(req, res, next) {
     const teacherId = effectiveTeacherId(req);
     if (!teacherId) {
-        return res.status(403).json({ error: 'Tài khoản trợ giảng của bạn chưa được Admin gán cho giáo viên nào. Vui lòng liên hệ Admin.' });
+        return res.status(403).json({ error: 'Tài khoản chưa được gán đúng phạm vi giáo viên.' });
     }
     req.effectiveTeacherId = teacherId;
     next();
+}
+
+async function publicUserFromAuth(authUser) {
+    await poolPromise;
+    if (authUser.accountType === 'student') {
+        const result = await pgPool.query(`SELECT st.Id AS "id", st.Username AS "username", st.Name AS "name",
+                st.AccountActive AS "active", st.TeacherId AS "assignedTeacherId",
+                teacher.Name AS "assignedTeacherName"
+            FROM Students st
+            LEFT JOIN Users teacher ON teacher.Id = st.TeacherId
+            WHERE st.Id = $1`, [authUser.userId]);
+        const student = result.rows[0];
+        if (!student || student.active === false) return null;
+        return { ...student, role: 'student', active: true };
+    }
+    const result = await pgPool.query(`SELECT userAccount.Id AS "id", userAccount.Username AS "username",
+            userAccount.Name AS "name", userAccount.Role AS "role", userAccount.Active AS "active",
+            userAccount.AssignedTeacherId AS "assignedTeacherId", teacher.Name AS "assignedTeacherName"
+        FROM Users userAccount
+        LEFT JOIN Users teacher ON teacher.Id = userAccount.AssignedTeacherId
+        WHERE userAccount.Id = $1`, [authUser.userId]);
+    const user = result.rows[0];
+    if (!user || !user.active) return null;
+    if (user.role === 'assistant' && !user.assignedTeacherId) return null;
+    return user;
 }
 
 // ==========================================
@@ -581,10 +913,42 @@ app.put('/api/app-settings/theme', requireRole('admin'), async (req, res) => {
     }
 });
 
-app.post('/api/login', async (req, res) => {
-    const { username, password } = req.body || {};
+app.get('/api/session', requireAuth, async (req, res) => {
+    try {
+        const user = await publicUserFromAuth(req.authUser);
+        if (!user) {
+            await deleteSessionByHash(req.authSessionHash);
+            clearSessionCookie(res);
+            return res.status(401).json({ error: 'Tài khoản không còn hoạt động.' });
+        }
+        res.json(user);
+    } catch (error) {
+        console.error('[GET /api/session]', error);
+        res.status(500).json({ error: 'Không thể khôi phục phiên đăng nhập.' });
+    }
+});
+
+app.post('/api/logout', async (req, res) => {
+    try {
+        const authUser = await parseToken(req);
+        if (req.authSessionHash) await deleteSessionByHash(req.authSessionHash);
+        clearSessionCookie(res);
+        res.status(204).end();
+    } catch (error) {
+        console.error('[POST /api/logout]', error);
+        clearSessionCookie(res);
+        res.status(204).end();
+    }
+});
+
+app.post('/api/login', loginRateLimit, async (req, res) => {
+    const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
     if (!username || !password) {
         return res.status(400).json({ error: 'Username và password là bắt buộc.' });
+    }
+    if (username.length > MAX_USERNAME_LENGTH || password.length > MAX_PASSWORD_LENGTH) {
+        return res.status(400).json({ error: 'Thông tin đăng nhập không hợp lệ.' });
     }
 
     try {
@@ -618,10 +982,14 @@ app.post('/api/login', async (req, res) => {
                 return res.status(403).json({ error: 'Tài khoản trợ giảng của bạn chưa được Admin gán cho giáo viên nào. Vui lòng liên hệ Admin.' });
             }
 
-            // Tạo token đơn giản: base64(userId:role:assignedTeacherId)
-            const token = Buffer.from(`${user.Id}:${user.Role}:${user.AssignedTeacherId || ''}`).toString('base64');
+            if (req.authSessionHash) await deleteSessionByHash(req.authSessionHash);
+            await createSession(res, {
+                userId: user.Id,
+                accountType: 'user',
+                role: user.Role,
+                assignedTeacherId: user.AssignedTeacherId || null
+            });
 
-            delete user.Password;
             return res.json({
                 id:                user.Id,
                 username:          user.Username,
@@ -629,8 +997,7 @@ app.post('/api/login', async (req, res) => {
                 role:              user.Role,
                 active:            user.Active,
                 assignedTeacherId: user.AssignedTeacherId || null,
-                assignedTeacherName: user.AssignedTeacherName || null,
-                token
+                assignedTeacherName: user.AssignedTeacherName || null
             });
         }
 
@@ -658,10 +1025,13 @@ app.post('/api/login', async (req, res) => {
             return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng.' });
         }
 
-        // Token học sinh: base64(studentId:student:teacherId) — TeacherId đặt
-        // đúng vào vị trí "assignedTeacherId" để tái dùng effectiveTeacherId()/
-        // requireTeacherContext() sẵn có, không cần thêm cơ chế mới.
-        const studentToken = Buffer.from(`${student.Id}:student:${student.TeacherId}`).toString('base64');
+        if (req.authSessionHash) await deleteSessionByHash(req.authSessionHash);
+        await createSession(res, {
+            userId: student.Id,
+            accountType: 'student',
+            role: 'student',
+            assignedTeacherId: student.TeacherId || null
+        });
 
         res.json({
             id:                  student.Id,
@@ -669,9 +1039,8 @@ app.post('/api/login', async (req, res) => {
             name:                student.Name,
             role:                'student',
             active:              true,
-            assignedTeacherId:   student.TeacherId,
-            assignedTeacherName: student.TeacherName || null,
-            token:               studentToken
+            assignedTeacherId:   student.TeacherId || null,
+            assignedTeacherName: student.TeacherName || null
         });
     } catch (err) {
         console.error('[POST /api/login]', err);
@@ -733,7 +1102,7 @@ app.put('/api/account/security/contact', requireAuth, async (req, res) => {
     }
 });
 
-app.post('/api/account/security/request-code', requireAuth, async (req, res) => {
+app.post('/api/account/security/request-code', requireAuth, otpRateLimit, async (req, res) => {
     const channel = req.body?.channel === 'phone' ? 'phone' : 'email';
     try {
         const table = accountTableFor(req.authUser.role);
@@ -751,7 +1120,7 @@ app.post('/api/account/security/request-code', requireAuth, async (req, res) => 
         res.json({ message: 'Mã xác minh đã được gửi tới email của bạn.', devCode });
     } catch (err) {
         console.error('[POST /api/account/security/request-code]', err.message);
-        res.status(500).json({ error: err.message || 'Không thể gửi mã xác minh.' });
+        res.status(500).json({ error: 'Không thể gửi mã xác minh.' });
     }
 });
 
@@ -812,6 +1181,7 @@ app.put('/api/account/security/password', requireAuth, async (req, res) => {
             const result = await pgPool.query('UPDATE Users SET Password = $1 WHERE Id = $2', [hash, userId]);
             if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy tài khoản.' });
         }
+        await revokeSessionsForAccount(req.authUser.accountType, req.authUser.userId, req.authSessionHash);
         res.json({ message: 'Đổi mật khẩu thành công.' });
     } catch (err) {
         console.error('[PUT /api/account/security/password]', err);
@@ -821,7 +1191,7 @@ app.put('/api/account/security/password', requireAuth, async (req, res) => {
 
 const forgotPasswordCodes = new Map();
 
-app.post('/api/forgot-password/request', async (req, res) => {
+app.post('/api/forgot-password/request', otpRateLimit, async (req, res) => {
     const { username } = req.body || {};
     if (!username) return res.status(400).json({ error: 'Tên đăng nhập là bắt buộc.' });
     try {
@@ -872,7 +1242,7 @@ app.post('/api/forgot-password/request', async (req, res) => {
     }
 });
 
-app.post('/api/forgot-password/send-code', async (req, res) => {
+app.post('/api/forgot-password/send-code', otpRateLimit, async (req, res) => {
     const { username, channel } = req.body || {};
     if (!username || !channel) return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
     
@@ -916,11 +1286,11 @@ app.post('/api/forgot-password/send-code', async (req, res) => {
         res.json({ message: 'Mã OTP đã được gửi tới email khôi phục.', devCode });
     } catch (err) {
         console.error('[POST /api/forgot-password/send-code]', err);
-        res.status(500).json({ error: err.message || 'Lỗi hệ thống khi gửi mã.' });
+        res.status(500).json({ error: 'Lỗi hệ thống khi gửi mã.' });
     }
 });
 
-app.post('/api/forgot-password/reset', async (req, res) => {
+app.post('/api/forgot-password/reset', otpRateLimit, async (req, res) => {
     const { username, code, newPassword } = req.body || {};
     if (!username || !code || !newPassword) return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
     if (newPassword.length < MIN_PASSWORD_LENGTH) return res.status(400).json({ error: `Mật khẩu phải từ ${MIN_PASSWORD_LENGTH} ký tự trở lên.` });
@@ -944,12 +1314,14 @@ app.post('/api/forgot-password/reset', async (req, res) => {
             const hash = await bcrypt.hash(newPassword, 12);
             await pgPool.query('UPDATE Users SET Password = $1 WHERE Id = $2', [hash, record.accountId]);
             forgotPasswordCodes.delete(key);
+            await revokeSessionsForAccount('user', record.accountId);
             return res.json({ message: 'Đặt lại mật khẩu thành công.' });
         }
         if (record.accountType === 'student') {
             const hash = await bcrypt.hash(newPassword, 10);
             await pgPool.query('UPDATE Students SET PasswordHash = $1 WHERE Id = $2', [hash, record.accountId]);
             forgotPasswordCodes.delete(key);
+            await revokeSessionsForAccount('student', record.accountId);
             return res.json({ message: 'Đặt lại mật khẩu thành công.' });
         }
 
@@ -969,7 +1341,7 @@ app.get('/api/users', requireRole('admin'), async (req, res) => {
         res.json(result.recordset);
     } catch (err) {
         console.error('[GET /api/users]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -1033,7 +1405,7 @@ app.post('/api/users', requireRole('admin'), async (req, res) => {
         res.status(201).json({ message: 'Tạo tài khoản thành công.', id: newId });
     } catch (err) {
         console.error('[POST /api/users]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -1094,10 +1466,11 @@ app.put('/api/users/:id', requireRole('admin'), async (req, res) => {
 
         const updateResult = await request.query(`UPDATE Users SET ${sets.join(', ')} WHERE Id = @id`);
         if (updateResult.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy tài khoản cần cập nhật.' });
+        await revokeSessionsForAccount('user', id);
         res.json({ message: 'Cập nhật tài khoản thành công.' });
     } catch (err) {
         console.error('[PUT /api/users/:id]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -1116,10 +1489,11 @@ app.delete('/api/users/:id', requireRole('admin'), async (req, res) => {
             .input('id', sql.VarChar, id)
             .query('DELETE FROM Users WHERE Id = @id');
         if (deleteResult.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy tài khoản cần xóa.' });
+        await revokeSessionsForAccount('user', id);
         res.json({ message: 'Đã xóa tài khoản.' });
     } catch (err) {
         console.error('[DELETE /api/users/:id]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -1154,7 +1528,7 @@ app.get('/api/students', requireRole('teacher', 'assistant'), requireTeacherCont
         res.json(result.recordset);
     } catch (err) {
         console.error('[GET /api/students]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -1204,7 +1578,7 @@ app.post('/api/students', requireRole('teacher', 'assistant'), requireTeacherCon
         res.status(201).json({ message: 'Đã thêm học sinh mới thành công.' });
     } catch (err) {
         console.error('[POST /api/students]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -1262,7 +1636,7 @@ app.put('/api/students/:id', requireRole('teacher', 'assistant'), requireTeacher
         res.json({ message: 'Đã cập nhật thông tin học sinh.' });
     } catch (err) {
         console.error('[PUT /api/students/:id]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -1285,7 +1659,7 @@ app.delete('/api/students/:id', requireRole('teacher'), requireTeacherContext, a
         res.json({ message: 'Đã xóa học sinh thành công.' });
     } catch (err) {
         console.error('[DELETE /api/students/:id]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -1344,7 +1718,7 @@ app.post('/api/students/:id/account', requireRole('teacher', 'assistant'), requi
         res.json({ message: 'Đã tạo tài khoản đăng nhập cho học sinh.', username });
     } catch (err) {
         console.error('[POST /api/students/:id/account]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -1376,10 +1750,11 @@ app.put('/api/students/:id/account/reset-password', requireRole('teacher', 'assi
         const hash = await bcrypt.hash(password, 10);
         await pool.request().input('id', sql.VarChar, id).input('hash', sql.VarChar, hash)
             .query('UPDATE Students SET PasswordHash = @hash WHERE Id = @id');
+        await revokeSessionsForAccount('student', id);
         res.json({ message: 'Đã đặt lại mật khẩu cho học sinh.' });
     } catch (err) {
         console.error('[PUT /api/students/:id/account/reset-password]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -1399,10 +1774,11 @@ app.put('/api/students/:id/account/toggle', requireRole('teacher'), requireTeach
         }
         await pool.request().input('id', sql.VarChar, id).input('active', sql.Bit, active ? 1 : 0)
             .query('UPDATE Students SET AccountActive = @active WHERE Id = @id');
+        await revokeSessionsForAccount('student', id);
         res.json({ message: active ? 'Đã mở khóa tài khoản.' : 'Đã khóa tài khoản.' });
     } catch (err) {
         console.error('[PUT /api/students/:id/account/toggle]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -1421,10 +1797,11 @@ app.delete('/api/students/:id/account', requireRole('teacher'), requireTeacherCo
         }
         await pool.request().input('id', sql.VarChar, id)
             .query('UPDATE Students SET Username = NULL, PasswordHash = NULL, AccountActive = TRUE WHERE Id = @id');
+        await revokeSessionsForAccount('student', id);
         res.json({ message: 'Đã xóa tài khoản đăng nhập của học sinh.' });
     } catch (err) {
         console.error('[DELETE /api/students/:id/account]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -1506,13 +1883,12 @@ app.get('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCont
         res.json(Object.values(sessionsMap));
     } catch (err) {
         console.error('[GET /api/sessions]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
 app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     const { id, date, startTime, endTime, type, sessionName, studentIds, duration, price, content, generalComment, completed, paid, studentDetails, recurrenceGroupId, recurrenceSequence } = req.body || {};
-    console.log('[POST /api/sessions] body nhận được:', JSON.stringify(req.body));
 
     if (!id || !date || !startTime || !endTime || !type || !Array.isArray(studentIds) || studentIds.length === 0) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
@@ -1624,7 +2000,7 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
     } catch (err) {
         if (transaction) { try { await transaction.rollback(); } catch (_) {} }
         console.error('[POST /api/sessions]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -1800,7 +2176,7 @@ app.put('/api/sessions/:id/quick-entry', requireRole('teacher', 'assistant'), re
     } catch (err) {
         if (transaction) { try { await transaction.rollback(); } catch (_) {} }
         console.error('[PUT /api/sessions/:id/quick-entry]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -1978,7 +2354,7 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
     } catch (err) {
         if (transaction) { try { await transaction.rollback(); } catch (_) {} }
         console.error('[PUT /api/sessions/:id]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -2025,7 +2401,7 @@ app.delete('/api/sessions/:id', requireRole('teacher'), requireTeacherContext, a
         });
     } catch (err) {
         console.error('[DELETE /api/sessions/:id]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -2088,7 +2464,7 @@ app.put('/api/session-details/:sessionId/:studentId', requireRole('teacher', 'as
     } catch (err) {
         if (transaction) { try { await transaction.rollback(); } catch (_) {} }
         console.error('[PUT /api/session-details]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -2168,7 +2544,7 @@ app.post('/api/students/:studentId/monthly-payments', requireRole('teacher'), re
     } catch (err) {
         if (transaction) { try { await transaction.rollback(); } catch (_) {} }
         console.error('[POST /api/students/:studentId/monthly-payments]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -2203,7 +2579,7 @@ app.put('/api/students/:studentId/set-paid', requireRole('teacher'), requireTeac
         res.json({ message: paid ? 'Đã đánh dấu đã thanh toán!' : 'Đã đánh dấu chưa thanh toán!' });
     } catch (err) {
         console.error('[PUT /api/students/:studentId/set-paid]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -2248,7 +2624,7 @@ app.get('/api/scores', requireRole('teacher', 'assistant'), requireTeacherContex
         })));
     } catch (err) {
         console.error('[GET /api/scores]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -2332,7 +2708,7 @@ app.post('/api/scores/batch', requireRole('teacher', 'assistant'), requireTeache
     } catch (err) {
         if (transaction) { try { await transaction.rollback(); } catch (_) {} }
         console.error('[POST /api/scores/batch]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -2394,7 +2770,7 @@ app.post('/api/scores', requireRole('teacher', 'assistant'), requireTeacherConte
         res.status(201).json({ message: 'Đã thêm điểm mới.' });
     } catch (err) {
         console.error('[POST /api/scores]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -2437,7 +2813,7 @@ app.put('/api/scores/:id', requireRole('teacher', 'assistant'), requireTeacherCo
         res.json({ message: 'Đã cập nhật điểm.' });
     } catch (err) {
         console.error('[PUT /api/scores/:id]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -2458,7 +2834,7 @@ app.delete('/api/scores/:id', requireRole('teacher', 'assistant'), requireTeache
         res.json({ message: 'Đã xóa điểm.' });
     } catch (err) {
         console.error('[DELETE /api/scores/:id]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -2484,7 +2860,7 @@ app.delete('/api/score-tests/:testGroupId', requireRole('teacher', 'assistant'),
         res.json({ message: 'Đã xóa bài kiểm tra.', count: existing.recordset.length });
     } catch (err) {
         console.error('[DELETE /api/score-tests/:testGroupId]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -2509,7 +2885,7 @@ app.get('/api/me', requireRole('student'), requireTeacherContext, async (req, re
         res.json(result.recordset[0]);
     } catch (err) {
         console.error('[GET /api/me]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -2551,7 +2927,7 @@ app.get('/api/me/schedule', requireRole('student'), requireTeacherContext, async
         res.json(rows);
     } catch (err) {
         console.error('[GET /api/me/schedule]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -2578,7 +2954,7 @@ app.get('/api/me/scores', requireRole('student'), requireTeacherContext, async (
         })));
     } catch (err) {
         console.error('[GET /api/me/scores]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
@@ -2589,7 +2965,7 @@ app.get('/api/me/scores', requireRole('student'), requireTeacherContext, async (
 // KHÔNG bao giờ gửi xuống trình duyệt — khác với cách làm cũ ở dự án
 // DiabetesMedicalRecord (lưu key ở localStorage phía client), vì dữ liệu ở
 // đây (lịch dạy, điểm số học sinh) nhạy cảm hơn và app đã có sẵn hệ thống
-// xác thực theo Bearer token nên tận dụng luôn để giới hạn đúng phạm vi dữ
+// xác thực theo cookie phiên nên tận dụng luôn để giới hạn đúng phạm vi dữ
 // liệu mà mỗi vai trò được phép đọc.
 const OPENAI_API_KEY   = process.env.OPENAI_API_KEY;
 const OPENAI_CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini';
@@ -2887,7 +3263,7 @@ app.put('/api/requests/:id/priority', requireAuth, async (req, res) => {
     }
 });
 
-app.post('/api/ai-chat', requireAuth, async (req, res) => {
+app.post('/api/ai-chat', requireAuth, aiRateLimit, async (req, res) => {
     const { message, history } = req.body || {};
     if (!message || typeof message !== 'string' || !message.trim()) {
         return res.status(400).json({ error: 'Vui lòng nhập câu hỏi.' });
@@ -2947,18 +3323,32 @@ ${contextText}`;
         res.json({ reply });
     } catch (err) {
         console.error('[POST /api/ai-chat]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
     }
 });
 
-// ==========================================
-// 404 HANDLER
-// ==========================================
-app.use((req, res, next) => {
-    if (req.path.startsWith('/api/')) {
-        return res.status(404).json({ error: `API endpoint không tồn tại: ${req.method} ${req.path}` });
+// JSON/body parser and unexpected errors never expose database or provider details.
+app.use((error, req, res, next) => {
+    if (res.headersSent) return next(error);
+    if (error?.type === 'entity.too.large') {
+        return res.status(413).json({ error: 'Dữ liệu gửi lên vượt quá giới hạn cho phép.' });
     }
-    res.sendFile(path.join(__dirname, 'index.html'));
+    if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
+        return res.status(400).json({ error: 'Dữ liệu JSON không hợp lệ.' });
+    }
+    console.error('[UNHANDLED]', error);
+    res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
+});
+
+app.use((req, res) => {
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ error: 'API endpoint không tồn tại.' });
+    }
+    if (req.method === 'GET' && !path.extname(req.path) && req.accepts('html')) {
+        res.setHeader('Cache-Control', 'no-store');
+        return res.sendFile(path.join(__dirname, 'index.html'));
+    }
+    res.status(404).type('text').send('Not Found');
 });
 
 // ==========================================

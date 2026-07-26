@@ -276,7 +276,7 @@ Object.assign(PinkyClassApp.prototype, {
                     ? '<span class="month-repeat-icon" aria-label="Lịch lặp lại">↻</span>'
                     : '';
                 const tooltip = `${sess.startTime}-${sess.endTime} ${title}${sess.recurrenceGroupId ? ' — Lịch lặp lại' : ''}`;
-                sessionsHTML += `<div class="month-day-event ${typeClass}" title="${this.escapeHtmlAttr(tooltip)}">${repeatMark}<span>${sess.startTime} ${this.escapeHtml(title)}</span></div>`;
+                sessionsHTML += `<div class="month-day-event ${typeClass}" title="${this.escapeHtmlAttr(tooltip)}">${repeatMark}<span>${this.escapeHtml(sess.startTime)} ${this.escapeHtml(title)}</span></div>`;
             });
             if (daySessions.length > maxShow) {
                 sessionsHTML += `<div class="month-day-more">+${daySessions.length - maxShow} buổi khác</div>`;
@@ -625,17 +625,24 @@ Object.assign(PinkyClassApp.prototype, {
     // Escape giá trị chèn vào thuộc tính value="" để tránh vỡ HTML khi nội
     // dung có chứa dấu ngoặc kép
     escapeHtmlAttr(str) {
-        return String(str ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+        return String(str ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/'/g, '&#39;');
     },
 
     // Escape đầy đủ khi chèn text thuần vào NỘI DUNG thẻ HTML (khác với
     // escapeHtmlAttr chỉ dùng cho value="..."), tránh vỡ layout hoặc lộ HTML
     // injection nếu giáo viên gõ dấu < > trong nội dung buổi học.
     escapeHtml(str) {
-        return String(str || '')
+        return String(str ?? '')
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     // Thêm 1 bong bóng chat vào khung Trợ lý AI, trả về element vừa tạo (để
