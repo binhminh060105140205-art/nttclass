@@ -80,19 +80,15 @@ Object.assign(PinkyClassApp.prototype, {
         document.getElementById('invoiceSchedule').value = '';
         document.getElementById('invoiceTuitionNote').value = '';
 
-        // Ảnh QR thanh toán: tự động điền lại ảnh QR đã dùng lần gần nhất (lưu
-        // trong localStorage) để giáo viên KHÔNG phải tải lên lại mỗi lần xuất
-        // phiếu — vẫn có thể đổi/xoá ảnh khác ngay trong form nếu cần.
-        this.setInvoiceQrImage(localStorage.getItem('nttclass_invoice_qr') || null, { persist: false });
+        // QR chỉ tồn tại trong bộ nhớ của tab hiện tại, không lưu vào localStorage.
+        this.setInvoiceQrImage(null, { persist: false });
 
         this.recomputeInvoiceTotals();
         this.openModal('invoiceModal');
     },
 
-    // Gán/xoá ảnh QR thanh toán đang dùng cho phiếu học phí + cập nhật khung
-    // xem trước trong form. Mặc định lưu lại vào localStorage (persist=true)
-    // để lần xuất phiếu tiếp theo tự điền sẵn, trừ khi gọi lúc mở modal (chỉ
-    // đọc lại giá trị đã lưu, không ghi đè).
+    // Gán/xoá ảnh QR thanh toán đang dùng cho phiếu học phí và cập nhật khung
+    // xem trước. Dữ liệu chỉ tồn tại trong bộ nhớ của tab hiện tại.
     setInvoiceQrImage(dataUrl, { persist = true } = {}) {
         this._invoiceQrDataUrl = dataUrl || null;
 
@@ -112,14 +108,7 @@ Object.assign(PinkyClassApp.prototype, {
             if (input) input.value = '';
         }
 
-        if (persist) {
-            if (this._invoiceQrDataUrl) {
-                try { localStorage.setItem('nttclass_invoice_qr', this._invoiceQrDataUrl); }
-                catch (err) { /* ảnh quá lớn cho localStorage, bỏ qua lưu tự động */ }
-            } else {
-                localStorage.removeItem('nttclass_invoice_qr');
-            }
-        }
+
     },
 
     // Lọc this._invoiceAllSessions theo đúng khoảng "Từ ngày - Đến ngày" hiện
@@ -184,6 +173,10 @@ Object.assign(PinkyClassApp.prototype, {
         };
         if (window.pdfMake && window.pdfMake.vfs) return configureFonts(window.pdfMake);
         if (!this._pdfMakeLoadingPromise) {
+            const scriptIntegrity = Object.freeze({
+                'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.12/pdfmake.min.js': 'sha512-axXaF5grZBaYl7qiM6OMHgsgVXdSLxqq0w7F4CQxuFyrcPmn0JfnqsOtYHUun80g6mRRdvJDrTCyL8LQqBOt/Q==',
+                'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.12/vfs_fonts.js': 'sha512-nNkHPz+lD0Wf0eFGO0ZDxr+lWiFalFutgVeGkPdVgrG4eXDYUnhfEj9Zmg1QkrJFLC0tGs8ZExyU/1mjs4j93w=='
+            });
             const loadScript = (src) => new Promise((resolve, reject) => {
                 const existing = document.querySelector(`script[src="${src}"]`);
                 if (existing) {
@@ -194,6 +187,12 @@ Object.assign(PinkyClassApp.prototype, {
                 }
                 const script = document.createElement('script');
                 script.src = src;
+                const integrity = scriptIntegrity[src];
+                if (integrity) {
+                    script.integrity = integrity;
+                    script.crossOrigin = 'anonymous';
+                    script.referrerPolicy = 'no-referrer';
+                }
                 script.onload = () => {
                     script.dataset.loaded = 'true';
                     resolve();
@@ -217,11 +216,11 @@ Object.assign(PinkyClassApp.prototype, {
 
             this._pdfMakeLoadingPromise = (async () => {
                 await loadWithFallback([
-                    '/node_modules/pdfmake/build/pdfmake.min.js',
+                    '/vendor/pdfmake.min.js',
                     'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.12/pdfmake.min.js'
                 ]);
                 await loadWithFallback([
-                    '/node_modules/pdfmake/build/vfs_fonts.js',
+                    '/vendor/vfs_fonts.js',
                     'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.12/vfs_fonts.js'
                 ]);
                 if (!window.pdfMake?.vfs) throw new Error('Bộ font PDF chưa tải hoàn chỉnh');

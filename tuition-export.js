@@ -96,6 +96,9 @@ Object.assign(PinkyClassApp.prototype, {
             this._html2canvasLoadingPromise = new Promise((resolve, reject) => {
                 const script = document.createElement('script');
                 script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                script.integrity = 'sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==';
+                script.crossOrigin = 'anonymous';
+                script.referrerPolicy = 'no-referrer';
                 script.onload = () => resolve(window.html2canvas);
                 script.onerror = () => reject(new Error('Không tải được thư viện xuất ảnh (kiểm tra kết nối mạng).'));
                 document.head.appendChild(script);
@@ -287,6 +290,9 @@ Object.assign(PinkyClassApp.prototype, {
             this._xlsxLoadingPromise = new Promise((resolve, reject) => {
                 const script = document.createElement('script');
                 script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+                script.integrity = 'sha512-r22gChDnGvBylk90+2e/ycr3RVrDi8DIOkIGNhJlKfuyQM4tIRAI062MaV8sfjQKYVGjOBaZBOA87z+IhZE9DA==';
+                script.crossOrigin = 'anonymous';
+                script.referrerPolicy = 'no-referrer';
                 script.onload = () => resolve(window.XLSX);
                 script.onerror = () => reject(new Error('Không tải được thư viện xuất Excel (kiểm tra kết nối mạng).'));
                 document.head.appendChild(script);

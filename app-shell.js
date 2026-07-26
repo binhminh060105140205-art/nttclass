@@ -578,12 +578,7 @@ Object.assign(PinkyClassApp.prototype, {
             }
 
             const user = await res.json();
-            const rememberCheckbox = document.getElementById('loginRemember');
-            if (rememberCheckbox && rememberCheckbox.checked) {
-                localStorage.setItem('nttclass_remembered_username', username);
-            } else {
-                localStorage.removeItem('nttclass_remembered_username');
-            }
+            localStorage.removeItem('nttclass_remembered_username');
             await this.onLoginSuccess(user);
         } catch (err) {
             this.showToast(err.message || 'Đăng nhập thất bại.', 'error');
@@ -617,10 +612,9 @@ Object.assign(PinkyClassApp.prototype, {
         localStorage.removeItem('pinky_current_user');
         localStorage.removeItem('pinky_students');
         localStorage.removeItem('pinky_sessions');
-        this.currentUser = null;
-        this.currentRole = null;
-        this.requests = [];
-        this.requestsLoaded = false;
+        localStorage.removeItem('nttclass_remembered_username');
+        localStorage.removeItem('nttclass_invoice_qr');
+        this.clearSensitiveClientState();
         this.clearRequestImage();
         this.showLandingPage();
         this.showToast('Bạn đã đăng xuất.', 'success');

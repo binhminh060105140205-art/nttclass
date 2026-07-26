@@ -150,6 +150,8 @@ class PinkyClassApp {
         localStorage.removeItem('pinky_current_user');
         localStorage.removeItem('pinky_students');
         localStorage.removeItem('pinky_sessions');
+        localStorage.removeItem('nttclass_remembered_username');
+        localStorage.removeItem('nttclass_invoice_qr');
 
         await this.loadAppTheme();
 
@@ -182,15 +184,6 @@ class PinkyClassApp {
             if (loginRequested) this.showLoginPage();
             else this.showLandingPage();
 
-            const rememberedUsername = localStorage.getItem('nttclass_remembered_username');
-            const usernameInput = document.getElementById('loginUsername');
-            const rememberCheckbox = document.getElementById('loginRemember');
-            if (rememberedUsername && usernameInput) {
-                usernameInput.value = rememberedUsername;
-                if (rememberCheckbox) rememberCheckbox.checked = true;
-                const passwordInput = document.getElementById('loginPassword');
-                if (passwordInput) passwordInput.focus();
-            }
         }
 
         const today = this.toISODateOnly(new Date());
@@ -202,6 +195,35 @@ class PinkyClassApp {
     }
 
     // Requests cùng origin mang cookie HttpOnly; frontend không còn giữ bearer token.
+    escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, character => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[character]));
+    }
+
+    escapeHtmlAttr(value) {
+        return this.escapeHtml(value);
+    }
+
+    clearSensitiveClientState() {
+        this.currentUser = null;
+        this.currentRole = null;
+        this.currentStudentId = null;
+        this.students = [];
+        this.sessions = [];
+        this.users = [];
+        this.scores = [];
+        this.requests = [];
+        this.requestsLoaded = false;
+        this.requestImageDraft = [];
+        this.aiChatHistory = [];
+        this._invoiceQrDataUrl = null;
+    }
+
     authHeaders(extra = {}) {
         return { 'X-NTT-Client': 'web', ...extra };
     }
@@ -212,11 +234,13 @@ class PinkyClassApp {
         const response = await fetch(url, opts);
         if (response.status === 401 && this.currentUser && !this._sessionExpiredHandled) {
             this._sessionExpiredHandled = true;
-            this.currentUser = null;
-            this.currentRole = null;
+            this.clearSensitiveClientState();
             localStorage.removeItem('pinky_current_user');
             localStorage.removeItem('pinky_students');
             localStorage.removeItem('pinky_sessions');
+            localStorage.removeItem('nttclass_remembered_username');
+            localStorage.removeItem('nttclass_invoice_qr');
+            this._invoiceQrDataUrl = null;
             this.showLoginPage();
             this.showToast('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 'error');
             setTimeout(() => { this._sessionExpiredHandled = false; }, 1000);

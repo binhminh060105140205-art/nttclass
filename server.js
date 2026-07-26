@@ -82,11 +82,17 @@ function hashOtp(code) {
     return crypto.createHash('sha256').update(String(code)).digest('hex');
 }
 
+function otpHashMatches(expectedHash, suppliedCode) {
+    const suppliedHash = Buffer.from(hashOtp(suppliedCode), 'hex');
+    const expected = Buffer.from(String(expectedHash || ''), 'hex');
+    return suppliedHash.length === expected.length && crypto.timingSafeEqual(suppliedHash, expected);
+}
+
 async function sendOtpEmail(to, code, purpose) {
     const apiKey = process.env.RESEND_API_KEY;
     const from = process.env.EMAIL_FROM;
     if (!apiKey || !from) {
-        if (process.env.ALLOW_DEV_OTP === 'true' && process.env.NODE_ENV !== 'production') return false;
+        if (process.env.ALLOW_DEV_OTP === 'true' && !IS_PRODUCTION) return false;
         throw new Error('Dịch vụ gửi email chưa được cấu hình.');
     }
     const title = purpose === 'reset' ? 'Khôi phục mật khẩu NttClass' : 'Xác minh email NttClass';
@@ -101,8 +107,7 @@ async function sendOtpEmail(to, code, purpose) {
         })
     });
     if (!response.ok) {
-        const detail = await response.text();
-        console.error('[EMAIL]', response.status, detail.slice(0, 500));
+        console.error('[EMAIL]', response.status);
         throw new Error('Không thể gửi email xác nhận lúc này.');
     }
     return true;
@@ -110,6 +115,10 @@ async function sendOtpEmail(to, code, purpose) {
 
 function canIssueOtp(existing) {
     return !existing?.sentAt || Date.now() - existing.sentAt >= 60 * 1000;
+}
+
+function delayRecoveryResponse() {
+    return new Promise(resolve => setTimeout(resolve, 140 + crypto.randomInt(0, 61)));
 }
 
 async function passwordMatches(password, stored) {
@@ -149,6 +158,8 @@ function setSecurityHeaders(req, res, next) {
     res.setHeader('Referrer-Policy', 'no-referrer');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-DNS-Prefetch-Control', 'off');
+    res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
     if (IS_PRODUCTION) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     next();
@@ -159,9 +170,9 @@ function requestOriginMatchesHost(req) {
     if (!origin) return true;
     try {
         const parsed = new URL(origin);
-        const forwardedHost = String(req.get('x-forwarded-host') || req.get('host') || '').split(',')[0].trim();
-        const forwardedProto = String(req.get('x-forwarded-proto') || req.protocol || '').split(',')[0].trim();
-        return parsed.host === forwardedHost && parsed.protocol === forwardedProto + ':';
+        const requestHost = String(req.get('host') || '').split(',')[0].trim();
+        const requestProtocol = IS_PRODUCTION ? 'https:' : String(req.protocol) + ':';
+        return parsed.host === requestHost && parsed.protocol === requestProtocol;
     } catch {
         return false;
     }
@@ -219,16 +230,29 @@ setInterval(() => {
 }, 10 * 60 * 1000).unref();
 
 const apiRateLimit = createRateLimiter({ windowMs: 5 * 60 * 1000, max: 600 });
+const loginIpRateLimit = createRateLimiter({
+    windowMs: 15 * 60 * 1000, max: 120,
+    message: 'Đăng nhập quá nhiều lần từ thiết bị này. Vui lòng thử lại sau 15 phút.'
+});
 const loginRateLimit = createRateLimiter({
     windowMs: 15 * 60 * 1000, max: 12,
     message: 'Đăng nhập sai quá nhiều lần. Vui lòng thử lại sau 15 phút.',
     keyGenerator: req => `${req.ip}:${rateKeyPart(String(req.body?.username || "").trim().toLowerCase())}`,
     skipSuccessfulRequests: true
 });
+const otpIpRateLimit = createRateLimiter({
+    windowMs: 15 * 60 * 1000, max: 40,
+    message: 'Yêu cầu OTP quá nhiều từ thiết bị này. Vui lòng thử lại sau.'
+});
 const otpRateLimit = createRateLimiter({
     windowMs: 15 * 60 * 1000, max: 8,
     message: 'Bạn yêu cầu mã quá nhiều lần. Vui lòng thử lại sau.',
     keyGenerator: req => `${req.ip}:${rateKeyPart(String(req.body?.username || req.authUser?.userId || "").trim().toLowerCase())}`
+});
+const passwordChangeRateLimit = createRateLimiter({
+    windowMs: 15 * 60 * 1000, max: 8,
+    message: 'Bạn thử đổi mật khẩu quá nhiều lần. Vui lòng thử lại sau.',
+    keyGenerator: req => req.authUser ? `${req.authUser.accountType}:${req.authUser.userId}` : req.ip
 });
 const aiRateLimit = createRateLimiter({
     windowMs: 5 * 60 * 1000, max: 30,
@@ -250,6 +274,18 @@ app.use((req, res, next) => {
     return isRequestWrite ? requestImageJsonParser(req, res, next) : next();
 });
 app.use(express.json({ limit: '512kb', strict: true }));
+
+app.use((req, res, next) => {
+    let decodedPath;
+    try {
+        decodedPath = decodeURIComponent(req.path);
+    } catch {
+        return res.status(400).type('text').send('Bad Request');
+    }
+    const hasHiddenSegment = decodedPath.split('/').some(segment => segment.startsWith('.'));
+    if (hasHiddenSegment) return res.status(404).type('text').send('Not Found');
+    next();
+});
 
 const PUBLIC_ROOT_FILES = new Set([
     'ai-chat.js', 'app-shell.js', 'calendar.js', 'core.js', 'dashboard.js',
@@ -282,6 +318,15 @@ const PUBLIC_ROOT_FILES = new Set([
 const staticOptions = { dotfiles: 'deny', index: false, redirect: false, maxAge: '1h' };
 app.use('/assets', express.static(path.join(__dirname, 'assets'), staticOptions));
 app.use('/src/styles', express.static(path.join(__dirname, 'src', 'styles'), staticOptions));
+const PUBLIC_VENDOR_FILES = new Map([
+    ['pdfmake.min.js', path.join(__dirname, 'node_modules', 'pdfmake', 'build', 'pdfmake.min.js')],
+    ['vfs_fonts.js', path.join(__dirname, 'node_modules', 'pdfmake', 'build', 'vfs_fonts.js')]
+]);
+app.get('/vendor/:file', (req, res, next) => {
+    const vendorFile = PUBLIC_VENDOR_FILES.get(req.params.file);
+    if (!vendorFile) return next();
+    res.sendFile(vendorFile, { maxAge: '7d', immutable: true });
+});
 app.get('/:file', (req, res, next) => {
     if (!PUBLIC_ROOT_FILES.has(req.params.file)) return next();
     res.sendFile(path.join(__dirname, req.params.file), { maxAge: '1h' });
@@ -758,11 +803,17 @@ async function parseToken(req) {
 
     if (!session || session.expiresAt <= now || now - session.validatedAt >= SESSION_CACHE_TTL_MS) {
         await poolPromise;
-        const result = await pgPool.query(`SELECT SessionHash AS "sessionHash", UserId AS "userId",
-                AccountType AS "accountType", Role AS "role", AssignedTeacherId AS "assignedTeacherId",
-                LastSeenAt AS "lastSeenAt", ExpiresAt AS "expiresAt"
-            FROM AuthSessions
-            WHERE SessionHash = $1 AND ExpiresAt > CURRENT_TIMESTAMP`, [sessionHash]);
+        const result = await pgPool.query(`SELECT s.SessionHash AS "sessionHash", s.UserId AS "userId",
+                s.AccountType AS "accountType",
+                CASE WHEN s.AccountType = 'student' THEN 'student' ELSE u.Role END AS "role",
+                CASE WHEN s.AccountType = 'student' THEN st.TeacherId ELSE u.AssignedTeacherId END AS "assignedTeacherId",
+                s.LastSeenAt AS "lastSeenAt", s.ExpiresAt AS "expiresAt"
+            FROM AuthSessions s
+            LEFT JOIN Users u ON s.AccountType = 'user' AND s.UserId = u.Id
+            LEFT JOIN Students st ON s.AccountType = 'student' AND s.UserId = st.Id
+            WHERE s.SessionHash = $1 AND s.ExpiresAt > CURRENT_TIMESTAMP
+              AND ((s.AccountType = 'user' AND u.Id IS NOT NULL AND u.Active = 1)
+                OR (s.AccountType = 'student' AND st.Id IS NOT NULL AND COALESCE(st.AccountActive, TRUE) = TRUE))`, [sessionHash]);
         if (!result.rowCount) {
             sessionCache.delete(sessionHash);
             return null;
@@ -941,7 +992,7 @@ app.post('/api/logout', async (req, res) => {
     }
 });
 
-app.post('/api/login', loginRateLimit, async (req, res) => {
+app.post('/api/login', loginIpRateLimit, loginRateLimit, async (req, res) => {
     const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
     if (!username || !password) {
@@ -963,13 +1014,13 @@ app.post('/api/login', loginRateLimit, async (req, res) => {
 
         if (result.recordset.length > 0) {
             const user = result.recordset[0];
-            if (!user.Active) {
-                return res.status(403).json({ error: 'Tài khoản đã bị vô hiệu hóa.' });
-            }
             if (!(await passwordMatches(password, user.Password))) {
                 return res.status(401).json({
                     error: 'Tên đăng nhập hoặc mật khẩu không đúng.'
                 });
+            }
+            if (!user.Active) {
+                return res.status(403).json({ error: 'Tài khoản đã bị vô hiệu hóa.' });
             }
 
             // Nâng cấp trong suốt mật khẩu cũ dạng thường sang bcrypt sau lần đăng nhập đúng.
@@ -1016,13 +1067,12 @@ app.post('/api/login', loginRateLimit, async (req, res) => {
         }
 
         const student = stuResult.recordset[0];
-        if (student.AccountActive === false) {
-            return res.status(403).json({ error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ giáo viên.' });
-        }
-
         const passwordOk = await bcrypt.compare(password, student.PasswordHash);
         if (!passwordOk) {
             return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng.' });
+        }
+        if (student.AccountActive === false) {
+            return res.status(403).json({ error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ giáo viên.' });
         }
 
         if (req.authSessionHash) await deleteSessionByHash(req.authSessionHash);
@@ -1102,7 +1152,7 @@ app.put('/api/account/security/contact', requireAuth, async (req, res) => {
     }
 });
 
-app.post('/api/account/security/request-code', requireAuth, otpRateLimit, async (req, res) => {
+app.post('/api/account/security/request-code', requireAuth, otpIpRateLimit, otpRateLimit, async (req, res) => {
     const channel = req.body?.channel === 'phone' ? 'phone' : 'email';
     try {
         const table = accountTableFor(req.authUser.role);
@@ -1116,7 +1166,7 @@ app.post('/api/account/security/request-code', requireAuth, otpRateLimit, async 
         const code = createOtpCode();
         await sendOtpEmail(contact, code, 'verify');
         verificationCodes.set(key, { codeHash: hashOtp(code), contact: String(contact).toLowerCase(), expiresAt: Date.now() + 10 * 60 * 1000, sentAt: Date.now(), attempts: 0 });
-        const devCode = process.env.ALLOW_DEV_OTP === 'true' && process.env.NODE_ENV !== 'production' ? code : undefined;
+        const devCode = process.env.ALLOW_DEV_OTP === 'true' && !IS_PRODUCTION ? code : undefined;
         res.json({ message: 'Mã xác minh đã được gửi tới email của bạn.', devCode });
     } catch (err) {
         console.error('[POST /api/account/security/request-code]', err.message);
@@ -1124,9 +1174,10 @@ app.post('/api/account/security/request-code', requireAuth, otpRateLimit, async 
     }
 });
 
-app.post('/api/account/security/confirm-code', requireAuth, async (req, res) => {
+app.post('/api/account/security/confirm-code', requireAuth, otpIpRateLimit, otpRateLimit, async (req, res) => {
     const channel = req.body?.channel === 'phone' ? 'phone' : 'email';
     const code = String(req.body?.code || '').trim();
+    if (!/^\d{6}$/.test(code)) return res.status(400).json({ error: 'Mã xác minh không đúng hoặc đã hết hạn.' });
     const key = `${req.authUser.userId}:${channel}`;
     const record = verificationCodes.get(key);
     if (!record || record.expiresAt < Date.now()) return res.status(400).json({ error: 'Mã xác minh không đúng hoặc đã hết hạn.' });
@@ -1135,7 +1186,7 @@ app.post('/api/account/security/confirm-code', requireAuth, async (req, res) => 
         return res.status(429).json({ error: 'Bạn đã nhập sai quá nhiều lần. Hãy yêu cầu mã mới.' });
     }
     record.attempts++;
-    if (record.codeHash !== hashOtp(code)) return res.status(400).json({ error: 'Mã xác minh không đúng hoặc đã hết hạn.' });
+    if (!otpHashMatches(record.codeHash, code)) return res.status(400).json({ error: 'Mã xác minh không đúng hoặc đã hết hạn.' });
     try {
         const table = accountTableFor(req.authUser.role);
         const contactResult = await pgPool.query(`SELECT Email FROM ${table} WHERE Id = $1`, [req.authUser.userId]);
@@ -1152,9 +1203,11 @@ app.post('/api/account/security/confirm-code', requireAuth, async (req, res) => 
     }
 });
 
-app.put('/api/account/security/password', requireAuth, async (req, res) => {
+app.put('/api/account/security/password', requireAuth, passwordChangeRateLimit, async (req, res) => {
     const { currentPassword, password } = req.body || {};
-    if (!currentPassword) return res.status(400).json({ error: 'Hãy nhập mật khẩu hiện tại.' });
+    if (typeof currentPassword !== 'string' || !currentPassword || currentPassword.length > MAX_PASSWORD_LENGTH) {
+        return res.status(400).json({ error: 'Mật khẩu hiện tại không hợp lệ.' });
+    }
     if (!password || password.length < MIN_PASSWORD_LENGTH) {
         return res.status(400).json({ error: `Mật khẩu mới cần tối thiểu ${MIN_PASSWORD_LENGTH} ký tự.` });
     }
@@ -1191,114 +1244,101 @@ app.put('/api/account/security/password', requireAuth, async (req, res) => {
 
 const forgotPasswordCodes = new Map();
 
-app.post('/api/forgot-password/request', otpRateLimit, async (req, res) => {
-    const { username } = req.body || {};
-    if (!username) return res.status(400).json({ error: 'Tên đăng nhập là bắt buộc.' });
-    try {
-        let result = await pgPool.query('SELECT Id, Username, Email, Phone, EmailVerified, PhoneVerified FROM Users WHERE Username = $1 OR LOWER(Email) = LOWER($1)', [username.trim()]);
-        let user = result.rows[0];
-        
-        if (!user) {
-            result = await pgPool.query('SELECT Id, Username, Email, Phone, EmailVerified, PhoneVerified FROM Students WHERE Username = $1 OR LOWER(Email) = LOWER($1)', [username.trim()]);
-            user = result.rows[0];
-        }
-        
-        if (!user) {
-            return res.status(404).json({ error: 'Tên đăng nhập không tồn tại trên hệ thống.' });
-        }
-
-        const emailVerified = !!user.emailverified;
-        const phoneVerified = !!user.phoneverified;
-
-        if (!emailVerified && !phoneVerified) {
-            return res.status(400).json({ error: 'Tài khoản của bạn chưa xác minh Email hoặc Số điện thoại để khôi phục mật khẩu. Vui lòng liên hệ giáo viên/quản trị viên.' });
-        }
-
-        let maskedEmail = '';
-        if (user.email) {
-            const parts = user.email.split('@');
-            if (parts.length === 2) {
-                const name = parts[0];
-                const domain = parts[1];
-                maskedEmail = (name.length > 1 ? name.charAt(0) + '***' : '***') + '@' + domain;
-            }
-        }
-
-        let maskedPhone = '';
-        if (user.phone) {
-            const phoneStr = String(user.phone);
-            maskedPhone = '******' + phoneStr.slice(-4);
-        }
-
-        res.json({
-            email: maskedEmail,
-            phone: maskedPhone,
-            emailVerified,
-            phoneVerified
-        });
-    } catch (err) {
-        console.error('[POST /api/forgot-password/request]', err);
-        res.status(500).json({ error: 'Lỗi hệ thống khi xử lý yêu cầu.' });
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, record] of verificationCodes) {
+        if (record.expiresAt <= now) verificationCodes.delete(key);
     }
+    for (const [key, record] of forgotPasswordCodes) {
+        if (record.expiresAt <= now) forgotPasswordCodes.delete(key);
+    }
+}, 60 * 1000).unref();
+
+app.post('/api/forgot-password/request', otpIpRateLimit, otpRateLimit, (req, res) => {
+    const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+    if (!username) return res.status(400).json({ error: 'Tên đăng nhập là bắt buộc.' });
+    if (username.length > MAX_USERNAME_LENGTH) {
+        return res.status(400).json({ error: 'Thông tin khôi phục không hợp lệ.' });
+    }
+
+    // Không truy vấn hoặc trả chi tiết liên hệ ở bước này để tránh dò tài khoản.
+    res.json({
+        email: 'email đã đăng ký',
+        phone: '',
+        emailVerified: true,
+        phoneVerified: false
+    });
 });
 
-app.post('/api/forgot-password/send-code', otpRateLimit, async (req, res) => {
-    const { username, channel } = req.body || {};
-    if (!username || !channel) return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
-    
+app.post('/api/forgot-password/send-code', otpIpRateLimit, otpRateLimit, async (req, res) => {
+    const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+    const channel = req.body?.channel === 'email' ? 'email' : '';
+    if (!username || !channel || username.length > MAX_USERNAME_LENGTH) {
+        return res.status(400).json({ error: 'Thông tin khôi phục không hợp lệ.' });
+    }
+
+    const genericMessage = 'Nếu thông tin hợp lệ, mã OTP đã được gửi tới kênh khôi phục.';
+    const key = username.toLowerCase();
     try {
-        let accountType = 'user';
-        let result = await pgPool.query('SELECT Id, Username, Email, Phone, EmailVerified, PhoneVerified FROM Users WHERE Username = $1 OR LOWER(Email) = LOWER($1)', [username.trim()]);
-        let user = result.rows[0];
-        
-        if (!user) {
-            accountType = 'student';
-            result = await pgPool.query('SELECT Id, Username, Email, Phone, EmailVerified, PhoneVerified FROM Students WHERE Username = $1 OR LOWER(Email) = LOWER($1)', [username.trim()]);
-            user = result.rows[0];
+        const [userResult, studentResult] = await Promise.all([
+            pgPool.query('SELECT Id, Email, EmailVerified FROM Users WHERE Username = $1 OR LOWER(Email) = LOWER($1)', [username]),
+            pgPool.query('SELECT Id, Email, EmailVerified FROM Students WHERE Username = $1 OR LOWER(Email) = LOWER($1)', [username])
+        ]);
+        const account = userResult.rows[0]
+            ? { accountType: 'user', accountId: userResult.rows[0].id, email: userResult.rows[0].email, verified: userResult.rows[0].emailverified }
+            : studentResult.rows[0]
+                ? { accountType: 'student', accountId: studentResult.rows[0].id, email: studentResult.rows[0].email, verified: studentResult.rows[0].emailverified }
+                : null;
+
+        if (!account?.email || !account.verified) {
+            await delayRecoveryResponse();
+            return res.json({ message: genericMessage });
         }
-
-        if (!user) return res.status(404).json({ error: 'Tài khoản không tồn tại.' });
-
-        const contact = channel === 'email' ? user.email : user.phone;
-        const verified = channel === 'email' ? user.emailverified : user.phoneverified;
-
-        if (!contact || !verified) {
-            return res.status(400).json({ error: `Kênh khôi phục ${channel === 'email' ? 'Email' : 'Số điện thoại'} chưa được xác minh.` });
-        }
-        if (channel !== 'email') return res.status(501).json({ error: 'Khôi phục qua số điện thoại chưa được cấu hình. Hãy dùng email.' });
-
-        const key = username.trim().toLowerCase();
         const existing = forgotPasswordCodes.get(key);
-        if (!canIssueOtp(existing)) return res.status(429).json({ error: 'Vui lòng đợi 60 giây trước khi gửi lại mã.' });
+        if (!canIssueOtp(existing)) {
+            await delayRecoveryResponse();
+            return res.json({ message: genericMessage });
+        }
+
         const code = createOtpCode();
-        await sendOtpEmail(contact, code, 'reset');
-        forgotPasswordCodes.set(key, {
+        const record = {
             codeHash: hashOtp(code),
-            channel,
-            accountType,
-            accountId: user.id,
+            channel: 'email',
+            accountType: account.accountType,
+            accountId: account.accountId,
             expiresAt: Date.now() + 10 * 60 * 1000,
             sentAt: Date.now(),
             attempts: 0
+        };
+        forgotPasswordCodes.set(key, record);
+        void sendOtpEmail(account.email, code, 'reset').catch(error => {
+            if (forgotPasswordCodes.get(key) === record) forgotPasswordCodes.delete(key);
+            console.error('[FORGOT PASSWORD EMAIL]', error.message);
         });
 
-        const devCode = process.env.ALLOW_DEV_OTP === 'true' && process.env.NODE_ENV !== 'production' ? code : undefined;
-        res.json({ message: 'Mã OTP đã được gửi tới email khôi phục.', devCode });
+        await delayRecoveryResponse();
+        const devCode = process.env.ALLOW_DEV_OTP === 'true' && !IS_PRODUCTION ? code : undefined;
+        res.json({ message: genericMessage, devCode });
     } catch (err) {
-        console.error('[POST /api/forgot-password/send-code]', err);
-        res.status(500).json({ error: 'Lỗi hệ thống khi gửi mã.' });
+        console.error('[POST /api/forgot-password/send-code]', err.message);
+        await delayRecoveryResponse();
+        res.json({ message: genericMessage });
     }
 });
 
-app.post('/api/forgot-password/reset', otpRateLimit, async (req, res) => {
-    const { username, code, newPassword } = req.body || {};
-    if (!username || !code || !newPassword) return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
-    if (newPassword.length < MIN_PASSWORD_LENGTH) return res.status(400).json({ error: `Mật khẩu phải từ ${MIN_PASSWORD_LENGTH} ký tự trở lên.` });
-    if (newPassword.length > MAX_PASSWORD_LENGTH) return res.status(400).json({ error: `Mật khẩu không được vượt quá ${MAX_PASSWORD_LENGTH} ký tự.` });
+app.post('/api/forgot-password/reset', otpIpRateLimit, otpRateLimit, async (req, res) => {
+    const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+    const code = typeof req.body?.code === 'string' ? req.body.code.trim() : '';
+    const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
+    if (!username || !/^\d{6}$/.test(code) || !newPassword) {
+        return res.status(400).json({ error: 'Thông tin khôi phục không hợp lệ.' });
+    }
+    if (username.length > MAX_USERNAME_LENGTH || newPassword.length < MIN_PASSWORD_LENGTH || newPassword.length > MAX_PASSWORD_LENGTH) {
+        return res.status(400).json({ error: 'Mật khẩu khôi phục không hợp lệ.' });
+    }
 
-    const key = username.trim().toLowerCase();
+    const key = username.toLowerCase();
     const record = forgotPasswordCodes.get(key);
-
     if (!record || record.expiresAt < Date.now()) {
         return res.status(400).json({ error: 'Mã OTP không đúng hoặc đã hết hạn.' });
     }
@@ -1307,7 +1347,9 @@ app.post('/api/forgot-password/reset', otpRateLimit, async (req, res) => {
         return res.status(429).json({ error: 'Bạn đã nhập sai quá nhiều lần. Hãy yêu cầu mã mới.' });
     }
     record.attempts++;
-    if (record.codeHash !== hashOtp(code)) return res.status(400).json({ error: 'Mã OTP không đúng hoặc đã hết hạn.' });
+    if (!otpHashMatches(record.codeHash, code)) {
+        return res.status(400).json({ error: 'Mã OTP không đúng hoặc đã hết hạn.' });
+    }
 
     try {
         if (record.accountType === 'user') {
@@ -1324,8 +1366,7 @@ app.post('/api/forgot-password/reset', otpRateLimit, async (req, res) => {
             await revokeSessionsForAccount('student', record.accountId);
             return res.json({ message: 'Đặt lại mật khẩu thành công.' });
         }
-
-        res.status(404).json({ error: 'Tài khoản không tồn tại.' });
+        res.status(400).json({ error: 'Mã OTP không đúng hoặc đã hết hạn.' });
     } catch (err) {
         console.error('[POST /api/forgot-password/reset]', err);
         res.status(500).json({ error: 'Lỗi hệ thống khi khôi phục mật khẩu.' });
