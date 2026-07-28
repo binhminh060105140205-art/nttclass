@@ -52,13 +52,16 @@ Object.assign(PinkyClassApp.prototype, {
             .map(student => String(student.class || '').trim())
             .filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'));
 
+        const classOptionHtml = classes
+            .map(className => `<option value="class:${encodeURIComponent(className)}">${this.escapeHtml(className)}</option>`)
+            .join('');
         const optionHtml = [
             ...grades.map(grade => `<option value="grade:${grade}">Khối ${grade}</option>`),
             ...classes.map(className => `<option value="class:${encodeURIComponent(className)}">${this.escapeHtml(className)}</option>`)
         ].join('');
 
         if (classFilter) {
-            classFilter.innerHTML = `<option value="">Tất cả lớp và khối</option>${optionHtml}`;
+            classFilter.innerHTML = `<option value="">Tất cả lớp</option>${classOptionHtml}`;
             classFilter.value = [...classFilter.options].some(option => option.value === previousClass) ? previousClass : '';
         }
         if (batchClassFilter) {
