@@ -111,6 +111,22 @@ Object.assign(PinkyClassApp.prototype, {
         return `score:${score.id}`;
     },
 
+    getSelectedScoreType(selectId, customInputId) {
+        const select = document.getElementById(selectId);
+        if (!select) return '';
+        if (select.value !== '__custom__') return String(select.value || '').trim();
+        return String(document.getElementById(customInputId)?.value || '').trim();
+    },
+
+    syncCustomScoreTypeInput(select, customInput) {
+        if (!select || !customInput) return;
+        const isCustom = select.value === '__custom__';
+        customInput.hidden = !isCustom;
+        customInput.disabled = select.disabled || !isCustom;
+        customInput.required = isCustom && !select.disabled;
+        if (isCustom && !select.disabled) window.setTimeout(() => customInput.focus(), 0);
+    },
+
     getScoreNormalizedToTen(score) {
         const maxScore = Number(score.maxScore) > 0 ? Number(score.maxScore) : 10;
         const value = Number(score.scoreValue);
@@ -264,8 +280,8 @@ Object.assign(PinkyClassApp.prototype, {
             return `<tr class="batch-score-row" data-student-id="${this.escapeHtmlAttr(student.id)}" data-grade-filter="grade:${student.gradeLevel || ''}" data-class-filter="${this.escapeHtmlAttr(classFilterValue)}">
                 <td><strong>${this.escapeHtml(student.name)}</strong></td>
                 <td>${this.escapeHtml(student.class || (student.gradeLevel ? `Lớp ${student.gradeLevel}` : '-'))}</td>
-                <td><input type="number" class="form-control batch-score-value" min="0" max="${maxScore}" step="0.01" inputmode="decimal" placeholder="-" value="${this.escapeHtmlAttr(old.score)}" aria-label="Điểm của ${this.escapeHtmlAttr(student.name)}" ${expanded ? '' : 'disabled'}></td>
-                <td><input type="text" class="form-control batch-score-student-note" maxlength="500" placeholder="Không bắt buộc" value="${this.escapeHtmlAttr(old.note)}" aria-label="Ghi chú của ${this.escapeHtmlAttr(student.name)}" ${expanded ? '' : 'disabled'}></td>
+                <td><input type="text" class="form-control batch-score-value" inputmode="decimal" placeholder="-" value="${this.escapeHtmlAttr(old.score)}" aria-label="Điểm của ${this.escapeHtmlAttr(student.name)}" ${expanded ? '' : 'disabled'}></td>
+                <td><input type="text" class="form-control batch-score-student-note" maxlength="500" value="${this.escapeHtmlAttr(old.note)}" aria-label="Ghi chú của ${this.escapeHtmlAttr(student.name)}" ${expanded ? '' : 'disabled'}></td>
             </tr>`;
         }).join('') : '<tr><td colspan="4" class="score-batch-empty">Chưa có học sinh để nhập điểm.</td></tr>';
 
@@ -284,7 +300,7 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     updateBatchScoreMax() {
-        const maxScore = Number(document.getElementById('batchScoreMax')?.value);
+        const maxScore = Number(String(document.getElementById('batchScoreMax')?.value || '').replace(',', '.'));
         if (!Number.isFinite(maxScore) || maxScore <= 0) return;
         document.querySelectorAll('#batchScoreTableBody .batch-score-value').forEach(input => { input.max = String(maxScore); });
         const label = document.getElementById('batchScoreTableMaxLabel');
@@ -299,14 +315,22 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     async saveBatchScores() {
-        const scoreType = document.getElementById('batchScoreType').value;
+        const scoreType = this.getSelectedScoreType('batchScoreType', 'batchScoreCustomType');
         const testName = document.getElementById('batchScoreTestName').value.trim();
-        const maxScore = Number(document.getElementById('batchScoreMax').value);
+        const maxScore = Number(String(document.getElementById('batchScoreMax').value || '').replace(',', '.'));
         const date = document.getElementById('batchScoreDate').value;
         const commonNote = document.getElementById('batchScoreNote').value.trim();
         const entries = [];
         let invalidStudent = '';
 
+        if (!scoreType) {
+            this.showToast('Vui lòng chọn hoặc nhập loại điểm.', 'error');
+            return;
+        }
+        if (scoreType.length > 100) {
+            this.showToast('Loại điểm không được vượt quá 100 ký tự.', 'error');
+            return;
+        }
         if (!testName) {
             this.showToast('Vui lòng nhập tên bài kiểm tra.', 'error');
             return;
@@ -354,6 +378,9 @@ Object.assign(PinkyClassApp.prototype, {
                 .forEach(input => { input.value = ''; });
             document.getElementById('batchScoreTestName').value = '';
             document.getElementById('batchScoreNote').value = '';
+            document.getElementById('batchScoreType').value = 'BTVN';
+            document.getElementById('batchScoreCustomType').value = '';
+            this.syncCustomScoreTypeInput(document.getElementById('batchScoreType'), document.getElementById('batchScoreCustomType'));
             await this.loadScores();
             this.setOutsideScoreExpanded(false);
             this.showToast(`Đã lưu bài kiểm tra cho ${payload.count || entries.length} học sinh.`, 'success');
@@ -366,10 +393,11 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     setScoreMetadataLocked(locked) {
-        ['scoreType', 'scoreTestName', 'scoreMax', 'scoreDate'].forEach(id => {
+        ['scoreType', 'scoreCustomType', 'scoreTestName', 'scoreMax', 'scoreDate'].forEach(id => {
             const control = document.getElementById(id);
             if (control) control.disabled = locked;
         });
+        this.syncCustomScoreTypeInput(document.getElementById('scoreType'), document.getElementById('scoreCustomType'));
     },
 
     openAddScoreModal() {
@@ -381,6 +409,8 @@ Object.assign(PinkyClassApp.prototype, {
         document.getElementById('scoreModalTitle').innerText = 'Thêm điểm ngoài buổi học';
         document.getElementById('editScoreId').value = '';
         document.getElementById('scoreType').value = 'BTVN';
+        document.getElementById('scoreCustomType').value = '';
+        this.syncCustomScoreTypeInput(document.getElementById('scoreType'), document.getElementById('scoreCustomType'));
         document.getElementById('scoreTestName').value = '';
         document.getElementById('scoreMax').value = '10';
         document.getElementById('scoreValue').value = '';
@@ -405,6 +435,8 @@ Object.assign(PinkyClassApp.prototype, {
             scoreType.add(new Option(this.scoreTypeLabel(score.scoreType), score.scoreType));
         }
         scoreType.value = score.scoreType;
+        document.getElementById('scoreCustomType').value = '';
+        this.syncCustomScoreTypeInput(scoreType, document.getElementById('scoreCustomType'));
         document.getElementById('scoreTestName').value = this.getScoreTestTitle(score);
         document.getElementById('scoreMax').value = Number(score.maxScore) > 0 ? score.maxScore : 10;
         document.getElementById('scoreValue').max = Number(score.maxScore) > 0 ? score.maxScore : 10;
@@ -423,14 +455,15 @@ Object.assign(PinkyClassApp.prototype, {
 
     async saveScore() {
         const id = document.getElementById('editScoreId').value;
-        const scoreValue = document.getElementById('scoreValue').value;
+        const scoreValueRaw = document.getElementById('scoreValue').value.trim();
+        const scoreValue = Number(scoreValueRaw.replace(',', '.'));
         const note = document.getElementById('scoreNote').value.trim();
         const existing = id ? (this.scores || []).find(score => score.id === id) : null;
         const maxScore = existing
             ? (Number(existing.maxScore) > 0 ? Number(existing.maxScore) : 10)
-            : Number(document.getElementById('scoreMax').value);
+            : Number(String(document.getElementById('scoreMax').value || '').replace(',', '.'));
 
-        if (scoreValue === '' || !Number.isFinite(Number(scoreValue)) || Number(scoreValue) < 0 || Number(scoreValue) > maxScore) {
+        if (scoreValueRaw === '' || !Number.isFinite(scoreValue) || scoreValue < 0 || scoreValue > maxScore) {
             this.showToast(`Điểm số phải nằm trong khoảng từ 0 đến ${maxScore}.`, 'error');
             return;
         }
@@ -441,14 +474,14 @@ Object.assign(PinkyClassApp.prototype, {
                 res = await this.authFetch(`${API_BASE_URL}/api/scores/${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ scoreValue: Number(scoreValue), note })
+                    body: JSON.stringify({ scoreValue, note })
                 });
             } else {
-                const scoreType = document.getElementById('scoreType').value;
+                const scoreType = this.getSelectedScoreType('scoreType', 'scoreCustomType');
                 const testName = document.getElementById('scoreTestName').value.trim();
                 const date = document.getElementById('scoreDate').value;
                 const studentId = document.getElementById('scoreForm').dataset.studentId;
-                if (!testName || !date || !studentId || !Number.isFinite(maxScore) || maxScore <= 0 || maxScore > 1000) {
+                if (!scoreType || scoreType.length > 100 || !testName || !date || !studentId || !Number.isFinite(maxScore) || maxScore <= 0 || maxScore > 1000) {
                     this.showToast('Vui lòng nhập đầy đủ thông tin bài kiểm tra.', 'error');
                     return;
                 }
@@ -457,7 +490,7 @@ Object.assign(PinkyClassApp.prototype, {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         id: `sc_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-                        studentId, scoreType, testName, maxScore, scoreValue: Number(scoreValue), date, note
+                        studentId, scoreType, testName, maxScore, scoreValue, date, note
                     })
                 });
             }

@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Comfortaa:wght@400;500;600;700&family=Condiment&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260725-recurring-tuition1">
+    <link rel="stylesheet" href="style.css?v=20260728-score-groups1">
     <link rel="stylesheet" href="landing-orbis.css?v=20260724-pink1">
     <link rel="stylesheet" href="landing-orbis-fixes.css?v=20260724-click-fix1">
     <link id="appThemeStylesheet" rel="stylesheet" href="lithos-app-theme.css?v=20260724-light-audit1" disabled>
@@ -392,7 +392,6 @@
                             <div class="score-batch-heading">
                                 <div>
                                     <h3>Điểm ngoài buổi học</h3>
-                                    <p>Ô điểm để trống sẽ không tạo bản ghi. Toàn bộ điểm có nhập sẽ được gom thành một bài kiểm tra.</p>
                                 </div>
                                 <span class="score-batch-status" id="batchScoreCount">0 học sinh có điểm</span>
                             </div>
@@ -401,14 +400,15 @@
                                     <select id="batchScoreType" class="form-control" required>
                                         <option value="BTVN">Bài tập về nhà (BTVN)</option>
                                         <option value="KTTX">Kiểm tra thường xuyên</option>
-                                        <option value="CuoiChuong">Kiểm tra cuối chương</option>
+                                        <option value="__custom__">+ Thêm</option>
                                     </select>
+                                    <input type="text" id="batchScoreCustomType" class="form-control score-custom-type-input" maxlength="100" placeholder="Nhập loại điểm" hidden>
                                 </label>
                                 <label class="score-batch-test-name">Tên bài kiểm tra
                                     <input type="text" id="batchScoreTestName" class="form-control" maxlength="150" placeholder="Ví dụ: Kiểm tra 15 phút chương 2" required>
                                 </label>
                                 <label>Thang điểm
-                                    <input type="number" id="batchScoreMax" class="form-control" min="0.01" max="1000" step="0.01" value="10" required>
+                                    <input type="text" inputmode="decimal" id="batchScoreMax" class="form-control" value="10" required>
                                 </label>
                                 <label>Ngày chấm
                                     <input type="date" id="batchScoreDate" class="form-control" required>
@@ -419,7 +419,7 @@
                                     </select>
                                 </label>
                                 <label class="score-batch-note">Ghi chú chung
-                                    <input type="text" id="batchScoreNote" class="form-control" maxlength="500" placeholder="Không bắt buộc">
+                                    <input type="text" id="batchScoreNote" class="form-control" maxlength="500">
                                 </label>
                             </div>
                             <div class="table-wrapper score-batch-table-wrap">
@@ -1123,40 +1123,16 @@
                                 <div class="score-batch-heading">
                                     <div>
                                         <h3 id="quickEntryScoresHeading">Điểm buổi học</h3>
-                                        <p>Ô điểm để trống sẽ không lưu điểm cho học sinh đó.</p>
                                     </div>
                                     <span class="score-batch-status" id="quickEntryScoreCount">0 học sinh có điểm</span>
                                 </div>
-                                <div class="score-batch-controls">
-                                    <label>Loại điểm
-                                        <select id="quickEntryScoreType" class="form-control">
-                                            <option value="BTVN">Bài tập về nhà (BTVN)</option>
-                                            <option value="KTTX">Kiểm tra thường xuyên</option>
-                                            <option value="CuoiChuong">Kiểm tra cuối chương</option>
-                                            <option value="KiemTra">Kiểm tra (dữ liệu cũ)</option>
-                                            <option value="ThaiDo">Thái độ (dữ liệu cũ)</option>
-                                        </select>
-                                    </label>
-                                    <label class="score-batch-test-name">Tên bài kiểm tra
-                                        <input type="text" id="quickEntryScoreTestName" class="form-control" maxlength="150" placeholder="Ví dụ: Kiểm tra 15 phút chương 2">
-                                    </label>
-                                    <label>Thang điểm
-                                        <input type="number" id="quickEntryScoreMax" class="form-control" min="0.01" max="1000" step="0.01" value="10">
-                                    </label>
-                                </div>
-                                <div class="table-wrapper score-batch-table-wrap">
-                                    <table class="custom-table score-batch-table quick-entry-score-table">
-                                        <thead><tr><th>Học sinh</th><th>Lớp</th><th>Điểm (<span id="quickEntryScoreMaxLabel">10</span>)</th><th>Ghi chú riêng</th></tr></thead>
-                                        <tbody id="quickEntryScoresList"></tbody>
-                                    </table>
-                                </div>
+                                <div id="quickEntryScoreGroups" class="quick-entry-score-groups"></div>
                                 <div class="score-batch-actions quick-entry-score-actions">
-                                    <span>Điểm sẽ được lưu cùng nội dung buổi học bằng nút Lưu bên dưới.</span>
+                                    <button type="button" class="btn btn-secondary btn-sm" id="quickEntryAddTestBtn">+ Thêm bài kiểm tra</button>
                                 </div>
                             </div>
                         </div>
                     </div>
-
                     <div>
                         <label style="font-weight:700; display:block; margin-bottom:8px;"> Chấm riêng cho từng học sinh
                         </label>
@@ -1317,8 +1293,9 @@
                             <select id="scoreType" class="form-control" required>
                                 <option value="BTVN">Bài tập về nhà (BTVN)</option>
                                 <option value="KTTX">Kiểm tra thường xuyên</option>
-                                <option value="CuoiChuong">Kiểm tra cuối chương</option>
+                                <option value="__custom__">+ Thêm</option>
                             </select>
+                            <input type="text" id="scoreCustomType" class="form-control score-custom-type-input" maxlength="100" placeholder="Nhập loại điểm" hidden>
                         </div>
                         <div class="form-group">
                             <label for="scoreTestName">Tên bài kiểm tra</label>
@@ -1326,7 +1303,7 @@
                         </div>
                         <div class="form-group">
                             <label for="scoreMax">Thang điểm</label>
-                            <input type="number" id="scoreMax" class="form-control" min="0.01" max="1000" step="0.01" value="10" required>
+                            <input type="text" inputmode="decimal" id="scoreMax" class="form-control" value="10" required>
                         </div>
                         <div class="form-group">
                             <label for="scoreDate">Ngày chấm <span style="color:red;">*</span></label>
@@ -1334,7 +1311,7 @@
                         </div>
                         <div class="form-group">
                             <label for="scoreValue">Điểm <span style="color:red;">*</span></label>
-                            <input type="number" id="scoreValue" class="form-control" min="0" max="10" step="0.01" placeholder="Ví dụ: 8.25" required>
+                            <input type="text" inputmode="decimal" id="scoreValue" class="form-control" placeholder="Ví dụ: 8.25" required>
                         </div>
                         <div class="form-group form-group-full">
                             <label for="scoreNote">Ghi chú</label>
@@ -1562,12 +1539,12 @@
     <script src="landing-orbis.js?v=20260726-lithos-nav1"></script>
     <script src="core.js?v=20260726-security2"></script>
     <script src="lithos-petals.js?v=20260724-petal3"></script>
-    <script src="app-shell.js?v=20260726-security1"></script>
+    <script src="app-shell.js?v=20260728-score-groups1"></script>
     <script src="users.js"></script>
     <script src="dashboard.js"></script>
     <script src="student-logs.js"></script>
-    <script src="scores.js"></script>
-    <script src="calendar.js?v=20260725-recurring-scope1"></script>
+    <script src="scores.js?v=20260728-score-groups1"></script>
+    <script src="calendar.js?v=20260728-score-groups1"></script>
     <script src="tuition-export.js?v=20260726-security1"></script>
     <script src="students.js"></script>
     <script src="ai-chat.js"></script>

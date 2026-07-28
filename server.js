@@ -518,7 +518,7 @@ let poolPromise = pgPool.query('SELECT 1')
                 TeacherId VARCHAR(50) NOT NULL,
                 SessionId VARCHAR(50),
                 TestGroupId VARCHAR(100) NOT NULL,
-                ScoreType VARCHAR(20) NOT NULL,
+                ScoreType VARCHAR(100) NOT NULL,
                 TestName TEXT NOT NULL DEFAULT '',
                 ScoreValue DECIMAL(8,2) NOT NULL,
                 MaxScore DECIMAL(6,2) NOT NULL DEFAULT 10,
@@ -531,6 +531,7 @@ let poolPromise = pgPool.query('SELECT 1')
             await pgPool.query('CREATE INDEX IF NOT EXISTS idx_scores_student ON Scores (StudentId)');
             await pgPool.query('CREATE INDEX IF NOT EXISTS idx_scores_teacher ON Scores (TeacherId)');
             await pgPool.query('ALTER TABLE Scores ALTER COLUMN Note TYPE TEXT');
+            await pgPool.query('ALTER TABLE Scores ALTER COLUMN ScoreType TYPE VARCHAR(100)');
             await pgPool.query('ALTER TABLE Scores ALTER COLUMN ScoreValue TYPE DECIMAL(8,2)');
             await pgPool.query('ALTER TABLE Scores ADD COLUMN IF NOT EXISTS SessionId VARCHAR(50)');
             await pgPool.query('ALTER TABLE Scores ADD COLUMN IF NOT EXISTS TestGroupId VARCHAR(100)');
@@ -543,7 +544,8 @@ let poolPromise = pgPool.query('SELECT 1')
                                 END
                                 WHERE TestGroupId IS NULL OR TestGroupId = ''`);
             await pgPool.query('ALTER TABLE Scores ALTER COLUMN TestGroupId SET NOT NULL');
-            await pgPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_scores_session_student ON Scores (SessionId, StudentId)');
+            await pgPool.query('DROP INDEX IF EXISTS idx_scores_session_student');
+            await pgPool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_scores_session_student ON Scores (SessionId, StudentId, TestGroupId) WHERE SessionId IS NOT NULL');
             await pgPool.query('CREATE INDEX IF NOT EXISTS idx_scores_teacher_test_group ON Scores (TeacherId, TestGroupId)');
             console.log('Đã kiểm tra/đảm bảo bảng Scores (điểm số) tồn tại.');
         } catch (migErr) {
@@ -2050,7 +2052,7 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
 // nhờ vậy học phí, trạng thái thanh toán và các giá trị nhật ký không bị reset.
 app.put('/api/sessions/:id/quick-entry', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     const { id } = req.params;
-    const { content, sessionName, generalComment, studentDetails, scoreMeta } = req.body || {};
+    const { content, sessionName, generalComment, studentDetails, scoreMeta, scoreGroups } = req.body || {};
     if (!studentDetails || typeof studentDetails !== 'object' || Array.isArray(studentDetails)) {
         return res.status(400).json({ error: 'Thiếu dữ liệu nhật ký của học sinh.' });
     }
@@ -2087,91 +2089,113 @@ app.put('/api/sessions/:id/quick-entry', requireRole('teacher', 'assistant'), re
         }
 
         const usesSharedScoreMeta = !!scoreMeta && typeof scoreMeta === 'object' && !Array.isArray(scoreMeta);
-        const sharedScoreType = usesSharedScoreMeta ? String(scoreMeta.scoreType || '').trim() : '';
-        const sharedTestName = usesSharedScoreMeta ? String(scoreMeta.testName || '').trim() : '';
-        const sharedMaxScore = usesSharedScoreMeta
-            ? Number(scoreMeta.maxScore === undefined || scoreMeta.maxScore === null || scoreMeta.maxScore === '' ? 10 : scoreMeta.maxScore)
-            : 10;
-        const hasAnySharedScore = usesSharedScoreMeta && detailEntries.some(([, rawDetail]) => {
-            const rawScoreValue = rawDetail && typeof rawDetail === 'object' ? rawDetail.scoreValue : null;
-            return rawScoreValue !== null && rawScoreValue !== undefined && String(rawScoreValue).trim() !== '';
-        });
-        if (hasAnySharedScore && !SCORE_TYPES.includes(sharedScoreType)) {
+        const legacyEntries = detailEntries.map(([studentId, rawDetail]) => ({
+            studentId,
+            scoreValue: rawDetail && typeof rawDetail === 'object' ? rawDetail.scoreValue : null,
+            scoreNote: rawDetail && typeof rawDetail === 'object' ? rawDetail.scoreNote : ''
+        }));
+        const rawScoreGroups = Array.isArray(scoreGroups)
+            ? scoreGroups
+            : usesSharedScoreMeta
+                ? [{
+                    testGroupId: 'session:' + id,
+                    scoreType: scoreMeta.scoreType,
+                    testName: scoreMeta.testName,
+                    maxScore: scoreMeta.maxScore,
+                    entries: legacyEntries
+                }]
+                : [{
+                    testGroupId: 'session:' + id,
+                    scoreType: detailEntries.map(([, detail]) => String(detail?.scoreType || '').trim()).find(Boolean) || '',
+                    testName: '',
+                    maxScore: 10,
+                    entries: legacyEntries
+                }];
+        if (rawScoreGroups.length > 50) {
             await transaction.rollback();
             transaction = null;
-            return res.status(400).json({ error: 'Loại điểm không hợp lệ.' });
-        }
-        if (hasAnySharedScore && (!sharedTestName || sharedTestName.length > 150)) {
-            await transaction.rollback();
-            transaction = null;
-            return res.status(400).json({ error: 'Tên bài kiểm tra là bắt buộc và không vượt quá 150 ký tự.' });
-        }
-        if (hasAnySharedScore && (!Number.isFinite(sharedMaxScore) || sharedMaxScore <= 0 || sharedMaxScore > MAX_SCORE_SCALE)) {
-            await transaction.rollback();
-            transaction = null;
-            return res.status(400).json({ error: `Thang điểm phải lớn hơn 0 và không vượt quá ${MAX_SCORE_SCALE}.` });
+            return res.status(400).json({ error: 'Một buổi học không thể có quá 50 bài kiểm tra.' });
         }
 
-        const scoreEntries = new Map();
-        for (const [studentId, rawDetail] of detailEntries) {
-            const detail = rawDetail && typeof rawDetail === 'object' ? rawDetail : {};
-            const rawScoreValue = detail.scoreValue;
-            const hasScoreValue = rawScoreValue !== null && rawScoreValue !== undefined && String(rawScoreValue).trim() !== '';
-            if (!hasScoreValue) {
-                if (usesSharedScoreMeta) {
-                    scoreEntries.set(studentId, { remove: true });
-                    continue;
-                }
-                const legacyScoreType = String(detail.scoreType || '').trim();
-                if (!legacyScoreType) {
-                    scoreEntries.set(studentId, null);
-                    continue;
-                }
-                if (!SCORE_TYPES.includes(legacyScoreType)) {
+        const normalizedScoreGroups = [];
+        for (let groupIndex = 0; groupIndex < rawScoreGroups.length; groupIndex++) {
+            const rawGroup = rawScoreGroups[groupIndex] && typeof rawScoreGroups[groupIndex] === 'object' ? rawScoreGroups[groupIndex] : {};
+            const scoreType = normalizeScoreType(rawGroup.scoreType);
+            const testName = String(rawGroup.testName ?? '').trim();
+            const maxScore = Number(rawGroup.maxScore === undefined || rawGroup.maxScore === null || rawGroup.maxScore === '' ? 10 : rawGroup.maxScore);
+            const rawGroupId = String(rawGroup.testGroupId || '').trim();
+            const sessionGroupPrefix = 'session:' + id;
+            const isSessionGroupId = rawGroupId === sessionGroupPrefix || rawGroupId.startsWith(sessionGroupPrefix + ':test:');
+            const testGroupId = isSessionGroupId && rawGroupId.length <= 100 ? rawGroupId : '';
+            const rawEntries = Array.isArray(rawGroup.entries) ? rawGroup.entries : [];
+            const seenStudentIds = new Set();
+            const normalizedEntries = [];
+            for (const rawEntry of rawEntries) {
+                const studentId = String(rawEntry && rawEntry.studentId || '').trim();
+                if (!studentId || !participantIds.has(studentId)) {
                     await transaction.rollback();
                     transaction = null;
-                    return res.status(400).json({ error: 'Loại điểm không hợp lệ.' });
+                    return res.status(400).json({ error: 'Danh sách điểm có học sinh không thuộc buổi học.' });
                 }
-                scoreEntries.set(studentId, { remove: true });
-                continue;
+                if (seenStudentIds.has(studentId)) {
+                    await transaction.rollback();
+                    transaction = null;
+                    return res.status(400).json({ error: 'Một bài kiểm tra không được lặp học sinh.' });
+                }
+                seenStudentIds.add(studentId);
+                const rawScoreValue = rawEntry && rawEntry.scoreValue;
+                const hasScoreValue = rawScoreValue !== null && rawScoreValue !== undefined && String(rawScoreValue).trim() !== '';
+                if (!hasScoreValue) continue;
+                const scoreValue = Number(String(rawScoreValue).replace(',', '.'));
+                const note = String(rawEntry.scoreNote ?? rawEntry.note ?? '').trim();
+                if (!Number.isFinite(scoreValue) || scoreValue < 0 || scoreValue > maxScore) {
+                    await transaction.rollback();
+                    transaction = null;
+                    return res.status(400).json({ error: 'Điểm bài ' + (groupIndex + 1) + ' phải nằm trong khoảng 0 đến ' + maxScore + '.' });
+                }
+                if (note.length > 500) {
+                    await transaction.rollback();
+                    transaction = null;
+                    return res.status(400).json({ error: 'Ghi chú điểm không được vượt quá 500 ký tự.' });
+                }
+                normalizedEntries.push({ studentId, scoreValue, note });
             }
-            const scoreType = usesSharedScoreMeta ? sharedScoreType : String(detail.scoreType || '').trim();
-            const testName = usesSharedScoreMeta ? sharedTestName : '';
-            const maxScore = usesSharedScoreMeta ? sharedMaxScore : 10;
-            if (!SCORE_TYPES.includes(scoreType)) {
+            if (!normalizedEntries.length) continue;
+            if (!isValidScoreType(scoreType)) {
                 await transaction.rollback();
                 transaction = null;
                 return res.status(400).json({ error: 'Loại điểm không hợp lệ.' });
             }
-            const scoreValue = Number(String(rawScoreValue).replace(',', '.'));
-            if (!Number.isFinite(scoreValue) || scoreValue < 0 || scoreValue > maxScore) {
+            if (!testName || testName.length > 150) {
                 await transaction.rollback();
                 transaction = null;
-                return res.status(400).json({ error: `Điểm số phải nằm trong khoảng từ 0 đến ${maxScore}.` });
+                return res.status(400).json({ error: 'Tên bài kiểm tra là bắt buộc và không vượt quá 150 ký tự.' });
             }
-            const scoreNote = String(detail.scoreNote ?? '').trim();
-            if (scoreNote.length > 500) {
+            if (!Number.isFinite(maxScore) || maxScore <= 0 || maxScore > MAX_SCORE_SCALE) {
                 await transaction.rollback();
                 transaction = null;
-                return res.status(400).json({ error: 'Ghi chú điểm không được vượt quá 500 ký tự.' });
+                return res.status(400).json({ error: 'Thang điểm phải lớn hơn 0 và không vượt quá ' + MAX_SCORE_SCALE + '.' });
             }
-            scoreEntries.set(studentId, {
-                scoreType,
-                testName,
-                scoreValue,
-                maxScore,
-                note: scoreNote
-            });
+            const finalTestGroupId = testGroupId || (normalizedScoreGroups.length === 0 ? 'session:' + id : 'session:' + id + ':test:' + crypto.randomUUID());
+            if (normalizedScoreGroups.some(group => group.testGroupId === finalTestGroupId)) {
+                await transaction.rollback();
+                transaction = null;
+                return res.status(400).json({ error: 'Bài kiểm tra trong buổi học bị trùng.' });
+            }
+            normalizedScoreGroups.push({ testGroupId: finalTestGroupId, scoreType, testName, maxScore, entries: normalizedEntries });
         }
+
+        await new sql.Request(transaction)
+            .input('sessionId', sql.VarChar, id)
+            .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+            .query('DELETE FROM Scores WHERE SessionId = @sessionId AND TeacherId = @teacherId');
 
         await new sql.Request(transaction)
             .input('sessionId', sql.VarChar, id)
             .input('content', sql.NVarChar, String(content ?? ''))
             .input('sessionName', sql.NVarChar, String(sessionName ?? ''))
             .input('generalComment', sql.NVarChar, String(generalComment ?? ''))
-            .query(`UPDATE Sessions
-                    SET Content = @content, SessionName = @sessionName, GeneralComment = @generalComment
-                    WHERE Id = @sessionId`);
+            .query('UPDATE Sessions SET Content = @content, SessionName = @sessionName, GeneralComment = @generalComment WHERE Id = @sessionId');
 
         for (const [studentId, rawDetail] of detailEntries) {
             const detail = rawDetail && typeof rawDetail === 'object' ? rawDetail : {};
@@ -2182,33 +2206,26 @@ app.put('/api/sessions/:id/quick-entry', requireRole('teacher', 'assistant'), re
                 .input('attitude', sql.NVarChar, String(detail.attitude ?? '').trim())
                 .input('individualComment', sql.NVarChar, String(detail.individualComment ?? ''))
                 .input('note', sql.NVarChar, String(detail.note ?? ''))
-                .query(`UPDATE SessionDetails
-                        SET Homework = @homework, Attitude = @attitude,
-                            IndividualComment = @individualComment, Note = @note
-                        WHERE SessionId = @sessionId AND StudentId = @studentId`);
-            const scoreEntry = scoreEntries.get(studentId);
-            if (scoreEntry?.remove) {
-                await new sql.Request(transaction)
-                    .input('sessionId', sql.VarChar, id)
-                    .input('studentId', sql.VarChar, studentId)
-                    .input('teacherId', sql.VarChar, req.effectiveTeacherId)
-                    .query('DELETE FROM Scores WHERE SessionId = @sessionId AND StudentId = @studentId AND TeacherId = @teacherId');
-            } else if (scoreEntry) {
-                await new sql.Request(transaction)
-                    .input('id', sql.VarChar, 'sc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8))
-                    .input('studentId', sql.VarChar, studentId)
-                    .input('teacherId', sql.VarChar, req.effectiveTeacherId)
-                    .input('sessionId', sql.VarChar, id)
-                    .input('testGroupId', sql.VarChar, `session:${id}`)
-                    .input('scoreType', sql.VarChar, scoreEntry.scoreType)
-                    .input('testName', sql.NVarChar, scoreEntry.testName)
-                    .input('scoreValue', sql.Decimal(), scoreEntry.scoreValue)
-                    .input('maxScore', sql.Decimal(), scoreEntry.maxScore)
-                    .input('scoreDate', sql.Date, String(owner.recordset[0].SessionDate).slice(0, 10))
-                    .input('note', sql.NVarChar, scoreEntry.note)
-                    .query('INSERT INTO Scores (Id, StudentId, TeacherId, SessionId, TestGroupId, ScoreType, TestName, ScoreValue, MaxScore, ScoreDate, Note) VALUES (@id, @studentId, @teacherId, @sessionId, @testGroupId, @scoreType, @testName, @scoreValue, @maxScore, @scoreDate, @note) ON CONFLICT (SessionId, StudentId) DO UPDATE SET TeacherId = EXCLUDED.TeacherId, TestGroupId = EXCLUDED.TestGroupId, ScoreType = EXCLUDED.ScoreType, TestName = EXCLUDED.TestName, ScoreValue = EXCLUDED.ScoreValue, MaxScore = EXCLUDED.MaxScore, ScoreDate = EXCLUDED.ScoreDate, Note = EXCLUDED.Note');
-            }
+                .query('UPDATE SessionDetails SET Homework = @homework, Attitude = @attitude, IndividualComment = @individualComment, Note = @note WHERE SessionId = @sessionId AND StudentId = @studentId');
+        }
 
+        const sessionDate = String(owner.recordset[0].SessionDate).slice(0, 10);
+        for (const group of normalizedScoreGroups) {
+            for (const entry of group.entries) {
+                await new sql.Request(transaction)
+                    .input('id', sql.VarChar, 'sc_' + crypto.randomUUID())
+                    .input('studentId', sql.VarChar, entry.studentId)
+                    .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+                    .input('sessionId', sql.VarChar, id)
+                    .input('testGroupId', sql.VarChar, group.testGroupId)
+                    .input('scoreType', sql.VarChar, group.scoreType)
+                    .input('testName', sql.NVarChar, group.testName)
+                    .input('scoreValue', sql.Decimal(), entry.scoreValue)
+                    .input('maxScore', sql.Decimal(), group.maxScore)
+                    .input('scoreDate', sql.Date, sessionDate)
+                    .input('note', sql.NVarChar, entry.note)
+                    .query('INSERT INTO Scores (Id, StudentId, TeacherId, SessionId, TestGroupId, ScoreType, TestName, ScoreValue, MaxScore, ScoreDate, Note) VALUES (@id, @studentId, @teacherId, @sessionId, @testGroupId, @scoreType, @testName, @scoreValue, @maxScore, @scoreDate, @note)');
+            }
         }
 
         await transaction.commit();
@@ -2630,8 +2647,18 @@ app.put('/api/students/:studentId/set-paid', requireRole('teacher'), requireTeac
 // /api/me/scores (route riêng ở phần STUDENT SELF-SERVICE bên dưới).
 // ==========================================
 
-const SCORE_TYPES = ['BTVN', 'KTTX', 'CuoiChuong', 'KiemTra', 'ThaiDo'];
+const SCORE_TYPE_MAX_LENGTH = 100;
 const MAX_SCORE_SCALE = 1000;
+
+function normalizeScoreType(value) {
+    const normalized = String(value ?? '').trim();
+    if (!normalized || normalized === '__custom__' || normalized.length > SCORE_TYPE_MAX_LENGTH) return '';
+    return normalized;
+}
+
+function isValidScoreType(value) {
+    return Boolean(normalizeScoreType(value));
+}
 
 // GET danh sách điểm — có thể lọc theo ?studentId=... (dùng cho trang Điểm số
 // của 1 học sinh cụ thể) hoặc bỏ trống để lấy TẤT CẢ điểm của giáo viên hiện
@@ -2674,9 +2701,10 @@ app.get('/api/scores', requireRole('teacher', 'assistant'), requireTeacherContex
 // dòng nào, tránh tình trạng nửa lớp có điểm còn nửa lớp bị mất khi mạng lỗi.
 app.post('/api/scores/batch', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     const { scoreType, testName, maxScore: rawMaxScore, date, note, entries } = req.body || {};
+    const normalizedScoreType = normalizeScoreType(scoreType);
     const normalizedTestName = String(testName || '').trim();
     const maxScore = rawMaxScore === undefined || rawMaxScore === null || rawMaxScore === '' ? 10 : Number(rawMaxScore);
-    if (!SCORE_TYPES.includes(scoreType)) {
+    if (!normalizedScoreType) {
         return res.status(400).json({ error: 'Loại điểm không hợp lệ.' });
     }
     if (!normalizedTestName || normalizedTestName.length > 150) {
@@ -2733,7 +2761,7 @@ app.post('/api/scores/batch', requireRole('teacher', 'assistant'), requireTeache
                 .input('studentId', sql.VarChar, entry.studentId)
                 .input('teacherId', sql.VarChar, req.effectiveTeacherId)
                 .input('testGroupId', sql.VarChar, testGroupId)
-                .input('scoreType', sql.VarChar, scoreType)
+                .input('scoreType', sql.VarChar, normalizedScoreType)
                 .input('testName', sql.NVarChar, normalizedTestName)
                 .input('scoreValue', sql.Decimal(), entry.scoreValue)
                 .input('maxScore', sql.Decimal(), maxScore)
@@ -2756,6 +2784,7 @@ app.post('/api/scores/batch', requireRole('teacher', 'assistant'), requireTeache
 // POST thêm 1 điểm mới cho 1 học sinh
 app.post('/api/scores', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     const { id, studentId, sessionId, scoreType, testName, maxScore: rawMaxScore, scoreValue, date, note } = req.body || {};
+    const normalizedScoreType = normalizeScoreType(scoreType);
     const normalizedTestName = String(testName || '').trim();
     const maxScore = rawMaxScore === undefined || rawMaxScore === null || rawMaxScore === '' ? 10 : Number(rawMaxScore);
     if (!id || !studentId || !scoreType || scoreValue === undefined || scoreValue === null || !date) {
@@ -2764,8 +2793,8 @@ app.post('/api/scores', requireRole('teacher', 'assistant'), requireTeacherConte
     if (sessionId) {
         return res.status(400).json({ error: 'Điểm gắn với buổi học phải được nhập trong form buổi học.' });
     }
-    if (!SCORE_TYPES.includes(scoreType)) {
-        return res.status(400).json({ error: 'Loại điểm không hợp lệ. Chọn: BTVN, KTTX hoặc CuoiChuong.' });
+    if (!normalizedScoreType) {
+        return res.status(400).json({ error: 'Loại điểm không hợp lệ.' });
     }
     if (!normalizedTestName || normalizedTestName.length > 150) {
         return res.status(400).json({ error: 'Tên bài kiểm tra là bắt buộc và không vượt quá 150 ký tự.' });
@@ -2799,7 +2828,7 @@ app.post('/api/scores', requireRole('teacher', 'assistant'), requireTeacherConte
             .input('studentId',  sql.VarChar,  studentId)
             .input('teacherId',  sql.VarChar,  req.effectiveTeacherId)
             .input('testGroupId',sql.VarChar,  `score:${id}`)
-            .input('scoreType',  sql.VarChar,  scoreType)
+            .input('scoreType',  sql.VarChar,  normalizedScoreType)
             .input('testName',   sql.NVarChar, normalizedTestName)
             .input('scoreValue', sql.Decimal(), val)
             .input('maxScore',   sql.Decimal(),maxScore)

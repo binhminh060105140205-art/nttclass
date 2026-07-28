@@ -487,42 +487,7 @@ Object.assign(PinkyClassApp.prototype, {
         const linkedScores = (this.scores || []).filter(score =>
             score.sessionId === sess.id && sess.studentIds.includes(score.studentId)
         );
-        const firstLinkedScore = linkedScores[0] || null;
-        const scoreTypeLabels = {
-            BTVN: 'Bài tập về nhà (BTVN)',
-            KTTX: 'Kiểm tra thường xuyên',
-            CuoiChuong: 'Kiểm tra cuối chương',
-            KiemTra: 'Kiểm tra (dữ liệu cũ)',
-            ThaiDo: 'Thái độ (dữ liệu cũ)'
-        };
-        const sharedScoreType = firstLinkedScore?.scoreType || 'BTVN';
-        const sharedTestName = firstLinkedScore?.testName || sess.sessionName || '';
-        const sharedMaxScore = Number(firstLinkedScore?.maxScore) > 0 ? Number(firstLinkedScore.maxScore) : 10;
-        const scoreTypeInput = document.getElementById('quickEntryScoreType');
-        if (scoreTypeInput && ![...scoreTypeInput.options].some(option => option.value === sharedScoreType)) {
-            scoreTypeInput.add(new Option(scoreTypeLabels[sharedScoreType] || sharedScoreType, sharedScoreType));
-        }
-        if (scoreTypeInput) scoreTypeInput.value = sharedScoreType;
-        document.getElementById('quickEntryScoreTestName').value = sharedTestName;
-        document.getElementById('quickEntryScoreMax').value = sharedMaxScore;
-
-        const scoreListWrap = document.getElementById('quickEntryScoresList');
-        scoreListWrap.innerHTML = sess.studentIds.map(stId => {
-            const linkedScore = linkedScores.find(score => score.studentId === stId);
-            const linkedScoreValue = linkedScore?.scoreValue ?? '';
-            const linkedScoreNote = linkedScore?.note || '';
-            const student = (this.students || []).find(item => item.id === stId);
-            const studentClass = student?.class || (student?.gradeLevel ? `Lớp ${student.gradeLevel}` : '-');
-            const name = this.getStudentName(stId);
-            return `
-                <tr class="batch-score-row qe-score-row" data-student-id="${this.escapeHtmlAttr(stId)}">
-                    <td><strong>${this.escapeHtml(name)}</strong></td>
-                    <td>${this.escapeHtml(studentClass)}</td>
-                    <td><input type="number" class="form-control batch-score-value qe-score-value" min="0" max="${sharedMaxScore}" step="0.01" inputmode="decimal" placeholder="-" value="${this.escapeHtmlAttr(linkedScoreValue)}" aria-label="Điểm của ${this.escapeHtmlAttr(name)}"></td>
-                    <td><input type="text" class="form-control batch-score-student-note qe-score-note" maxlength="500" placeholder="Không bắt buộc" value="${this.escapeHtmlAttr(linkedScoreNote)}" aria-label="Ghi chú của ${this.escapeHtmlAttr(name)}"></td>
-                </tr>
-            `;
-        }).join('');
+        this.renderQuickEntryScoreGroups(sess, linkedScores);
 
         const scoreToggle = document.getElementById('quickEntryScoreToggle');
         if (scoreToggle) {
@@ -532,12 +497,8 @@ Object.assign(PinkyClassApp.prototype, {
                 this.setQuickEntryScoreExpanded(!expanded);
             };
         }
-        const scoreMaxInput = document.getElementById('quickEntryScoreMax');
-        if (scoreMaxInput) scoreMaxInput.oninput = () => this.updateQuickEntryScoreMax();
-        if (scoreListWrap) scoreListWrap.oninput = event => {
-            if (event.target.matches('.qe-score-value')) this.updateQuickEntryScoreCount();
-        };
-        this.updateQuickEntryScoreMax();
+        const addTestButton = document.getElementById('quickEntryAddTestBtn');
+        if (addTestButton) addTestButton.onclick = () => this.addQuickEntryScoreGroup();
         this.updateQuickEntryScoreCount();
         this.setQuickEntryScoreExpanded(false);
 
@@ -583,6 +544,168 @@ Object.assign(PinkyClassApp.prototype, {
         this.openModal('quickSessionEntryModal');
     },
 
+    getQuickEntryScoreTypeOptions(selectedType) {
+        const labels = {
+            BTVN: 'BTVN',
+            KTTX: 'Kiểm tra thường xuyên',
+            CuoiChuong: 'Kiểm tra cuối chương',
+            KiemTra: 'Kiểm tra (dữ liệu cũ)',
+            ThaiDo: 'Thái độ (dữ liệu cũ)'
+        };
+        const normalized = String(selectedType || 'BTVN').trim() || 'BTVN';
+        const options = ['BTVN', 'KTTX'];
+        if (normalized !== '__custom__' && !options.includes(normalized)) options.push(normalized);
+        return options.map(type =>
+            `<option value="${this.escapeHtmlAttr(type)}" ${type === normalized ? 'selected' : ''}>${this.escapeHtml(labels[type] || type)}</option>`
+        ).join('') + `<option value="__custom__" ${normalized === '__custom__' ? 'selected' : ''}>+ Thêm</option>`;
+    },
+
+    buildQuickEntryScoreGroupHtml(sess, group, index, total) {
+        const selectedType = String(group.scoreType || 'BTVN').trim() || 'BTVN';
+        const useCustomType = selectedType === '__custom__';
+        const customType = useCustomType ? '' : (['BTVN', 'KTTX', 'CuoiChuong', 'KiemTra', 'ThaiDo'].includes(selectedType) ? '' : selectedType);
+        const selectValue = customType ? '__custom__' : selectedType;
+        const maxScore = Number(group.maxScore) > 0 ? Number(group.maxScore) : 10;
+        const scoreMap = group.scores instanceof Map ? group.scores : new Map();
+        const groupId = String(group.testGroupId || '');
+        const rows = sess.studentIds.map(stId => {
+            const linkedScore = scoreMap.get(stId) || {};
+            const student = (this.students || []).find(item => item.id === stId);
+            const studentClass = student?.class || (student?.gradeLevel ? `Lớp ${student.gradeLevel}` : '-');
+            const name = this.getStudentName(stId);
+            return `
+                <tr class="batch-score-row qe-score-row" data-student-id="${this.escapeHtmlAttr(stId)}">
+                    <td><strong>${this.escapeHtml(name)}</strong></td>
+                    <td>${this.escapeHtml(studentClass)}</td>
+                    <td><input type="text" class="form-control batch-score-value qe-score-value" inputmode="decimal" placeholder="-" value="${this.escapeHtmlAttr(linkedScore.scoreValue ?? '')}" aria-label="Điểm của ${this.escapeHtmlAttr(name)}"></td>
+                    <td><input type="text" class="form-control batch-score-student-note qe-score-note" maxlength="500" value="${this.escapeHtmlAttr(linkedScore.note || '')}" aria-label="Ghi chú của ${this.escapeHtmlAttr(name)}"></td>
+                </tr>
+            `;
+        }).join('');
+        return `
+            <article class="quick-entry-score-group" data-test-group-id="${this.escapeHtmlAttr(groupId)}">
+                <div class="quick-entry-score-group-heading">
+                    <strong>Bài kiểm tra ${index + 1}</strong>
+                    ${total > 1 ? '<button type="button" class="btn btn-danger btn-sm qe-remove-score-group">Xóa</button>' : ''}
+                </div>
+                <div class="score-batch-controls">
+                    <label>Loại điểm
+                        <select class="form-control qe-score-type" data-score-type-select>
+                            ${this.getQuickEntryScoreTypeOptions(selectValue)}
+                        </select>
+                        <input type="text" class="form-control score-custom-type-input qe-custom-score-type" maxlength="100" placeholder="Nhập loại điểm" value="${this.escapeHtmlAttr(customType)}" ${customType ? '' : 'hidden'}>
+                    </label>
+                    <label class="score-batch-test-name">Tên bài kiểm tra
+                        <input type="text" class="form-control qe-score-test-name" maxlength="150" value="${this.escapeHtmlAttr(group.testName || '')}">
+                    </label>
+                    <label>Thang điểm
+                        <input type="text" inputmode="decimal" class="form-control qe-score-max" value="${this.escapeHtmlAttr(maxScore)}">
+                    </label>
+                </div>
+                <div class="table-wrapper score-batch-table-wrap">
+                    <table class="custom-table score-batch-table quick-entry-score-table">
+                        <thead><tr><th>Học sinh</th><th>Lớp</th><th>Điểm (<span class="qe-score-max-label">${this.escapeHtml(maxScore)}</span>)</th><th>Ghi chú riêng</th></tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+                <div class="quick-entry-score-group-spacer" aria-hidden="true"></div>
+            </article>
+        `;
+    },
+
+    renderQuickEntryScoreGroups(sess, linkedScores) {
+        const wrap = document.getElementById('quickEntryScoreGroups');
+        if (!wrap) return;
+        const groupsById = new Map();
+        (linkedScores || []).forEach(score => {
+            const groupId = String(score.testGroupId || `session:${sess.id}`);
+            if (!groupsById.has(groupId)) {
+                groupsById.set(groupId, {
+                    testGroupId: groupId,
+                    scoreType: score.scoreType || 'BTVN',
+                    testName: score.testName || sess.sessionName || '',
+                    maxScore: score.maxScore,
+                    scores: new Map()
+                });
+            }
+            groupsById.get(groupId).scores.set(score.studentId, score);
+        });
+        const groups = groupsById.size ? [...groupsById.values()] : [{
+            testGroupId: '',
+            scoreType: 'BTVN',
+            testName: sess.sessionName || '',
+            maxScore: 10,
+            scores: new Map()
+        }];
+        wrap.innerHTML = groups.map((group, index) => this.buildQuickEntryScoreGroupHtml(sess, group, index, groups.length)).join('');
+        wrap.oninput = event => {
+            const group = event.target.closest('.quick-entry-score-group');
+            if (event.target.matches('.qe-score-max')) this.updateQuickEntryScoreMax(group);
+            if (event.target.matches('.qe-score-value')) this.updateQuickEntryScoreCount();
+        };
+        wrap.onchange = event => {
+            if (!event.target.matches('.qe-score-type')) return;
+            const customInput = event.target.closest('label')?.querySelector('.qe-custom-score-type');
+            this.syncCustomScoreTypeInput(event.target, customInput);
+        };
+        wrap.onclick = event => {
+            const removeButton = event.target.closest('.qe-remove-score-group');
+            if (!removeButton) return;
+            const group = removeButton.closest('.quick-entry-score-group');
+            const groupsNow = [...wrap.querySelectorAll('.quick-entry-score-group')];
+            if (groupsNow.length <= 1) return;
+            group?.remove();
+            this.refreshQuickEntryScoreGroupHeadings();
+            this.updateQuickEntryScoreCount();
+        };
+        wrap.querySelectorAll('.qe-score-type').forEach(select => {
+            const customInput = select.closest('label')?.querySelector('.qe-custom-score-type');
+            this.syncCustomScoreTypeInput(select, customInput);
+        });
+        this.updateQuickEntryScoreMax();
+    },
+
+    refreshQuickEntryScoreGroupHeadings() {
+        const groups = [...document.querySelectorAll('#quickEntryScoreGroups .quick-entry-score-group')];
+        groups.forEach((group, index) => {
+            const title = group.querySelector('.quick-entry-score-group-heading strong');
+            if (title) title.innerText = `Bài kiểm tra ${index + 1}`;
+            const oldRemove = group.querySelector('.qe-remove-score-group');
+            if (groups.length > 1 && !oldRemove) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'btn btn-danger btn-sm qe-remove-score-group';
+                button.innerText = 'Xóa';
+                group.querySelector('.quick-entry-score-group-heading')?.appendChild(button);
+            } else if (groups.length <= 1 && oldRemove) {
+                oldRemove.remove();
+            }
+        });
+    },
+
+    addQuickEntryScoreGroup() {
+        const wrap = document.getElementById('quickEntryScoreGroups');
+        const sessionId = document.getElementById('quickEntrySessionId')?.value;
+        const sess = (this.sessions || []).find(item => item.id === sessionId);
+        if (!wrap || !sess) return;
+        const groups = [...wrap.querySelectorAll('.quick-entry-score-group')];
+        const group = {
+            testGroupId: '',
+            scoreType: 'BTVN',
+            testName: '',
+            maxScore: 10,
+            scores: new Map()
+        };
+        wrap.insertAdjacentHTML('beforeend', this.buildQuickEntryScoreGroupHtml(sess, group, groups.length, groups.length + 1));
+        this.refreshQuickEntryScoreGroupHeadings();
+        this.setQuickEntryScoreExpanded(true);
+        this.updateQuickEntryScoreCount();
+        wrap.querySelectorAll('.qe-score-type').forEach(select => {
+            const customInput = select.closest('label')?.querySelector('.qe-custom-score-type');
+            this.syncCustomScoreTypeInput(select, customInput);
+        });
+    },
+
     setQuickEntryScoreExpanded(expanded) {
         const toggle = document.getElementById('quickEntryScoreToggle');
         const panel = document.getElementById('quickEntryScorePanel');
@@ -594,22 +717,25 @@ Object.assign(PinkyClassApp.prototype, {
             : (hasScores ? '+ Xem và sửa điểm buổi học' : '+ Nhập điểm buổi học');
         panel.hidden = !expanded;
         panel.querySelectorAll('input, select, textarea').forEach(control => { control.disabled = !expanded; });
-        if (expanded) window.setTimeout(() => document.getElementById('quickEntryScoreType')?.focus(), 0);
+        panel.querySelectorAll('[data-score-type-select]').forEach(select => {
+            const customInput = select.closest('label')?.querySelector('.qe-custom-score-type');
+            this.syncCustomScoreTypeInput(select, customInput);
+        });
+        if (expanded) window.setTimeout(() => document.querySelector('#quickEntryScoreGroups .qe-score-type')?.focus(), 0);
     },
 
-    updateQuickEntryScoreMax() {
-        const maxInput = document.getElementById('quickEntryScoreMax');
-        const maxLabel = document.getElementById('quickEntryScoreMaxLabel');
-        if (!maxInput) return;
-        const maxScore = Number(String(maxInput.value || '').replace(',', '.'));
-        if (Number.isFinite(maxScore) && maxScore > 0) {
-            document.querySelectorAll('#quickEntryScoresList .qe-score-value').forEach(input => { input.max = String(maxScore); });
-            if (maxLabel) maxLabel.innerText = String(maxScore);
-        }
+    updateQuickEntryScoreMax(groupElement) {
+        const groups = groupElement ? [groupElement] : [...document.querySelectorAll('#quickEntryScoreGroups .quick-entry-score-group')];
+        groups.forEach(group => {
+            const maxInput = group.querySelector('.qe-score-max');
+            const maxLabel = group.querySelector('.qe-score-max-label');
+            const maxScore = Number(String(maxInput?.value || '').replace(',', '.'));
+            if (Number.isFinite(maxScore) && maxScore > 0 && maxLabel) maxLabel.innerText = String(maxScore);
+        });
     },
 
     updateQuickEntryScoreCount() {
-        const count = [...document.querySelectorAll('#quickEntryScoresList .qe-score-value')]
+        const count = [...document.querySelectorAll('#quickEntryScoreGroups .qe-score-value')]
             .filter(input => input.value.trim() !== '').length;
         const label = document.getElementById('quickEntryScoreCount');
         if (label) label.innerText = `${count} học sinh có điểm`;
@@ -662,32 +788,45 @@ Object.assign(PinkyClassApp.prototype, {
 
         const content = document.getElementById('quickEntryContent').value.trim();
         const sessionName = document.getElementById('quickEntrySessionName').value.trim();
-        const scoreType = document.getElementById('quickEntryScoreType')?.value || '';
-        const scoreTestName = document.getElementById('quickEntryScoreTestName')?.value.trim() || '';
-        const scoreMaxRaw = document.getElementById('quickEntryScoreMax')?.value || '';
-        const scoreMax = Number(String(scoreMaxRaw).replace(',', '.'));
+        const scoreGroups = [];
         const newStudentDetails = {};
-        const scoreDetailsByStudent = new Map();
         let scoreValidationError = '';
-        document.querySelectorAll('#quickEntryScoresList .qe-score-row').forEach(row => {
-            const stId = row.getAttribute('data-student-id');
-            const scoreValueRaw = row.querySelector('.qe-score-value').value.trim();
-            const scoreNote = row.querySelector('.qe-score-note').value.trim();
-            const scoreValue = scoreValueRaw === '' ? null : Number(scoreValueRaw.replace(',', '.'));
-            if (!scoreValidationError && scoreValueRaw !== '' && (!Number.isFinite(scoreValue) || scoreValue < 0 || !Number.isFinite(scoreMax) || scoreMax <= 0 || scoreValue > scoreMax)) {
-                scoreValidationError = `Điểm của ${this.getStudentName(stId)} phải từ 0 đến ${Number.isFinite(scoreMax) && scoreMax > 0 ? scoreMax : 'thang điểm đã chọn'}.`;
-            }
-            scoreDetailsByStudent.set(stId, { scoreValue, scoreNote });
+        document.querySelectorAll('#quickEntryScoreGroups .quick-entry-score-group').forEach((group, groupIndex) => {
+            const typeSelect = group.querySelector('.qe-score-type');
+            const customTypeInput = group.querySelector('.qe-custom-score-type');
+            const scoreType = typeSelect?.value === '__custom__'
+                ? String(customTypeInput?.value || '').trim()
+                : String(typeSelect?.value || '').trim();
+            const scoreTestName = group.querySelector('.qe-score-test-name')?.value.trim() || '';
+            const scoreMaxRaw = group.querySelector('.qe-score-max')?.value || '';
+            const scoreMax = Number(String(scoreMaxRaw).replace(',', '.'));
+            const entries = [];
+            let hasAnyScore = false;
+            group.querySelectorAll('.qe-score-row').forEach(row => {
+                const studentId = row.getAttribute('data-student-id');
+                const scoreValueRaw = row.querySelector('.qe-score-value').value.trim();
+                const scoreNote = row.querySelector('.qe-score-note').value.trim();
+                const scoreValue = scoreValueRaw === '' ? null : Number(scoreValueRaw.replace(',', '.'));
+                if (scoreValueRaw !== '') hasAnyScore = true;
+                if (!scoreValidationError && scoreValueRaw !== '' && (!Number.isFinite(scoreValue) || scoreValue < 0 || !Number.isFinite(scoreMax) || scoreMax <= 0 || scoreValue > scoreMax)) {
+                    scoreValidationError = `Điểm của ${this.getStudentName(studentId)} ở bài ${groupIndex + 1} phải từ 0 đến ${Number.isFinite(scoreMax) && scoreMax > 0 ? scoreMax : 'thang điểm đã chọn'}.`;
+                }
+                if (!scoreValidationError && scoreNote.length > 500) scoreValidationError = 'Ghi chú điểm không được vượt quá 500 ký tự.';
+                entries.push({ studentId, scoreValue, scoreNote });
+            });
+            if (!hasAnyScore) return;
+            if (!scoreValidationError && !scoreType) scoreValidationError = `Vui lòng chọn hoặc nhập loại điểm cho bài ${groupIndex + 1}.`;
+            else if (!scoreValidationError && scoreType.length > 100) scoreValidationError = 'Loại điểm không được vượt quá 100 ký tự.';
+            else if (!scoreValidationError && (!scoreTestName || scoreTestName.length > 150)) scoreValidationError = `Vui lòng nhập tên bài kiểm tra cho bài ${groupIndex + 1}, tối đa 150 ký tự.`;
+            else if (!scoreValidationError && (!Number.isFinite(scoreMax) || scoreMax <= 0 || scoreMax > 1000)) scoreValidationError = 'Thang điểm phải lớn hơn 0 và không vượt quá 1000.';
+            scoreGroups.push({
+                testGroupId: group.dataset.testGroupId || '',
+                scoreType,
+                testName: scoreTestName,
+                maxScore: Number.isFinite(scoreMax) && scoreMax > 0 ? scoreMax : 10,
+                entries
+            });
         });
-
-        const hasAnyScore = [...scoreDetailsByStudent.values()].some(detail => detail.scoreValue !== null);
-        if (!scoreValidationError && hasAnyScore && !scoreType) {
-            scoreValidationError = 'Vui lòng chọn loại điểm.';
-        } else if (!scoreValidationError && hasAnyScore && (!scoreTestName || scoreTestName.length > 150)) {
-            scoreValidationError = 'Vui lòng nhập tên bài kiểm tra, tối đa 150 ký tự.';
-        } else if (!scoreValidationError && hasAnyScore && (!Number.isFinite(scoreMax) || scoreMax <= 0 || scoreMax > 1000)) {
-            scoreValidationError = 'Thang điểm phải lớn hơn 0 và không vượt quá 1000.';
-        }
 
         document.querySelectorAll('#quickEntryStudentsList .qe-student-card').forEach(card => {
             const stId = card.getAttribute('data-student-id');
@@ -696,13 +835,11 @@ Object.assign(PinkyClassApp.prototype, {
             const attitude = card.querySelector('.qe-attitude').value.trim();
             const individualComment = card.querySelector('.qe-comment').value.trim();
             const note = card.querySelector('.qe-note').value.trim();
-            const scoreDetail = scoreDetailsByStudent.get(stId) || { scoreType: '', scoreValue: null, scoreNote: '' };
             newStudentDetails[stId] = {
                 homework,
                 attitude,
                 individualComment,
                 note,
-                ...scoreDetail,
                 feeAmount: oldDetail.feeAmount,
                 paid: !!oldDetail.paid
             };
@@ -734,11 +871,7 @@ Object.assign(PinkyClassApp.prototype, {
                     content,
                     sessionName,
                     generalComment: finalGeneralComment,
-                    scoreMeta: {
-                        scoreType,
-                        testName: scoreTestName,
-                        maxScore: Number.isFinite(scoreMax) && scoreMax > 0 ? scoreMax : 10
-                    },
+                    scoreGroups,
                     studentDetails: newStudentDetails
                 })
             });

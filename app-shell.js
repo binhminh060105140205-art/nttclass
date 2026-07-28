@@ -122,12 +122,23 @@ Object.assign(PinkyClassApp.prototype, {
                 if (e.target.id === 'batchScoreMax') this.updateBatchScoreMax();
             });
         }
+        const bindCustomScoreType = (selectId, customInputId) => {
+            const select = document.getElementById(selectId);
+            const customInput = document.getElementById(customInputId);
+            if (!select || !customInput) return;
+            select.dataset.scoreTypeCustom = customInputId;
+            select.addEventListener('change', () => this.syncCustomScoreTypeInput(select, customInput));
+            this.syncCustomScoreTypeInput(select, customInput);
+        };
+        bindCustomScoreType('batchScoreType', 'batchScoreCustomType');
+        bindCustomScoreType('scoreType', 'scoreCustomType');
+
         const batchScoreGrade = document.getElementById('batchScoreGrade');
         if (batchScoreGrade) {
             batchScoreGrade.addEventListener('change', () => this.filterBatchScoreRows());
         }
         document.getElementById('scoreMax')?.addEventListener('input', () => {
-            const maxScore = Number(document.getElementById('scoreMax').value);
+            const maxScore = Number(String(document.getElementById('scoreMax').value || '').replace(',', '.'));
             if (Number.isFinite(maxScore) && maxScore > 0) document.getElementById('scoreValue').max = String(maxScore);
         });
 

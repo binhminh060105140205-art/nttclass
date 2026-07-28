@@ -6024,3 +6024,84 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .session-time-range-contr
         padding: 10px 13px !important;
     }
 }
+
+
+/* SCORE MULTI-TEST QUICK ENTRY */
+.score-custom-type-input {
+    margin-top: 8px;
+}
+
+.quick-entry-score-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 14px;
+}
+
+.quick-entry-score-group {
+    padding: 14px;
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.62);
+}
+
+.quick-entry-score-group-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--primary);
+}
+
+.quick-entry-score-group-heading strong {
+    font-size: 0.92rem;
+}
+
+.quick-entry-score-group .score-batch-controls {
+    grid-template-columns: minmax(150px, 0.9fr) minmax(220px, 1.7fr) minmax(105px, 0.65fr);
+    margin: 12px 0;
+}
+
+.score-batch-table .batch-score-student-note,
+.quick-entry-score-table .qe-score-note {
+    width: 155px;
+    min-width: 140px;
+}
+
+.quick-entry-score-table .qe-score-value {
+    width: 92px;
+    min-width: 82px;
+}
+
+.quick-entry-score-actions {
+    align-items: center;
+    justify-content: flex-start;
+}
+
+[data-theme-mode="dark"] .quick-entry-score-group {
+    background: rgba(15, 23, 42, 0.42);
+}
+
+@media (max-width: 767px) {
+    .quick-entry-score-group {
+        padding: 12px;
+    }
+
+    .quick-entry-score-group .score-batch-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .quick-entry-score-group .score-batch-test-name {
+        grid-column: auto;
+    }
+
+    .score-batch-table.quick-entry-score-table {
+        min-width: 560px;
+    }
+
+    .score-batch-table .batch-score-student-note,
+    .quick-entry-score-table .qe-score-note {
+        width: 140px;
+        min-width: 130px;
+    }
+}
