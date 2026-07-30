@@ -936,7 +936,7 @@ app.get('/api/app-settings/theme', async (req, res) => {
             'SELECT SettingValue AS "theme" FROM AppSettings WHERE SettingKey = $1',
             ['app_theme']
         );
-        const theme = ['blue', 'lithos', 'velorah'].includes(result.rows[0]?.theme)
+        const theme = ['blue', 'lithos'].includes(result.rows[0]?.theme)
             ? result.rows[0].theme
             : 'lithos';
         res.json({ theme });
@@ -948,7 +948,7 @@ app.get('/api/app-settings/theme', async (req, res) => {
 
 app.put('/api/app-settings/theme', requireRole('admin'), async (req, res) => {
     const theme = String(req.body?.theme || '').trim();
-    if (!['blue', 'lithos', 'velorah'].includes(theme)) {
+    if (!['blue', 'lithos'].includes(theme)) {
         return res.status(400).json({ error: 'Giao diện không hợp lệ.' });
     }
 

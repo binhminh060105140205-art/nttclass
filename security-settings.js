@@ -416,7 +416,7 @@ Object.assign(PinkyClassApp.prototype, {
         if (!key) return;
         localStorage.setItem(key, normalizedTheme);
         this.applyAppTheme(normalizedTheme, { persist: false });
-        const themeLabel = normalizedTheme === 'blue' ? 'Xanh gốc' : normalizedTheme === 'lithos' ? 'Đỏ cành đá' : 'Where Dreams';
+        const themeLabel = normalizedTheme === 'blue' ? 'Xanh gốc' : 'Đỏ cành đá';
         this.showToast(`Đã áp dụng giao diện ${themeLabel} cho tài khoản này.`, 'success');
     },
 
@@ -448,7 +448,7 @@ Object.assign(PinkyClassApp.prototype, {
             const data = await response.json();
             this.clearPersonalAppTheme();
             this.applyAppTheme(data.theme);
-            const themeLabel = data.theme === 'blue' ? 'Xanh gốc' : data.theme === 'lithos' ? 'Đỏ cành đá' : 'Where Dreams';
+            const themeLabel = data.theme === 'blue' ? 'Xanh gốc' : 'Đỏ cành đá';
             this.showToast(`Đã cập nhật giao diện mặc định ${themeLabel} cho hệ thống.`, 'success');
         } catch (error) {
             this.showToast(error.message || 'Không thể lưu giao diện hệ thống.', 'error');
@@ -458,22 +458,17 @@ Object.assign(PinkyClassApp.prototype, {
     updateAppThemeActiveButtons() {
         const theme = this.normalizeAppTheme(this.appTheme);
         const buttonGroups = [
-            ['btnAppThemeBlue', 'btnAppThemeLithos', 'btnAppThemeVelorah'],
-            ['btnPersonalAppThemeBlue', 'btnPersonalAppThemeLithos', 'btnPersonalAppThemeVelorah']
+            ['btnAppThemeBlue', 'btnAppThemeLithos'],
+            ['btnPersonalAppThemeBlue', 'btnPersonalAppThemeLithos']
         ];
-        buttonGroups.forEach(([blueId, lithosId, velorahId]) => {
-            const buttons = [
-                document.getElementById(blueId),
-                document.getElementById(lithosId),
-                document.getElementById(velorahId)
-            ];
-            if (!buttons.every(Boolean)) return;
-            buttons[0].classList.toggle('btn-primary', theme === 'blue');
-            buttons[0].classList.toggle('btn-secondary', theme !== 'blue');
-            buttons[1].classList.toggle('btn-primary', theme === 'lithos');
-            buttons[1].classList.toggle('btn-secondary', theme !== 'lithos');
-            buttons[2].classList.toggle('btn-primary', theme === 'velorah');
-            buttons[2].classList.toggle('btn-secondary', theme !== 'velorah');
+        buttonGroups.forEach(([blueId, lithosId]) => {
+            const blueButton = document.getElementById(blueId);
+            const lithosButton = document.getElementById(lithosId);
+            if (!blueButton || !lithosButton) return;
+            blueButton.classList.toggle('btn-primary', theme === 'blue');
+            blueButton.classList.toggle('btn-secondary', theme !== 'blue');
+            lithosButton.classList.toggle('btn-primary', theme === 'lithos');
+            lithosButton.classList.toggle('btn-secondary', theme !== 'lithos');
         });
     },
 

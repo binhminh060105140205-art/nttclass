@@ -62,7 +62,7 @@ class PinkyClassApp {
     }
 
     normalizeAppTheme(theme) {
-        return ['blue', 'lithos', 'velorah'].includes(theme) ? theme : 'lithos';
+        return ['blue', 'lithos'].includes(theme) ? theme : 'lithos';
     }
 
     getPersonalAppThemeKey() {
