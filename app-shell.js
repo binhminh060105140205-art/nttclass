@@ -531,7 +531,7 @@ Object.assign(PinkyClassApp.prototype, {
         this.requestFilter = 'pending';
         if (save) {
             // Phiên được giữ trong cookie HttpOnly; không lưu user/token/dữ liệu vào localStorage.
-            await this.loadData();
+            await this.loadData({ render: false });
         }
         // Học sinh chỉ được xem đúng hồ sơ của chính mình — khóa cứng
         // currentStudentId về id của chính họ, không cho đổi sang bạn khác.
@@ -714,8 +714,7 @@ Object.assign(PinkyClassApp.prototype, {
             navRequests.style.display = 'flex';
         }
 
-        // Trigger UI updates
-        this.updateAllViews();
+        this.applyPermissions();
         const roleLabel = role === 'admin' ? 'Quản trị viên' : role === 'teacher' ? 'Giáo viên' : role === 'assistant' ? 'Trợ giảng' : 'Học sinh';
         this.showToast(`Đã chuyển sang vai trò: ${roleLabel}`, "success");
     }
@@ -781,21 +780,24 @@ Object.assign(PinkyClassApp.prototype, {
             }
         });
 
-        this.updateAllViews();
+        this.renderView(viewId);
+        this.applyPermissions();
+    },
+
+    renderView(viewId) {
+        if (viewId === 'view-dashboard') this.renderDashboard();
+        else if (viewId === 'view-logs') this.renderStudentLogs();
+        else if (viewId === 'view-scores') this.renderScores();
+        else if (viewId === 'view-scheduler') this.renderCalendarView();
+        else if (viewId === 'view-tuition') this.renderTuitionOverview();
+        else if (viewId === 'view-students') this.renderStudentList();
+        else if (viewId === 'view-users' && this.currentRole === 'admin') this.renderUsersTable();
+        else if (viewId === 'view-requests' && this.requestsLoaded) this.renderRequests();
     },
 
     updateAllViews() {
-        this.renderDashboard();
-        this.renderStudentLogs();
-        this.renderScores();
-        this.renderCalendarView();
-        this.renderTuitionOverview();
-        this.renderStudentList();
-        if (this.currentRole === 'admin') {
-            this.renderUsersTable();
-        }
-        
-        // Hide role-restricted elements
+        const activeView = document.querySelector('.view-section.active-view');
+        if (activeView) this.renderView(activeView.id);
         this.applyPermissions();
     },
 

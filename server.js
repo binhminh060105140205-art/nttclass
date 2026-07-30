@@ -646,6 +646,20 @@ let poolPromise = pgPool.query('SELECT 1')
         }
 
         try {
+            await pgPool.query(`CREATE TABLE IF NOT EXISTS InvoiceTemplates (
+                OwnerId VARCHAR(50) NOT NULL,
+                OwnerRole VARCHAR(20) NOT NULL,
+                StudentId VARCHAR(50) NOT NULL,
+                TemplateData JSONB NOT NULL DEFAULT '{}'::jsonb,
+                UpdatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (OwnerId, OwnerRole, StudentId)
+            )`);
+            await pgPool.query('CREATE INDEX IF NOT EXISTS idx_invoicetemplates_student ON InvoiceTemplates (StudentId)');
+        } catch (migErr) {
+            console.error('InvoiceTemplates migration error:', migErr.message);
+        }
+
+        try {
             await pgPool.query(`CREATE TABLE IF NOT EXISTS AppSettings (
                 SettingKey VARCHAR(60) PRIMARY KEY,
                 SettingValue TEXT NOT NULL,
@@ -699,6 +713,7 @@ let poolPromise = pgPool.query('SELECT 1')
 // ==========================================
 
 const sessionCache = new Map();
+const sessionValidationPromises = new Map();
 setInterval(() => {
     const now = Date.now();
     for (const [sessionHash, session] of sessionCache) {
@@ -804,33 +819,47 @@ async function parseToken(req) {
     let session = sessionCache.get(sessionHash);
 
     if (!session || session.expiresAt <= now || now - session.validatedAt >= SESSION_CACHE_TTL_MS) {
-        await poolPromise;
-        const result = await pgPool.query(`SELECT s.SessionHash AS "sessionHash", s.UserId AS "userId",
-                s.AccountType AS "accountType",
-                CASE WHEN s.AccountType = 'student' THEN 'student' ELSE u.Role END AS "role",
-                CASE WHEN s.AccountType = 'student' THEN st.TeacherId ELSE u.AssignedTeacherId END AS "assignedTeacherId",
-                s.LastSeenAt AS "lastSeenAt", s.ExpiresAt AS "expiresAt"
-            FROM AuthSessions s
-            LEFT JOIN Users u ON s.AccountType = 'user' AND s.UserId = u.Id
-            LEFT JOIN Students st ON s.AccountType = 'student' AND s.UserId = st.Id
-            WHERE s.SessionHash = $1 AND s.ExpiresAt > CURRENT_TIMESTAMP
-              AND ((s.AccountType = 'user' AND u.Id IS NOT NULL AND u.Active = 1)
-                OR (s.AccountType = 'student' AND st.Id IS NOT NULL AND COALESCE(st.AccountActive, TRUE) = TRUE))`, [sessionHash]);
-        if (!result.rowCount) {
+        let validationPromise = sessionValidationPromises.get(sessionHash);
+        if (!validationPromise) {
+            validationPromise = (async () => {
+                await poolPromise;
+                const result = await pgPool.query(`SELECT s.SessionHash AS "sessionHash", s.UserId AS "userId",
+                        s.AccountType AS "accountType",
+                        CASE WHEN s.AccountType = 'student' THEN 'student' ELSE u.Role END AS "role",
+                        CASE WHEN s.AccountType = 'student' THEN st.TeacherId ELSE u.AssignedTeacherId END AS "assignedTeacherId",
+                        s.LastSeenAt AS "lastSeenAt", s.ExpiresAt AS "expiresAt"
+                    FROM AuthSessions s
+                    LEFT JOIN Users u ON s.AccountType = 'user' AND s.UserId = u.Id
+                    LEFT JOIN Students st ON s.AccountType = 'student' AND s.UserId = st.Id
+                    WHERE s.SessionHash = $1 AND s.ExpiresAt > CURRENT_TIMESTAMP
+                      AND ((s.AccountType = 'user' AND u.Id IS NOT NULL AND u.Active = 1)
+                        OR (s.AccountType = 'student' AND st.Id IS NOT NULL AND COALESCE(st.AccountActive, TRUE) = TRUE))`, [sessionHash]);
+                if (!result.rowCount) return null;
+                const row = result.rows[0];
+                return {
+                    sessionHash,
+                    userId: row.userId,
+                    accountType: row.accountType,
+                    role: row.role,
+                    assignedTeacherId: row.assignedTeacherId || null,
+                    expiresAt: new Date(row.expiresAt).getTime(),
+                    lastTouchedAt: new Date(row.lastSeenAt).getTime(),
+                    validatedAt: now
+                };
+            })();
+            sessionValidationPromises.set(sessionHash, validationPromise);
+        }
+        try {
+            session = await validationPromise;
+        } finally {
+            if (sessionValidationPromises.get(sessionHash) === validationPromise) {
+                sessionValidationPromises.delete(sessionHash);
+            }
+        }
+        if (!session) {
             sessionCache.delete(sessionHash);
             return null;
         }
-        const row = result.rows[0];
-        session = {
-            sessionHash,
-            userId: row.userId,
-            accountType: row.accountType,
-            role: row.role,
-            assignedTeacherId: row.assignedTeacherId || null,
-            expiresAt: new Date(row.expiresAt).getTime(),
-            lastTouchedAt: new Date(row.lastSeenAt).getTime(),
-            validatedAt: now
-        };
         sessionCache.set(sessionHash, session);
     }
 
@@ -2641,6 +2670,80 @@ app.put('/api/students/:studentId/set-paid', requireRole('teacher'), requireTeac
     }
 });
 
+const INVOICE_TEMPLATE_FIELD_LIMITS = Object.freeze({
+    teacherName: 160,
+    teacherPhone: 30,
+    overview: 4000,
+    algebra: 4000,
+    geometry: 4000,
+    roadmap: 4000,
+    schedule: 4000,
+    note: 2000
+});
+
+function normalizeInvoiceTemplate(rawTemplate) {
+    const source = rawTemplate && typeof rawTemplate === 'object' && !Array.isArray(rawTemplate)
+        ? rawTemplate
+        : {};
+    return Object.fromEntries(Object.entries(INVOICE_TEMPLATE_FIELD_LIMITS).map(([field, maxLength]) => [
+        field,
+        String(source[field] ?? '').normalize('NFC').trim().slice(0, maxLength)
+    ]));
+}
+
+async function canAccessInvoiceTemplateStudent(req, studentId) {
+    const result = await pgPool.query(
+        'SELECT 1 FROM Students WHERE Id = $1 AND TeacherId = $2',
+        [studentId, req.effectiveTeacherId]
+    );
+    return result.rowCount === 1;
+}
+
+app.get('/api/invoice-templates/:studentId', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
+    const studentId = String(req.params.studentId || '').trim();
+    if (!studentId || studentId.length > 100) return res.status(400).json({ error: 'Học sinh không hợp lệ.' });
+    try {
+        if (!await canAccessInvoiceTemplateStudent(req, studentId)) {
+            return res.status(404).json({ error: 'Không tìm thấy học sinh.' });
+        }
+        const result = await pgPool.query(
+            `SELECT TemplateData AS "template"
+             FROM InvoiceTemplates
+             WHERE OwnerId = $1 AND OwnerRole = $2 AND StudentId = $3`,
+            [req.authUser.userId, req.authUser.role, studentId]
+        );
+        res.json({ template: result.rowCount === 1 ? normalizeInvoiceTemplate(result.rows[0].template) : null });
+    } catch (err) {
+        console.error('[GET /api/invoice-templates/:studentId]', err);
+        res.status(500).json({ error: 'Không thể tải mẫu phiếu học phí.' });
+    }
+});
+
+app.put('/api/invoice-templates/:studentId', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
+    const studentId = String(req.params.studentId || '').trim();
+    if (!studentId || studentId.length > 100) return res.status(400).json({ error: 'Học sinh không hợp lệ.' });
+    if (!req.body?.template || typeof req.body.template !== 'object' || Array.isArray(req.body.template)) {
+        return res.status(400).json({ error: 'Mẫu phiếu học phí không hợp lệ.' });
+    }
+    const template = normalizeInvoiceTemplate(req.body.template);
+    try {
+        if (!await canAccessInvoiceTemplateStudent(req, studentId)) {
+            return res.status(404).json({ error: 'Không tìm thấy học sinh.' });
+        }
+        await pgPool.query(
+            `INSERT INTO InvoiceTemplates (OwnerId, OwnerRole, StudentId, TemplateData, UpdatedAt)
+             VALUES ($1, $2, $3, $4::jsonb, CURRENT_TIMESTAMP)
+             ON CONFLICT (OwnerId, OwnerRole, StudentId)
+             DO UPDATE SET TemplateData = EXCLUDED.TemplateData, UpdatedAt = CURRENT_TIMESTAMP`,
+            [req.authUser.userId, req.authUser.role, studentId, JSON.stringify(template)]
+        );
+        res.json({ template });
+    } catch (err) {
+        console.error('[PUT /api/invoice-templates/:studentId]', err);
+        res.status(500).json({ error: 'Không thể lưu mẫu phiếu học phí.' });
+    }
+});
+
 // ==========================================
 // SCORES API — Điểm số: BTVN / Kiểm tra thường xuyên / Kiểm tra cuối chương.
 // Chỉ giáo viên/trợ giảng được tạo/sửa/xóa; học sinh chỉ xem qua
@@ -3186,11 +3289,15 @@ function validateRequestImages(rawImages) {
     return { value: images };
 }
 
-function normalizeRequestRow(row) {
+function parseStoredRequestImages(row) {
+    if (Array.isArray(row?.imageMetadata)) {
+        return row.imageMetadata.map(image => ({ name: String(image?.name || '') }));
+    }
+
     let images = [];
     if (row?.imagesData) {
         try {
-            const parsed = JSON.parse(row.imagesData);
+            const parsed = typeof row.imagesData === 'string' ? JSON.parse(row.imagesData) : row.imagesData;
             if (Array.isArray(parsed)) {
                 images = parsed.filter(image => image && typeof image.dataUrl === 'string');
             }
@@ -3199,29 +3306,120 @@ function normalizeRequestRow(row) {
     if (!images.length && row?.imageData) {
         images = [{ dataUrl: row.imageData, name: row.imageName || 'Ảnh yêu cầu' }];
     }
+    return images;
+}
+
+function requestImageUrl(requestId, imageIndex) {
+    return `/api/requests/${encodeURIComponent(String(requestId))}/images/${imageIndex}`;
+}
+
+function normalizeRequestRow(row, options = {}) {
+    const includeImageData = options.includeImageData === true;
+    const storedImages = parseStoredRequestImages(row);
+    const images = storedImages.map((image, imageIndex) => ({
+        dataUrl: includeImageData && image.dataUrl
+            ? image.dataUrl
+            : requestImageUrl(row.id, imageIndex),
+        name: image.name || `anh-dinh-kem-${imageIndex + 1}`
+    }));
     return {
         ...row,
         images,
-        imageData: row?.imageData || images[0]?.dataUrl || null,
-        imageName: row?.imageName || images[0]?.name || null,
+        imageData: images[0]?.dataUrl || null,
+        imageName: images[0]?.name || row?.imageName || null,
+        imageMetadata: undefined,
         imagesData: undefined
     };
 }
 
+function decodeStoredRequestImage(imageData) {
+    const header = String(imageData || '').slice(0, 40).match(REQUEST_IMAGE_HEADER_PATTERN);
+    if (!header) return null;
+    const base64 = String(imageData).slice(header[0].length);
+    if (!base64 || base64.length > Math.ceil(REQUEST_IMAGE_MAX_BYTES * 4 / 3) + 4) return null;
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) return null;
+    const buffer = Buffer.from(base64, 'base64');
+    if (!buffer.length || buffer.length > REQUEST_IMAGE_MAX_BYTES) return null;
+    return { buffer, contentType: `image/${header[1]}` };
+}
+
 app.get('/api/requests', requireAuth, async (req, res) => {
+    try {
+        const result = await pgPool.query(`
+            SELECT Id AS "id", TextContent AS "text", ImageName AS "imageName",
+                   CASE
+                       WHEN ImagesData IS NOT NULL AND BTRIM(ImagesData) <> ''
+                            AND jsonb_typeof(ImagesData::jsonb) = 'array'
+                       THEN (
+                           SELECT COALESCE(
+                               jsonb_agg(
+                                   jsonb_build_object('name', COALESCE(request_image.image ->> 'name', ''))
+                                   ORDER BY request_image.ordinality
+                               ),
+                               '[]'::jsonb
+                           )
+                           FROM jsonb_array_elements(ImagesData::jsonb) WITH ORDINALITY
+                               AS request_image(image, ordinality)
+                       )
+                       WHEN ImageData IS NOT NULL AND ImageData <> ''
+                       THEN jsonb_build_array(jsonb_build_object('name', COALESCE(ImageName, '')))
+                       ELSE '[]'::jsonb
+                   END AS "imageMetadata",
+                   Completed AS "completed", Priority AS "priority",
+                   CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"
+            FROM TaskRequests
+            WHERE OwnerId = $1 AND OwnerRole = $2
+            ORDER BY Priority DESC, Completed ASC, CreatedAt DESC`,
+        [req.authUser.userId, req.authUser.role]);
+        res.json(result.rows.map(row => normalizeRequestRow(row)));
+    } catch (err) {
+        console.error('[GET /api/requests]', err);
+        res.status(500).json({ error: 'Không thể tải danh sách yêu cầu.' });
+    }
+});
+
+app.get('/api/requests/:id/images/:index', requireAuth, async (req, res) => {
+    const imageIndex = Number.parseInt(req.params.index, 10);
+    if (!Number.isInteger(imageIndex) || imageIndex < 0 || imageIndex >= REQUEST_IMAGES_MAX_COUNT) {
+        return res.status(400).json({ error: 'Vị trí ảnh không hợp lệ.' });
+    }
+
+    try {
+        const result = await pgPool.query(`
+            SELECT ImageData AS "imageData", ImageName AS "imageName", ImagesData AS "imagesData"
+            FROM TaskRequests
+            WHERE Id = $1 AND OwnerId = $2 AND OwnerRole = $3`,
+        [req.params.id, req.authUser.userId, req.authUser.role]);
+        if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy yêu cầu.' });
+
+        const storedImage = parseStoredRequestImages(result.rows[0])[imageIndex];
+        const decodedImage = decodeStoredRequestImage(storedImage?.dataUrl);
+        if (!decodedImage) return res.status(404).json({ error: 'Không tìm thấy ảnh.' });
+
+        res.setHeader('Content-Type', decodedImage.contentType);
+        res.setHeader('Content-Length', String(decodedImage.buffer.length));
+        res.setHeader('Cache-Control', 'private, max-age=300');
+        res.send(decodedImage.buffer);
+    } catch (err) {
+        console.error('[GET /api/requests/:id/images/:index]', err);
+        res.status(500).json({ error: 'Không thể tải ảnh yêu cầu.' });
+    }
+});
+
+app.get('/api/requests/:id', requireAuth, async (req, res) => {
     try {
         const result = await pgPool.query(`
             SELECT Id AS "id", TextContent AS "text", ImageData AS "imageData",
                    ImageName AS "imageName", ImagesData AS "imagesData", Completed AS "completed", Priority AS "priority",
                    CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"
             FROM TaskRequests
-            WHERE OwnerId = $1 AND OwnerRole = $2
-            ORDER BY Priority DESC, Completed ASC, CreatedAt DESC`,
-        [req.authUser.userId, req.authUser.role]);
-        res.json(result.rows.map(normalizeRequestRow));
+            WHERE Id = $1 AND OwnerId = $2 AND OwnerRole = $3`,
+        [req.params.id, req.authUser.userId, req.authUser.role]);
+        if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy yêu cầu.' });
+        res.json(normalizeRequestRow(result.rows[0], { includeImageData: true }));
     } catch (err) {
-        console.error('[GET /api/requests]', err);
-        res.status(500).json({ error: 'Không thể tải danh sách yêu cầu.' });
+        console.error('[GET /api/requests/:id]', err);
+        res.status(500).json({ error: 'Không thể tải chi tiết yêu cầu.' });
     }
 });
 
@@ -3299,12 +3497,11 @@ app.put('/api/requests/:id/status', requireAuth, async (req, res) => {
             SET Completed = $1, UpdatedAt = CURRENT_TIMESTAMP,
                 CompletedAt = CASE WHEN $1 THEN CURRENT_TIMESTAMP ELSE NULL END
             WHERE Id = $2 AND OwnerId = $3 AND OwnerRole = $4
-            RETURNING Id AS "id", TextContent AS "text", ImageData AS "imageData",
-                      ImageName AS "imageName", ImagesData AS "imagesData", Completed AS "completed", Priority AS "priority",
+            RETURNING Id AS "id", TextContent AS "text", Completed AS "completed", Priority AS "priority",
                       CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"`,
         [completed, req.params.id, req.authUser.userId, req.authUser.role]);
         if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy yêu cầu.' });
-        res.json(normalizeRequestRow(result.rows[0]));
+        res.json(result.rows[0]);
     } catch (err) {
         console.error('[PUT /api/requests/:id/status]', err);
         res.status(500).json({ error: 'Không thể cập nhật yêu cầu.' });
@@ -3321,12 +3518,11 @@ app.put('/api/requests/:id/priority', requireAuth, async (req, res) => {
             UPDATE TaskRequests
             SET Priority = $1, UpdatedAt = CURRENT_TIMESTAMP
             WHERE Id = $2 AND OwnerId = $3 AND OwnerRole = $4
-            RETURNING Id AS "id", TextContent AS "text", ImageData AS "imageData",
-                      ImageName AS "imageName", ImagesData AS "imagesData", Completed AS "completed", Priority AS "priority",
+            RETURNING Id AS "id", TextContent AS "text", Completed AS "completed", Priority AS "priority",
                       CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"`,
         [priority, req.params.id, req.authUser.userId, req.authUser.role]);
         if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy yêu cầu.' });
-        res.json(normalizeRequestRow(result.rows[0]));
+        res.json(result.rows[0]);
     } catch (err) {
         console.error('[PUT /api/requests/:id/priority]', err);
         res.status(500).json({ error: 'Không thể cập nhật mức độ ưu tiên.' });

@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Comfortaa:wght@400;500;600;700&family=Condiment&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260728-score-groups1">
+    <link rel="stylesheet" href="style.css?v=20260730-invoice-template2">
     <link rel="stylesheet" href="landing-orbis.css?v=20260724-pink1">
     <link rel="stylesheet" href="landing-orbis-fixes.css?v=20260724-click-fix1">
     <link id="appThemeStylesheet" rel="stylesheet" href="lithos-app-theme.css?v=20260724-light-audit1" disabled>
@@ -1067,7 +1067,7 @@
                         <div class="invoice-section-heading"><span>03</span><div><strong>Nội dung trên phiếu</strong><small>Lịch học, học phí, thanh toán và lời nhắn cuối</small></div></div>
                         <div class="invoice-output-grid">
                             <div class="form-group"><label for="invoiceSchedule">Lịch học hiển thị trên phiếu</label><textarea id="invoiceSchedule" class="form-control" rows="3" placeholder="Ví dụ: 16h-18h thứ 4, chủ nhật: học riêng phần hình học." autocomplete="off" spellcheck="false"></textarea></div>
-                            <div class="form-group"><label for="invoiceTuitionNote">Học phí</label><textarea id="invoiceTuitionNote" class="form-control" rows="3" placeholder="Để trống để hệ thống tự tính, hoặc nhập nội dung học phí muốn hiển thị trên phiếu." autocomplete="off" spellcheck="false"></textarea></div>
+                            <div class="form-group"><label for="invoiceTuitionNote">Học phí</label><textarea id="invoiceTuitionNote" class="form-control" rows="3" placeholder="Để trống thì mục Học phí chi tiết sẽ không hiển thị trên phiếu." autocomplete="off" spellcheck="false"></textarea></div>
                             <div class="form-group"><label>Ảnh QR thanh toán</label><div class="qr-upload-box" id="qrUploadBox"><div class="qr-upload-preview-wrap" id="qrUploadPreviewWrap" style="display:none;"><img id="qrUploadPreview" alt="Xem trước QR thanh toán"><button type="button" class="qr-upload-remove" id="btnRemoveQr" title="Xoá ảnh QR">&times;</button></div><label for="invoiceQrInput" class="qr-upload-label" id="qrUploadLabel"><span class="qr-upload-icon">+</span><span>Tải ảnh QR lên (tuỳ chọn)</span></label><input type="file" id="invoiceQrInput" accept="image/*" hidden></div></div>
                             <div class="form-group"><label for="invoiceNote">Ghi chú cuối phiếu</label><textarea id="invoiceNote" class="form-control" rows="3" placeholder="Ghi chú thêm cho phụ huynh..." autocomplete="off" spellcheck="false">Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.</textarea></div>
                         </div>
@@ -1533,22 +1533,22 @@
          file ở giữa (app-shell, users, dashboard...) load trước/sau nhau
          thoải mái, không phụ thuộc lẫn nhau. -->
     <script src="landing-velorah.js?v=20260724-click-fix1"></script>
-    <script src="landing-orbis.js?v=20260726-lithos-nav1"></script>
-    <script src="core.js?v=20260730-theme-options1"></script>
+    <script src="landing-orbis.js?v=20260730-performance2"></script>
+    <script src="core.js?v=20260730-performance4"></script>
     <script src="lithos-petals.js?v=20260724-petal3"></script>
-    <script src="app-shell.js?v=20260728-score-groups1"></script>
+    <script src="app-shell.js?v=20260730-performance3"></script>
     <script src="users.js"></script>
     <script src="dashboard.js"></script>
-    <script src="student-logs.js"></script>
+    <script src="student-logs.js?v=20260730-invoice-template2"></script>
     <script src="scores.js?v=20260728-score-filter1"></script>
     <script src="calendar.js?v=20260728-score-filter1"></script>
-    <script src="tuition-export.js?v=20260726-security1"></script>
+    <script src="tuition-export.js?v=20260730-invoice-template1"></script>
     <script src="students.js"></script>
     <script src="ai-chat.js"></script>
-    <script src="requests.js"></script>
-    <script src="requests-edit.js?v=20260725-event-init1"></script>
-    <script src="security-settings.js?v=20260730-theme-options1"></script>
+    <script src="requests.js?v=20260730-performance3"></script>
+    <script src="requests-edit.js?v=20260730-performance3"></script>
+    <script src="security-settings.js?v=20260730-performance2"></script>
     <script src="main.js"></script>
-    <script src="invoice-export.js?v=20260726-security1"></script>
+    <script src="invoice-export.js?v=20260730-invoice-template2"></script>
 </body>
 </html>

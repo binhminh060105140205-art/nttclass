@@ -1712,8 +1712,9 @@ img, svg, video {
 /* Cột "NỘI DUNG BUỔI HỌC" — thu nhỏ lại theo yêu cầu, chỉ cần đủ hiển thị
    ngắn gọn nội dung buổi học, nhường không gian cho cột nhận xét. */
 .col-content-compact {
-    min-width: 160px;
-    max-width: 220px;
+    width: 280px;
+    min-width: 280px;
+    max-width: none;
 }
 
 .col-content-compact .session-content-text {
@@ -1725,7 +1726,9 @@ img, svg, video {
 /* Cột "NHẬN XÉT CỦA GIÁO VIÊN" — phóng to theo yêu cầu để nhận xét dễ đọc,
    không bị bó hẹp như trước. */
 .col-comment {
-    min-width: 340px;
+    width: 280px;
+    min-width: 280px;
+    max-width: none;
 }
 
 .session-name-tag {

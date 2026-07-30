@@ -7,7 +7,7 @@
         lithosPage.className='lithos-page';
         lithosPage.innerHTML='';
         var lithosLoader=document.createElement('script');
-        lithosLoader.src='landing-lithos-loader.js?v=20260725-lithos-default2';
+        lithosLoader.src='landing-lithos-loader.js?v=20260730-performance2';
         document.head.appendChild(lithosLoader);
     }
 

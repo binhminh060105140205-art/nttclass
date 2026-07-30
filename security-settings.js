@@ -18,6 +18,7 @@ Object.assign(PinkyClassApp.prototype, {
             adminThemeSection.style.display = this.currentRole === 'admin' ? 'block' : 'none';
         }
         this.updateAppThemeActiveButtons();
+        this.openModal('accountSettingsModal');
 
         // Reset các trường nhập mật khẩu
         document.getElementById('settingsCurrentPassword').value = '';
@@ -73,7 +74,6 @@ Object.assign(PinkyClassApp.prototype, {
             }
 
             this.updateThemeModeActiveButtons();
-            this.openModal('accountSettingsModal');
         } catch (err) {
             this.showToast(err.message || 'Lỗi khi kết nối máy chủ.', 'error');
         }

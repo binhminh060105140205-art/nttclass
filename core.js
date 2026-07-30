@@ -146,29 +146,27 @@ class PinkyClassApp {
     }
 
     async init() {
-        // Phiên xác thực nằm trong cookie HttpOnly; không khôi phục user/data từ localStorage.
         localStorage.removeItem('pinky_current_user');
         localStorage.removeItem('pinky_students');
         localStorage.removeItem('pinky_sessions');
         localStorage.removeItem('nttclass_remembered_username');
         localStorage.removeItem('nttclass_invoice_qr');
 
+        this.registerEvents();
+        const sessionPromise = fetch(`${API_BASE_URL}/api/session`, {
+            cache: 'no-store',
+            credentials: 'same-origin'
+        }).catch(error => {
+            console.warn('[init] Không thể kiểm tra phiên đăng nhập.', error.message);
+            return null;
+        });
+
         await this.loadAppTheme();
 
-        // Gắn sự kiện sớm để landing/login không bị khóa khi server đang khởi động.
-        this.registerEvents();
-
         let savedUser = null;
-        try {
-            const sessionResponse = await fetch(`${API_BASE_URL}/api/session`, {
-                cache: 'no-store',
-                credentials: 'same-origin'
-            });
-            if (sessionResponse.ok) {
-                savedUser = await sessionResponse.json();
-            }
-        } catch (error) {
-            console.warn('[init] Không thể kiểm tra phiên đăng nhập.', error.message);
+        const sessionResponse = await sessionPromise;
+        if (sessionResponse?.ok) {
+            savedUser = await sessionResponse.json();
         }
 
         if (savedUser && savedUser.role) {
@@ -176,24 +174,18 @@ class PinkyClassApp {
             this.currentRole = savedUser.role;
             this.appTheme = this.getPersonalAppTheme() || this.appTheme;
             this.applyAppTheme(this.appTheme, { persist: false });
-            await this.loadData();
+            await this.loadData({ render: false });
             await this.onLoginSuccess(savedUser, false);
         } else {
             const loginRequested = window.__nttLoginRequested
                 || new URLSearchParams(window.location.search).get('login') === '1';
             if (loginRequested) this.showLoginPage();
             else this.showLandingPage();
-
         }
 
         const today = this.toISODateOnly(new Date());
         document.getElementById('sessionDate').value = today;
-
-        if (this.currentUser) {
-            this.switchView(this.currentRole === 'admin' ? 'view-users' : 'view-dashboard');
-        }
     }
-
     // Requests cùng origin mang cookie HttpOnly; frontend không còn giữ bearer token.
     escapeHtml(value) {
         return String(value ?? '').replace(/[&<>"']/g, character => ({
@@ -222,6 +214,8 @@ class PinkyClassApp {
         this.requestImageDraft = [];
         this.aiChatHistory = [];
         this._invoiceQrDataUrl = null;
+        this._invoiceTemplateCache = new Map();
+        this._invoiceTemplateLoadToken = null;
     }
 
     authHeaders(extra = {}) {
@@ -408,23 +402,30 @@ class PinkyClassApp {
     // dữ liệu (this.students / this.sessions) mà các hàm render() có sẵn
     // (renderStudentLogs, renderDashboard...) đang mong đợi — nhờ vậy không
     // cần viết lại các hàm hiển thị riêng cho vai trò học sinh.
-    async loadStudentSelfData() {
+    async loadStudentSelfData(options = {}) {
+        const shouldRender = options.render !== false;
         try {
-            const resMe = await this.authFetch(`${API_BASE_URL}/api/me`);
+            const [resMe, resSched, resScores] = await Promise.all([
+                this.authFetch(`${API_BASE_URL}/api/me`),
+                this.authFetch(`${API_BASE_URL}/api/me/schedule`),
+                this.authFetch(`${API_BASE_URL}/api/me/scores`)
+            ]);
             if (!resMe.ok) {
                 const errBody = await resMe.json().catch(() => ({}));
                 throw new Error(errBody.error || `GET /api/me -> ${resMe.status}`);
             }
-            const me = await resMe.json();
+
+            const [me, rawSched, rawScores] = await Promise.all([
+                resMe.json(),
+                resSched.ok ? resSched.json() : Promise.resolve([]),
+                resScores.ok ? resScores.json() : Promise.resolve([])
+            ]);
             this.students = [this.normalizeStudent({
                 Id: me.Id, Name: me.Name, Class: me.Class,
                 GradeLevel: me.GradeLevel, Subject: me.Subject,
                 BasePrice: 0, TeacherId: this.currentUser.assignedTeacherId
             })];
             this.currentStudentId = me.Id;
-
-            const resSched = await this.authFetch(`${API_BASE_URL}/api/me/schedule`);
-            const rawSched = resSched.ok ? await resSched.json() : [];
             this.sessions = rawSched.map(row => ({
                 id: row.id,
                 date: row.date,
@@ -446,94 +447,71 @@ class PinkyClassApp {
                     }
                 }
             }));
-
+            this.scores = Array.isArray(rawScores) ? rawScores : [];
             this.computeSessionPaidFlags();
-
-            // Điểm số của chính học sinh (Phase 3) — chỉ đọc.
-            try {
-                const resScores = await this.authFetch(`${API_BASE_URL}/api/me/scores`);
-                this.scores = resScores.ok ? await resScores.json() : [];
-            } catch (scoreErr) {
-                console.error('[loadStudentSelfData] Lỗi tải điểm số:', scoreErr.message);
-                this.scores = [];
-            }
-
             this.populateMonthFilterOptions();
             this.populateStudentPickers();
-            if (this.currentUser) this.updateAllViews();
+            if (shouldRender && this.currentUser) this.updateAllViews();
         } catch (err) {
             console.error('[loadStudentSelfData]', err.message);
+            this.students = [];
+            this.sessions = [];
+            this.scores = [];
+            this.populateStudentPickers();
+            if (shouldRender && this.currentUser) this.updateAllViews();
             this.showToast('Không tải được dữ liệu cá nhân của bạn.', 'error');
         }
     }
 
-    async loadData() {
-        if (this.currentRole === 'student') {
-            return this.loadStudentSelfData();
+    async loadData(options = {}) {
+        const shouldRender = options.render !== false;
+        if (this.currentRole === 'admin') {
+            this.students = [];
+            this.sessions = [];
+            this.scores = [];
+            this.populateStudentPickers();
+            if (shouldRender && this.currentUser) this.updateAllViews();
+            return;
         }
+        if (this.currentRole === 'student') {
+            return this.loadStudentSelfData(options);
+        }
+
         try {
-            const resStud = await this.authFetch(`${API_BASE_URL}/api/students`);
+            const [resStud, resSess, resScores] = await Promise.all([
+                this.authFetch(`${API_BASE_URL}/api/students`),
+                this.authFetch(`${API_BASE_URL}/api/sessions`),
+                this.authFetch(`${API_BASE_URL}/api/scores`)
+            ]);
             if (!resStud.ok) {
                 const errBody = await resStud.json().catch(() => ({}));
                 throw new Error(`GET /api/students -> ${resStud.status}: ${errBody.error || 'API error'}`);
             }
-            const rawStudents = await resStud.json();
-            console.log('[loadData] /api/students trả về', rawStudents.length, 'học sinh');
-            this.students = rawStudents.map(s => this.normalizeStudent(s));
-
-            const resSess = await this.authFetch(`${API_BASE_URL}/api/sessions`);
             if (!resSess.ok) {
                 const errBody = await resSess.json().catch(() => ({}));
                 throw new Error(`GET /api/sessions -> ${resSess.status}: ${errBody.error || 'API error'}`);
             }
-            const rawSessions = await resSess.json();
-            console.log('[loadData] /api/sessions trả về', rawSessions.length, 'buổi học');
-            // QUAN TRỌNG: server (/api/sessions) ĐÃ gộp dữ liệu JOIN thành object
-            // camelCase hoàn chỉnh (id, studentIds, studentDetails, ...) ngay phía
-            // backend. Trước đây code ở đây gọi lại this.normalizeSessions(rawSessions),
-            // hàm này được viết cho trường hợp server trả RAW rows PascalCase
-            // (Id, StudentId, ...) - khác hoàn toàn với những gì backend thực sự trả
-            // về. Hậu quả: mọi session bị "normalize" lần 2 thành rác (id: undefined,
-            // studentIds: [], studentDetails: {}) dù dữ liệu trong SQL Server hoàn
-            // toàn đúng và đã insert thành công. Đây là NGUYÊN NHÂN GỐC khiến UI luôn
-            // hiển thị "Chưa có buổi học nào" và học phí luôn bằng 0đ. Fix: dùng
-            // thẳng dữ liệu server trả về, không re-normalize.
-            this.sessions = rawSessions;
+
+            const [rawStudents, rawSessions, rawScores] = await Promise.all([
+                resStud.json(),
+                resSess.json(),
+                resScores.ok ? resScores.json() : Promise.resolve([])
+            ]);
+            this.students = rawStudents.map(student => this.normalizeStudent(student));
+            this.sessions = Array.isArray(rawSessions) ? rawSessions : [];
+            this.scores = Array.isArray(rawScores) ? rawScores : [];
             this.computeSessionPaidFlags();
             this.populateMonthFilterOptions();
-
-            // Tải điểm số (Phase 3) — lấy TẤT CẢ điểm của giáo viên hiện tại 1 lần,
-            // lọc theo học sinh ở phía frontend khi đổi "Đang chọn" để khỏi phải
-            // gọi lại API mỗi lần đổi học sinh.
-            try {
-                const resScores = await this.authFetch(`${API_BASE_URL}/api/scores`);
-                this.scores = resScores.ok ? await resScores.json() : [];
-            } catch (scoreErr) {
-                console.error('[loadData] Lỗi tải điểm số:', scoreErr.message);
-                this.scores = [];
-            }
-
             this.populateStudentPickers();
-            // QUAN TRỌNG: trước đây loadData() chỉ cập nhật dữ liệu trong bộ nhớ
-            // (this.students/this.sessions) mà KHÔNG vẽ lại giao diện. Vì các thao
-            // tác thêm/sửa/xoá học sinh, buổi học... đều gọi loadData() sau khi API
-            // thành công, hậu quả là dữ liệu mới đã có nhưng màn hình vẫn hiện dữ
-            // liệu cũ cho tới khi người dùng F5 (F5 chạy lại toàn bộ init() bao gồm
-            // cả bước vẽ giao diện). Fix: gọi luôn updateAllViews() ở đây để mọi nơi
-            // dùng loadData() đều tự động cập nhật UI ngay lập tức. Chỉ gọi khi đã
-            // đăng nhập (this.currentUser tồn tại) vì lúc mới mở trang (chưa đăng
-            // nhập) chưa cần vẽ các bảng/biểu đồ của trang chính.
-            if (this.currentUser) {
-                this.updateAllViews();
-            }
+            if (shouldRender && this.currentUser) this.updateAllViews();
         } catch (err) {
             console.error('Lỗi khi kết nối API Server:', err.message);
             this.students = [];
             this.sessions = [];
             this.scores = [];
             this.populateStudentPickers();
-            if (this.currentUser) this.updateAllViews();
-
+            if (shouldRender && this.currentUser) this.updateAllViews();
+            this.showToast('Không tải được dữ liệu hệ thống. Vui lòng thử lại.', 'error');
         }
     }
 

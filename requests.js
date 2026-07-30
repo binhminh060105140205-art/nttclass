@@ -181,17 +181,38 @@ Object.assign(PinkyClassApp.prototype, {
 
     async loadRequests() {
         if (!this.currentUser) return;
-        const list = document.getElementById('requestList');
-        if (list && !this.requestsLoaded) {
-            list.innerHTML = '<div class="request-empty">Đang tải yêu cầu...</div>';
-        }
-        try {
-            const response = await this.authFetch(`${API_BASE_URL}/api/requests`);
-            this.requests = await this.requireApiSuccess(response, 'Không thể tải danh sách yêu cầu.');
-            this.requestsLoaded = true;
+        if (this.requestsLoaded) {
             this.renderRequests();
-        } catch (err) {
-            if (list) list.innerHTML = `<div class="request-empty request-error">${this.escapeHtml(err.message)}</div>`;
+            return;
+        }
+        if (this._requestsLoadPromise) return this._requestsLoadPromise;
+
+        const ownerKey = `${this.currentUser.role}:${this.currentUser.id}`;
+        const list = document.getElementById('requestList');
+        if (list) list.innerHTML = '<div class="request-empty">Đang tải yêu cầu...</div>';
+
+        const loadPromise = (async () => {
+            try {
+                const response = await this.authFetch(`${API_BASE_URL}/api/requests`);
+                const requests = await this.requireApiSuccess(response, 'Không thể tải danh sách yêu cầu.');
+                const currentOwnerKey = this.currentUser
+                    ? `${this.currentUser.role}:${this.currentUser.id}`
+                    : '';
+                if (currentOwnerKey !== ownerKey) return;
+                this.requests = requests;
+                this.requestsLoaded = true;
+                this.renderRequests();
+            } catch (err) {
+                if (list && this.currentUser) {
+                    list.innerHTML = `<div class="request-empty request-error">${this.escapeHtml(err.message)}</div>`;
+                }
+            }
+        })();
+        this._requestsLoadPromise = loadPromise;
+        try {
+            await loadPromise;
+        } finally {
+            if (this._requestsLoadPromise === loadPromise) this._requestsLoadPromise = null;
         }
     },
 
@@ -245,7 +266,7 @@ Object.assign(PinkyClassApp.prototype, {
             });
             const updated = await this.requireApiSuccess(response, 'Không thể cập nhật trạng thái yêu cầu.');
             const index = this.requests.findIndex(item => item.id === id);
-            if (index >= 0) this.requests[index] = updated;
+            if (index >= 0) this.requests[index] = { ...this.requests[index], ...updated };
             this.renderRequests();
             this.showToast(completed ? 'Đã chuyển sang mục hoàn thành.' : 'Đã chuyển về mục chưa hoàn thành.', 'success');
         } catch (err) {
@@ -296,7 +317,7 @@ Object.assign(PinkyClassApp.prototype, {
             const imageHtml = this.getRequestImages(item).length
                 ? `<div class="request-item-images">${this.getRequestImages(item).map((image, imageIndex) => `
                        <button type="button" class="request-item-image" data-request-id="${this.escapeHtmlAttr(item.id)}" data-image-index="${imageIndex}" title="Phóng to ảnh">
-                           <img src="${this.escapeHtmlAttr(image.dataUrl)}" alt="${this.escapeHtmlAttr(image.name || 'Ảnh yêu cầu')}">
+                           <img src="${this.escapeHtmlAttr(image.dataUrl)}" alt="${this.escapeHtmlAttr(image.name || 'Ảnh yêu cầu')}" loading="lazy" decoding="async">
                        </button>`).join('')}</div>`
                 : '';
             return `

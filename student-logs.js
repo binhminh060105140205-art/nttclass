@@ -61,11 +61,11 @@ Object.assign(PinkyClassApp.prototype, {
 
             // NỘI DUNG BUỔI HỌC: hiển thị text thuần, không bullet point.
             const contentText = (sess.content || '').trim();
-            const contentHTML = `<div class="session-content-text">${contentText ? this.nl2brText(contentText) : '<span style="color:var(--text-muted);">Chưa có nội dung.</span>'}</div>`;
+            const contentHTML = `<div class="session-content-text">${contentText ? this.nl2brText(contentText) : '<span style="color:var(--text-muted);">-</span>'}</div>`;
 
             // NHẬN XÉT CỦA GIÁO VIÊN: gộp thành 1 trường duy nhất, chỉ lấy
             // nhận xét RIÊNG của học sinh này từ chấm công (individualComment).
-            const commentHTML = `<div class="comment-text">${detail.individualComment ? this.nl2brText(detail.individualComment) : 'Chưa nhận xét.'}</div>`;
+            const commentHTML = `<div class="comment-text">${detail.individualComment ? this.nl2brText(detail.individualComment) : '-'}</div>`;
 
             // Actions for edit
             const sessionIdArg = this.escapeHtmlAttr(JSON.stringify(String(sess.id)));
@@ -83,7 +83,7 @@ Object.assign(PinkyClassApp.prototype, {
                 <td class="col-content-compact">${contentHTML}</td>
                 <td style="text-align:center;">${homeworkBadge}</td>
                 <td>${this.escapeHtml(displayedAttitude || '-')}</td>
-                <td>${commentHTML}</td>
+                <td class="col-comment">${commentHTML}</td>
                 <td class="student-log-note">${this.escapeHtml(detail.note || '-')}</td>
                 <td class="role-restricted admin-tutor log-export-hide">${actionsHTML}</td>
             `;

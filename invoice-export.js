@@ -21,10 +21,70 @@
 
 Object.assign(PinkyClassApp.prototype, {
 
+    getInvoiceTemplateFields() {
+        return {
+            teacherName: 'invoiceTeacherName',
+            teacherPhone: 'invoiceTeacherPhone',
+            overview: 'invoiceOverview',
+            algebra: 'invoiceAlgebra',
+            geometry: 'invoiceGeometry',
+            roadmap: 'invoiceRoadmap',
+            schedule: 'invoiceSchedule',
+            note: 'invoiceNote'
+        };
+    },
+
+    readInvoiceTemplateForm() {
+        return Object.fromEntries(Object.entries(this.getInvoiceTemplateFields()).map(([field, elementId]) => [
+            field,
+            String(document.getElementById(elementId)?.value || '').normalize('NFC').trim()
+        ]));
+    },
+
+    applyInvoiceTemplate(template) {
+        if (!template || typeof template !== 'object') return;
+        Object.entries(this.getInvoiceTemplateFields()).forEach(([field, elementId]) => {
+            if (!Object.prototype.hasOwnProperty.call(template, field)) return;
+            const element = document.getElementById(elementId);
+            if (element) element.value = String(template[field] || '');
+        });
+    },
+
+    async loadInvoiceTemplate(studentId) {
+        this._invoiceTemplateCache = this._invoiceTemplateCache || new Map();
+        if (this._invoiceTemplateCache.has(studentId)) return this._invoiceTemplateCache.get(studentId);
+        const response = await this.authFetch(`${API_BASE_URL}/api/invoice-templates/${encodeURIComponent(studentId)}`, { cache: 'no-store' });
+        const data = await this.requireApiSuccess(response, 'Không thể tải mẫu phiếu học phí.');
+        const template = data?.template || null;
+        this._invoiceTemplateCache.set(studentId, template);
+        return template;
+    },
+
+    async saveInvoiceTemplate() {
+        const studentId = String(document.getElementById('invoiceStudentId')?.value || '').trim();
+        if (!studentId) return false;
+        const template = this.readInvoiceTemplateForm();
+        try {
+            const response = await this.authFetch(`${API_BASE_URL}/api/invoice-templates/${encodeURIComponent(studentId)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ template })
+            });
+            const saved = await this.requireApiSuccess(response, 'Không thể lưu mẫu phiếu học phí.');
+            this._invoiceTemplateCache = this._invoiceTemplateCache || new Map();
+            this._invoiceTemplateCache.set(studentId, saved?.template || template);
+            return true;
+        } catch (error) {
+            console.error('[saveInvoiceTemplate]', error);
+            this.showToast('Phiếu đã xuất nhưng chưa lưu được mẫu dùng cho tháng sau.', 'error');
+            return false;
+        }
+    },
+
     // Bấm nút "Xuất phiếu" ở 1 dòng học sinh trong bảng Học phí -> tự động
     // truyền sẵn thông tin học sinh + số liệu học phí của chính em đó vào form,
     // giáo viên chỉ cần nhập thêm phần nhận xét rồi bấm "Xuất phiếu".
-    openInvoiceModal(studentId) {
+    async openInvoiceModal(studentId) {
         const st = this.students.find(s => s.id === studentId);
         if (!st) return;
 
@@ -44,9 +104,19 @@ Object.assign(PinkyClassApp.prototype, {
         document.getElementById('invoiceStudentName').innerText = st.name;
         document.getElementById('invoiceStudentClass').innerText = `${st.class} - ${st.subject}`;
 
-        // Điền sẵn khoảng ngày = ngày buổi đầu tiên -> buổi cuối cùng (toàn bộ
-        // lịch sử); người dùng có thể thu hẹp lại tùy kỳ muốn xuất phiếu.
-        if (this._invoiceAllSessions.length > 0) {
+        // Mỗi lần mở phiếu luôn lấy kỳ đang chọn trên bộ lọc tháng; không dùng lại
+        // ngày, tiêu đề hay số liệu của lần xuất trước.
+        const periodMatch = String(this.currentMonthFilter || '').match(/^(\d{4})-(\d{1,2})$/);
+        let periodYear = null;
+        let periodMonth = null;
+        if (periodMatch) {
+            periodYear = Number(periodMatch[1]);
+            periodMonth = Number(periodMatch[2]);
+            const monthText = String(periodMonth).padStart(2, '0');
+            const lastDay = new Date(periodYear, periodMonth, 0).getDate();
+            document.getElementById('invoiceFromDate').value = `${periodYear}-${monthText}-01`;
+            document.getElementById('invoiceToDate').value = `${periodYear}-${monthText}-${String(lastDay).padStart(2, "0")}`;
+        } else if (this._invoiceAllSessions.length > 0) {
             document.getElementById('invoiceFromDate').value = this._invoiceAllSessions[0].date;
             document.getElementById('invoiceToDate').value = this._invoiceAllSessions[this._invoiceAllSessions.length - 1].date;
         } else {
@@ -54,37 +124,41 @@ Object.assign(PinkyClassApp.prototype, {
             document.getElementById('invoiceToDate').value = '';
         }
 
-        // Điền sẵn tiêu đề kỳ học dựa trên (các) tháng có buổi học, ví dụ "5+6/2026"
-        const monthsSet = new Set();
-        let sampleYear = new Date().getFullYear();
-        this._invoiceAllSessions.forEach(sess => {
-            const parts = String(sess.date).split('-'); // yyyy-mm-dd
-            if (parts.length >= 2) {
-                monthsSet.add(parseInt(parts[1]));
-                sampleYear = parseInt(parts[0]);
-            }
-        });
-        const monthsList = Array.from(monthsSet).sort((a, b) => a - b);
-        const titleMonths = monthsList.length > 0 ? monthsList.join('+') : (new Date().getMonth() + 1);
-        document.getElementById('invoiceTitle').value = `HỌC PHÍ THÁNG ${titleMonths}/${sampleYear}`;
+        if (periodYear && periodMonth) {
+            document.getElementById('invoiceTitle').value = `HỌC PHÍ THÁNG ${periodMonth}/${periodYear}`;
+        } else {
+            const titleDate = this._invoiceAllSessions[0]?.date || this.toISODateOnly(new Date());
+            const [titleYear, titleMonth] = String(titleDate).split('-');
+            document.getElementById('invoiceTitle').value = `HỌC PHÍ THÁNG ${Number(titleMonth)}/${titleYear}`;
+        }
 
-        // Tên GV điền sẵn từ tài khoản đang đăng nhập, SĐT để trống tự nhập
         document.getElementById('invoiceTeacherName').value = (this.currentUser && this.currentUser.name) || '';
         document.getElementById('invoiceTeacherPhone').value = '';
-
-        // Các trường nhận xét để trống, giáo viên tự viết cho từng kỳ
         document.getElementById('invoiceOverview').value = '';
         document.getElementById('invoiceAlgebra').value = '';
         document.getElementById('invoiceGeometry').value = '';
         document.getElementById('invoiceRoadmap').value = '';
         document.getElementById('invoiceSchedule').value = '';
         document.getElementById('invoiceTuitionNote').value = '';
+        document.getElementById('invoiceNote').value = 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.';
 
-        // QR chỉ tồn tại trong bộ nhớ của tab hiện tại, không lưu vào localStorage.
+        // QR và các số liệu theo tháng luôn lấy mới, không lưu trong mẫu.
         this.setInvoiceQrImage(null, { persist: false });
 
         this.recomputeInvoiceTotals();
         this.openModal('invoiceModal');
+
+        const loadToken = `${studentId}:${Date.now()}`;
+        this._invoiceTemplateLoadToken = loadToken;
+        const initialTemplateState = JSON.stringify(this.readInvoiceTemplateForm());
+        try {
+            const template = await this.loadInvoiceTemplate(studentId);
+            if (this._invoiceTemplateLoadToken !== loadToken || this._invoiceStudentId !== studentId) return;
+            if (JSON.stringify(this.readInvoiceTemplateForm()) !== initialTemplateState) return;
+            this.applyInvoiceTemplate(template);
+        } catch (error) {
+            console.warn('[loadInvoiceTemplate]', error.message);
+        }
     },
 
     // Gán/xoá ảnh QR thanh toán đang dùng cho phiếu học phí và cập nhật khung
@@ -259,26 +333,23 @@ Object.assign(PinkyClassApp.prototype, {
         const nfc = value => String(value || '').normalize('NFC').trim();
         const title = nfc(document.getElementById('invoiceTitle').value) || 'PHIẾU HỌC PHÍ';
         const teacherName = nfc(document.getElementById('invoiceTeacherName').value) || nfc(this.currentUser && this.currentUser.name) || 'Giáo viên phụ trách';
-        const teacherPhone = nfc(document.getElementById('invoiceTeacherPhone').value) || 'Dành cho phụ huynh';
+        const teacherPhone = nfc(document.getElementById('invoiceTeacherPhone').value) || '-';
         const overview = nfc(document.getElementById('invoiceOverview').value);
         const algebra = nfc(document.getElementById('invoiceAlgebra').value);
         const geometry = nfc(document.getElementById('invoiceGeometry').value);
         const roadmap = nfc(document.getElementById('invoiceRoadmap').value);
         const schedule = nfc(document.getElementById('invoiceSchedule').value);
         const customTuition = nfc(document.getElementById('invoiceTuitionNote').value);
-        const note = nfc(document.getElementById('invoiceNote').value) || 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.';
+        const note = nfc(document.getElementById('invoiceNote').value) || '-';
         const dateParts = sessions.map(sess => {
             const [year, month, day] = String(sess.date || '').split('-');
             return day && month && year ? `${day}/${month}` : String(sess.date || '');
         }).filter(Boolean);
         const dates = dateParts.length
             ? Array.from({ length: Math.ceil(dateParts.length / 3) }, (_, index) => dateParts.slice(index * 3, index * 3 + 3).join(', ')).join('\n')
-            : 'Chưa có buổi học trong kỳ';
+            : '-';
 
-        const feeLines = [];
-        if (privateCount > 0) feeLines.push(`${privateCount} buổi học riêng: ${this.formatVND(privateUnit)}/buổi`);
-        if (groupCount > 0) feeLines.push(`${groupCount} buổi học chung: ${this.formatVND(groupUnit)}/buổi`);
-        const tuitionText = customTuition || feeLines.join('\n') || 'Chưa có thông tin học phí.';
+        const tuitionText = customTuition;
 
         const labelValue = (label, value) => [
             { text: label, style: 'label' },
@@ -340,25 +411,38 @@ Object.assign(PinkyClassApp.prototype, {
             ],
             columnGap: 0
         });
+        const sectionUnderline = {
+            canvas: [{ type: 'line', x1: 10, y1: 0, x2: pdfContentWidth, y2: 0, lineWidth: 0.8, lineColor: '#bfdbfe' }],
+            margin: [0, -2, 0, 6]
+        };
         const plainSection = (heading, rows) => [
             sectionHeading(heading),
-            ...rows,
-            {
-                canvas: [{ type: 'line', x1: 0, y1: 0, x2: pdfContentWidth, y2: 0, lineWidth: 0.8, lineColor: '#dbeafe' }],
-                margin: [0, 3, 0, 0]
-            }
+            sectionUnderline,
+            ...rows
         ];
         const plainText = text => ({ text, style: 'bodyText', margin: [10, 0, 0, 5] });
-        const plainComment = (label, value) => ({
-            text: [
-                { text: `${label}: `, style: 'inlineLabel' },
-                { text: value, style: 'bodyText' }
-            ],
-            margin: [10, 0, 0, 5]
-        });
+        const plainComment = (label, value, stacked = false) => stacked
+            ? ({
+                stack: [
+                    { text: `${label}:`, style: 'inlineLabel' },
+                    { text: value, style: 'bodyText', margin: [0, 2, 0, 0] }
+                ],
+                margin: [10, 0, 0, 6]
+            })
+            : ({
+                text: [
+                    { text: `${label}: `, style: 'inlineLabel' },
+                    { text: value, style: 'bodyText' }
+                ],
+                margin: [10, 0, 0, 5]
+            });
 
         const studentStack = [
-            { text: 'THÔNG TIN HỌC SINH', style: 'cardTitle', margin: [0, 0, 0, 9] },
+            { text: 'THÔNG TIN HỌC SINH', style: 'cardTitle', margin: [0, 0, 0, 4] },
+            {
+                canvas: [{ type: 'line', x1: 0, y1: 0, x2: pdfStudentWidth - 28, y2: 0, lineWidth: 0.8, lineColor: '#bfdbfe' }],
+                margin: [0, 0, 0, 6]
+            },
             {
                 table: {
                     widths: ['38%', '62%'],
@@ -391,7 +475,7 @@ Object.assign(PinkyClassApp.prototype, {
             tuitionStack.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0, lineWidth: 1, lineColor: '#bfdbfe' }], alignment: 'center', margin: [0, 0, 0, 7] });
             tuitionStack.push({
                 text: [
-                    { text: 'Số TK: ', style: 'label' }, { text: '68688886669', style: 'value' }, '\n',
+                    { text: 'Số TK: ', style: 'label' }, { text: '0978783058', style: 'value' }, '\n',
                     { text: 'Chủ TK: ', style: 'label' }, { text: 'Nguyễn Thanh Thúy', style: 'value' }
                 ],
                 alignment: 'center',
@@ -432,12 +516,13 @@ Object.assign(PinkyClassApp.prototype, {
             columnGap: pdfColumnGap
         };
 
-        const comments = [];
-        if (overview) comments.push(plainComment('Tổng quan', overview));
-        if (algebra) comments.push(plainComment('Đại số', algebra));
-        if (geometry) comments.push(plainComment('Hình học', geometry));
+        const comments = [
+            plainComment('Tổng quan', overview || '-'),
+            plainComment('Đại số', algebra || '-', true),
+            plainComment('Hình học', geometry || '-', true)
+        ];
 
-        const scheduleText = schedule || 'Chưa có lịch học.';
+        const scheduleText = schedule || '-';
 
         const content = [
             {
@@ -461,10 +546,10 @@ Object.assign(PinkyClassApp.prototype, {
             { text: title, style: 'title', alignment: 'center', margin: [0, 13, 0, 2] },
             { text: 'BÁO CÁO HỌC TẬP VÀ HỌC PHÍ', style: 'subtitle', alignment: 'center', margin: [0, 0, 0, 17] },
             summaryTable,
-            ...(comments.length ? plainSection('NHẬN XÉT HỌC TẬP', comments) : []),
-            ...(roadmap ? plainSection('LỘ TRÌNH HỌC TẬP', [plainText(roadmap)]) : []),
+            ...plainSection('NHẬN XÉT HỌC TẬP', comments),
+            ...plainSection('LỘ TRÌNH HỌC TẬP', [plainText(roadmap || '-')]),
             ...plainSection('LỊCH HỌC', [plainText(scheduleText)]),
-            ...plainSection('CHI TIẾT HỌC PHÍ', [plainText(tuitionText)])
+            ...(tuitionText ? plainSection('CHI TIẾT HỌC PHÍ', [plainText(tuitionText)]) : [])
         ];
 
         return {
@@ -548,6 +633,7 @@ Object.assign(PinkyClassApp.prototype, {
             link.click();
             link.remove();
             window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 30000);
+            await this.saveInvoiceTemplate();
             this.showToast('Đã xuất phiếu học phí dạng PDF thành công!', 'success');
         } catch (err) {
             console.error('Lỗi xuất phiếu học phí PDF:', err);
@@ -630,22 +716,16 @@ Object.assign(PinkyClassApp.prototype, {
             return `<span class="date-chip"><span class="date-chip-text">${d}/${m}</span></span>`;
         }).join('');
 
-        // Ghi chú học phí: liệt kê số buổi riêng/chung và đơn giá tương ứng,
-        // theo đúng bố cục "GHI CHÚ HỌC PHÍ" trong mẫu phiếu (dạng checklist ✓).
+        // Chỉ hiện phần học phí chi tiết khi giáo viên nhập nội dung riêng cho mục này.
         const customTuitionNote = document.getElementById('invoiceTuitionNote').value.trim();
-        const feeNoteLines = [];
-        if (privateCount > 0) feeNoteLines.push(`<strong>${privateCount} buổi học riêng:</strong> ${this.formatVND(privateUnit)}/buổi`);
-        if (groupCount > 0) feeNoteLines.push(`<strong>${groupCount} buổi học chung:</strong> ${this.formatVND(groupUnit)}/buổi`);
-        const feeNoteHTML = customTuitionNote
-            ? plainListHTML(customTuitionNote)
-            : feeNoteLines.map(l => `<div class="list-item no-mark"><span class="list-text">${l}</span></div>`).join('');
+        const feeNoteHTML = customTuitionNote ? plainListHTML(customTuitionNote) : '';
 
-        // Các phần phía dưới dùng một cột căn trái để nội dung dài không làm lệch cột.
+        // Tổng quan giữ cùng dòng; Đại số và Hình học xuống dòng để dễ đọc.
         const quoteItemsHTML = [
-            overview  ? `<div class="plain-row"><strong>Tổng quan:</strong> ${nl2br(overview)}</div>`  : '',
-            algebra   ? `<div class="plain-row"><strong>Đại số:</strong> ${nl2br(algebra)}</div>`      : '',
-            geometry  ? `<div class="plain-row"><strong>Hình học:</strong> ${nl2br(geometry)}</div>`   : ''
-        ].filter(Boolean).join('');
+            `<div class="plain-row"><strong>Tổng quan:</strong> ${overview ? nl2br(overview) : "-"}</div>`,
+            `<div class="plain-row is-stacked"><strong>Đại số:</strong><span>${algebra ? nl2br(algebra) : "-"}</span></div>`,
+            `<div class="plain-row is-stacked"><strong>Hình học:</strong><span>${geometry ? nl2br(geometry) : "-"}</span></div>`
+        ].join('');
 
         // Lộ trình sắp tới: hiển thị dạng bullet "•" mỗi dòng 1 mục, giống bố
         // cục "LỘ TRÌNH SẮP TỚI" trong mẫu phiếu (khác LỊCH HỌC dùng dấu ✓).
@@ -664,7 +744,7 @@ Object.assign(PinkyClassApp.prototype, {
         const qrHTML = this._invoiceQrDataUrl
             ? `<img class="qr" src="${this._invoiceQrDataUrl}" alt="QR thanh toán">
                <div class="divider"></div>
-               <div class="bank">Số TK: <b>68688886669</b><br>Chủ TK: <b>Nguyễn Thanh Thuý</b></div>`
+               <div class="bank">Số TK: <b>0978783058</b><br>Chủ TK: <b>Nguyễn Thanh Thuý</b></div>`
             : '';
 
         // Toàn bộ phiếu được dựng trong 1 khung ẩn (off-screen) ngay trên
@@ -703,6 +783,7 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .grid-2 > .card { min-width:0; }
         #invoiceExportSheet .grid-2 > .card:nth-child(2) { display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding-top:14px; }
         #invoiceExportSheet .student-info-card { padding-top:8px; }
+        #invoiceExportSheet .student-info-card > .section-title { padding-bottom:5px; border-bottom:1px solid #bfdbfe; }
         #invoiceExportSheet .section-title { font-size:15px; font-weight:700; color:#0b438f; line-height:1.55; margin-bottom:6px; }
 
         /* ============ IV. THÔNG TIN HỌC SINH ============ */
@@ -712,9 +793,9 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .value { min-width:0; overflow-wrap:anywhere; font-size:13px; color:#17345f; font-weight:600; text-align:right; }
         #invoiceExportSheet .date-label { font-size:12px; color:#0b438f; margin:8px 0 6px; }
         /* Tránh flex + phần tử chữ lồng nhau để html2canvas không làm mất nét chữ. */
-        #invoiceExportSheet .date-chip-list { display:flex; flex-wrap:wrap; align-content:flex-start; gap:4px; }
-        #invoiceExportSheet .date-chip { display:inline-flex; align-items:center; justify-content:center; min-height:30px; line-height:16px; background:#dbeafe; color:#17345f; font-weight:700; font-size:12px; white-space:nowrap; padding:7px 7px; border-radius:999px; margin:0; vertical-align:middle; text-align:center; }
-        #invoiceExportSheet .date-chip-text { display:inline; line-height:16px; position:static; }
+        #invoiceExportSheet .date-chip-list { display:flex; flex-wrap:wrap; align-content:flex-start; column-gap:12px; row-gap:5px; }
+        #invoiceExportSheet .date-chip { display:inline; color:#17345f; font-weight:700; font-size:12px; white-space:nowrap; padding:0; margin:0; background:transparent; border-radius:0; }
+        #invoiceExportSheet .date-chip-text { display:inline; line-height:1.5; position:static; }
 
         /* ============ V. TỔNG HỌC PHÍ ============ */
         #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#0b438f; }
@@ -727,11 +808,13 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .bank b { color:#17345f; }
 
         /* ============ VI. NỘI DUNG MỘT CỘT ============ */
-        #invoiceExportSheet .plain-section { margin-top:12px; padding:0 2px 10px; border-bottom:1px solid #bfdbfe; text-align:left; }
-        #invoiceExportSheet .plain-section .section-title { margin-bottom:7px; text-transform:uppercase; }
+        #invoiceExportSheet .plain-section { margin-top:12px; padding:0 2px 10px; text-align:left; }
+        #invoiceExportSheet .plain-section .section-title { margin-bottom:7px; padding-bottom:5px; border-bottom:1px solid #bfdbfe; text-transform:uppercase; }
         #invoiceExportSheet .plain-row { color:#17345f; font-size:13px; line-height:1.55; margin-bottom:6px; text-align:left; }
         #invoiceExportSheet .plain-row:last-child { margin-bottom:0; }
         #invoiceExportSheet .plain-row strong { color:#0b438f; }
+        #invoiceExportSheet .plain-row.is-stacked strong, #invoiceExportSheet .plain-row.is-stacked span { display:block; }
+        #invoiceExportSheet .plain-row.is-stacked span { margin-top:2px; }
         #invoiceExportSheet .list-item { display:flex; align-items:flex-start; gap:6px; font-size:13px; line-height:1.5; margin-bottom:5px; }
         #invoiceExportSheet .list-item:last-child { margin-bottom:0; }
         #invoiceExportSheet .list-item .mark { color:#3b82f6; font-weight:700; flex-shrink:0; }
@@ -748,7 +831,7 @@ Object.assign(PinkyClassApp.prototype, {
     <div class="card-main">
         <div class="header">
             <span class="badge">${esc(teacherName)}</span>
-            <span class="phone">${teacherPhone ? esc(teacherPhone) : 'Dành cho phụ huynh'}</span>
+            <span class="phone">${teacherPhone ? esc(teacherPhone) : '-'}</span>
         </div>
         <div class="title">${esc(title)}</div>
 
@@ -760,7 +843,7 @@ Object.assign(PinkyClassApp.prototype, {
                 <div class="row"><span class="label">Số buổi học</span><span class="value">${sessions.length} buổi</span></div>
                 <div class="row"><span class="label">Số giờ học</span><span class="value">${totalHours.toFixed(1)} giờ</span></div>
                 <div class="date-label">Ngày học</div>
-                <div class="date-chip-list">${dateChips || '<span class="empty-hint">Chưa có buổi học trong kỳ</span>'}</div>
+                <div class="date-chip-list">${dateChips || '<span class="empty-hint">-</span>'}</div>
             </div>
 
             <div class="card" style="text-align:center;">
@@ -770,21 +853,18 @@ Object.assign(PinkyClassApp.prototype, {
             </div>
         </div>
 
-        ${quoteItemsHTML ? `<div class="plain-section"><div class="section-title">Nhận xét học tập</div>${quoteItemsHTML}</div>` : ''}
+        <div class="plain-section"><div class="section-title">Nhận xét học tập</div>${quoteItemsHTML}</div>
 
-        ${roadmapHTML ? `<div class="plain-section"><div class="section-title">Lộ trình</div>${roadmapHTML}</div>` : ''}
+        <div class="plain-section"><div class="section-title">Lộ trình</div>${roadmapHTML || '<span class="empty-hint">-</span>'}</div>
 
         <div class="plain-section">
             <div class="section-title">Lịch học</div>
-            ${scheduleHTML || '<span class="empty-hint">Chưa có lịch học.</span>'}
+            ${scheduleHTML || '<span class="empty-hint">-</span>'}
         </div>
 
-        <div class="plain-section">
-            <div class="section-title">Học phí</div>
-            ${feeNoteHTML || '<span class="empty-hint">Chưa có học phí.</span>'}
-        </div>
+        ${feeNoteHTML ? `<div class="plain-section"><div class="section-title">Học phí</div>${feeNoteHTML}</div>` : ''}
 
-        <div class="footer section-block"><span class="footer-text">${note ? nl2br(note) : 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.'}</span></div>
+        <div class="footer section-block"><span class="footer-text">${note ? nl2br(note) : '-'}</span></div>
     </div>
 </div>`;
 
@@ -828,6 +908,7 @@ Object.assign(PinkyClassApp.prototype, {
             link.download = `PhieuHocPhi_${st.name.replace(/\s+/g, '')}_${todayStr}.png`;
             link.href = canvas.toDataURL('image/png');
             link.click();
+            await this.saveInvoiceTemplate();
 
             this.showToast('Đã xuất phiếu học phí dạng ảnh thành công!', 'success');
             this.closeModal('invoiceModal');
