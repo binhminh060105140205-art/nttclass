@@ -340,7 +340,7 @@ Object.assign(PinkyClassApp.prototype, {
         const roadmap = nfc(document.getElementById('invoiceRoadmap').value);
         const schedule = nfc(document.getElementById('invoiceSchedule').value);
         const customTuition = nfc(document.getElementById('invoiceTuitionNote').value);
-        const note = nfc(document.getElementById('invoiceNote').value) || '-';
+        const note = nfc(document.getElementById('invoiceNote').value);
         const dateParts = sessions.map(sess => {
             const [year, month, day] = String(sess.date || '').split('-');
             return day && month && year ? `${day}/${month}` : String(sess.date || '');
@@ -349,6 +349,15 @@ Object.assign(PinkyClassApp.prototype, {
             ? Array.from({ length: Math.ceil(dateParts.length / 3) }, (_, index) => dateParts.slice(index * 3, index * 3 + 3).join(', ')).join('\n')
             : '-';
 
+        const datesPerRow = 4;
+        const fourColumnDateRows = [];
+        for (let index = 0; index < dateParts.length; index += datesPerRow) {
+            const rowDates = dateParts.slice(index, index + datesPerRow);
+            fourColumnDateRows.push(rowDates.join(', '));
+        }
+        const fourColumnDates = fourColumnDateRows.length
+            ? fourColumnDateRows.join(String.fromCharCode(10))
+            : dates;
         const tuitionText = customTuition;
 
         const labelValue = (label, value) => [
@@ -423,9 +432,7 @@ Object.assign(PinkyClassApp.prototype, {
         const plainText = text => ({ text, style: 'bodyText', margin: [10, 0, 0, 5] });
         const bulletRows = (text, leftMargin = 10, topMargin = 0) => {
             const lines = nfc(text).split('\n').map(line => line.trim()).filter(Boolean);
-            if (lines.length === 0) {
-                return [{ text: '-', style: 'bodyText', margin: [leftMargin, topMargin, 0, 5] }];
-            }
+            if (lines.length === 0) return [];
             return lines.map((line, index) => ({
                 text: [
                     { text: '\u2022 ', bold: true, color: '#2563eb' },
@@ -465,7 +472,7 @@ Object.assign(PinkyClassApp.prototype, {
                         labelValue('Học phí/buổi', privateCount > 0 ? this.formatVND(privateUnit) : this.formatVND(groupUnit)),
                         labelValue('Số buổi học', `${sessions.length} buổi`),
                         labelValue('Số giờ học', `${totalHours.toFixed(1)} giờ`),
-                        labelValue('Ngày học', dates)
+                        labelValue('Ngày học', fourColumnDates)
                     ]
                 },
                 layout: {
@@ -506,7 +513,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         // Chiều cao phải đủ cho bảng thông tin + ngày học; nếu giữ số cố định,
         // dòng ngày dài sẽ tràn khỏi viền card và lệch với card học phí bên cạnh.
-        const dateLineCount = Math.max(1, dates.split('\n').length);
+        const dateLineCount = Math.max(1, fourColumnDateRows.length);
         const studentNameLineCount = Math.max(1, estimateLines(`${nfc(st.name)} - ${nfc(st.class)}`, 20));
         const summaryHeight = Math.max(
             this._invoiceQrDataUrl ? 230 : 205,
@@ -531,10 +538,10 @@ Object.assign(PinkyClassApp.prototype, {
         };
 
         const comments = [
-            plainComment('Tổng quan', overview),
-            plainComment('Đại số', algebra, true),
-            plainComment('Hình học', geometry, true)
-        ];
+            overview ? plainComment('Tổng quan', overview) : null,
+            algebra ? plainComment('Đại số', algebra, true) : null,
+            geometry ? plainComment('Hình học', geometry, true) : null
+        ].filter(Boolean);
 
         const content = [
             {
@@ -558,7 +565,7 @@ Object.assign(PinkyClassApp.prototype, {
             { text: title, style: 'title', alignment: 'center', margin: [0, 13, 0, 2] },
             { text: 'BÁO CÁO HỌC TẬP VÀ HỌC PHÍ', style: 'subtitle', alignment: 'center', margin: [0, 0, 0, 17] },
             summaryTable,
-            ...plainSection('NHẬN XÉT HỌC TẬP', comments),
+            ...(comments.length ? plainSection('NHẬN XÉT HỌC TẬP', comments) : []),
             ...(roadmap ? plainSection('LỘ TRÌNH HỌC TẬP', bulletRows(roadmap)) : []),
             ...(schedule ? plainSection('LỊCH HỌC', bulletRows(schedule)) : []),
             ...(tuitionText ? plainSection('CHI TIẾT HỌC PHÍ', bulletRows(tuitionText)) : [])
@@ -595,7 +602,7 @@ Object.assign(PinkyClassApp.prototype, {
             footer: (currentPage, pageCount) => ({
                 margin: [52, 0, 52, 0],
                 stack: [
-                    ...(currentPage === pageCount ? [roundedCard(
+                    ...(currentPage === pageCount && note ? [roundedCard(
                         [{ text: note, alignment: 'center', style: 'footerText' }],
                         pdfContentWidth,
                         28,
@@ -731,8 +738,8 @@ Object.assign(PinkyClassApp.prototype, {
         const customTuitionNote = document.getElementById('invoiceTuitionNote').value.trim();
         const feeNoteHTML = customTuitionNote ? bulletListHTML(customTuitionNote) : '';
 
-        // Tổng quan giữ nguyên; mỗi dòng Đại số và Hình học dùng cùng dấu chấm như Lộ trình.
-        const bulletOrDashHTML = text => bulletListHTML(text) || '<span class="empty-hint">-</span>';
+        // Chỉ dựng những dòng nhận xét thực sự có nội dung; mục trống không để lại nhãn hoặc dấu "-".
+        const bulletOrDashHTML = text => bulletListHTML(text);
         const quoteItemsHTML = [
             `<div class="plain-row"><strong>Tổng quan:</strong> ${overview ? nl2br(overview) : "-"}</div>`,
             `<div class="plain-row is-stacked"><strong>Đại số:</strong><div class="stacked-list">${bulletOrDashHTML(algebra)}</div></div>`,
@@ -797,9 +804,12 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .value { min-width:0; overflow-wrap:anywhere; font-size:13px; color:#17345f; font-weight:600; text-align:right; }
         #invoiceExportSheet .date-label { font-size:12px; color:#0b438f; margin:8px 0 6px; }
         /* Tránh flex + phần tử chữ lồng nhau để html2canvas không làm mất nét chữ. */
-        #invoiceExportSheet .date-chip-list { display:flex; flex-wrap:wrap; justify-content:center; align-content:flex-start; gap:6px 8px; }
+        #invoiceExportSheet .date-chip-list { display:flex; flex-wrap:wrap; justify-content:center; align-content:flex-start; gap:5px 6px; }
         #invoiceExportSheet .date-chip { display:inline-block; min-width:62px; height:29px; padding:0 10px; background:#dbeafe; border-radius:999px; line-height:29px; text-align:center; box-sizing:border-box; }
         #invoiceExportSheet .date-chip-text { display:inline-block; line-height:1; position:relative; top:-7px; color:#17345f; font-family:inherit; font-size:12px; font-weight:800; }
+
+        #invoiceExportSheet .date-chip { flex:0 0 48px; min-width:0; width:48px; height:26px; padding:0 4px; line-height:26px; }
+        #invoiceExportSheet .date-chip-text { top:-6px; font-size:11px; }
 
         /* ============ V. TỔNG HỌC PHÍ ============ */
         #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#0b438f; }
@@ -884,6 +894,13 @@ Object.assign(PinkyClassApp.prototype, {
         holder.innerHTML = sheetHTML;
         document.body.appendChild(holder);
         const captureEl = document.getElementById('invoiceExportSheet');
+        const reviewSection = captureEl.querySelector('.plain-section');
+        reviewSection.querySelectorAll('.plain-row').forEach(row => {
+            const rowValue = row.textContent.split(':').slice(1).join(':').trim();
+            if (!rowValue || rowValue === '-') row.remove();
+        });
+        if (!reviewSection.querySelector('.plain-row')) reviewSection.remove();
+        if (!note) captureEl.querySelector('.footer')?.remove();
 
         try {
             // Đợi toàn bộ font của trang ổn định trước khi chụp để tránh chữ
