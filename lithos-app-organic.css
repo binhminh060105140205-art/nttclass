@@ -98,7 +98,7 @@
     transform: scaleX(-1) rotate(-18deg);
 }
 
-.sidebar > * {
+.sidebar > :not(.sidebar-collapse-toggle) {
     position: relative;
     z-index: 1;
 }

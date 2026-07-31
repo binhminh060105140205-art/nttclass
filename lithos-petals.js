@@ -25,6 +25,14 @@
         && !document.hidden
     );
 
+    const isVisible = element => !!element && !element.hidden && !element.classList.contains('hidden');
+
+    const getSurface = () => {
+        if (isVisible(document.getElementById('landingPage'))) return 'landing';
+        if (isVisible(document.getElementById('loginPage'))) return 'login';
+        return 'app';
+    };
+
     const clearDelayedSpawns = () => {
         delayedSpawnTimers.forEach(timerId => window.clearTimeout(timerId));
         delayedSpawnTimers.clear();
@@ -52,7 +60,12 @@
         if (!isEnabled()) return;
         const container = getContainer();
         if (!container) return;
-        const maximumVisible = reducedMotionQuery.matches ? 3 : (mobileQuery.matches ? 4 : 7);
+        const surface = getSurface();
+        const maximumVisible = reducedMotionQuery.matches
+            ? (surface === 'landing' ? 3 : 2)
+            : surface === 'landing'
+                ? (mobileQuery.matches ? 3 : 5)
+                : (mobileQuery.matches ? 2 : 3);
         if (container.childElementCount >= maximumVisible) return;
 
         const isWholeFlower = forceWholeFlower || Math.random() < 0.72;
@@ -102,8 +115,11 @@
 
     const spawnBurst = (isInitialBurst = false) => {
         if (!isEnabled()) return;
+        const surface = getSurface();
         const randomValue = Math.random();
-        const blossomCount = isInitialBurst
+        const blossomCount = surface !== 'landing'
+            ? 1
+            : isInitialBurst
             ? (mobileQuery.matches ? 1 : 2)
             : reducedMotionQuery.matches
                 ? 1
@@ -130,13 +146,16 @@
         }
 
         container.hidden = false;
+        const surface = getSurface();
         const delay = isInitialBurst
             ? randomBetween(450, 900)
             : reducedMotionQuery.matches
                 ? randomBetween(7200, 10500)
-                : mobileQuery.matches
-                    ? randomBetween(4500, 7600)
-                    : randomBetween(3500, 6500);
+                : surface === 'landing'
+                    ? mobileQuery.matches
+                        ? randomBetween(5200, 8200)
+                        : randomBetween(4200, 7200)
+                    : randomBetween(7500, 12000);
         scheduleTimer = window.setTimeout(() => {
             spawnBurst(isInitialBurst);
             scheduleNextBurst(false);
@@ -144,8 +163,21 @@
     };
 
     const refreshPetalState = () => {
+        clearDelayedSpawns();
         if (isEnabled()) scheduleNextBurst(true);
         else stopPetals();
+    };
+
+    const observeSurfaceChanges = () => {
+        const surfaceObserver = new MutationObserver(refreshPetalState);
+        ['landingPage', 'loginPage'].forEach(id => {
+            const element = document.getElementById(id);
+            if (element) surfaceObserver.observe(element, { attributes: true, attributeFilter: ['class', 'hidden'] });
+        });
+        ['.sidebar', '.main-content'].forEach(selector => {
+            const element = document.querySelector(selector);
+            if (element) surfaceObserver.observe(element, { attributes: true, attributeFilter: ['class', 'hidden'] });
+        });
     };
 
     window.refreshLithosPetals = refreshPetalState;
@@ -162,8 +194,12 @@
     window.addEventListener('pageshow', refreshPetalState);
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', refreshPetalState, { once: true });
+        document.addEventListener('DOMContentLoaded', () => {
+            observeSurfaceChanges();
+            refreshPetalState();
+        }, { once: true });
     } else {
+        observeSurfaceChanges();
         refreshPetalState();
     }
 })();

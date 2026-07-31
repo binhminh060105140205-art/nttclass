@@ -1,1 +1,17 @@
-(function(){var files=['dom','nav','nav-menu','heading','copy','spotlight','login'],index=0;function next(){if(index>=files.length)return;var script=document.createElement('script');script.src='landing-lithos-'+files[index++]+'.js?v=20260730-performance2';script.onload=next;document.head.appendChild(script)}next()})();
+(function(){
+    var version='20260731-performance5';
+    function load(file){
+        return new Promise(function(resolve,reject){
+            var script=document.createElement('script');
+            script.src='landing-lithos-'+file+'.js?v='+version;
+            script.onload=resolve;
+            script.onerror=reject;
+            document.head.appendChild(script);
+        });
+    }
+    load('dom')
+        .then(function(){return Promise.all(['nav','heading','copy','spotlight'].map(load));})
+        .then(function(){return load('nav-menu');})
+        .then(function(){return load('login');})
+        .catch(function(error){console.error('[landing-lithos-loader]',error);});
+})();

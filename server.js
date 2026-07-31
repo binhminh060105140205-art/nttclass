@@ -290,6 +290,7 @@ app.use((req, res, next) => {
 const PUBLIC_ROOT_FILES = new Set([
     'ai-chat.js', 'app-shell.js', 'calendar.js', 'core.js', 'dashboard.js',
     'invoice-export.js', 'landing-lithos-animations.css', 'landing-lithos-base.css',
+    'landing-lithos-bundle.css',
     'landing-lithos-button.css', 'landing-lithos-copy.css', 'landing-lithos-copy.js',
     'landing-lithos-core.css', 'landing-lithos-dom.js', 'landing-lithos-fonts.css',
     'landing-lithos-heading.css', 'landing-lithos-heading.js', 'landing-lithos-loader.js',
@@ -298,6 +299,7 @@ const PUBLIC_ROOT_FILES = new Set([
     'landing-lithos-responsive.css', 'landing-lithos-reveal.css', 'landing-lithos-spotlight.js',
     'landing-orbis.css', 'landing-orbis-fixes.css', 'landing-orbis.js',
     'landing-velorah.css', 'landing-velorah.js', 'lithos-app-background.css',
+    'lithos-app-bundle.css',
     'lithos-app-cards.css', 'lithos-app-components.css', 'lithos-app-controls.css',
     'lithos-app-dark.css', 'lithos-app-forms.css', 'lithos-app-header.css',
     'lithos-app-light.css', 'lithos-app-login-fields.css', 'lithos-app-login-panel.css',
@@ -958,16 +960,40 @@ async function publicUserFromAuth(authUser) {
 // AUTH API
 // ==========================================
 
+const APP_THEME_CACHE_TTL_MS = 5 * 60 * 1000;
+let appThemeSettingsCache = { theme: '', expiresAt: 0, promise: null };
+
+async function getCachedAppTheme() {
+    if (appThemeSettingsCache.theme && appThemeSettingsCache.expiresAt > Date.now()) {
+        return appThemeSettingsCache.theme;
+    }
+    if (appThemeSettingsCache.promise) return appThemeSettingsCache.promise;
+
+    const request = poolPromise
+        .then(() => pgPool.query(
+            'SELECT SettingValue AS theme FROM AppSettings WHERE SettingKey = $1',
+            ['app_theme']
+        ))
+        .then(result => ['blue', 'lithos'].includes(result.rows[0]?.theme)
+            ? result.rows[0].theme
+            : 'lithos');
+    appThemeSettingsCache.promise = request;
+
+    try {
+        const theme = await request;
+        if (appThemeSettingsCache.promise === request) {
+            appThemeSettingsCache.theme = theme;
+            appThemeSettingsCache.expiresAt = Date.now() + APP_THEME_CACHE_TTL_MS;
+        }
+        return theme;
+    } finally {
+        if (appThemeSettingsCache.promise === request) appThemeSettingsCache.promise = null;
+    }
+}
+
 app.get('/api/app-settings/theme', async (req, res) => {
     try {
-        await poolPromise;
-        const result = await pgPool.query(
-            'SELECT SettingValue AS "theme" FROM AppSettings WHERE SettingKey = $1',
-            ['app_theme']
-        );
-        const theme = ['blue', 'lithos'].includes(result.rows[0]?.theme)
-            ? result.rows[0].theme
-            : 'lithos';
+        const theme = await getCachedAppTheme();
         res.json({ theme });
     } catch (err) {
         console.error('[GET /api/app-settings/theme]', err);
@@ -988,7 +1014,13 @@ app.put('/api/app-settings/theme', requireRole('admin'), async (req, res) => {
             ON CONFLICT (SettingKey)
             DO UPDATE SET SettingValue = EXCLUDED.SettingValue, UpdatedAt = CURRENT_TIMESTAMP
             RETURNING SettingValue AS "theme"`, ['app_theme', theme]);
-        res.json({ theme: result.rows[0].theme });
+        const savedTheme = result.rows[0].theme;
+        appThemeSettingsCache = {
+            theme: savedTheme,
+            expiresAt: Date.now() + APP_THEME_CACHE_TTL_MS,
+            promise: null
+        };
+        res.json({ theme: savedTheme });
     } catch (err) {
         console.error('[PUT /api/app-settings/theme]', err);
         res.status(500).json({ error: 'Không thể lưu giao diện hệ thống.' });

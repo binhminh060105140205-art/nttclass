@@ -107,7 +107,7 @@ class PinkyClassApp {
         }
     }
 
-    useLandingTheme() {
+    useLandingTheme(options = {}) {
         const landingTheme = 'lithos';
         document.documentElement.setAttribute('data-app-theme', landingTheme);
         const lithosStylesheet = document.getElementById('appThemeStylesheet');
@@ -116,7 +116,7 @@ class PinkyClassApp {
         if (velorahStylesheet) velorahStylesheet.disabled = landingTheme !== 'velorah';
         this.setVelorahAppVideo(false);
         if (typeof window.refreshLithosPetals === 'function') window.refreshLithosPetals();
-        if (typeof window.renderLandingTheme === 'function') {
+        if (options.render !== false && typeof window.renderLandingTheme === 'function') {
             window.renderLandingTheme(landingTheme);
         }
     }
@@ -161,7 +161,8 @@ class PinkyClassApp {
             return null;
         });
 
-        await this.loadAppTheme();
+        // Dùng giao diện đã cache ngay; đồng bộ cấu hình server chạy nền để không chặn khôi phục phiên.
+        this.loadAppTheme();
 
         let savedUser = null;
         const sessionResponse = await sessionPromise;

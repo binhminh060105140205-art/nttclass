@@ -41,14 +41,26 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     renderScoreFilterOptions() {
+        const students = this.students || [];
+        const optionsSignature = JSON.stringify([
+            this.currentRole || '',
+            this.currentStudentId || '',
+            ...students.map(student => [
+                student.id,
+                student.gradeLevel,
+                String(student.class || '').trim()
+            ])
+        ]);
+        if (this._scoreFilterOptionsSignature === optionsSignature) return;
+
         const classFilter = document.getElementById('scoreFilterClass');
         const batchClassFilter = document.getElementById('batchScoreGrade');
         const previousClass = classFilter?.value || '';
         const previousBatchClass = batchClassFilter?.value || '';
-        const grades = [...new Set((this.students || [])
+        const grades = [...new Set(students
             .map(student => Number(student.gradeLevel))
             .filter(Number.isFinite))].sort((a, b) => a - b);
-        const classes = [...new Set((this.students || [])
+        const classes = [...new Set(students
             .map(student => String(student.class || '').trim())
             .filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'));
 
@@ -76,6 +88,7 @@ Object.assign(PinkyClassApp.prototype, {
         } else if (studentFilter) {
             studentFilter.disabled = false;
         }
+        this._scoreFilterOptionsSignature = optionsSignature;
     },
 
     scoreStudentMatchesClass(student, filterValue) {
@@ -263,6 +276,17 @@ Object.assign(PinkyClassApp.prototype, {
     renderBatchScoreRows() {
         const tbody = document.getElementById('batchScoreTableBody');
         if (!tbody) return;
+        const expanded = document.getElementById('outsideScoreToggle')?.getAttribute('aria-expanded') === 'true';
+        const students = [...(this.students || [])].sort((a, b) =>
+            (Number(a.gradeLevel || 99) - Number(b.gradeLevel || 99)) ||
+            String(a.name || '').localeCompare(String(b.name || ''), 'vi')
+        );
+        const rowsSignature = JSON.stringify([
+            expanded,
+            ...students.map(student => [student.id, student.name, student.class, student.gradeLevel])
+        ]);
+
+        if (this._batchScoreRowsSignature !== rowsSignature || !tbody.childElementCount) {
         const existing = new Map();
         tbody.querySelectorAll('.batch-score-row').forEach(row => {
             existing.set(row.dataset.studentId, {
@@ -271,14 +295,8 @@ Object.assign(PinkyClassApp.prototype, {
             });
         });
 
-        const maxScore = Number(document.getElementById('batchScoreMax')?.value) || 10;
-        const expanded = document.getElementById('outsideScoreToggle')?.getAttribute('aria-expanded') === 'true';
-        const students = [...(this.students || [])].sort((a, b) =>
-            (Number(a.gradeLevel || 99) - Number(b.gradeLevel || 99)) ||
-            String(a.name || '').localeCompare(String(b.name || ''), 'vi')
-        );
         tbody.innerHTML = students.length ? students.map(student => {
-            const old = existing.get(student.id) || { score: '', note: '' };
+            const old = existing.get(String(student.id)) || { score: '', note: '' };
             const classFilterValue = `class:${encodeURIComponent(String(student.class || '').trim())}`;
             return `<tr class="batch-score-row" data-student-id="${this.escapeHtmlAttr(student.id)}" data-grade-filter="grade:${student.gradeLevel || ''}" data-class-filter="${this.escapeHtmlAttr(classFilterValue)}">
                 <td><strong>${this.escapeHtml(student.name)}</strong></td>
@@ -288,6 +306,9 @@ Object.assign(PinkyClassApp.prototype, {
             </tr>`;
         }).join('') : '<tr><td colspan="4" class="score-batch-empty">Chưa có học sinh để nhập điểm.</td></tr>';
 
+        }
+
+        this._batchScoreRowsSignature = rowsSignature;
         const dateInput = document.getElementById('batchScoreDate');
         if (dateInput && !dateInput.value) dateInput.value = this.toISODateOnly(new Date());
         this.updateBatchScoreMax();

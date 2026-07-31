@@ -501,8 +501,7 @@ Object.assign(PinkyClassApp.prototype, {
 
     showLoginPage() {
         window.__nttLoginRequested = true;
-        this.useLandingTheme();
-        if (this.appTheme === 'velorah') this.setVelorahAppVideo(true);
+        this.useLandingTheme({ render: false });
         document.getElementById('landingPage').classList.add('hidden');
         document.getElementById('loginPage').classList.remove('hidden');
         document.querySelector('.sidebar').classList.add('hidden');
@@ -756,7 +755,6 @@ Object.assign(PinkyClassApp.prototype, {
         } else if (viewId === 'view-requests') {
             titleEl.innerText = "Yêu cầu";
             subtitleEl.innerText = "Ghi lại yêu cầu cần thực hiện và theo dõi trạng thái hoàn thành.";
-            this.loadRequests();
         } else if (viewId === 'view-scheduler') {
             titleEl.innerText = "Lịch dạy & Chấm công";
             subtitleEl.innerText = "Sắp xếp lịch dạy học và tính công dạy hàng tuần.";
@@ -781,7 +779,8 @@ Object.assign(PinkyClassApp.prototype, {
         });
 
         this.renderView(viewId);
-        this.applyPermissions();
+        if (viewId === 'view-requests' && !this.requestsLoaded) this.loadRequests();
+        this.applyPermissions(targetView || document);
     },
 
     renderView(viewId) {
@@ -797,19 +796,26 @@ Object.assign(PinkyClassApp.prototype, {
 
     updateAllViews() {
         const activeView = document.querySelector('.view-section.active-view');
-        if (activeView) this.renderView(activeView.id);
-        this.applyPermissions();
+        if (activeView) {
+            this.renderView(activeView.id);
+            this.applyPermissions(activeView);
+        } else {
+            this.applyPermissions();
+        }
     },
 
-    applyPermissions() {
+    applyPermissions(root = document) {
+        const scope = root && typeof root.querySelectorAll === 'function' ? root : document;
+        const selectAll = selector => scope.querySelectorAll(selector);
+
         // Elements restricted by role
-        document.querySelectorAll('.role-restricted').forEach(el => {
+        selectAll('.role-restricted').forEach(el => {
             el.style.display = 'none'; // Default hide
         });
 
         if (this.currentRole === 'teacher') {
             // Teacher: show all teaching & pricing controls
-            document.querySelectorAll('.admin-tutor, .admin-only').forEach(el => {
+            selectAll('.admin-tutor, .admin-only').forEach(el => {
                 if (el.tagName === 'TH' || el.tagName === 'TD') {
                     el.style.display = '';
                 } else {
@@ -825,7 +831,7 @@ Object.assign(PinkyClassApp.prototype, {
             if (formCard) formCard.style.display = '';
         } else if (this.currentRole === 'assistant') {
             // Assistant: show teaching controls but hide pricing/admin-only fields
-            document.querySelectorAll('.admin-tutor').forEach(el => {
+            selectAll('.admin-tutor').forEach(el => {
                 if (el.tagName === 'TH' || el.tagName === 'TD') {
                     el.style.display = '';
                 } else {
@@ -833,7 +839,7 @@ Object.assign(PinkyClassApp.prototype, {
                 }
             });
             // Hide admin specific elements (pricing calculations, deletions)
-            document.querySelectorAll('.admin-only').forEach(el => {
+            selectAll('.admin-only').forEach(el => {
                 el.style.display = 'none';
             });
             const priceCard = document.getElementById('admin-summary-money-card');
@@ -847,7 +853,7 @@ Object.assign(PinkyClassApp.prototype, {
             if (priceFormGroup) priceFormGroup.style.display = 'none';
         } else if (this.currentRole === 'student') {
             // Student role: hide forms and administrative tools completely
-            document.querySelectorAll('.admin-tutor, .admin-only').forEach(el => {
+            selectAll('.admin-tutor, .admin-only').forEach(el => {
                 el.style.display = 'none';
             });
             const formCard = document.getElementById('btnOpenCreateSession');
@@ -871,7 +877,8 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     formatVND(amount) {
-        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+        this._vndFormatter ||= new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' });
+        return this._vndFormatter.format(amount);
     },
 
     // Trả về danh sách studentId trong 1 buổi học CÓ đóng học phí (loại trừ

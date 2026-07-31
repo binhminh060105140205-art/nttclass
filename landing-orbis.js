@@ -7,17 +7,11 @@
         lithosPage.className='lithos-page';
         lithosPage.innerHTML='';
         var lithosLoader=document.createElement('script');
-        lithosLoader.src='landing-lithos-loader.js?v=20260730-performance2';
+        lithosLoader.src='landing-lithos-loader.js?v=20260731-performance5';
         document.head.appendChild(lithosLoader);
     }
 
-    window.renderLandingTheme=function(theme){
-        if(theme==='velorah'&&typeof window.renderVelorahLanding==='function'){
-            window.renderVelorahLanding();
-            return;
-        }
+    window.renderLandingTheme=function(){
         renderLithosLanding();
     };
-
-    window.renderLandingTheme('lithos');
 })();
