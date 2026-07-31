@@ -421,18 +421,32 @@ Object.assign(PinkyClassApp.prototype, {
             ...rows
         ];
         const plainText = text => ({ text, style: 'bodyText', margin: [10, 0, 0, 5] });
+        const bulletRows = (text, leftMargin = 10, topMargin = 0) => {
+            const lines = nfc(text).split('\n').map(line => line.trim()).filter(Boolean);
+            if (lines.length === 0) {
+                return [{ text: '-', style: 'bodyText', margin: [leftMargin, topMargin, 0, 5] }];
+            }
+            return lines.map((line, index) => ({
+                text: [
+                    { text: '\u2022 ', bold: true, color: '#2563eb' },
+                    { text: line }
+                ],
+                style: 'bodyText',
+                margin: [leftMargin, index === 0 ? topMargin : 0, 0, 5]
+            }));
+        };
         const plainComment = (label, value, stacked = false) => stacked
             ? ({
                 stack: [
                     { text: `${label}:`, style: 'inlineLabel' },
-                    { text: value, style: 'bodyText', margin: [0, 2, 0, 0] }
+                    ...bulletRows(value, 0, 2)
                 ],
                 margin: [10, 0, 0, 6]
             })
             : ({
                 text: [
                     { text: `${label}: `, style: 'inlineLabel' },
-                    { text: value, style: 'bodyText' }
+                    { text: nfc(value) || '-', style: 'bodyText' }
                 ],
                 margin: [10, 0, 0, 5]
             });
@@ -517,12 +531,10 @@ Object.assign(PinkyClassApp.prototype, {
         };
 
         const comments = [
-            plainComment('Tổng quan', overview || '-'),
-            plainComment('Đại số', algebra || '-', true),
-            plainComment('Hình học', geometry || '-', true)
+            plainComment('Tổng quan', overview),
+            plainComment('Đại số', algebra, true),
+            plainComment('Hình học', geometry, true)
         ];
-
-        const scheduleText = schedule || '-';
 
         const content = [
             {
@@ -547,9 +559,9 @@ Object.assign(PinkyClassApp.prototype, {
             { text: 'BÁO CÁO HỌC TẬP VÀ HỌC PHÍ', style: 'subtitle', alignment: 'center', margin: [0, 0, 0, 17] },
             summaryTable,
             ...plainSection('NHẬN XÉT HỌC TẬP', comments),
-            ...plainSection('LỘ TRÌNH HỌC TẬP', [plainText(roadmap || '-')]),
-            ...plainSection('LỊCH HỌC', [plainText(scheduleText)]),
-            ...(tuitionText ? plainSection('CHI TIẾT HỌC PHÍ', [plainText(tuitionText)]) : [])
+            ...plainSection('LỘ TRÌNH HỌC TẬP', bulletRows(roadmap)),
+            ...plainSection('LỊCH HỌC', bulletRows(schedule)),
+            ...(tuitionText ? plainSection('CHI TIẾT HỌC PHÍ', bulletRows(tuitionText)) : [])
         ];
 
         return {
@@ -696,18 +708,17 @@ Object.assign(PinkyClassApp.prototype, {
         const esc = (s) => String(s || '').normalize('NFC').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const nl2br = (s) => esc(s).replace(/\n/g, '<br>');
 
-        // Danh sách kiểu "checklist" (✓ đầu dòng) dùng cho khối LỊCH HỌC và GHI
-        // CHÚ HỌC PHÍ, giống đúng bố cục trong mẫu phiếu. Nếu dòng có dấu ":"
-        // thì in đậm phần trước dấu ":" (VD "16h–18h thứ 4:" in đậm).
-        const plainListHTML = (text) => {
-            const lines = esc(text).split('\n').map(l => l.trim()).filter(Boolean);
+        // Dùng chung dấu chấm đầu dòng cho mọi nội dung dạng danh sách, trừ Tổng quan.
+        // Nếu dòng có dấu ":" thì in đậm phần trước dấu ":".
+        const bulletListHTML = (text) => {
+            const lines = esc(text).split('\n').map(line => line.trim()).filter(Boolean);
             if (lines.length === 0) return '';
             return lines.map(line => {
-                const colonIdx = line.indexOf(':');
-                const item = colonIdx > -1
-                    ? `<strong>${line.slice(0, colonIdx + 1)}</strong>${line.slice(colonIdx + 1)}`
+                const colonIndex = line.indexOf(':');
+                const item = colonIndex > -1
+                    ? `<strong>${line.slice(0, colonIndex + 1)}</strong>${line.slice(colonIndex + 1)}`
                     : line;
-                return `<div class="list-item no-mark"><span class="list-text">${item}</span></div>`;
+                return `<div class="list-item"><span class="mark">&#8226;</span><span class="list-text">${item}</span></div>`;
             }).join('');
         };
 
@@ -718,24 +729,17 @@ Object.assign(PinkyClassApp.prototype, {
 
         // Chỉ hiện phần học phí chi tiết khi giáo viên nhập nội dung riêng cho mục này.
         const customTuitionNote = document.getElementById('invoiceTuitionNote').value.trim();
-        const feeNoteHTML = customTuitionNote ? plainListHTML(customTuitionNote) : '';
+        const feeNoteHTML = customTuitionNote ? bulletListHTML(customTuitionNote) : '';
 
-        // Tổng quan giữ cùng dòng; Đại số và Hình học xuống dòng để dễ đọc.
+        // Tổng quan giữ nguyên; mỗi dòng Đại số và Hình học dùng cùng dấu chấm như Lộ trình.
+        const bulletOrDashHTML = text => bulletListHTML(text) || '<span class="empty-hint">-</span>';
         const quoteItemsHTML = [
             `<div class="plain-row"><strong>Tổng quan:</strong> ${overview ? nl2br(overview) : "-"}</div>`,
-            `<div class="plain-row is-stacked"><strong>Đại số:</strong><span>${algebra ? nl2br(algebra) : "-"}</span></div>`,
-            `<div class="plain-row is-stacked"><strong>Hình học:</strong><span>${geometry ? nl2br(geometry) : "-"}</span></div>`
+            `<div class="plain-row is-stacked"><strong>Đại số:</strong><div class="stacked-list">${bulletOrDashHTML(algebra)}</div></div>`,
+            `<div class="plain-row is-stacked"><strong>Hình học:</strong><div class="stacked-list">${bulletOrDashHTML(geometry)}</div></div>`,
         ].join('');
 
-        // Lộ trình sắp tới: hiển thị dạng bullet "•" mỗi dòng 1 mục, giống bố
-        // cục "LỘ TRÌNH SẮP TỚI" trong mẫu phiếu (khác LỊCH HỌC dùng dấu ✓).
-        const bulletListHTML = (text) => {
-            const lines = esc(text).split('\n').map(l => l.trim()).filter(Boolean);
-            if (lines.length === 0) return '';
-            return lines.map(line => `<div class="list-item"><span class="mark">•</span><span class="list-text">${line}</span></div>`).join('');
-        };
-
-        const scheduleHTML = plainListHTML(schedule);
+        const scheduleHTML = bulletListHTML(schedule);
         const roadmapHTML = bulletListHTML(roadmap);
 
         // Ảnh QR thanh toán (tuỳ chọn) — chèn ngay dưới khối "Tổng học phí",
@@ -813,8 +817,8 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .plain-row { color:#17345f; font-size:13px; line-height:1.55; margin-bottom:6px; text-align:left; }
         #invoiceExportSheet .plain-row:last-child { margin-bottom:0; }
         #invoiceExportSheet .plain-row strong { color:#0b438f; }
-        #invoiceExportSheet .plain-row.is-stacked strong, #invoiceExportSheet .plain-row.is-stacked span { display:block; }
-        #invoiceExportSheet .plain-row.is-stacked span { margin-top:2px; }
+        #invoiceExportSheet .plain-row.is-stacked > strong { display:block; }
+        #invoiceExportSheet .plain-row.is-stacked .stacked-list { margin-top:2px; }
         #invoiceExportSheet .list-item { display:flex; align-items:flex-start; gap:6px; font-size:13px; line-height:1.5; margin-bottom:5px; }
         #invoiceExportSheet .list-item:last-child { margin-bottom:0; }
         #invoiceExportSheet .list-item .mark { color:#3b82f6; font-weight:700; flex-shrink:0; }
@@ -826,7 +830,7 @@ Object.assign(PinkyClassApp.prototype, {
         /* ============ VII. FOOTER ============ */
         #invoiceExportSheet .footer { background:#dbeafe; border-radius:12px; padding:9px 8px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; font-weight:600; color:#17345f; }
         #invoiceExportSheet .footer-text { line-height:1.5; }
-        #invoiceExportSheet .section-block { margin-top:10px; }
+        #invoiceExportSheet .footer.section-block { margin-top:4px; }
     </style>
     <div class="card-main">
         <div class="header">
