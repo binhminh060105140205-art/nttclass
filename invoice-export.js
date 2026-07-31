@@ -559,8 +559,8 @@ Object.assign(PinkyClassApp.prototype, {
             { text: 'BÁO CÁO HỌC TẬP VÀ HỌC PHÍ', style: 'subtitle', alignment: 'center', margin: [0, 0, 0, 17] },
             summaryTable,
             ...plainSection('NHẬN XÉT HỌC TẬP', comments),
-            ...plainSection('LỘ TRÌNH HỌC TẬP', bulletRows(roadmap)),
-            ...plainSection('LỊCH HỌC', bulletRows(schedule)),
+            ...(roadmap ? plainSection('LỘ TRÌNH HỌC TẬP', bulletRows(roadmap)) : []),
+            ...(schedule ? plainSection('LỊCH HỌC', bulletRows(schedule)) : []),
             ...(tuitionText ? plainSection('CHI TIẾT HỌC PHÍ', bulletRows(tuitionText)) : [])
         ];
 
@@ -859,12 +859,12 @@ Object.assign(PinkyClassApp.prototype, {
 
         <div class="plain-section"><div class="section-title">Nhận xét học tập</div>${quoteItemsHTML}</div>
 
-        <div class="plain-section"><div class="section-title">Lộ trình</div>${roadmapHTML || '<span class="empty-hint">-</span>'}</div>
+        ${roadmapHTML ? `<div class="plain-section"><div class="section-title">Lộ trình</div>${roadmapHTML}</div>` : ''}
 
-        <div class="plain-section">
+        ${scheduleHTML ? `<div class="plain-section">
             <div class="section-title">Lịch học</div>
-            ${scheduleHTML || '<span class="empty-hint">-</span>'}
-        </div>
+            ${scheduleHTML}
+        </div>` : ''}
 
         ${feeNoteHTML ? `<div class="plain-section"><div class="section-title">Học phí</div>${feeNoteHTML}</div>` : ''}
 
