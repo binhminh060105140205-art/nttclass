@@ -797,9 +797,9 @@ Object.assign(PinkyClassApp.prototype, {
         #invoiceExportSheet .value { min-width:0; overflow-wrap:anywhere; font-size:13px; color:#17345f; font-weight:600; text-align:right; }
         #invoiceExportSheet .date-label { font-size:12px; color:#0b438f; margin:8px 0 6px; }
         /* Tránh flex + phần tử chữ lồng nhau để html2canvas không làm mất nét chữ. */
-        #invoiceExportSheet .date-chip-list { display:flex; flex-wrap:wrap; align-content:flex-start; column-gap:12px; row-gap:5px; }
-        #invoiceExportSheet .date-chip { display:inline; color:#17345f; font-weight:700; font-size:12px; white-space:nowrap; padding:0; margin:0; background:transparent; border-radius:0; }
-        #invoiceExportSheet .date-chip-text { display:inline; line-height:1.5; position:static; }
+        #invoiceExportSheet .date-chip-list { display:flex; flex-wrap:wrap; justify-content:center; align-content:flex-start; gap:6px 8px; }
+        #invoiceExportSheet .date-chip { display:inline-block; min-width:62px; height:29px; padding:0 10px; background:#dbeafe; border-radius:999px; line-height:29px; text-align:center; box-sizing:border-box; }
+        #invoiceExportSheet .date-chip-text { display:inline-block; line-height:1; position:relative; top:-7px; color:#17345f; font-family:inherit; font-size:12px; font-weight:800; }
 
         /* ============ V. TỔNG HỌC PHÍ ============ */
         #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#0b438f; }
