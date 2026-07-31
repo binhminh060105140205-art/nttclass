@@ -829,8 +829,8 @@ Object.assign(PinkyClassApp.prototype, {
 
         /* ============ VII. FOOTER ============ */
         #invoiceExportSheet .footer { background:#dbeafe; border-radius:12px; padding:6px 8px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; font-weight:600; color:#17345f; }
-        #invoiceExportSheet .footer-text { line-height:1.5; }
-        #invoiceExportSheet .footer.section-block { margin-top:-4px; }
+        #invoiceExportSheet .footer-text { line-height:1.3; transform:translateY(-2px); }
+        #invoiceExportSheet .footer.section-block { margin-top:-8px; }
     </style>
     <div class="card-main">
         <div class="header">
