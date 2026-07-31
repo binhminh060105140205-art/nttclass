@@ -42,7 +42,7 @@ class PinkyClassApp {
         this.requestFilter = 'pending';
         this.requestImageDraft = [];
         this.requestsLoaded = false;
-        this.appTheme = 'lithos';
+        this.appTheme = 'blue';
 
         // Áp dụng lại màu giao diện đã lưu (nếu có) ngay từ đầu, trước khi vẽ
         // bất cứ gì, để tránh bị "chớp" màu mặc định rồi mới đổi màu.
@@ -55,6 +55,9 @@ class PinkyClassApp {
     initTheme() {
         localStorage.removeItem('nttclass_theme');
         document.documentElement.removeAttribute('data-theme');
+        document.documentElement.setAttribute('data-app-theme', 'blue');
+        document.documentElement.setAttribute('data-app-surface', 'loading');
+        this.setThemeStylesheetEnabled(document.getElementById('appThemeStylesheet'), false);
 
         // Khởi tạo chế độ sáng/tối
         const mode = localStorage.getItem('nttclass_theme_mode') || 'light';
@@ -62,7 +65,7 @@ class PinkyClassApp {
     }
 
     normalizeAppTheme(theme) {
-        return ['blue', 'lithos'].includes(theme) ? theme : 'lithos';
+        return ['blue', 'lithos'].includes(theme) ? theme : 'blue';
     }
 
     getPersonalAppThemeKey() {
@@ -82,6 +85,37 @@ class PinkyClassApp {
         if (key) localStorage.removeItem(key);
     }
 
+    getResolvedAppTheme() {
+        return this.getPersonalAppTheme()
+            || this.normalizeAppTheme(localStorage.getItem('nttclass_app_theme'));
+    }
+
+    setThemeStylesheetEnabled(stylesheet, enabled) {
+        if (!stylesheet) return;
+        stylesheet.media = enabled ? 'all' : 'not all';
+        stylesheet.disabled = !enabled;
+    }
+
+    syncAppThemeForCurrentSurface() {
+        const surface = document.documentElement.getAttribute('data-app-surface');
+        if (surface === 'app' && this.currentUser) {
+            this.applyAppTheme(this.getResolvedAppTheme(), { persist: false });
+            return;
+        }
+        if (surface === 'landing' || surface === 'login') {
+            this.useLandingTheme({ render: false });
+        }
+    }
+
+    bindAppThemeLifecycle() {
+        if (this._appThemeLifecycleBound) return;
+        this._appThemeLifecycleBound = true;
+        window.addEventListener('pageshow', () => this.syncAppThemeForCurrentSurface());
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) this.syncAppThemeForCurrentSurface();
+        });
+    }
+
     setVelorahAppVideo() {
         const video = document.getElementById('velorahAppBackground');
         if (!video) return;
@@ -92,13 +126,13 @@ class PinkyClassApp {
     applyAppTheme(theme, options = {}) {
         const normalizedTheme = this.normalizeAppTheme(theme);
         this.appTheme = normalizedTheme;
-        if (options.persist !== false) localStorage.setItem('nttclass_app_theme', normalizedTheme);
+        if (options.persist === true) localStorage.setItem('nttclass_app_theme', normalizedTheme);
         document.documentElement.setAttribute('data-app-theme', normalizedTheme);
 
         const lithosStylesheet = document.getElementById('appThemeStylesheet');
         const velorahStylesheet = document.getElementById('velorahAppThemeStylesheet');
-        if (lithosStylesheet) lithosStylesheet.disabled = normalizedTheme !== 'lithos';
-        if (velorahStylesheet) velorahStylesheet.disabled = normalizedTheme !== 'velorah';
+        this.setThemeStylesheetEnabled(lithosStylesheet, normalizedTheme === 'lithos');
+        this.setThemeStylesheetEnabled(velorahStylesheet, normalizedTheme === 'velorah');
         this.setVelorahAppVideo(normalizedTheme === 'velorah');
         if (typeof window.refreshLithosPetals === 'function') window.refreshLithosPetals();
 
@@ -112,8 +146,8 @@ class PinkyClassApp {
         document.documentElement.setAttribute('data-app-theme', landingTheme);
         const lithosStylesheet = document.getElementById('appThemeStylesheet');
         const velorahStylesheet = document.getElementById('velorahAppThemeStylesheet');
-        if (lithosStylesheet) lithosStylesheet.disabled = landingTheme !== 'lithos';
-        if (velorahStylesheet) velorahStylesheet.disabled = landingTheme !== 'velorah';
+        this.setThemeStylesheetEnabled(lithosStylesheet, landingTheme === 'lithos');
+        this.setThemeStylesheetEnabled(velorahStylesheet, landingTheme === 'velorah');
         this.setVelorahAppVideo(false);
         if (typeof window.refreshLithosPetals === 'function') window.refreshLithosPetals();
         if (options.render !== false && typeof window.renderLandingTheme === 'function') {
@@ -122,8 +156,7 @@ class PinkyClassApp {
     }
 
     async loadAppTheme() {
-        const cachedTheme = this.normalizeAppTheme(localStorage.getItem('nttclass_app_theme'));
-        this.appTheme = this.getPersonalAppTheme() || cachedTheme;
+        this.appTheme = this.getResolvedAppTheme();
         if (this.currentUser) this.applyAppTheme(this.appTheme, { persist: false });
 
         try {
@@ -132,7 +165,7 @@ class PinkyClassApp {
             const data = await response.json();
             const globalTheme = this.normalizeAppTheme(data.theme);
             localStorage.setItem('nttclass_app_theme', globalTheme);
-            this.appTheme = this.getPersonalAppTheme() || globalTheme;
+            this.appTheme = this.getResolvedAppTheme();
         } catch (error) {
             console.warn('[GET /api/app-settings/theme]', error.message);
         }
@@ -153,6 +186,7 @@ class PinkyClassApp {
         localStorage.removeItem('nttclass_invoice_qr');
 
         this.registerEvents();
+        this.bindAppThemeLifecycle();
         const sessionPromise = fetch(`${API_BASE_URL}/api/session`, {
             cache: 'no-store',
             credentials: 'same-origin'
@@ -162,7 +196,7 @@ class PinkyClassApp {
         });
 
         // Dùng giao diện đã cache ngay; đồng bộ cấu hình server chạy nền để không chặn khôi phục phiên.
-        this.loadAppTheme();
+        const themePromise = this.loadAppTheme();
 
         let savedUser = null;
         const sessionResponse = await sessionPromise;
@@ -173,7 +207,8 @@ class PinkyClassApp {
         if (savedUser && savedUser.role) {
             this.currentUser = savedUser;
             this.currentRole = savedUser.role;
-            this.appTheme = this.getPersonalAppTheme() || this.appTheme;
+            await themePromise;
+            this.appTheme = this.getResolvedAppTheme();
             this.applyAppTheme(this.appTheme, { persist: false });
             await this.loadData({ render: false });
             await this.onLoginSuccess(savedUser, false);

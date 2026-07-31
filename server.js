@@ -668,16 +668,16 @@ let poolPromise = pgPool.query('SELECT 1')
                 UpdatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             )`);
             await pgPool.query(`INSERT INTO AppSettings (SettingKey, SettingValue)
-                VALUES ('app_theme', 'lithos')
+                VALUES ('app_theme', 'blue')
                 ON CONFLICT (SettingKey) DO NOTHING`);
             await pgPool.query(`WITH migration AS (
                     INSERT INTO AppSettings (SettingKey, SettingValue)
-                    VALUES ('app_theme_default_lithos_v1', 'done')
+                    VALUES ('app_theme_default_blue_v2', 'done')
                     ON CONFLICT (SettingKey) DO NOTHING
                     RETURNING SettingKey
                 )
                 UPDATE AppSettings
-                SET SettingValue = 'lithos', UpdatedAt = CURRENT_TIMESTAMP
+                SET SettingValue = 'blue', UpdatedAt = CURRENT_TIMESTAMP
                 WHERE SettingKey = 'app_theme'
                   AND EXISTS (SELECT 1 FROM migration)`);
         } catch (migErr) {
@@ -976,7 +976,7 @@ async function getCachedAppTheme() {
         ))
         .then(result => ['blue', 'lithos'].includes(result.rows[0]?.theme)
             ? result.rows[0].theme
-            : 'lithos');
+            : 'blue');
     appThemeSettingsCache.promise = request;
 
     try {

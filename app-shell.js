@@ -489,6 +489,7 @@ Object.assign(PinkyClassApp.prototype, {
         if (currentUrl.searchParams.delete('login')) {
             window.history.replaceState({}, '', currentUrl.pathname + currentUrl.search + currentUrl.hash);
         }
+        document.documentElement.setAttribute('data-app-surface', 'landing');
         this.useLandingTheme();
         document.getElementById('landingPage').classList.remove('hidden');
         document.getElementById('loginPage').classList.add('hidden');
@@ -501,6 +502,7 @@ Object.assign(PinkyClassApp.prototype, {
 
     showLoginPage() {
         window.__nttLoginRequested = true;
+        document.documentElement.setAttribute('data-app-surface', 'login');
         this.useLandingTheme({ render: false });
         document.getElementById('landingPage').classList.add('hidden');
         document.getElementById('loginPage').classList.remove('hidden');
@@ -514,7 +516,9 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     showAppPage() {
-        this.applyAppTheme(this.appTheme);
+        document.documentElement.setAttribute('data-app-surface', 'app');
+        this.appTheme = this.getResolvedAppTheme();
+        this.applyAppTheme(this.appTheme, { persist: false });
         document.getElementById('landingPage').classList.add('hidden');
         document.getElementById('loginPage').classList.add('hidden');
         document.querySelector('.sidebar').classList.remove('hidden');
@@ -525,6 +529,7 @@ Object.assign(PinkyClassApp.prototype, {
     async onLoginSuccess(user, save = true) {
         this.currentUser = user;
         this.currentRole = user.role;
+        this.appTheme = this.getResolvedAppTheme();
         this.requests = [];
         this.requestsLoaded = false;
         this.requestFilter = 'pending';

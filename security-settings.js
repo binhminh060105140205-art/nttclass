@@ -447,7 +447,7 @@ Object.assign(PinkyClassApp.prototype, {
 
             const data = await response.json();
             this.clearPersonalAppTheme();
-            this.applyAppTheme(data.theme);
+            this.applyAppTheme(data.theme, { persist: true });
             const themeLabel = data.theme === 'blue' ? 'Xanh gốc' : 'Đỏ cành đá';
             this.showToast(`Đã cập nhật giao diện mặc định ${themeLabel} cho hệ thống.`, 'success');
         } catch (error) {
