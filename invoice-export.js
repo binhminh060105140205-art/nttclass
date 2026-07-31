@@ -829,7 +829,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         /* ============ VII. FOOTER ============ */
         #invoiceExportSheet .footer { background:#dbeafe; border-radius:12px; height:28px; padding:0 8px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; font-weight:600; color:#17345f; }
-        #invoiceExportSheet .footer-text { line-height:14px; position:relative; top:-1px; }
+        #invoiceExportSheet .footer-text { line-height:14px; position:relative; top:-5px; }
         #invoiceExportSheet .footer.section-block { margin-top:9px; }
     </style>
     <div class="card-main">
