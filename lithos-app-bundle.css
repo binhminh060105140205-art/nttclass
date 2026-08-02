@@ -1976,6 +1976,10 @@ html[data-app-theme="lithos"] .sidebar::after {
     background: none !important;
 }
 
+html[data-app-theme="lithos"] .sidebar {
+    overflow: visible;
+}
+
 html[data-app-theme="lithos"] #sidebarUserName {
     isolation: isolate;
     background: none !important;
