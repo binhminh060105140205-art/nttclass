@@ -5,7 +5,7 @@ Object.assign(PinkyClassApp.prototype, {
     getAppThemeLabel(theme) {
         return {
             blue: 'Xanh gốc',
-            lithos: 'Đỏ cành đá',
+            lithos: 'Hồng hoa',
             pink: 'Hồng nhẹ'
         }[this.normalizeAppTheme(theme)] || 'Xanh gốc';
     },
