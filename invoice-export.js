@@ -512,10 +512,7 @@ Object.assign(PinkyClassApp.prototype, {
             const lines = nfc(text).split('\n').map(line => line.trim()).filter(Boolean);
             if (lines.length === 0) return [];
             return lines.map((line, index) => ({
-                text: [
-                    { text: '\u2022 ', bold: true, color: '#2563eb' },
-                    { text: line }
-                ],
+                text: line,
                 style: 'bodyText',
                 margin: [leftMargin, index === 0 ? topMargin : 0, 0, 5]
             }));
@@ -797,7 +794,7 @@ Object.assign(PinkyClassApp.prototype, {
         const esc = (s) => String(s || '').normalize('NFC').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const nl2br = (s) => esc(s).replace(/\n/g, '<br>');
 
-        // Dùng chung dấu chấm đầu dòng cho mọi nội dung dạng danh sách, trừ Tổng quan.
+        // Giữ nguyên các dòng người dùng nhập, không tự thêm dấu chấm đầu dòng.
         // Nếu dòng có dấu ":" thì in đậm phần trước dấu ":".
         const bulletListHTML = (text) => {
             const lines = esc(text).split('\n').map(line => line.trim()).filter(Boolean);
@@ -807,7 +804,7 @@ Object.assign(PinkyClassApp.prototype, {
                 const item = colonIndex > -1
                     ? `<strong>${line.slice(0, colonIndex + 1)}</strong>${line.slice(colonIndex + 1)}`
                     : line;
-                return `<div class="list-item"><span class="mark">&#8226;</span><span class="list-text">${item}</span></div>`;
+                return `<div class="list-item no-mark">${item}</div>`;
             }).join('');
         };
 
