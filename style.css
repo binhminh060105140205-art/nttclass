@@ -1393,7 +1393,7 @@ img, svg, video {
     font-size: 1.375rem;
     font-weight: 700;
     color: var(--accent-strong);
-    text-transform: uppercase;
+    text-transform: uppercase !important;
 }
 
 .header-title-box p {
