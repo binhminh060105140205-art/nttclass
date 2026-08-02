@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Playfair+Display:ital,wght@1,400;1,500;1,600&amp;display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Comfortaa:wght@400;500;600;700&family=Condiment&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260802-select-arrow1">
+    <link rel="stylesheet" href="style.css?v=20260802-student-journal1">
     <link rel="stylesheet" href="landing-lithos-bundle.css?v=20260731-performance5">
     <link id="appThemeStylesheet" rel="stylesheet" href="lithos-app-bundle.css?v=20260802-sidebar-toggle1" media="not all" disabled>
     <link id="pinkAppThemeStylesheet" rel="stylesheet" href="pink-minimal-theme.css?v=20260802-pink-minimal5" media="not all" disabled>
@@ -893,6 +893,49 @@
         </div>
     </div>
 
+    <!-- MODAL: NHẬT KÝ HỌC TẬP TỪ HỒ SƠ HỌC SINH -->
+    <div class="modal-backdrop" id="studentJournalModal">
+        <div class="modal-container student-journal-modal-container" role="dialog" aria-modal="true" aria-labelledby="studentJournalModalTitle">
+            <div class="modal-header student-journal-modal-header">
+                <div class="student-journal-modal-heading">
+                    <h3 class="modal-title" id="studentJournalModalTitle">NHẬT KÝ HỌC TẬP</h3>
+                    <p id="studentJournalStudentMeta">Học sinh • Lớp • Môn học</p>
+                </div>
+                <div class="student-journal-modal-controls">
+                    <label for="studentJournalMonthFilter">Tháng</label>
+                    <select id="studentJournalMonthFilter" class="form-control" onchange="app.changeStudentJournalMonth(this.value)">
+                        <option value="">Tất cả tháng</option>
+                    </select>
+                    <button type="button" class="modal-close" onclick="app.closeStudentJournalModal()" aria-label="Đóng">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body student-journal-modal-body">
+                <p class="student-journal-edit-hint">Chọn “Sửa trực tiếp” để cập nhật đánh giá; nội dung buổi học vẫn giữ nguyên.</p>
+                <div class="table-wrapper student-journal-table-wrap">
+                    <table class="custom-table student-journal-table">
+                        <thead>
+                            <tr>
+                                <th>STT</th>
+                                <th>NGÀY</th>
+                                <th>NỘI DUNG</th>
+                                <th>BTVN</th>
+                                <th>Ý THỨC</th>
+                                <th>NHẬN XÉT</th>
+                                <th>GHI CHÚ</th>
+                                <th>THAO TÁC</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentJournalTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer student-journal-modal-footer">
+                <span>Dữ liệu được đồng bộ với trang Nhật ký học tập.</span>
+                <button type="button" class="btn btn-secondary" onclick="app.closeStudentJournalModal()">Đóng</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Student Account Management Modal (tạo / reset mật khẩu / khóa / xóa tài khoản đăng nhập học sinh) -->
     <div class="modal-backdrop" id="studentAccountModal">
         <div class="modal-container">
@@ -1630,14 +1673,15 @@
     <script src="landing-orbis.js?v=20260731-performance5"></script>
     <script src="core.js?v=20260802-month-isolation1"></script>
     <script src="lithos-petals.js?v=20260802-pink-minimal1"></script>
-    <script src="app-shell.js?v=20260802-dashboard-total1"></script>
+    <script src="app-shell.js?v=20260802-student-journal1"></script>
     <script src="users.js"></script>
     <script src="dashboard.js?v=20260802-dashboard-total1"></script>
     <script src="student-logs.js?v=20260802-center-homework1"></script>
+    <script src="student-journal.js?v=20260802-student-journal2"></script>
     <script src="scores.js?v=20260802-score-global-month1"></script>
     <script src="calendar.js?v=20260802-month-isolation1"></script>
     <script src="tuition-export.js?v=20260802-month-isolation1"></script>
-    <script src="students.js?v=20260802-optional-grade1"></script>
+    <script src="students.js?v=20260802-student-journal1"></script>
     <script src="ai-chat.js?v=20260802-ai-data2"></script>
     <script src="requests.js?v=20260802-requests-inbox1"></script>
     <script src="requests-edit.js?v=20260730-performance3"></script>

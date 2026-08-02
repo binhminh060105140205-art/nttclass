@@ -5899,17 +5899,17 @@ body.request-image-viewer-open { overflow: hidden; }
 .student-profile-table th:nth-child(1),
 .student-profile-table td:nth-child(1) { width: 7%; text-align: center; }
 .student-profile-table th:nth-child(2),
-.student-profile-table td:nth-child(2) { width: 22%; }
+.student-profile-table td:nth-child(2) { width: 20%; }
 .student-profile-table th:nth-child(3),
-.student-profile-table td:nth-child(3) { width: 11%; }
+.student-profile-table td:nth-child(3) { width: 11%; text-align: center; }
 .student-profile-table th:nth-child(4),
-.student-profile-table td:nth-child(4) { width: 16%; }
+.student-profile-table td:nth-child(4) { width: 15%; text-align: center; }
 .student-profile-table th:nth-child(5),
 .student-profile-table td:nth-child(5) { width: 14%; }
 .student-profile-table th:nth-child(6),
-.student-profile-table td:nth-child(6) { width: 16%; }
+.student-profile-table td:nth-child(6) { width: 15%; text-align: center; }
 .student-profile-table th:nth-child(7),
-.student-profile-table td:nth-child(7) { width: 14%; }
+.student-profile-table td:nth-child(7) { width: 18%; }
 
 .student-profile-table tbody .student-data-row td {
     font-size: 0.95rem;
@@ -5944,7 +5944,7 @@ body.request-image-viewer-open { overflow: hidden; }
 }
 
 .student-price-cell {
-    text-align: right;
+    text-align: center;
     font-weight: 700;
 }
 
@@ -5956,10 +5956,11 @@ body.request-image-viewer-open { overflow: hidden; }
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 8px;
 }
 
 .student-table-actions .btn {
-    min-width: 76px;
+    min-width: 74px;
 }
 
 .student-grade-group-row td {
@@ -5978,6 +5979,156 @@ body.request-image-viewer-open { overflow: hidden; }
 
 .student-modal-container {
     max-width: 860px;
+}
+
+.student-journal-modal-container {
+    width: 90vw;
+    max-width: 90vw;
+    height: 90vh;
+    max-height: 90vh;
+}
+
+.student-journal-modal-header {
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.student-journal-modal-heading {
+    min-width: 0;
+}
+
+.student-journal-modal-heading p {
+    margin: 5px 0 0;
+    color: var(--text-muted);
+    font-size: 0.86rem;
+    font-weight: 600;
+}
+
+.student-journal-modal-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.student-journal-modal-controls label {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.student-journal-modal-controls .form-control {
+    width: 170px;
+    min-height: 40px;
+}
+
+.student-journal-modal-body {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 18px;
+    overflow: hidden;
+}
+
+.student-journal-edit-hint {
+    flex: 0 0 auto;
+    margin: 0 0 12px;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.student-journal-table-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+}
+
+.student-journal-table {
+    min-width: 1240px;
+    table-layout: fixed;
+}
+
+.student-journal-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    background: var(--surface-subtle, var(--card-bg));
+}
+
+.student-journal-table th:nth-child(1),
+.student-journal-table td:nth-child(1) { width: 92px; }
+.student-journal-table th:nth-child(2),
+.student-journal-table td:nth-child(2) { width: 88px; }
+.student-journal-table th:nth-child(3),
+.student-journal-table td:nth-child(3) { width: 245px; }
+.student-journal-table th:nth-child(4),
+.student-journal-table td:nth-child(4) { width: 118px; text-align: center; }
+.student-journal-table th:nth-child(5),
+.student-journal-table td:nth-child(5) { width: 155px; }
+.student-journal-table th:nth-child(6),
+.student-journal-table td:nth-child(6) { width: 270px; }
+.student-journal-table th:nth-child(7),
+.student-journal-table td:nth-child(7) { width: 170px; }
+.student-journal-table th:nth-child(8),
+.student-journal-table td:nth-child(8) { width: 120px; text-align: center; }
+
+.student-journal-table td {
+    vertical-align: middle;
+}
+
+.student-journal-edit-row td {
+    vertical-align: top;
+    background: var(--primary-soft);
+}
+
+.student-journal-edit-control {
+    width: 100%;
+    min-width: 0;
+}
+
+.student-journal-edit-textarea {
+    min-height: 96px;
+    resize: vertical;
+    line-height: 1.5;
+}
+
+.student-journal-note-input {
+    min-height: 78px;
+}
+
+.student-journal-row-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.student-journal-row-actions .btn,
+.student-journal-edit-btn {
+    width: 100%;
+    white-space: nowrap;
+}
+
+.student-journal-empty-cell {
+    padding: 38px !important;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.student-journal-muted {
+    color: var(--text-muted);
+}
+
+.student-journal-modal-footer {
+    align-items: center;
+    justify-content: space-between;
+}
+
+.student-journal-modal-footer span {
+    color: var(--text-muted);
+    font-size: 0.78rem;
 }
 
 .student-form-layout {
@@ -6041,6 +6192,35 @@ body.request-image-viewer-open { overflow: hidden; }
     .student-form-row-main,
     .student-form-row-secondary {
         grid-template-columns: 1fr;
+    }
+
+    .student-journal-modal-container {
+        width: 94vw;
+        max-width: 94vw;
+        height: 94vh;
+        max-height: 94vh;
+    }
+
+    .student-journal-modal-header {
+        align-items: flex-start;
+    }
+
+    .student-journal-modal-controls {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .student-journal-modal-controls .form-control {
+        flex: 1 1 auto;
+        width: auto;
+    }
+
+    .student-journal-modal-body {
+        padding: 10px;
+    }
+
+    .student-journal-modal-footer span {
+        display: none;
     }
 
     .student-modal-footer,

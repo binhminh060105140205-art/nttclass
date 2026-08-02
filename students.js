@@ -48,6 +48,7 @@ Object.assign(PinkyClassApp.prototype, {
             const classLabel = student.class || (student.gradeLevel ? `Lớp ${student.gradeLevel}` : "-");
             const actionsHtml = `
                 <div class="student-table-actions">
+                    <button class="btn btn-primary btn-sm" onclick="app.openStudentJournalModal(${studentId})">Nhật ký</button>
                     <button class="btn btn-secondary btn-sm" onclick="app.openEditStudentModal(${studentId})">Sửa</button>
                 </div>
             `;

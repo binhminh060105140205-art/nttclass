@@ -314,7 +314,7 @@ const PUBLIC_ROOT_FILES = new Set([
     'lithos-petals.css', 'lithos-petals.js', 'lithos-safe-decor.css',
     'lithos-stat-bloom.svg', 'lithos-vine-buttons.css', 'lithos-wood-bloom-pink.webp',
     'lithos-wood-pink.webp', 'main.js', 'pink-minimal-theme.css', 'requests-edit.js', 'requests.js', 'scores.js',
-    'security-settings.js', 'student-logs.js', 'students.js', 'style.css',
+    'security-settings.js', 'student-journal.js', 'student-logs.js', 'students.js', 'style.css',
     'tuition-export.js', 'users.js', 'velorah-app-theme.css'
 ]);
 const staticOptions = { dotfiles: 'deny', index: false, redirect: false, maxAge: '1h' };

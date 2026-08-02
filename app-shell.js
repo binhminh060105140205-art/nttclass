@@ -801,7 +801,7 @@ Object.assign(PinkyClassApp.prototype, {
             subtitleEl.innerText = "Xem thông tin đóng học phí của tất cả học sinh.";
         } else if (viewId === 'view-students') {
             titleEl.innerText = "HỒ SƠ HỌC SINH";
-            subtitleEl.innerText = "Quản lý thông tin liên hệ và học phí cơ bản.";
+            subtitleEl.innerText = "Thông tin học sinh và nhật ký học tập";
         } else if (viewId === 'view-users') {
             titleEl.innerText = "QUẢN LÝ TÀI KHOẢN";
             subtitleEl.innerText = "Tạo, chỉnh sửa, kích hoạt/vô hiệu hóa tài khoản Giáo viên và Trợ giảng.";
