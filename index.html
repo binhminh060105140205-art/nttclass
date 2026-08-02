@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Playfair+Display:ital,wght@1,400;1,500;1,600&amp;display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Comfortaa:wght@400;500;600;700&family=Condiment&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260802-requests-inbox1">
+    <link rel="stylesheet" href="style.css?v=20260802-invoice-preview1">
     <link rel="stylesheet" href="landing-lithos-bundle.css?v=20260731-performance5">
     <link id="appThemeStylesheet" rel="stylesheet" href="lithos-app-bundle.css?v=20260731-performance6" media="not all" disabled>
     <link id="pinkAppThemeStylesheet" rel="stylesheet" href="pink-minimal-theme.css?v=20260802-pink-minimal5" media="not all" disabled>
@@ -1100,6 +1100,27 @@
         </div>
     </div>
 
+    <div class="modal-backdrop" id="invoiceImagePreviewModal">
+        <div class="modal-container invoice-preview-container" role="dialog" aria-modal="true" aria-labelledby="invoiceImagePreviewTitle">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title" id="invoiceImagePreviewTitle">Xem Trước Phiếu Học Phí</h3>
+                    <p class="invoice-preview-subtitle">Kiểm tra nội dung trước khi tải ảnh xuống.</p>
+                </div>
+                <button type="button" class="modal-close" onclick="app.closeInvoiceImagePreview()" aria-label="Quay lại chỉnh sửa">&times;</button>
+            </div>
+            <div class="modal-body invoice-preview-body">
+                <div class="invoice-preview-frame">
+                    <img id="invoiceImagePreview" alt="Bản xem trước phiếu học phí">
+                </div>
+            </div>
+            <div class="modal-footer invoice-preview-actions">
+                <button type="button" class="btn btn-secondary" onclick="app.closeInvoiceImagePreview()">Quay lại nhập tiếp</button>
+                <button type="button" class="btn btn-primary" id="btnConfirmInvoiceImageExport" onclick="app.confirmInvoiceImageExport()">Xác nhận xuất ảnh</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL: QUICK ENTRY FROM WEEKLY CALENDAR (Image 2 layout) -->
     <div class="modal-backdrop" id="quickSessionEntryModal">
         <div class="modal-container" style="max-width: 700px;">
@@ -1570,6 +1591,6 @@
     <script src="requests-edit.js?v=20260730-performance3"></script>
     <script src="security-settings.js?v=20260802-pink-minimal1"></script>
     <script src="main.js"></script>
-    <script src="invoice-export.js?v=20260802-pink-minimal1"></script>
+    <script src="invoice-export.js?v=20260802-invoice-preview1"></script>
 </body>
 </html>

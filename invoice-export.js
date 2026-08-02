@@ -156,6 +156,7 @@ Object.assign(PinkyClassApp.prototype, {
     async openInvoiceModal(studentId) {
         const st = this.students.find(s => s.id === studentId);
         if (!st) return;
+        this.closeInvoiceImagePreview();
 
         // Lưu TOÀN BỘ buổi học của học sinh này (không giới hạn theo bộ lọc
         // tháng/năm toàn cục) để người dùng có thể tự do chọn khoảng "Từ ngày
@@ -772,12 +773,85 @@ Object.assign(PinkyClassApp.prototype, {
         }
     },
 
+    clearInvoiceImagePreview() {
+        const previewImage = document.getElementById('invoiceImagePreview');
+        if (this._invoicePreviewObjectUrl) URL.revokeObjectURL(this._invoicePreviewObjectUrl);
+        this._invoicePreviewBlob = null;
+        this._invoicePreviewFilename = '';
+        this._invoicePreviewObjectUrl = '';
+        if (previewImage) previewImage.removeAttribute('src');
+    },
+
+    closeInvoiceImagePreview() {
+        const previewModal = document.getElementById('invoiceImagePreviewModal');
+        if (previewModal) previewModal.classList.remove('show');
+        this.clearInvoiceImagePreview();
+    },
+
+    showInvoiceImagePreview(blob, filename) {
+        const previewImage = document.getElementById('invoiceImagePreview');
+        if (!previewImage || !(blob instanceof Blob)) throw new Error('Không thể tạo bản xem trước phiếu học phí.');
+        this.clearInvoiceImagePreview();
+        this._invoicePreviewBlob = blob;
+        this._invoicePreviewFilename = filename;
+        this._invoicePreviewObjectUrl = URL.createObjectURL(blob);
+        previewImage.src = this._invoicePreviewObjectUrl;
+        this.openModal('invoiceImagePreviewModal');
+    },
+
+    async prepareInvoiceImagePreview(canvas, student) {
+        const blob = await new Promise((resolve, reject) => {
+            canvas.toBlob(result => {
+                if (result) resolve(result);
+                else reject(new Error('Không thể tạo dữ liệu ảnh xem trước.'));
+            }, 'image/png');
+        });
+        const todayStr = this.toISODateOnly(new Date());
+        const safeStudentName = String(student?.name || 'HocSinh').normalize('NFC').replace(/\s+/g, '');
+        this.showInvoiceImagePreview(blob, `PhieuHocPhi_${safeStudentName}_${todayStr}.png`);
+    },
+
+    async confirmInvoiceImageExport() {
+        const previewBlob = this._invoicePreviewBlob;
+        const previewFilename = this._invoicePreviewFilename;
+        if (!(previewBlob instanceof Blob) || !previewFilename) {
+            this.showToast('Bản xem trước đã hết hạn. Vui lòng tạo lại ảnh.', 'error');
+            this.closeInvoiceImagePreview();
+            return;
+        }
+
+        this.setBtnLoading('btnConfirmInvoiceImageExport', true, 'Đang xuất ảnh...');
+        let downloadUrl = '';
+        try {
+            downloadUrl = URL.createObjectURL(previewBlob);
+            const link = document.createElement('a');
+            link.download = previewFilename;
+            link.href = downloadUrl;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            const downloadUrlToRevoke = downloadUrl;
+            window.setTimeout(() => URL.revokeObjectURL(downloadUrlToRevoke), 30000);
+            downloadUrl = '';
+            await this.saveInvoiceTemplate();
+            this.showToast('Đã xuất phiếu học phí dạng ảnh thành công!', 'success');
+            this.closeInvoiceImagePreview();
+            this.closeModal('invoiceModal');
+        } catch (err) {
+            if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+            console.error('Lỗi xác nhận xuất phiếu học phí:', err);
+            this.showToast(err.message || 'Không thể xuất ảnh phiếu học phí.', 'error');
+        } finally {
+            this.setBtnLoading('btnConfirmInvoiceImageExport', false);
+        }
+    },
+
     // Render phiếu học phí ra 1 file ẢNH (PNG) chất lượng cao, dựa trên dữ
     // liệu đã điền sẵn + phần nhận xét giáo viên vừa nhập thêm trong form.
     // Trước đây mở cửa sổ mới rồi gọi window.print() (xuất PDF qua hộp thoại
     // in của trình duyệt); nay dựng phiếu trong 1 khung ẩn ngay trên trang,
-    // đợi font/ảnh QR tải xong rồi dùng html2canvas chụp lại thành ảnh và tải
-    // xuống trực tiếp — không cần popup, không phụ thuộc máy in ảo.
+    // đợi font/ảnh QR tải xong rồi dùng html2canvas tạo bản xem trước. Chỉ khi
+    // người dùng xác nhận trong màn xem trước thì file ảnh mới được tải xuống.
     async exportInvoice() {
         const studentId = document.getElementById('invoiceStudentId').value;
         const st = this.students.find(s => s.id === studentId);
@@ -996,7 +1070,7 @@ Object.assign(PinkyClassApp.prototype, {
     </div>
 </div>`;
 
-        this.setBtnLoading('btnExportInvoice', true, 'Đang tạo ảnh...');
+        this.setBtnLoading('btnExportInvoice', true, 'Đang tạo bản xem trước...');
 
         // Dựng khung ẩn NGOÀI vùng nhìn thấy (không dùng display:none, vì
         // html2canvas cần layout thật để đo/vẽ đúng) để chụp ảnh.
@@ -1038,18 +1112,10 @@ Object.assign(PinkyClassApp.prototype, {
                 useCORS: true
             });
 
-            const todayStr = this.toISODateOnly(new Date());
-            const link = document.createElement('a');
-            link.download = `PhieuHocPhi_${st.name.replace(/\s+/g, '')}_${todayStr}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-            await this.saveInvoiceTemplate();
-
-            this.showToast('Đã xuất phiếu học phí dạng ảnh thành công!', 'success');
-            this.closeModal('invoiceModal');
+            await this.prepareInvoiceImagePreview(canvas, st);
         } catch (err) {
-            console.error('Lỗi xuất phiếu học phí:', err);
-            this.showToast(err.message || 'Xuất ảnh phiếu học phí thất bại, vui lòng thử lại.', 'error');
+            console.error('Lỗi tạo bản xem trước phiếu học phí:', err);
+            this.showToast(err.message || 'Không thể tạo bản xem trước phiếu học phí.', 'error');
         } finally {
             document.body.removeChild(holder);
             this.setBtnLoading('btnExportInvoice', false);
