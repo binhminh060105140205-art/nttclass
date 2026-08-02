@@ -2990,8 +2990,8 @@ textarea.form-control {
 }
 
 .week-calendar-scroll {
-    max-height: 640px;
-    overflow-y: auto;
+    max-height: none;
+    overflow-y: visible;
     scrollbar-width: thin;
 }
 

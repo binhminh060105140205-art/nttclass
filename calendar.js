@@ -146,7 +146,7 @@ Object.assign(PinkyClassApp.prototype, {
         const hourCount = HOUR_END - HOUR_START;
         let hourLabelsHTML = '';
         let hourLinesHTML = '';
-        for (let h = HOUR_START; h < HOUR_END; h++) {
+        for (let h = HOUR_START; h <= HOUR_END; h++) {
             const top = (h - HOUR_START) * HOUR_HEIGHT;
             hourLabelsHTML += `<div class="week-hour-label" style="top:${top}px;">${h}:00</div>`;
             hourLinesHTML += `<div class="week-hour-line" style="top:${top}px;"></div>`;
@@ -389,7 +389,7 @@ Object.assign(PinkyClassApp.prototype, {
             const pxPerMinute = this.CAL_HOUR_HEIGHT / 60;
             let minutesFromStart = newTopPx / pxPerMinute;
             minutesFromStart = Math.round(minutesFromStart / SNAP_MINUTES) * SNAP_MINUTES;
-            // Không cho kéo vượt ra ngoài khung giờ hiển thị 06:00 - 22:00
+            // Không cho kéo vượt ra ngoài khung giờ hiển thị 07:00 - 24:00
             const durationMinutes = Math.round((drag.blockHeightPx + 2) / pxPerMinute / SNAP_MINUTES) * SNAP_MINUTES || SNAP_MINUTES;
             minutesFromStart = Math.max(0, Math.min(minutesFromStart, totalMinutes - durationMinutes));
             newTopPx = minutesFromStart * pxPerMinute;
@@ -414,8 +414,9 @@ Object.assign(PinkyClassApp.prototype, {
             }
 
             const toHHMM = (mins) => {
-                const h = this.CAL_HOUR_START + Math.floor(mins / 60);
-                const m = mins % 60;
+                const absoluteMinutes = Math.min((this.CAL_HOUR_START * 60) + mins, (24 * 60) - 1);
+                const h = Math.floor(absoluteMinutes / 60);
+                const m = absoluteMinutes % 60;
                 return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
             };
             const [oh, om] = (sess.startTime || '00:00').split(':').map(Number);
@@ -1274,8 +1275,9 @@ Object.assign(PinkyClassApp.prototype, {
             endMin = Math.max(startMin + SNAP_MINUTES, Math.min(endMin, totalMinutes));
 
             const toHHMM = (mins) => {
-                const h = HOUR_START + Math.floor(mins / 60);
-                const m = mins % 60;
+                const absoluteMinutes = Math.min((HOUR_START * 60) + mins, (24 * 60) - 1);
+                const h = Math.floor(absoluteMinutes / 60);
+                const m = absoluteMinutes % 60;
                 return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
             };
 
