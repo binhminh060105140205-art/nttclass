@@ -779,7 +779,7 @@ Object.assign(PinkyClassApp.prototype, {
         const subtitleEl = document.getElementById('view-subtitle');
 
         if (viewId === 'view-dashboard') {
-            titleEl.innerText = "TỔNG QUAN HỆ THỐNG";
+            titleEl.innerText = "T\u1ed4NG QUAN L\u1edaP H\u1eccC";
             subtitleEl.innerText = "Bảng điều khiển học tập và lịch dạy cá nhân.";
         } else if (viewId === 'view-logs') {
             titleEl.innerText = "NHẬT KÝ HỌC TẬP";

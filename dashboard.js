@@ -10,7 +10,7 @@ Object.assign(PinkyClassApp.prototype, {
         
         let totalSessions = 0;
         let totalHours = 0;
-        let unpaidTuition = 0;
+        let monthlyTuition = 0;
 
         if (this.currentRole === 'student') {
             // Only count for current student
@@ -23,7 +23,7 @@ Object.assign(PinkyClassApp.prototype, {
             // với trạng thái "đã dạy/chưa dạy" VÀ với trạng thái đóng tiền của
             // các bạn học chung buổi khác). Nếu chính học sinh này học phí 0đ
             // thì không bao giờ bị tính là "chưa đóng" (vì không có gì để đóng).
-            unpaidTuition = this.getTuitionPeriodBreakdown(this.sessions, this.currentStudentId).unpaidTuition;
+            monthlyTuition = this.getTuitionPeriodBreakdown(this.sessions, this.currentStudentId).currentMonthTuition;
         } else {
             // Teacher & Assistant see all stats
             totalSessions = monthSessions.length;
@@ -35,13 +35,13 @@ Object.assign(PinkyClassApp.prototype, {
             // (các) học sinh thực sự chưa đóng, không tính cả buổi. Học sinh
             // học phí 0đ được loại trừ hoàn toàn khỏi phép chia lẫn khỏi vòng
             // lặp tính "chưa đóng" (không đóng tiền thì không thể "nợ" học phí).
-            unpaidTuition = this.students.reduce((sum, student) =>
-                sum + this.getTuitionPeriodBreakdown(this.sessions, student.id).unpaidTuition, 0);
+            monthlyTuition = this.students.reduce((sum, student) =>
+                sum + this.getTuitionPeriodBreakdown(this.sessions, student.id).currentMonthTuition, 0);
         }
 
         document.getElementById('stat-total-sessions').innerText = totalSessions;
         document.getElementById('stat-total-hours').innerText = totalHours.toFixed(1) + 'h';
-        document.getElementById('stat-unpaid-tuition').innerText = this.formatVND(unpaidTuition);
+        document.getElementById('stat-monthly-tuition').innerText = this.formatVND(monthlyTuition);
 
         // Render today + tomorrow classes (lối tắt: bấm vào 1 ca sẽ mở đúng
         // bảng "Nhập nhanh nội dung buổi học" giống hệt khi bấm ca đó bên
