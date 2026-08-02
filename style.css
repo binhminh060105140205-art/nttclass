@@ -1442,6 +1442,12 @@ img, svg, video {
     -moz-appearance: none;
 }
 
+html[data-app-theme="blue"] #globalStudentPicker,
+html[data-app-theme="blue"] #globalMonthFilter {
+    color: #0f4fba;
+    font-weight: 700;
+}
+
 /* Role Badges */
 .role-badge {
     padding: 6px 14px;
@@ -5927,8 +5933,11 @@ body.request-image-viewer-open { overflow: hidden; }
 }
 
 .student-subject-badge {
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    justify-content: center;
+    width: fit-content;
+    margin-inline: auto;
     min-height: 30px;
     padding: 4px 11px;
     border: 1px solid var(--primary-light);

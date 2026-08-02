@@ -9,10 +9,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Playfair+Display:ital,wght@1,400;1,500;1,600&amp;display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Comfortaa:wght@400;500;600;700&family=Condiment&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260802-student-journal1">
+    <link rel="stylesheet" href="style.css?v=20260802-student-subject-center1">
     <link rel="stylesheet" href="landing-lithos-bundle.css?v=20260731-performance5">
     <link id="appThemeStylesheet" rel="stylesheet" href="lithos-app-bundle.css?v=20260802-sidebar-toggle1" media="not all" disabled>
-    <link id="pinkAppThemeStylesheet" rel="stylesheet" href="pink-minimal-theme.css?v=20260802-pink-minimal5" media="not all" disabled>
+    <link id="pinkAppThemeStylesheet" rel="stylesheet" href="pink-minimal-theme.css?v=20260802-pink-minimal8" media="not all" disabled>
 </head>
 <body>
 
@@ -254,7 +254,7 @@
             <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr; gap: 20px;">
                 <div class="glass-card" style="padding: 24px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 style="color: var(--primary); font-weight: 700; display: flex; align-items: center; gap: 10px; margin-bottom: 0;"> Ca Dạy & Buổi Học Hôm Nay & Ngày Mai
+                        <h3 style="color: var(--primary); font-weight: 700; display: flex; align-items: center; gap: 10px; margin-bottom: 0;"> Lịch dạy sắp tới
                         </h3>
                         <button class="btn btn-primary btn-sm" onclick="app.switchView('view-scheduler')"> Xem toàn bộ lịch dạy
                         </button>
@@ -970,59 +970,6 @@
         </div>
     </div>
 
-    <!-- MODAL 2: UPDATE STUDY LOG DETAIL (Homework, Attitude, Comments) -->
-    <div class="modal-backdrop" id="updateLogModal">
-        <div class="modal-container" style="max-width: 600px;">
-            <div class="modal-header">
-                <h3 class="modal-title" id="updateLogTitle">Cập Nhật Nhận Xét Buổi Học</h3>
-                <button class="modal-close" onclick="app.closeModal('updateLogModal')">&times;</button>
-            </div>
-            <form id="updateLogForm">
-                <input type="hidden" id="updateLogSessionId">
-                <input type="hidden" id="updateLogStudentId">
-                <div class="modal-body" style="display: flex; flex-direction: column; gap: 15px;">
-                    
-                    <div style="background: var(--primary-soft); border: 1px solid var(--primary-light); border-radius: 12px; padding: 12px;">
-                        <span style="font-weight:600; color: var(--primary);" id="updateLogStudentMeta">Học sinh: Quỳnh Anh</span>
-                        <div style="font-size:12px; color: var(--text-muted); margin-top: 4px;" id="updateLogSessionMeta">Buổi ngày 23/05/2026</div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="updateHomework">Bài tập về nhà — mức hoàn thành</label>
-                        <select id="updateHomework" class="form-control">
-                            <option value="">-</option>
-                            <option value="0%">0%</option>
-                            <option value="30%">30%</option>
-                            <option value="50%">50%</option>
-                            <option value="70%">70%</option>
-                            <option value="100%">100%</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="updateAttitude">Ý thức học tập</label>
-                        <input type="text" id="updateAttitude" class="form-control" placeholder="Ví dụ: Tập trung, tốt, chưa chăm...">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="updateIndividualComment">Nhận xét riêng từng học sinh</label>
-                        <textarea id="updateIndividualComment" class="form-control" placeholder="Nhận xét riêng cho học sinh này..." rows="3"></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="updateNote">Ghi chú</label>
-                        <input type="text" id="updateNote" class="form-control" placeholder="Ghi chú thêm...">
-                    </div>
-
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="app.closeModal('updateLogModal')">Hủy bỏ</button>
-                    <button type="submit" class="btn btn-primary" id="saveUpdateLogBtn">Cập nhật</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <!-- MODAL: XÁC NHẬN THU HỌC PHÍ THEO THÁNG -->
     <div class="modal-backdrop" id="monthlyPaymentModal">
         <div class="modal-container" style="max-width: 520px;">
@@ -1177,7 +1124,7 @@
     <div class="modal-backdrop" id="quickSessionEntryModal">
         <div class="modal-container" style="max-width: 700px;">
             <div class="modal-header">
-                <h3 class="modal-title"> Nhập Nhanh Nội Dung Buổi Học</h3>
+                <h3 class="modal-title">Cập Nhật Buổi Học</h3>
                 <button class="modal-close" onclick="app.closeModal('quickSessionEntryModal')">&times;</button>
             </div>
             <form id="quickSessionEntryForm">
@@ -1671,21 +1618,21 @@
          file ở giữa (app-shell, users, dashboard...) load trước/sau nhau
          thoải mái, không phụ thuộc lẫn nhau. -->
     <script src="landing-orbis.js?v=20260731-performance5"></script>
-    <script src="core.js?v=20260802-month-isolation1"></script>
+    <script src="core.js?v=20260802-runtime-cleanup1"></script>
     <script src="lithos-petals.js?v=20260802-pink-minimal1"></script>
-    <script src="app-shell.js?v=20260802-student-journal1"></script>
+    <script src="app-shell.js?v=20260802-runtime-cleanup1"></script>
     <script src="users.js"></script>
     <script src="dashboard.js?v=20260802-dashboard-total1"></script>
-    <script src="student-logs.js?v=20260802-center-homework1"></script>
-    <script src="student-journal.js?v=20260802-student-journal2"></script>
-    <script src="scores.js?v=20260802-score-global-month1"></script>
-    <script src="calendar.js?v=20260802-month-isolation1"></script>
+    <script src="student-logs.js?v=20260802-runtime-cleanup1"></script>
+    <script src="student-journal.js?v=20260802-completed-session1"></script>
+    <script src="scores.js?v=20260802-runtime-cleanup1"></script>
+    <script src="calendar.js?v=20260802-runtime-cleanup1"></script>
     <script src="tuition-export.js?v=20260802-month-isolation1"></script>
     <script src="students.js?v=20260802-student-journal1"></script>
     <script src="ai-chat.js?v=20260802-ai-data2"></script>
     <script src="requests.js?v=20260802-requests-inbox1"></script>
     <script src="requests-edit.js?v=20260730-performance3"></script>
-    <script src="security-settings.js?v=20260802-theme-label1"></script>
+    <script src="security-settings.js?v=20260802-runtime-cleanup1"></script>
     <script src="main.js"></script>
     <script src="invoice-export.js?v=20260802-month-isolation1"></script>
 </body>

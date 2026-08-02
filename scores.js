@@ -423,31 +423,6 @@ Object.assign(PinkyClassApp.prototype, {
         this.syncCustomScoreTypeInput(document.getElementById('scoreType'), document.getElementById('scoreCustomType'));
     },
 
-    openAddScoreModal() {
-        const studentId = document.getElementById('scoreFilterStudent')?.value || this.currentStudentId;
-        if (!studentId) {
-            this.showToast('Vui lòng lọc một học sinh trước khi thêm điểm.', 'error');
-            return;
-        }
-        document.getElementById('scoreModalTitle').innerText = 'Thêm điểm ngoài buổi học';
-        document.getElementById('editScoreId').value = '';
-        document.getElementById('scoreType').value = 'BTVN';
-        document.getElementById('scoreCustomType').value = '';
-        this.syncCustomScoreTypeInput(document.getElementById('scoreType'), document.getElementById('scoreCustomType'));
-        document.getElementById('scoreTestName').value = '';
-        document.getElementById('scoreMax').value = '10';
-        document.getElementById('scoreValue').value = '';
-        document.getElementById('scoreValue').max = '10';
-        document.getElementById('scoreDate').value = this.toISODateOnly(new Date());
-        document.getElementById('scoreNote').value = '';
-        document.getElementById('scoreDeleteBtn').style.display = 'none';
-        document.getElementById('scoreModalStudentLabel').innerText = `Học sinh: ${this.getStudentName(studentId)}`;
-        document.getElementById('scoreModalHelp').innerText = 'Điểm này không gắn với một buổi học cụ thể.';
-        document.getElementById('scoreForm').dataset.studentId = studentId;
-        this.setScoreMetadataLocked(false);
-        this.openModal('scoreModal');
-    },
-
     openEditScoreModal(scoreId) {
         const score = (this.scores || []).find(item => item.id === scoreId);
         if (!score) return;

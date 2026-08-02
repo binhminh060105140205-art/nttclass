@@ -9,9 +9,6 @@
 // ví dụ: 'https://nttclass-backend.onrender.com'.
 const API_BASE_URL = '';
 
-const MOCK_STUDENTS = [];
-const MOCK_SESSIONS = [];
-
 class PinkyClassApp {
     constructor() {
         this.students = [];
@@ -121,13 +118,6 @@ class PinkyClassApp {
         });
     }
 
-    setVelorahAppVideo() {
-        const video = document.getElementById('velorahAppBackground');
-        if (!video) return;
-        video.pause();
-        video.style.display = 'none';
-    }
-
     applyAppTheme(theme, options = {}) {
         const normalizedTheme = this.normalizeAppTheme(theme);
         const usesLithosBase = normalizedTheme === 'lithos' || normalizedTheme === 'pink';
@@ -139,11 +129,8 @@ class PinkyClassApp {
 
         const lithosStylesheet = document.getElementById('appThemeStylesheet');
         const pinkStylesheet = document.getElementById('pinkAppThemeStylesheet');
-        const velorahStylesheet = document.getElementById('velorahAppThemeStylesheet');
         this.setThemeStylesheetEnabled(lithosStylesheet, usesLithosBase);
         this.setThemeStylesheetEnabled(pinkStylesheet, normalizedTheme === 'pink');
-        this.setThemeStylesheetEnabled(velorahStylesheet, normalizedTheme === 'velorah');
-        this.setVelorahAppVideo(normalizedTheme === 'velorah');
         if (typeof window.refreshLithosPetals === 'function') window.refreshLithosPetals();
 
         if (typeof this.updateAppThemeActiveButtons === 'function') {
@@ -157,11 +144,8 @@ class PinkyClassApp {
         document.documentElement.setAttribute('data-app-theme', landingTheme);
         const lithosStylesheet = document.getElementById('appThemeStylesheet');
         const pinkStylesheet = document.getElementById('pinkAppThemeStylesheet');
-        const velorahStylesheet = document.getElementById('velorahAppThemeStylesheet');
         this.setThemeStylesheetEnabled(lithosStylesheet, landingTheme === 'lithos');
         this.setThemeStylesheetEnabled(pinkStylesheet, false);
-        this.setThemeStylesheetEnabled(velorahStylesheet, landingTheme === 'velorah');
-        this.setVelorahAppVideo(false);
         if (typeof window.refreshLithosPetals === 'function') window.refreshLithosPetals();
         if (options.render !== false && typeof window.renderLandingTheme === 'function') {
             window.renderLandingTheme(landingTheme);
@@ -448,45 +432,6 @@ class PinkyClassApp {
             paidTuition: currentMonthPaid,
             unpaidTuition: currentMonthUnpaid + carriedUnpaid
         };
-    }
-
-    // API /api/sessions trả về 1 dòng cho MỖI (buổi học, học sinh) do LEFT JOIN
-    // với SessionDetails -> cần gộp lại theo SessionId thành 1 object buổi học
-    // có mảng studentIds + object studentDetails.
-    normalizeSessions(rows) {
-        const map = new Map();
-        (rows || []).forEach(row => {
-            if (!map.has(row.Id)) {
-                map.set(row.Id, {
-                    id: row.Id,
-                    date: row.SessionDate ? String(row.SessionDate).slice(0, 10) : row.SessionDate,
-                    startTime: row.StartTime,
-                    endTime: row.EndTime,
-                    type: row.SessionType,
-                    price: row.Price,
-                    duration: row.Duration,
-                    content: row.Content,
-                    generalComment: row.GeneralComment,
-                    recurrenceGroupId: row.RecurrenceGroupId || null,
-                    recurrenceSequence: row.RecurrenceSequence === null || row.RecurrenceSequence === undefined ? null : Number(row.RecurrenceSequence),
-                    completed: !!row.Completed,
-                    paid: !!row.Paid,
-                    studentIds: [],
-                    studentDetails: {}
-                });
-            }
-            const sessionObj = map.get(row.Id);
-            if (row.StudentId && !sessionObj.studentIds.includes(row.StudentId)) {
-                sessionObj.studentIds.push(row.StudentId);
-                sessionObj.studentDetails[row.StudentId] = {
-                    homework: row.Homework || '',
-                    attitude: row.Attitude || '',
-                    individualComment: row.IndividualComment || '',
-                    note: row.Note || ''
-                };
-            }
-        });
-        return Array.from(map.values());
     }
 
     // Học sinh KHÔNG có quyền gọi /api/students hay /api/sessions (403 —

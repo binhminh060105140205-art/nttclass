@@ -428,13 +428,6 @@ Object.assign(PinkyClassApp.prototype, {
         this.showToast(`Đã áp dụng giao diện ${themeLabel} cho tài khoản này.`, 'success');
     },
 
-    resetPersonalAppTheme() {
-        if (!this.currentUser) return;
-        this.clearPersonalAppTheme();
-        const globalTheme = this.normalizeAppTheme(localStorage.getItem('nttclass_app_theme'));
-        this.applyAppTheme(globalTheme, { persist: false });
-        this.showToast('Đã dùng lại giao diện hệ thống.', 'success');
-    },
     async setAppTheme(theme) {
         if (this.currentRole !== 'admin') {
             this.showToast('Chỉ Admin được đổi giao diện toàn hệ thống.', 'error');

@@ -313,3 +313,26 @@ html[data-app-theme="lithos"][data-app-variant="pink"] :is(.btn, .menu-item, .gl
         background: var(--background) !important;
     }
 }
+
+html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"]
+#view-tuition .tuition-status-select {
+    display: block;
+    margin-inline: auto;
+    text-align: center !important;
+    text-align-last: center !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"]
+#view-tuition .tuition-status-select.status-paid {
+    color: #15803d !important;
+    background: #dcfce7 !important;
+    border-color: #86efac !important;
+    font-weight: 800 !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"]
+#view-tuition .tuition-status-select.status-unpaid {
+    color: #b91c1c !important;
+    background: #fee2e2 !important;
+    border-color: #fca5a5 !important;
+}

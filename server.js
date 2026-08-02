@@ -289,37 +289,20 @@ app.use((req, res, next) => {
 
 const PUBLIC_ROOT_FILES = new Set([
     'ai-chat.js', 'app-shell.js', 'calendar.js', 'core.js', 'dashboard.js',
-    'invoice-export.js', 'landing-lithos-animations.css', 'landing-lithos-base.css',
-    'landing-lithos-bundle.css',
-    'landing-lithos-button.css', 'landing-lithos-copy.css', 'landing-lithos-copy.js',
-    'landing-lithos-core.css', 'landing-lithos-dom.js', 'landing-lithos-fonts.css',
-    'landing-lithos-heading.css', 'landing-lithos-heading.js', 'landing-lithos-loader.js',
-    'landing-lithos-login.js', 'landing-lithos-motion.css', 'landing-lithos-nav-actions.css',
-    'landing-lithos-nav-menu.js', 'landing-lithos-nav.css', 'landing-lithos-nav.js',
-    'landing-lithos-responsive.css', 'landing-lithos-reveal.css', 'landing-lithos-spotlight.js',
-    'landing-orbis.css', 'landing-orbis-fixes.css', 'landing-orbis.js',
-    'landing-velorah.css', 'landing-velorah.js', 'lithos-app-background.css',
-    'lithos-app-bundle.css',
-    'lithos-app-cards.css', 'lithos-app-components.css', 'lithos-app-controls.css',
-    'lithos-app-dark.css', 'lithos-app-forms.css', 'lithos-app-header.css',
-    'lithos-app-light.css', 'lithos-app-login-fields.css', 'lithos-app-login-panel.css',
-    'lithos-app-login.css', 'lithos-app-menu.css', 'lithos-app-modal.css',
-    'lithos-app-organic.css', 'lithos-app-requests.css', 'lithos-app-responsive.css',
-    'lithos-app-scheduler.css', 'lithos-app-shell.css', 'lithos-app-sidebar.css',
-    'lithos-app-special.css', 'lithos-app-stat-fix.css', 'lithos-app-stats.css',
-    'lithos-app-tables.css', 'lithos-app-theme.css', 'lithos-app-tokens.css',
+    'invoice-export.js', 'landing-lithos-bundle.css', 'landing-lithos-copy.js',
+    'landing-lithos-dom.js', 'landing-lithos-heading.js', 'landing-lithos-loader.js',
+    'landing-lithos-login.js', 'landing-lithos-nav-menu.js', 'landing-lithos-nav.js',
+    'landing-lithos-spotlight.js', 'landing-orbis.js', 'lithos-app-bundle.css',
     'lithos-botanical-vine.svg', 'lithos-botanical.svg', 'lithos-button-vine-back.svg',
-    'lithos-button-vine-front.svg', 'lithos-button-vine-wrap.svg', 'lithos-corner-bloom.svg',
+    'lithos-button-vine-front.svg', 'lithos-corner-bloom.svg',
     'lithos-falling-blossom.svg', 'lithos-log-header-branch.svg', 'lithos-name-vine.svg',
-    'lithos-petals.css', 'lithos-petals.js', 'lithos-safe-decor.css',
-    'lithos-stat-bloom.svg', 'lithos-vine-buttons.css', 'lithos-wood-bloom-pink.webp',
+    'lithos-petals.js', 'lithos-stat-bloom.svg', 'lithos-wood-bloom-pink.webp',
     'lithos-wood-pink.webp', 'main.js', 'pink-minimal-theme.css', 'requests-edit.js', 'requests.js', 'scores.js',
     'security-settings.js', 'student-journal.js', 'student-logs.js', 'students.js', 'style.css',
-    'tuition-export.js', 'users.js', 'velorah-app-theme.css'
+    'tuition-export.js', 'users.js'
 ]);
 const staticOptions = { dotfiles: 'deny', index: false, redirect: false, maxAge: '1h' };
 app.use('/assets', express.static(path.join(__dirname, 'assets'), staticOptions));
-app.use('/src/styles', express.static(path.join(__dirname, 'src', 'styles'), staticOptions));
 const PUBLIC_VENDOR_FILES = new Map([
     ['pdfmake.min.js', path.join(__dirname, 'node_modules', 'pdfmake', 'build', 'pdfmake.min.js')],
     ['vfs_fonts.js', path.join(__dirname, 'node_modules', 'pdfmake', 'build', 'vfs_fonts.js')]

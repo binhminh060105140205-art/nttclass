@@ -35,6 +35,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         return (this.sessions || [])
             .filter(session => (session.studentIds || []).some(id => String(id) === String(studentId)))
+            .filter(session => this.isSessionCompleted(session))
             .filter(session => {
                 if (!selectedMonth) return true;
                 const dateParts = String(session.date || '').split('-').map(Number);
@@ -82,7 +83,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         const sessions = this.getStudentJournalSessions(studentId);
         if (sessions.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="student-journal-empty-cell">Chưa có buổi học nào trong tháng đã chọn.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="student-journal-empty-cell">Chưa có buổi học đã dạy nào trong tháng đã chọn.</td></tr>';
             return;
         }
 

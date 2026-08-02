@@ -294,12 +294,6 @@ Object.assign(PinkyClassApp.prototype, {
             this.handleAddStudent();
         });
 
-        // Form Submit: Update individual log
-        document.getElementById('updateLogForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleUpdateLog();
-        });
-
         // Form Submit: Edit Session
         document.getElementById('editSessionForm').addEventListener('submit', (e) => {
             e.preventDefault();

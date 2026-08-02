@@ -20,6 +20,7 @@ Object.assign(PinkyClassApp.prototype, {
         // Find all sessions involving this student, sorted chronologically
         const studentSessions = this.filterByMonth(this.sessions)
             .filter(sess => sess.studentIds.includes(studentId))
+            .filter(sess => this.isSessionCompleted(sess))
             .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
 
         const tbody = document.getElementById('studentLogsTableBody');
@@ -29,7 +30,7 @@ Object.assign(PinkyClassApp.prototype, {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="8" style="text-align: center; padding: 30px; color: var(--text-muted);">
-                        Chưa có buổi học nào được ghi nhận cho học sinh này.
+                        Chưa có buổi học đã dạy nào được ghi nhận cho học sinh này.
                     </td>
                 </tr>
             `;
@@ -69,9 +70,8 @@ Object.assign(PinkyClassApp.prototype, {
 
             // Actions for edit
             const sessionIdArg = this.escapeHtmlAttr(JSON.stringify(String(sess.id)));
-            const studentIdArg = this.escapeHtmlAttr(JSON.stringify(String(studentId)));
             const actionsHTML = `
-                <button class="btn btn-secondary btn-sm" onclick="app.openUpdateLogModal(${sessionIdArg}, ${studentIdArg})">Chỉnh sửa</button>
+                <button class="btn btn-secondary btn-sm" onclick="app.openSessionQuickEntry(${sessionIdArg})">Sửa buổi học</button>
             `;
 
             tr.innerHTML = `
@@ -140,12 +140,6 @@ Object.assign(PinkyClassApp.prototype, {
     // --- VIEW 2B: SCORES MODULE (BTVN/KTTX/Kiểm tra cuối chương
     //     + Phase 4: biểu đồ tiến bộ / so sánh / tỷ lệ hoàn thành BTVN) ---
 
-    getScoresForStudent(studentId) {
-        return (this.scores || [])
-            .filter(sc => sc.studentId === studentId)
-            .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
-    },
-
     scoreTypeLabel(type) {
         if (type === 'BTVN') return 'BTVN';
         if (type === 'KTTX' || type === 'KiemTra') return 'Kiểm tra thường xuyên';
@@ -167,14 +161,5 @@ Object.assign(PinkyClassApp.prototype, {
         return nums.reduce((a, b) => a + b, 0) / nums.length;
     },
 
-    // Nhận xét tự động dựa trên điểm trung bình chung của học sinh đang chọn
-    getAutoComment(avg) {
-        if (avg === null) return 'Chưa có dữ liệu điểm để đưa ra nhận xét — hãy nhập điểm cho học sinh này.';
-        if (avg >= 8.5) return 'Xuất sắc! Học sinh duy trì phong độ rất tốt, tiếp tục phát huy nhé.';
-        if (avg >= 7) return 'Khá tốt. Học sinh nắm chắc kiến thức, nên chú ý thêm các dạng bài nâng cao.';
-        if (avg >= 5.5) return 'Trung bình khá. Cần luyện tập thêm để cải thiện độ chắc chắn kiến thức.';
-        if (avg >= 4) return 'Cần cố gắng hơn. Nên tăng cường ôn tập và làm bài tập đều đặn hơn.';
-        return 'Đáng lo ngại. Nên trao đổi sớm với phụ huynh và lên kế hoạch phụ đạo thêm.';
-    }
 
 });

@@ -758,29 +758,6 @@ Object.assign(PinkyClassApp.prototype, {
         }
     },
 
-    // Escape giá trị chèn vào thuộc tính value="" để tránh vỡ HTML khi nội
-    // dung có chứa dấu ngoặc kép
-    escapeHtmlAttr(str) {
-        return String(str ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/"/g, '&quot;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/'/g, '&#39;');
-    },
-
-    // Escape đầy đủ khi chèn text thuần vào NỘI DUNG thẻ HTML (khác với
-    // escapeHtmlAttr chỉ dùng cho value="..."), tránh vỡ layout hoặc lộ HTML
-    // injection nếu giáo viên gõ dấu < > trong nội dung buổi học.
-    escapeHtml(str) {
-        return String(str ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
     // Thêm 1 bong bóng chat vào khung Trợ lý AI, trả về element vừa tạo (để
     // có thể sửa nội dung sau, ví dụ thay bong bóng "Đang trả lời..." bằng
     // câu trả lời thật khi API phản hồi xong).
@@ -1687,64 +1664,6 @@ Object.assign(PinkyClassApp.prototype, {
         const result = await this.requireApiSuccess(res, 'Không thể xóa buổi học.');
         await this.runDeletionRefresh(() => this.loadData());
         this.showToast(result?.message || "Đã xóa buổi học thành công.", "success");
-    },
-
-    // 4. Update Student Specific Evaluation Log (Homework, Attitude, Comments)
-    openUpdateLogModal(sessionId, studentId) {
-        const sess = this.sessions.find(x => x.id === sessionId);
-        if (!sess) return;
-
-        const detail = sess.studentDetails[studentId];
-        if (!detail) return;
-
-        document.getElementById('updateLogSessionId').value = sessionId;
-        document.getElementById('updateLogStudentId').value = studentId;
-        
-        document.getElementById('updateLogStudentMeta').innerText = `Học sinh: ${this.getStudentName(studentId)} (${this.getStudentClass(studentId)})`;
-        document.getElementById('updateLogSessionMeta').innerText = `Buổi ngày ${this.formatDateVN(sess.date)} | Ca ${sess.startTime} - ${sess.endTime}`;
-
-        const sessionCompleted = this.isSessionCompleted(sess);
-        document.getElementById('updateHomework').value = sessionCompleted ? (this.normalizeHomeworkValue(detail.homework) || '') : '';
-        document.getElementById('updateAttitude').value = sessionCompleted ? (detail.attitude || '') : '';
-        document.getElementById('updateIndividualComment').value = detail.individualComment || '';
-        document.getElementById('updateNote').value = detail.note || '';
-
-        this.openModal('updateLogModal');
-    },
-
-    async handleUpdateLog() {
-        const sessionId = document.getElementById('updateLogSessionId').value;
-        const studentId = document.getElementById('updateLogStudentId').value;
-
-        const sess = this.sessions.find(x => x.id === sessionId);
-        if (!sess) return;
-
-        const detail = sess.studentDetails[studentId];
-        if (!detail) return;
-
-        const homework = document.getElementById('updateHomework').value;
-        const attitude = document.getElementById('updateAttitude').value.trim();
-        const individualComment = document.getElementById('updateIndividualComment').value.trim();
-        const note = document.getElementById('updateNote').value.trim();
-
-        this.setBtnLoading('saveUpdateLogBtn', true, 'Đang lưu...');
-        try {
-            const res = await this.authFetch(`${API_BASE_URL}/api/session-details/${sessionId}/${studentId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ homework, attitude, individualComment, note })
-            });
-            await this.requireApiSuccess(res, 'Không thể lưu nhận xét học sinh.');
-            await this.loadData();
-        } catch (err) {
-            this.showToast(err.message || 'Không thể lưu nhận xét học sinh.', 'error');
-            return;
-        } finally {
-            this.setBtnLoading('saveUpdateLogBtn', false);
-        }
-
-        this.closeModal('updateLogModal');
-        this.showToast("Cập nhật nhận xét học sinh thành công!", "success");
     },
 
     // Chuyển trạng thái học phí (Đã thanh toán <-> Chưa thanh toán) cho TẤT CẢ
