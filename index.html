@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Playfair+Display:ital,wght@1,400;1,500;1,600&amp;display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Comfortaa:wght@400;500;600;700&family=Condiment&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260802-calendar-full-day1">
+    <link rel="stylesheet" href="style.css?v=20260802-select-arrow1">
     <link rel="stylesheet" href="landing-lithos-bundle.css?v=20260731-performance5">
     <link id="appThemeStylesheet" rel="stylesheet" href="lithos-app-bundle.css?v=20260802-sidebar-toggle1" media="not all" disabled>
     <link id="pinkAppThemeStylesheet" rel="stylesheet" href="pink-minimal-theme.css?v=20260802-pink-minimal5" media="not all" disabled>
@@ -281,7 +281,7 @@
         <section id="view-logs" class="view-section">
             <div class="glass-card" style="padding: 14px 16px;">
                 <div class="evaluation-header" style="margin-bottom: 8px;">
-                    <div class="student-context-picker log-student-picker" id="studentContextPicker">
+                    <div class="student-context-picker log-student-picker select-arrow-picker" id="studentContextPicker">
                         <select id="globalStudentPicker" class="student-select" aria-label="Chọn học sinh">
                             <!-- Filled dynamically -->
                         </select>
@@ -759,8 +759,8 @@
         <section id="view-students" class="view-section">
             <div class="glass-card students-profile-card">
                 <div class="students-profile-toolbar">
-                    <div class="students-profile-filter">
-                        <select id="studentGradeFilter" class="form-select student-grade-filter" aria-label="Chọn lớp học sinh">
+                    <div class="students-profile-filter student-context-picker select-arrow-picker">
+                        <select id="studentGradeFilter" class="form-select student-grade-filter student-select" aria-label="Chọn lớp học sinh">
                             <option value="">Tất cả các lớp</option>
                             <option value="1">Lớp 1</option>
                             <option value="2">Lớp 2</option>
