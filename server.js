@@ -2717,6 +2717,8 @@ app.put('/api/students/:studentId/set-paid', requireRole('teacher'), requireTeac
 const INVOICE_TEMPLATE_FIELD_LIMITS = Object.freeze({
     teacherName: 160,
     teacherPhone: 30,
+    bankAccountNumber: 60,
+    bankAccountHolder: 160,
     overview: 4000,
     algebra: 4000,
     geometry: 4000,
@@ -2731,7 +2733,10 @@ function normalizeInvoiceTemplate(rawTemplate) {
         : {};
     return Object.fromEntries(Object.entries(INVOICE_TEMPLATE_FIELD_LIMITS).map(([field, maxLength]) => [
         field,
-        String(source[field] ?? '').normalize('NFC').trim().slice(0, maxLength)
+        String(Object.prototype.hasOwnProperty.call(source, field)
+            ? source[field]
+            : (field === 'bankAccountNumber' ? '0978783058' : field === 'bankAccountHolder' ? 'Nguyễn Thanh Thúy' : ''))
+            .normalize('NFC').trim().slice(0, maxLength)
     ]));
 }
 

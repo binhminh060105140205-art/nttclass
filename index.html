@@ -1064,6 +1064,8 @@
                         <div class="invoice-output-grid">
                             <div class="form-group"><label for="invoiceSchedule">Lịch học hiển thị trên phiếu</label><textarea id="invoiceSchedule" class="form-control" rows="3" placeholder="Ví dụ: 16h-18h thứ 4, chủ nhật: học riêng phần hình học." autocomplete="off" spellcheck="false"></textarea></div>
                             <div class="form-group"><label for="invoiceTuitionNote">Học phí</label><textarea id="invoiceTuitionNote" class="form-control" rows="3" placeholder="Để trống thì mục Học phí chi tiết sẽ không hiển thị trên phiếu." autocomplete="off" spellcheck="false"></textarea></div>
+                            <div class="form-group"><label for="invoiceBankAccountNumber">Số tài khoản</label><input type="text" id="invoiceBankAccountNumber" class="form-control" value="0978783058" maxlength="60" inputmode="numeric" placeholder="Nhập số tài khoản" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+                            <div class="form-group"><label for="invoiceBankAccountHolder">Chủ tài khoản</label><input type="text" id="invoiceBankAccountHolder" class="form-control" value="Nguyễn Thanh Thúy" maxlength="160" placeholder="Nhập tên chủ tài khoản" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
                             <div class="form-group"><label>Ảnh QR thanh toán</label><div class="qr-upload-box" id="qrUploadBox"><div class="qr-upload-preview-wrap" id="qrUploadPreviewWrap" style="display:none;"><img id="qrUploadPreview" alt="Xem trước QR thanh toán"><button type="button" class="qr-upload-remove" id="btnRemoveQr" title="Xoá ảnh QR">&times;</button></div><label for="invoiceQrInput" class="qr-upload-label" id="qrUploadLabel"><span class="qr-upload-icon">+</span><span>Tải ảnh QR lên (tuỳ chọn)</span></label><input type="file" id="invoiceQrInput" accept="image/*" hidden></div></div>
                             <div class="form-group"><label for="invoiceNote">Ghi chú cuối phiếu</label><textarea id="invoiceNote" class="form-control" rows="3" placeholder="Ghi chú thêm cho phụ huynh..." autocomplete="off" spellcheck="false">Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.</textarea></div>
                         </div>
@@ -1547,6 +1549,6 @@
     <script src="requests-edit.js?v=20260730-performance3"></script>
     <script src="security-settings.js?v=20260731-theme-lock1"></script>
     <script src="main.js"></script>
-    <script src="invoice-export.js?v=20260731-date-grid4-empty-hide1"></script>
+    <script src="invoice-export.js?v=20260802-bank-account1"></script>
 </body>
 </html>

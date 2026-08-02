@@ -25,6 +25,8 @@ Object.assign(PinkyClassApp.prototype, {
         return {
             teacherName: 'invoiceTeacherName',
             teacherPhone: 'invoiceTeacherPhone',
+            bankAccountNumber: 'invoiceBankAccountNumber',
+            bankAccountHolder: 'invoiceBankAccountHolder',
             overview: 'invoiceOverview',
             algebra: 'invoiceAlgebra',
             geometry: 'invoiceGeometry',
@@ -134,6 +136,8 @@ Object.assign(PinkyClassApp.prototype, {
 
         document.getElementById('invoiceTeacherName').value = (this.currentUser && this.currentUser.name) || '';
         document.getElementById('invoiceTeacherPhone').value = '';
+        document.getElementById('invoiceBankAccountNumber').value = '0978783058';
+        document.getElementById('invoiceBankAccountHolder').value = 'Nguyễn Thanh Thúy';
         document.getElementById('invoiceOverview').value = '';
         document.getElementById('invoiceAlgebra').value = '';
         document.getElementById('invoiceGeometry').value = '';
@@ -334,6 +338,8 @@ Object.assign(PinkyClassApp.prototype, {
         const title = nfc(document.getElementById('invoiceTitle').value) || 'PHIẾU HỌC PHÍ';
         const teacherName = nfc(document.getElementById('invoiceTeacherName').value) || nfc(this.currentUser && this.currentUser.name) || 'Giáo viên phụ trách';
         const teacherPhone = nfc(document.getElementById('invoiceTeacherPhone').value) || '-';
+        const bankAccountNumber = nfc(document.getElementById('invoiceBankAccountNumber').value) || '-';
+        const bankAccountHolder = nfc(document.getElementById('invoiceBankAccountHolder').value) || '-';
         const overview = nfc(document.getElementById('invoiceOverview').value);
         const algebra = nfc(document.getElementById('invoiceAlgebra').value);
         const geometry = nfc(document.getElementById('invoiceGeometry').value);
@@ -496,8 +502,8 @@ Object.assign(PinkyClassApp.prototype, {
             tuitionStack.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0, lineWidth: 1, lineColor: '#bfdbfe' }], alignment: 'center', margin: [0, 0, 0, 7] });
             tuitionStack.push({
                 text: [
-                    { text: 'Số TK: ', style: 'label' }, { text: '0978783058', style: 'value' }, '\n',
-                    { text: 'Chủ TK: ', style: 'label' }, { text: 'Nguyễn Thanh Thúy', style: 'value' }
+                    { text: 'Số TK: ', style: 'label' }, { text: bankAccountNumber, style: 'value' }, '\n',
+                    { text: 'Chủ TK: ', style: 'label' }, { text: bankAccountHolder, style: 'value' }
                 ],
                 alignment: 'center',
                 lineHeight: 1.3
@@ -703,6 +709,8 @@ Object.assign(PinkyClassApp.prototype, {
         const title = document.getElementById('invoiceTitle').value.trim() || 'PHIẾU HỌC PHÍ';
         const teacherName = document.getElementById('invoiceTeacherName').value.trim() || (this.currentUser && this.currentUser.name) || 'Giáo viên phụ trách';
         const teacherPhone = document.getElementById('invoiceTeacherPhone').value.trim();
+        const bankAccountNumber = document.getElementById('invoiceBankAccountNumber').value.trim() || '-';
+        const bankAccountHolder = document.getElementById('invoiceBankAccountHolder').value.trim() || '-';
         const overview = document.getElementById('invoiceOverview').value.trim();
         const algebra = document.getElementById('invoiceAlgebra').value.trim();
         const geometry = document.getElementById('invoiceGeometry').value.trim();
@@ -755,7 +763,7 @@ Object.assign(PinkyClassApp.prototype, {
         const qrHTML = this._invoiceQrDataUrl
             ? `<img class="qr" src="${this._invoiceQrDataUrl}" alt="QR thanh toán">
                <div class="divider"></div>
-               <div class="bank">Số TK: <b>0978783058</b><br>Chủ TK: <b>Nguyễn Thanh Thuý</b></div>`
+               <div class="bank">Số TK: <b>${esc(bankAccountNumber)}</b><br>Chủ TK: <b>${esc(bankAccountHolder)}</b></div>`
             : '';
 
         // Toàn bộ phiếu được dựng trong 1 khung ẩn (off-screen) ngay trên
