@@ -313,7 +313,7 @@ const PUBLIC_ROOT_FILES = new Set([
     'lithos-falling-blossom.svg', 'lithos-log-header-branch.svg', 'lithos-name-vine.svg',
     'lithos-petals.css', 'lithos-petals.js', 'lithos-safe-decor.css',
     'lithos-stat-bloom.svg', 'lithos-vine-buttons.css', 'lithos-wood-bloom-pink.webp',
-    'lithos-wood-pink.webp', 'main.js', 'requests-edit.js', 'requests.js', 'scores.js',
+    'lithos-wood-pink.webp', 'main.js', 'pink-minimal-theme.css', 'requests-edit.js', 'requests.js', 'scores.js',
     'security-settings.js', 'student-logs.js', 'students.js', 'style.css',
     'tuition-export.js', 'users.js', 'velorah-app-theme.css'
 ]);
@@ -986,7 +986,7 @@ async function getCachedAppTheme() {
             'SELECT SettingValue AS theme FROM AppSettings WHERE SettingKey = $1',
             ['app_theme']
         ))
-        .then(result => ['blue', 'lithos'].includes(result.rows[0]?.theme)
+        .then(result => ['blue', 'lithos', 'pink'].includes(result.rows[0]?.theme)
             ? result.rows[0].theme
             : 'blue');
     appThemeSettingsCache.promise = request;
@@ -1015,7 +1015,7 @@ app.get('/api/app-settings/theme', async (req, res) => {
 
 app.put('/api/app-settings/theme', requireRole('admin'), async (req, res) => {
     const theme = String(req.body?.theme || '').trim();
-    if (!['blue', 'lithos'].includes(theme)) {
+    if (!['blue', 'lithos', 'pink'].includes(theme)) {
         return res.status(400).json({ error: 'Giao diện không hợp lệ.' });
     }
 

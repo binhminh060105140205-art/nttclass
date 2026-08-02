@@ -378,12 +378,46 @@ Object.assign(PinkyClassApp.prototype, {
         return this._pdfMakeLoadingPromise;
     },
 
+    getInvoiceExportColors() {
+        const isPinkTheme = this.normalizeAppTheme(this.appTheme) === 'pink';
+        return isPinkTheme ? {
+            pageBackground: '#f8edf2',
+            canvasBackground: '#f8edf2',
+            card: '#fffdfd',
+            cardSoft: '#fff9fb',
+            border: '#eccad8',
+            soft: '#f7dce7',
+            primary: '#96375f',
+            text: '#5d3546',
+            muted: '#927180',
+            meta: '#75495b',
+            accent: '#d36f98',
+            empty: '#d6a4b8',
+            pageNumber: '#b28b9b'
+        } : {
+            pageBackground: '#eef6ff',
+            canvasBackground: '#eff6ff',
+            card: '#ffffff',
+            cardSoft: '#f8fbff',
+            border: '#bfdbfe',
+            soft: '#dbeafe',
+            primary: '#0b438f',
+            text: '#17345f',
+            muted: '#64748b',
+            meta: '#334155',
+            accent: '#2563eb',
+            empty: '#93c5fd',
+            pageNumber: '#94a3b8'
+        };
+    },
+
     // Tạo cấu trúc PDF A4 riêng biệt. Hàm này chỉ dựng dữ liệu/bố cục để có thể
     // kiểm tra độc lập; exportInvoicePdf() phía dưới đảm nhiệm tải file.
     buildInvoicePdfDefinition() {
         const studentId = document.getElementById('invoiceStudentId').value;
         const st = this.students.find(s => s.id === studentId);
         if (!st) return null;
+        const colors = this.getInvoiceExportColors();
 
         const sessions = this.recomputeInvoiceTotals();
         let totalFee = 0, totalHours = 0;
@@ -449,9 +483,9 @@ Object.assign(PinkyClassApp.prototype, {
         const estimateLines = (value, charsPerLine) => String(value || '').split('\n').reduce((sum, line) => {
             return sum + Math.max(1, Math.ceil(line.length / charsPerLine));
         }, 0);
-        const roundedCard = (stack, width, height, fillColor = '#ffffff', options = {}) => {
+        const roundedCard = (stack, width, height, fillColor = colors.card, options = {}) => {
             const radius = options.radius || 8;
-            const borderColor = options.borderColor || '#bfdbfe';
+            const borderColor = options.borderColor || colors.border;
             const paddingX = options.paddingX ?? 13;
             const basePaddingY = options.paddingY ?? 10;
             const contentHeight = options.contentHeight || 0;
@@ -492,14 +526,14 @@ Object.assign(PinkyClassApp.prototype, {
             columns: [
                 {
                     width: 5,
-                    canvas: [{ type: 'rect', x: 0, y: 0, w: 4, h: 18, r: 2, color: '#2563eb' }]
+                    canvas: [{ type: 'rect', x: 0, y: 0, w: 4, h: 18, r: 2, color: colors.accent }]
                 },
                 { width: '*', text, style: 'sectionTitle', margin: [5, 1, 0, 0] }
             ],
             columnGap: 0
         });
         const sectionUnderline = {
-            canvas: [{ type: 'line', x1: 10, y1: 0, x2: pdfContentWidth, y2: 0, lineWidth: 0.8, lineColor: '#bfdbfe' }],
+            canvas: [{ type: 'line', x1: 10, y1: 0, x2: pdfContentWidth, y2: 0, lineWidth: 0.8, lineColor: colors.border }],
             margin: [0, -2, 0, 6]
         };
         const plainSection = (heading, rows) => [
@@ -536,7 +570,7 @@ Object.assign(PinkyClassApp.prototype, {
         const studentStack = [
             { text: 'THÔNG TIN HỌC SINH', style: 'cardTitle', margin: [0, 0, 0, 4] },
             {
-                canvas: [{ type: 'line', x1: 0, y1: 0, x2: pdfStudentWidth - 28, y2: 0, lineWidth: 0.8, lineColor: '#bfdbfe' }],
+                canvas: [{ type: 'line', x1: 0, y1: 0, x2: pdfStudentWidth - 28, y2: 0, lineWidth: 0.8, lineColor: colors.border }],
                 margin: [0, 0, 0, 6]
             },
             {
@@ -553,7 +587,7 @@ Object.assign(PinkyClassApp.prototype, {
                 layout: {
                     hLineWidth: index => index > 0 ? 0.7 : 0,
                     vLineWidth: () => 0,
-                    hLineColor: () => '#dbeafe',
+                    hLineColor: () => colors.soft,
                     paddingLeft: () => 0,
                     paddingRight: () => 0,
                     paddingTop: () => 5.5,
@@ -568,7 +602,7 @@ Object.assign(PinkyClassApp.prototype, {
         ];
         if (this._invoiceQrDataUrl) {
             tuitionStack.push({ image: this._invoiceQrDataUrl, fit: [92, 92], alignment: 'center', margin: [0, 2, 0, 8] });
-            tuitionStack.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0, lineWidth: 1, lineColor: '#bfdbfe' }], alignment: 'center', margin: [0, 0, 0, 7] });
+            tuitionStack.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0, lineWidth: 1, lineColor: colors.border }], alignment: 'center', margin: [0, 0, 0, 7] });
             tuitionStack.push({
                 text: [
                     { text: 'Số TK: ', style: 'label' }, { text: bankAccountNumber, style: 'value' }, '\n',
@@ -598,13 +632,13 @@ Object.assign(PinkyClassApp.prototype, {
             columns: [
                 {
                     width: pdfStudentWidth,
-                    ...roundedCard(studentStack, pdfStudentWidth, summaryHeight, '#f8fbff', {
+                    ...roundedCard(studentStack, pdfStudentWidth, summaryHeight, colors.cardSoft, {
                         paddingX: 14, paddingY: 13, radius: 11, verticalAlignment: 'middle'
                     })
                 },
                 {
                     width: pdfTuitionWidth,
-                    ...roundedCard(tuitionStack, pdfTuitionWidth, summaryHeight, '#f8fbff', {
+                    ...roundedCard(tuitionStack, pdfTuitionWidth, summaryHeight, colors.cardSoft, {
                         paddingX: 14, paddingY: 13, radius: 11, verticalAlignment: 'middle'
                     })
                 }
@@ -630,7 +664,7 @@ Object.assign(PinkyClassApp.prototype, {
                 layout: {
                     hLineWidth: index => index === 1 ? 1 : 0,
                     vLineWidth: () => 0,
-                    hLineColor: () => '#dbeafe',
+                    hLineColor: () => colors.soft,
                     paddingLeft: () => 0,
                     paddingRight: () => 0,
                     paddingTop: () => 0,
@@ -652,27 +686,27 @@ Object.assign(PinkyClassApp.prototype, {
             info: { title, author: teacherName, subject: 'Phiếu học phí học sinh' },
             background: (currentPage, pageSize) => ({
                 canvas: [
-                    { type: 'rect', x: 0, y: 0, w: pageSize.width, h: pageSize.height, color: '#eef6ff' },
-                    { type: 'rect', x: 26, y: 22, w: pageSize.width - 52, h: pageSize.height - 44, r: 14, color: '#ffffff', lineColor: '#bfdbfe', lineWidth: 1.2 }
+                    { type: 'rect', x: 0, y: 0, w: pageSize.width, h: pageSize.height, color: colors.pageBackground },
+                    { type: 'rect', x: 26, y: 22, w: pageSize.width - 52, h: pageSize.height - 44, r: 14, color: colors.card, lineColor: colors.border, lineWidth: 1.2 }
                 ]
             }),
             content,
-            defaultStyle: { font: 'BeVietnamPro', fontSize: 10, color: '#17345f', lineHeight: 1.25 },
+            defaultStyle: { font: 'BeVietnamPro', fontSize: 10, color: colors.text, lineHeight: 1.25 },
             styles: {
-                brand: { fontSize: 14, color: '#0b438f', bold: true },
-                eyebrow: { fontSize: 8.5, color: '#64748b', bold: true, characterSpacing: 1.2 },
-                meta: { fontSize: 9, color: '#334155', bold: true },
-                title: { fontSize: 22, color: '#0b438f', bold: true },
-                subtitle: { fontSize: 8.5, color: '#64748b', bold: true, characterSpacing: 1.1 },
-                cardTitle: { fontSize: 11.5, color: '#0b438f', bold: true },
-                sectionTitle: { fontSize: 11.5, color: '#0b438f', bold: true, characterSpacing: 0.35 },
-                label: { fontSize: 9.5, color: '#0b438f' },
-                value: { fontSize: 10, color: '#17345f', bold: true },
-                inlineLabel: { fontSize: 10, color: '#0b438f', bold: true },
-                bodyText: { fontSize: 10, color: '#17345f' },
-                totalPrice: { fontSize: 25, color: '#17345f', bold: true },
-                summaryHint: { fontSize: 8.5, color: '#64748b' },
-                footerText: { fontSize: 9.5, color: '#17345f', bold: true }
+                brand: { fontSize: 14, color: colors.primary, bold: true },
+                eyebrow: { fontSize: 8.5, color: colors.muted, bold: true, characterSpacing: 1.2 },
+                meta: { fontSize: 9, color: colors.meta, bold: true },
+                title: { fontSize: 22, color: colors.primary, bold: true },
+                subtitle: { fontSize: 8.5, color: colors.muted, bold: true, characterSpacing: 1.1 },
+                cardTitle: { fontSize: 11.5, color: colors.primary, bold: true },
+                sectionTitle: { fontSize: 11.5, color: colors.primary, bold: true, characterSpacing: 0.35 },
+                label: { fontSize: 9.5, color: colors.primary },
+                value: { fontSize: 10, color: colors.text, bold: true },
+                inlineLabel: { fontSize: 10, color: colors.primary, bold: true },
+                bodyText: { fontSize: 10, color: colors.text },
+                totalPrice: { fontSize: 25, color: colors.text, bold: true },
+                summaryHint: { fontSize: 8.5, color: colors.muted },
+                footerText: { fontSize: 9.5, color: colors.text, bold: true }
             },
             footer: (currentPage, pageCount) => ({
                 margin: [52, 0, 52, 0],
@@ -681,13 +715,13 @@ Object.assign(PinkyClassApp.prototype, {
                         [{ text: note, alignment: 'center', style: 'footerText' }],
                         pdfContentWidth,
                         28,
-                        '#dbeafe',
-                        { radius: 9, paddingX: 10, borderColor: '#dbeafe', centerContent: true, contentHeight: 12.5 }
+                        colors.soft,
+                        { radius: 9, paddingX: 10, borderColor: colors.soft, centerContent: true, contentHeight: 12.5 }
                     )] : []),
                     {
                         text: `Trang ${currentPage}/${pageCount}`,
                         alignment: 'center',
-                        color: '#94a3b8',
+                        color: colors.pageNumber,
                         fontSize: 8,
                         margin: [0, 7, 0, 0]
                     }
@@ -748,6 +782,7 @@ Object.assign(PinkyClassApp.prototype, {
         const studentId = document.getElementById('invoiceStudentId').value;
         const st = this.students.find(s => s.id === studentId);
         if (!st) return;
+        const colors = this.getInvoiceExportColors();
 
         // Luôn tính lại theo đúng khoảng "Từ ngày - Đến ngày" đang hiển thị
         // ngay trước khi xuất, đảm bảo phiếu in ra khớp 100% với số liệu trên
@@ -850,74 +885,74 @@ Object.assign(PinkyClassApp.prototype, {
         /* ============ I. ROOT ============ */
         #invoiceExportSheet {
             font-family: 'Be Vietnam Pro', Arial, sans-serif;
-            background: #eff6ff;
+            background: ${colors.canvasBackground};
             width: 600px;
             max-width: 600px;
             padding: 20px;
-            color: #17345f;
+            color: ${colors.text};
             overflow-wrap: break-word;
             word-break: break-word;
             -webkit-font-smoothing: antialiased;
         }
-        #invoiceExportSheet .card-main { background:#fff; border-radius:22px; border:2px solid #bfdbfe; padding:18px; }
+        #invoiceExportSheet .card-main { background:${colors.card}; border-radius:22px; border:2px solid ${colors.border}; padding:18px; }
 
         /* ============ II. HEADER ============ */
         #invoiceExportSheet .header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; row-gap:6px; }
-        #invoiceExportSheet .badge { display:inline-flex; align-items:center; line-height:1.4; color:#17345f; font-size:13px; font-weight:500; border:none; padding:0; border-radius:0; gap:0; background:none; }
-        #invoiceExportSheet .phone { font-size:13px; color:#17345f; }
-        #invoiceExportSheet .title { text-align:center; font-size:26px; font-weight:800; color:#0b438f; margin:6px 0 22px; line-height:1.5; }
+        #invoiceExportSheet .badge { display:inline-flex; align-items:center; line-height:1.4; color:${colors.text}; font-size:13px; font-weight:500; border:none; padding:0; border-radius:0; gap:0; background:none; }
+        #invoiceExportSheet .phone { font-size:13px; color:${colors.text}; }
+        #invoiceExportSheet .title { text-align:center; font-size:26px; font-weight:800; color:${colors.primary}; margin:6px 0 22px; line-height:1.5; }
 
         /* ============ III. GRID 2 CỘT ============ */
         #invoiceExportSheet .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:stretch; }
-        #invoiceExportSheet .card { border:1.5px solid #bfdbfe; border-radius:18px; padding:14px; background:#fff; }
+        #invoiceExportSheet .card { border:1.5px solid ${colors.border}; border-radius:18px; padding:14px; background:${colors.card}; }
         #invoiceExportSheet .grid-2 > .card { min-width:0; }
         #invoiceExportSheet .grid-2 > .card:nth-child(2) { display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding-top:14px; }
         #invoiceExportSheet .student-info-card { padding-top:8px; }
-        #invoiceExportSheet .student-info-card > .section-title { padding-bottom:5px; border-bottom:1px solid #bfdbfe; }
-        #invoiceExportSheet .section-title { font-size:15px; font-weight:700; color:#0b438f; line-height:1.55; margin-bottom:6px; }
+        #invoiceExportSheet .student-info-card > .section-title { padding-bottom:5px; border-bottom:1px solid ${colors.border}; }
+        #invoiceExportSheet .section-title { font-size:15px; font-weight:700; color:${colors.primary}; line-height:1.55; margin-bottom:6px; }
 
         /* ============ IV. THÔNG TIN HỌC SINH ============ */
-        #invoiceExportSheet .row { display:grid; grid-template-columns:minmax(84px, 36%) minmax(0, 1fr); align-items:start; gap:8px; padding:5px 0; border-bottom:1px dashed #bfdbfe; }
+        #invoiceExportSheet .row { display:grid; grid-template-columns:minmax(84px, 36%) minmax(0, 1fr); align-items:start; gap:8px; padding:5px 0; border-bottom:1px dashed ${colors.border}; }
         #invoiceExportSheet .row:last-of-type { border-bottom:none; }
-        #invoiceExportSheet .label { font-size:12px; color:#0b438f; }
-        #invoiceExportSheet .value { min-width:0; overflow-wrap:anywhere; font-size:13px; color:#17345f; font-weight:600; text-align:right; }
-        #invoiceExportSheet .date-label { font-size:12px; color:#0b438f; margin:8px 0 6px; }
+        #invoiceExportSheet .label { font-size:12px; color:${colors.primary}; }
+        #invoiceExportSheet .value { min-width:0; overflow-wrap:anywhere; font-size:13px; color:${colors.text}; font-weight:600; text-align:right; }
+        #invoiceExportSheet .date-label { font-size:12px; color:${colors.primary}; margin:8px 0 6px; }
         /* Tránh flex + phần tử chữ lồng nhau để html2canvas không làm mất nét chữ. */
         #invoiceExportSheet .date-chip-list { display:flex; flex-wrap:wrap; justify-content:center; align-content:flex-start; gap:5px 6px; }
-        #invoiceExportSheet .date-chip { display:inline-block; min-width:62px; height:29px; padding:0 10px; background:#dbeafe; border-radius:999px; line-height:29px; text-align:center; box-sizing:border-box; }
-        #invoiceExportSheet .date-chip-text { display:inline-block; line-height:1; position:relative; top:-7px; color:#17345f; font-family:inherit; font-size:12px; font-weight:800; }
+        #invoiceExportSheet .date-chip { display:inline-block; min-width:62px; height:29px; padding:0 10px; background:${colors.soft}; border-radius:999px; line-height:29px; text-align:center; box-sizing:border-box; }
+        #invoiceExportSheet .date-chip-text { display:inline-block; line-height:1; position:relative; top:-7px; color:${colors.text}; font-family:inherit; font-size:12px; font-weight:800; }
 
         #invoiceExportSheet .date-chip { flex:0 0 48px; min-width:0; width:48px; height:26px; padding:0 4px; line-height:26px; }
         #invoiceExportSheet .date-chip-text { top:-6px; font-size:11px; }
 
         /* ============ V. TỔNG HỌC PHÍ ============ */
-        #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:#0b438f; }
+        #invoiceExportSheet .total-title { text-align:center; font-size:13px; color:${colors.primary}; }
         /* Khoảng cách TỔNG HỌC PHÍ -> 700.000đ: chỉnh số margin-top này (đang để 6px bằng với gap dưới) */
-        #invoiceExportSheet .total-price { text-align:center; font-size:30px; font-weight:700; color:#17345f; margin-top:0px; }
+        #invoiceExportSheet .total-price { text-align:center; font-size:30px; font-weight:700; color:${colors.text}; margin-top:0px; }
         /* Khoảng cách 700.000đ -> ảnh QR: chỉnh số margin-top này (đang để 6px bằng với gap trên) */
-        #invoiceExportSheet .qr { width:110px; height:110px; display:block; margin:16px auto 8px; object-fit:contain; border-radius:10px; border:2px solid #bfdbfe; background:#fff; }
-        #invoiceExportSheet .divider { border-top:1px solid #bfdbfe; margin:8px 0; }
-        #invoiceExportSheet .bank { text-align:center; font-size:13px; color:#0b438f; line-height:1.4; }
-        #invoiceExportSheet .bank b { color:#17345f; }
+        #invoiceExportSheet .qr { width:110px; height:110px; display:block; margin:16px auto 8px; object-fit:contain; border-radius:10px; border:2px solid ${colors.border}; background:${colors.card}; }
+        #invoiceExportSheet .divider { border-top:1px solid ${colors.border}; margin:8px 0; }
+        #invoiceExportSheet .bank { text-align:center; font-size:13px; color:${colors.primary}; line-height:1.4; }
+        #invoiceExportSheet .bank b { color:${colors.text}; }
 
         /* ============ VI. NỘI DUNG MỘT CỘT ============ */
         #invoiceExportSheet .plain-section { margin-top:12px; padding:0 2px 10px; text-align:left; }
-        #invoiceExportSheet .plain-section .section-title { margin-bottom:7px; padding-bottom:5px; border-bottom:1px solid #bfdbfe; text-transform:uppercase; }
-        #invoiceExportSheet .plain-row { color:#17345f; font-size:13px; line-height:1.55; margin-bottom:6px; text-align:left; }
+        #invoiceExportSheet .plain-section .section-title { margin-bottom:7px; padding-bottom:5px; border-bottom:1px solid ${colors.border}; text-transform:uppercase; }
+        #invoiceExportSheet .plain-row { color:${colors.text}; font-size:13px; line-height:1.55; margin-bottom:6px; text-align:left; }
         #invoiceExportSheet .plain-row:last-child { margin-bottom:0; }
-        #invoiceExportSheet .plain-row strong { color:#0b438f; }
+        #invoiceExportSheet .plain-row strong { color:${colors.primary}; }
         #invoiceExportSheet .plain-row.is-stacked > strong { display:block; }
         #invoiceExportSheet .plain-row.is-stacked .stacked-list { margin-top:2px; }
         #invoiceExportSheet .list-item { display:flex; align-items:flex-start; gap:6px; font-size:13px; line-height:1.5; margin-bottom:5px; }
         #invoiceExportSheet .list-item:last-child { margin-bottom:0; }
-        #invoiceExportSheet .list-item .mark { color:#3b82f6; font-weight:700; flex-shrink:0; }
+        #invoiceExportSheet .list-item .mark { color:${colors.accent}; font-weight:700; flex-shrink:0; }
         #invoiceExportSheet .list-item .list-text { min-width:0; }
-        #invoiceExportSheet .list-item strong { color:#0b438f; }
+        #invoiceExportSheet .list-item strong { color:${colors.primary}; }
         #invoiceExportSheet .list-item.no-mark { display:block; }
-        #invoiceExportSheet .empty-hint { font-size:13px; color:#93c5fd; }
+        #invoiceExportSheet .empty-hint { font-size:13px; color:${colors.empty}; }
 
         /* ============ VII. FOOTER ============ */
-        #invoiceExportSheet .footer { background:#dbeafe; border-radius:12px; height:28px; padding:0 8px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; font-weight:600; color:#17345f; }
+        #invoiceExportSheet .footer { background:${colors.soft}; border-radius:12px; height:28px; padding:0 8px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; font-weight:600; color:${colors.text}; }
         #invoiceExportSheet .footer-text { line-height:14px; position:relative; top:-5px; }
         #invoiceExportSheet .footer.section-block { margin-top:9px; }
     </style>
@@ -999,7 +1034,7 @@ Object.assign(PinkyClassApp.prototype, {
             const html2canvas = await this.ensureHtml2Canvas();
             const canvas = await html2canvas(captureEl, {
                 scale: 3, // ảnh nét, độ phân giải cao
-                backgroundColor: '#eff6ff',
+                backgroundColor: colors.canvasBackground,
                 useCORS: true
             });
 

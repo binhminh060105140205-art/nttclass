@@ -2,6 +2,14 @@
 // SECURITY-SETTINGS.JS — Quản lý cài đặt bảo mật và khôi phục mật khẩu
 // ================================================================
 Object.assign(PinkyClassApp.prototype, {
+    getAppThemeLabel(theme) {
+        return {
+            blue: 'Xanh gốc',
+            lithos: 'Đỏ cành đá',
+            pink: 'Hồng nhẹ'
+        }[this.normalizeAppTheme(theme)] || 'Xanh gốc';
+    },
+
     // --- CÀI ĐẶT BẢO MẬT TÀI KHOẢN (KHI ĐÃ ĐĂNG NHẬP) ---
     
     async openSettingsModal() {
@@ -416,7 +424,7 @@ Object.assign(PinkyClassApp.prototype, {
         if (!key) return;
         localStorage.setItem(key, normalizedTheme);
         this.applyAppTheme(normalizedTheme, { persist: false });
-        const themeLabel = normalizedTheme === 'blue' ? 'Xanh gốc' : 'Đỏ cành đá';
+        const themeLabel = this.getAppThemeLabel(normalizedTheme);
         this.showToast(`Đã áp dụng giao diện ${themeLabel} cho tài khoản này.`, 'success');
     },
 
@@ -448,7 +456,7 @@ Object.assign(PinkyClassApp.prototype, {
             const data = await response.json();
             this.clearPersonalAppTheme();
             this.applyAppTheme(data.theme, { persist: true });
-            const themeLabel = data.theme === 'blue' ? 'Xanh gốc' : 'Đỏ cành đá';
+            const themeLabel = this.getAppThemeLabel(data.theme);
             this.showToast(`Đã cập nhật giao diện mặc định ${themeLabel} cho hệ thống.`, 'success');
         } catch (error) {
             this.showToast(error.message || 'Không thể lưu giao diện hệ thống.', 'error');
@@ -458,17 +466,20 @@ Object.assign(PinkyClassApp.prototype, {
     updateAppThemeActiveButtons() {
         const theme = this.normalizeAppTheme(this.appTheme);
         const buttonGroups = [
-            ['btnAppThemeBlue', 'btnAppThemeLithos'],
-            ['btnPersonalAppThemeBlue', 'btnPersonalAppThemeLithos']
+            ['btnAppThemeBlue', 'btnAppThemeLithos', 'btnAppThemePink'],
+            ['btnPersonalAppThemeBlue', 'btnPersonalAppThemeLithos', 'btnPersonalAppThemePink']
         ];
-        buttonGroups.forEach(([blueId, lithosId]) => {
+        buttonGroups.forEach(([blueId, lithosId, pinkId]) => {
             const blueButton = document.getElementById(blueId);
             const lithosButton = document.getElementById(lithosId);
-            if (!blueButton || !lithosButton) return;
+            const pinkButton = document.getElementById(pinkId);
+            if (!blueButton || !lithosButton || !pinkButton) return;
             blueButton.classList.toggle('btn-primary', theme === 'blue');
             blueButton.classList.toggle('btn-secondary', theme !== 'blue');
             lithosButton.classList.toggle('btn-primary', theme === 'lithos');
             lithosButton.classList.toggle('btn-secondary', theme !== 'lithos');
+            pinkButton.classList.toggle('btn-primary', theme === 'pink');
+            pinkButton.classList.toggle('btn-secondary', theme !== 'pink');
         });
     },
 

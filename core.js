@@ -57,9 +57,11 @@ class PinkyClassApp {
     initTheme() {
         localStorage.removeItem('nttclass_theme');
         document.documentElement.removeAttribute('data-theme');
+        document.documentElement.removeAttribute('data-app-variant');
         document.documentElement.setAttribute('data-app-theme', 'blue');
         document.documentElement.setAttribute('data-app-surface', 'loading');
         this.setThemeStylesheetEnabled(document.getElementById('appThemeStylesheet'), false);
+        this.setThemeStylesheetEnabled(document.getElementById('pinkAppThemeStylesheet'), false);
 
         // Khởi tạo chế độ sáng/tối
         const mode = localStorage.getItem('nttclass_theme_mode') || 'light';
@@ -67,7 +69,7 @@ class PinkyClassApp {
     }
 
     normalizeAppTheme(theme) {
-        return ['blue', 'lithos'].includes(theme) ? theme : 'blue';
+        return ['blue', 'lithos', 'pink'].includes(theme) ? theme : 'blue';
     }
 
     getPersonalAppThemeKey() {
@@ -127,13 +129,18 @@ class PinkyClassApp {
 
     applyAppTheme(theme, options = {}) {
         const normalizedTheme = this.normalizeAppTheme(theme);
+        const usesLithosBase = normalizedTheme === 'lithos' || normalizedTheme === 'pink';
         this.appTheme = normalizedTheme;
         if (options.persist === true) localStorage.setItem('nttclass_app_theme', normalizedTheme);
-        document.documentElement.setAttribute('data-app-theme', normalizedTheme);
+        document.documentElement.setAttribute('data-app-theme', usesLithosBase ? 'lithos' : normalizedTheme);
+        if (normalizedTheme === 'pink') document.documentElement.setAttribute('data-app-variant', 'pink');
+        else document.documentElement.removeAttribute('data-app-variant');
 
         const lithosStylesheet = document.getElementById('appThemeStylesheet');
+        const pinkStylesheet = document.getElementById('pinkAppThemeStylesheet');
         const velorahStylesheet = document.getElementById('velorahAppThemeStylesheet');
-        this.setThemeStylesheetEnabled(lithosStylesheet, normalizedTheme === 'lithos');
+        this.setThemeStylesheetEnabled(lithosStylesheet, usesLithosBase);
+        this.setThemeStylesheetEnabled(pinkStylesheet, normalizedTheme === 'pink');
         this.setThemeStylesheetEnabled(velorahStylesheet, normalizedTheme === 'velorah');
         this.setVelorahAppVideo(normalizedTheme === 'velorah');
         if (typeof window.refreshLithosPetals === 'function') window.refreshLithosPetals();
@@ -145,10 +152,13 @@ class PinkyClassApp {
 
     useLandingTheme(options = {}) {
         const landingTheme = 'lithos';
+        document.documentElement.removeAttribute('data-app-variant');
         document.documentElement.setAttribute('data-app-theme', landingTheme);
         const lithosStylesheet = document.getElementById('appThemeStylesheet');
+        const pinkStylesheet = document.getElementById('pinkAppThemeStylesheet');
         const velorahStylesheet = document.getElementById('velorahAppThemeStylesheet');
         this.setThemeStylesheetEnabled(lithosStylesheet, landingTheme === 'lithos');
+        this.setThemeStylesheetEnabled(pinkStylesheet, false);
         this.setThemeStylesheetEnabled(velorahStylesheet, landingTheme === 'velorah');
         this.setVelorahAppVideo(false);
         if (typeof window.refreshLithosPetals === 'function') window.refreshLithosPetals();

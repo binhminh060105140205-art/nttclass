@@ -22,6 +22,7 @@
 
     const isEnabled = () => (
         document.documentElement.getAttribute('data-app-theme') === 'lithos'
+        && document.documentElement.getAttribute('data-app-variant') !== 'pink'
         && !document.hidden
     );
 
@@ -185,7 +186,7 @@
     const themeObserver = new MutationObserver(refreshPetalState);
     themeObserver.observe(document.documentElement, {
         attributes: true,
-        attributeFilter: ['data-app-theme']
+        attributeFilter: ['data-app-theme', 'data-app-variant']
     });
     document.addEventListener('visibilitychange', refreshPetalState);
     reducedMotionQuery.addEventListener?.('change', refreshPetalState);

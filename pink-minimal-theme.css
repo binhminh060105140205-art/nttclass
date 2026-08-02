@@ -1,0 +1,315 @@
+/* Giao diện Hồng nhẹ: dùng bố cục Lithos nhưng loại bỏ toàn bộ hoa, cành và hiệu ứng trang trí. */
+html[data-app-theme="lithos"][data-app-variant="pink"] {
+    --primary: #d36f98;
+    --primary-rgb: 211, 111, 152;
+    --primary-light: rgba(211, 111, 152, .2);
+    --primary-soft: rgba(211, 111, 152, .1);
+    --accent: #e18cad;
+    --accent-rgb: 225, 140, 173;
+    --accent-strong: #a84570;
+    --text-main: #5d3546;
+    --text-muted: #927180;
+    --background: #f8edf2;
+    --card-bg: rgba(255, 252, 253, .97);
+    --border-color: rgba(177, 104, 133, .2);
+    --surface: #fff9fb;
+    --surface-subtle: #fbeef3;
+    --ink: #5d3546;
+    --muted-ink: #927180;
+    --line: rgba(177, 104, 133, .2);
+    --page-gradient: #f8edf2;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"] {
+    color-scheme: light;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="dark"] {
+    --primary: #e58fb4;
+    --primary-rgb: 229, 143, 180;
+    --primary-light: rgba(229, 143, 180, .2);
+    --primary-soft: rgba(229, 143, 180, .11);
+    --accent: #f0a7c5;
+    --accent-rgb: 240, 167, 197;
+    --accent-strong: #cf6e9b;
+    --text-main: #f8eaf0;
+    --text-muted: #c7a6b4;
+    --background: #1b1116;
+    --card-bg: rgba(42, 27, 34, .96);
+    --border-color: rgba(240, 167, 197, .16);
+    --surface: #2b1c23;
+    --surface-subtle: #21151b;
+    --ink: #f8eaf0;
+    --muted-ink: #c7a6b4;
+    --line: rgba(240, 167, 197, .16);
+    --page-gradient: #1b1116;
+    color-scheme: dark;
+}
+
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] .sidebar {
+    color: #f8eaf0;
+    background: #25171e !important;
+    border-right-color: rgba(240, 167, 197, .16) !important;
+    box-shadow: 12px 0 32px rgba(8, 3, 5, .22) !important;
+}
+
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] :is(.user-box, .top-header, .glass-card, .ai-chat-card, .requests-card, .score-filter-panel, .score-batch-panel, .quick-entry-score-panel, .repeat-dates-panel, .modal-container) {
+    color: #f8eaf0;
+    background: #2a1b22 !important;
+    background-image: none !important;
+    border-color: rgba(240, 167, 197, .16) !important;
+    box-shadow: 0 12px 30px rgba(8, 3, 5, .2) !important;
+}
+
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] :is(.header-title-box h1, .score-page-header h2, .evaluation-header h2, .glass-card h2, .glass-card h3, .modal-title, .settings-section-title) {
+    color: #f8eaf0 !important;
+}
+
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] :is(.header-title-box p, .settings-section-desc, .stat-label, .request-item-meta, .user-info > div:last-child) {
+    color: #c7a6b4 !important;
+}
+
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] :is(.student-context-picker, .table-wrapper, .score-table-wrapper, .table-responsive) {
+    color: #f8eaf0;
+    background: #21151b !important;
+    background-image: none !important;
+    border-color: rgba(240, 167, 197, .16) !important;
+}
+
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] :is(table thead, table th, .student-grade-group-row td) {
+    color: #e9c9d6 !important;
+    background: #332129 !important;
+    border-color: rgba(240, 167, 197, .14) !important;
+}
+
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] table td {
+    color: #f3dfe7 !important;
+    background: #21151b !important;
+    border-color: rgba(240, 167, 197, .12) !important;
+}
+
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] :is(.main-content input:not([type=checkbox]):not([type=radio]):not([type=range]), .main-content select, .main-content textarea, .modal-container input:not([type=checkbox]):not([type=radio]):not([type=range]), .modal-container select, .modal-container textarea, .form-control, .form-select, .role-selector) {
+    color: #f8eaf0 !important;
+    background: #21151b !important;
+    border-color: rgba(240, 167, 197, .18) !important;
+    box-shadow: none !important;
+}
+
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] :is(.main-content input, .main-content select, .main-content textarea, .modal-container input, .modal-container select, .modal-container textarea):focus {
+    border-color: #e58fb4 !important;
+    box-shadow: 0 0 0 3px rgba(229, 143, 180, .13) !important;
+}
+
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] :is(.btn-secondary, .sidebar-collapse-toggle, .sidebar-settings-btn, #logoutBtn) {
+    color: #f1d7e1 !important;
+    background: #332129 !important;
+    border-color: rgba(240, 167, 197, .17) !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"] body,
+html[data-app-theme="lithos"][data-app-variant="pink"] .main-content:not(.hidden) {
+    color: var(--text-main);
+    background: var(--background) !important;
+    background-image: none !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"] .sidebar {
+    color: #5d3546;
+    background: rgba(255, 250, 252, .98) !important;
+    border-right-color: rgba(177, 104, 133, .18) !important;
+    box-shadow: 12px 0 32px rgba(151, 76, 105, .08) !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"] .top-header,
+html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"] :is(.glass-card, .ai-chat-card, .requests-card, .score-filter-panel, .score-batch-panel, .quick-entry-score-panel, .repeat-dates-panel, .invoice-form-section, .invoice-summary-item),
+html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"] .modal-container {
+    color: #5d3546;
+    background: rgba(255, 252, 253, .98) !important;
+    background-image: none !important;
+    border-color: rgba(177, 104, 133, .19) !important;
+    box-shadow: 0 12px 30px rgba(151, 76, 105, .08) !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"] :is(.header-title-box h1, .score-page-header h2, .evaluation-header h2, .glass-card h2, .glass-card h3, .modal-title, .settings-section-title) {
+    color: #71364f !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"] :is(.header-title-box p, .settings-section-desc, .stat-label, .request-item-meta) {
+    color: #947281 !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"] :is(.main-content input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), .main-content select, .main-content textarea, .modal-container input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), .modal-container select, .modal-container textarea, .form-control, .form-select, .role-selector) {
+    color: #5d3546 !important;
+    background: #fffdfd !important;
+    border-color: rgba(177, 104, 133, .22) !important;
+    box-shadow: none !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"] :is(.main-content input, .main-content select, .main-content textarea, .modal-container input, .modal-container select, .modal-container textarea):focus {
+    border-color: #d36f98 !important;
+    box-shadow: 0 0 0 3px rgba(211, 111, 152, .12) !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"] .btn-primary,
+html[data-app-theme="lithos"][data-app-variant="pink"] .menu-item.active {
+    color: #fff !important;
+    background: linear-gradient(135deg, #d8759e, #c35784) !important;
+    border-color: rgba(160, 69, 107, .22) !important;
+    box-shadow: 0 7px 18px rgba(195, 87, 132, .18) !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"] .btn-secondary {
+    color: #77445a !important;
+    background: #fff9fb !important;
+    border-color: rgba(177, 104, 133, .22) !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"] .btn-secondary:hover {
+    color: #9f3f6a !important;
+    background: #fcebf2 !important;
+    border-color: rgba(211, 111, 152, .36) !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"] .stat-card,
+html[data-app-theme="lithos"][data-app-variant="pink"] :is(#view-dashboard, #view-scheduler, #view-tuition) .stats-grid .stat-card {
+    background-image: linear-gradient(145deg, #fffdfd, #fbeaf1) !important;
+    background-position: 0 0 !important;
+    background-size: auto !important;
+    border-top-color: rgba(211, 111, 152, .7) !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"] .stats-grid .stat-card::before {
+    content: none !important;
+    display: none !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"] .stats-grid .stat-card:nth-child(n) {
+    border-top-color: rgba(211, 111, 152, .7) !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"] .stats-grid .stat-card .stat-value {
+    color: #ae4c77 !important;
+}
+
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=light] #view-scheduler .stats-grid > .glass-card,
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=light] #view-tuition .grid-form > .glass-card.stat-card {
+    background-color: #fffdfd !important;
+    background-image: linear-gradient(145deg, #fffdfd, #fbeaf1) !important;
+    background-position: 0 0 !important;
+    background-size: auto !important;
+}
+
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] #view-dashboard > .stats-grid > .glass-card,
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] #view-scheduler .stats-grid > .glass-card,
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] #view-tuition .grid-form > .glass-card.stat-card {
+    color: #f8eaf0 !important;
+    background-color: #2a1b22 !important;
+    background-image: linear-gradient(145deg, #302029, #251920) !important;
+    border-color: rgba(240, 167, 197, .16) !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="dark"] .stat-card,
+html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="dark"] :is(#view-dashboard, #view-scheduler, #view-tuition) .stats-grid .stat-card {
+    background-image: linear-gradient(145deg, #302029, #251920) !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"] :is(table thead, .student-grade-group-row td) {
+    background: #fae8ef !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"] :is(table th, table td) {
+    border-color: rgba(177, 104, 133, .15) !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"] #invoiceModal .invoice-summary {
+    background: #f8e5ed !important;
+    border-color: rgba(177, 104, 133, .22) !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"] #invoiceModal :is(.invoice-summary-item, .invoice-form-section) {
+    background: #fffafd !important;
+    border-color: rgba(177, 104, 133, .2) !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"] #invoiceModal .invoice-section-heading > span {
+    background: linear-gradient(135deg, #d8759e, #c35784) !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"] #invoiceModal :is(.invoice-summary-item span, .invoice-section-heading small) {
+    color: #967383 !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"] #invoiceModal :is(.invoice-summary-item strong, .invoice-section-heading strong, .invoice-form-section label) {
+    color: #71364f !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"] #invoiceModal .invoice-form-section .form-control {
+    color: #5d3546 !important;
+    background: #fffdfd !important;
+    border-color: #eccad8 !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"] #invoiceModal .invoice-label-edit-btn {
+    color: #c35784 !important;
+}
+
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] #invoiceModal .invoice-summary {
+    background: #321f28 !important;
+    border-color: rgba(240, 167, 197, .18) !important;
+}
+
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] #invoiceModal :is(.invoice-summary-item, .invoice-form-section) {
+    background: #25181f !important;
+    border-color: rgba(240, 167, 197, .15) !important;
+}
+
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] #invoiceModal :is(.invoice-summary-item span, .invoice-section-heading small) {
+    color: #c7a6b4 !important;
+}
+
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] #invoiceModal :is(.invoice-summary-item strong, .invoice-section-heading strong, .invoice-form-section label) {
+    color: #f8eaf0 !important;
+}
+
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] #invoiceModal .invoice-form-section .form-control {
+    color: #f8eaf0 !important;
+    background: #21151b !important;
+    border-color: rgba(240, 167, 197, .18) !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"] :is(.lithos-petal-fall, .lithos-falling-blossom, .lithos-vine-layer) {
+    display: none !important;
+    animation: none !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"] :is(.main-content, .top-header, .sidebar, .view-section.active-view)::before,
+html[data-app-theme="lithos"][data-app-variant="pink"] :is(.main-content, .top-header, .sidebar, .view-section.active-view)::after,
+html[data-app-theme="lithos"][data-app-variant="pink"] :is(#view-scheduler .week-calendar-wrapper, #view-scheduler .month-calendar-grid, #view-scheduler > .glass-card, #view-requests .requests-card)::before,
+html[data-app-theme="lithos"][data-app-variant="pink"] :is(#view-scheduler .week-calendar-wrapper, #view-scheduler .month-calendar-grid, #view-scheduler > .glass-card, #view-requests .requests-card)::after,
+html[data-app-theme="lithos"][data-app-variant="pink"] :is(.btn-primary, .btn-secondary, .btn-danger, .sidebar .menu-item, #sidebarUserName, #view-logs .student-log-header)::before,
+html[data-app-theme="lithos"][data-app-variant="pink"] :is(.btn-primary, .btn-secondary, .btn-danger, .sidebar .menu-item, #sidebarUserName, #view-logs .student-log-header)::after {
+    content: none !important;
+    display: none !important;
+    background: none !important;
+    background-image: none !important;
+    animation: none !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"] #sidebarUserName {
+    padding: 0 !important;
+    background: none !important;
+    text-shadow: none !important;
+    filter: none !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"] :is(.btn, .menu-item, .glass-card, .stat-card, #sidebarUserName):hover {
+    transform: none !important;
+    filter: none !important;
+}
+
+@media (max-width: 767px) {
+    html[data-app-theme="lithos"][data-app-variant="pink"] .main-content:not(.hidden),
+    html[data-app-theme="lithos"][data-app-variant="pink"] body {
+        background: var(--background) !important;
+    }
+}
