@@ -734,6 +734,10 @@ Object.assign(PinkyClassApp.prototype, {
 // ================================================================
 Object.assign(PinkyClassApp.prototype, {
     switchView(viewId) {
+        if (viewId !== 'view-ai-chat' && document.getElementById(viewId)?.classList.contains('view-section')) {
+            this.lastVisitedFeatureViewId = viewId;
+        }
+
         // Toggle view classes
         document.querySelectorAll('.view-section').forEach(sec => {
             sec.classList.remove('active-view');
@@ -759,7 +763,7 @@ Object.assign(PinkyClassApp.prototype, {
             subtitleEl.innerText = "Tra cứu theo bài kiểm tra hoặc học sinh, lọc dữ liệu và tổng hợp kết quả học tập.";
         } else if (viewId === 'view-ai-chat') {
             titleEl.innerText = "Trợ lý AI";
-            subtitleEl.innerText = "Hỏi đáp dựa trên dữ liệu lịch dạy và điểm số thật trong tài khoản của bạn.";
+            subtitleEl.innerText = "Hỏi về dữ liệu, giao diện, cách sử dụng hoặc nhờ tạo một mục Yêu cầu.";
         } else if (viewId === 'view-requests') {
             titleEl.innerText = "Yêu cầu";
             subtitleEl.innerText = "Ghi lại yêu cầu cần thực hiện và theo dõi trạng thái hoàn thành.";

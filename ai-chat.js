@@ -25,6 +25,7 @@ Object.assign(PinkyClassApp.prototype, {
         const message = input.value.trim();
         if (!message) return;
 
+        const historyForRequest = this.aiChatHistory.slice(-10);
         this.appendAiChatBubble('user', message);
         this.aiChatHistory.push({ role: 'user', content: message });
         input.value = '';
@@ -34,10 +35,19 @@ Object.assign(PinkyClassApp.prototype, {
         const loadingBubble = this.appendAiChatBubble('bot', 'Đang trả lời...', 'ai-chat-loading');
 
         try {
+            const currentView = document.querySelector('.view-section.active-view')?.id || null;
+            const contextView = currentView === 'view-ai-chat'
+                ? this.lastVisitedFeatureViewId
+                : currentView;
             const res = await this.authFetch(`${API_BASE_URL}/api/ai-chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message, history: this.aiChatHistory })
+                body: JSON.stringify({
+                    message,
+                    history: historyForRequest,
+                    currentView,
+                    contextView
+                })
             });
             const payload = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(payload.error || 'Trợ lý AI hiện không phản hồi được.');
@@ -45,6 +55,7 @@ Object.assign(PinkyClassApp.prototype, {
             loadingBubble.innerText = payload.reply;
             loadingBubble.classList.remove('ai-chat-loading');
             this.aiChatHistory.push({ role: 'assistant', content: payload.reply });
+            this.applyAiChatAction(payload.action);
         } catch (err) {
             loadingBubble.innerText = err.message || 'Có lỗi xảy ra, vui lòng thử lại.';
             loadingBubble.classList.remove('ai-chat-loading');
@@ -59,6 +70,15 @@ Object.assign(PinkyClassApp.prototype, {
         }
     },
 
+    applyAiChatAction(action) {
+        if (action?.type !== 'request_created' || !action.request || !this.requestsLoaded) return;
+        if (this.requests.some(item => String(item.id) === String(action.request.id))) return;
+        this.requests.unshift(action.request);
+        if (document.getElementById('view-requests')?.classList.contains('active-view')) {
+            this.renderRequests();
+        }
+    },
+
     // Xoá toàn bộ hội thoại Trợ lý AI hiện tại (chỉ ở phía client) và quay
     // lại lời chào ban đầu.
     clearAiChat() {
@@ -66,7 +86,7 @@ Object.assign(PinkyClassApp.prototype, {
         const wrap = document.getElementById('aiChatMessages');
         wrap.innerHTML = `
             <div class="ai-chat-msg ai-chat-msg-bot">
-                <div class="ai-chat-bubble">Xin chào! Mình là trợ lý AI của NttClass. Bạn có thể hỏi mình về lịch dạy, điểm số hoặc thông tin học sinh — mình sẽ trả lời dựa trên dữ liệu thật trong tài khoản của bạn.</div>
+                <div class="ai-chat-bubble">Xin chào! Mình là trợ lý AI của NttClass. Mình có thể hướng dẫn giao diện, giải thích chức năng, góp ý cách sử dụng, tra cứu dữ liệu trong phạm vi tài khoản và tạo mục Yêu cầu khi bạn nói rõ nội dung cần thêm.</div>
             </div>
         `;
     }

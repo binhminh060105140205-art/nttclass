@@ -38,6 +38,7 @@ class PinkyClassApp {
         this.calCreateDrag = null; // Trạng thái đang kéo-CHỌN 1 khung giờ trống để tạo ca học mới (null = không kéo)
         this.repeatExtraDates = []; // Các ngày lặp lại thủ công được thêm vào form "Ghi Buổi Học Mới" (chỉ trong cùng tháng với Ngày học)
         this.aiChatHistory = []; // Lịch sử hội thoại Trợ lý AI (chỉ lưu ở client, gửi kèm mỗi lần hỏi để AI nhớ ngữ cảnh)
+        this.lastVisitedFeatureViewId = null;
         this.requests = [];
         this.requestFilter = 'pending';
         this.requestImageDraft = [];
