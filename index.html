@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Playfair+Display:ital,wght@1,400;1,500;1,600&amp;display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Comfortaa:wght@400;500;600;700&family=Condiment&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260802-invoice-preview1">
+    <link rel="stylesheet" href="style.css?v=20260802-recurrence-weekdays3">
     <link rel="stylesheet" href="landing-lithos-bundle.css?v=20260731-performance5">
     <link id="appThemeStylesheet" rel="stylesheet" href="lithos-app-bundle.css?v=20260731-performance6" media="not all" disabled>
     <link id="pinkAppThemeStylesheet" rel="stylesheet" href="pink-minimal-theme.css?v=20260802-pink-minimal5" media="not all" disabled>
@@ -210,7 +210,7 @@
         <!-- Top Header Bar -->
         <header class="top-header">
             <div class="header-title-box">
-                <h1 id="view-title">Tổng quan hệ thống</h1>
+                <h1 id="view-title">TỔNG QUAN HỆ THỐNG</h1>
                 <p id="view-subtitle">Chào mừng cô giáo quay trở lại dạy học hôm nay!</p>
             </div>
             <div class="header-actions">
@@ -337,8 +337,6 @@
                 <div class="score-page-header">
                     <div>
                         <span class="score-page-kicker">SỔ ĐIỂM TỔNG HỢP</span>
-                        <h2>Điểm số</h2>
-                        <p>Xem, lọc và quản lý toàn bộ kết quả đã ghi nhận. Điểm của buổi học được nhập ngay trong form buổi học.</p>
                     </div>
                     <div class="score-view-switch" role="tablist" aria-label="Chế độ xem điểm">
                         <button type="button" class="score-view-tab active" data-score-view-mode="tests" role="tab" aria-selected="true">Theo bài kiểm tra</button>
@@ -351,9 +349,9 @@
                         <label>Học sinh
                             <select id="scoreFilterStudent" class="form-control"></select>
                         </label>
-                        <label>Lớp / khối
+                        <label>Lớp
                             <select id="scoreFilterClass" class="form-control">
-                                <option value="">Tất cả lớp và khối</option>
+                                <option value="">Tất cả lớp</option>
                             </select>
                         </label>
                         <label>Tháng
@@ -688,7 +686,19 @@
                                             <input type="date" id="repeatUntilDate" class="form-control">
                                         </div>
                                     </div>
-                                    <div class="repeat-dates-add-row">
+                                    <div id="repeatWeekdaysGroup" class="repeat-weekdays-group">
+                                        <span class="repeat-weekdays-title">Lặp vào thứ</span>
+                                        <div class="repeat-weekday-options">
+                                            <label><input type="checkbox" name="repeatWeekdays" value="1"> T2</label>
+                                            <label><input type="checkbox" name="repeatWeekdays" value="2"> T3</label>
+                                            <label><input type="checkbox" name="repeatWeekdays" value="3"> T4</label>
+                                            <label><input type="checkbox" name="repeatWeekdays" value="4"> T5</label>
+                                            <label><input type="checkbox" name="repeatWeekdays" value="5"> T6</label>
+                                            <label><input type="checkbox" name="repeatWeekdays" value="6"> T7</label>
+                                            <label><input type="checkbox" name="repeatWeekdays" value="0"> CN</label>
+                                        </div>
+                                    </div>
+                                    <div class="repeat-dates-add-row" id="repeatExtraDateRow">
                                         <input type="date" id="repeatExtraDateInput" class="form-control">
                                         <button type="button" class="btn btn-secondary btn-sm" id="addRepeatDateBtn">+ Thêm ngày</button>
                                     </div>
@@ -755,6 +765,11 @@
                     <div class="students-profile-filter">
                         <select id="studentGradeFilter" class="form-select student-grade-filter" aria-label="Chọn lớp học sinh">
                             <option value="">Tất cả các lớp</option>
+                            <option value="1">Lớp 1</option>
+                            <option value="2">Lớp 2</option>
+                            <option value="3">Lớp 3</option>
+                            <option value="4">Lớp 4</option>
+                            <option value="5">Lớp 5</option>
                             <option value="6">Lớp 6</option>
                             <option value="7">Lớp 7</option>
                             <option value="8">Lớp 8</option>
@@ -846,16 +861,13 @@
                                 <input type="date" id="studentDob" class="form-control">
                             </div>
                             <div class="form-group">
-                                <label for="studentGrade">Khối lớp <span style="color:red;">*</span></label>
-                                <select id="studentGrade" class="form-control" required>
-                                    <option value="6">Lớp 6</option>
-                                    <option value="7">Lớp 7</option>
-                                    <option value="8" selected>Lớp 8</option>
-                                    <option value="9">Lớp 9</option>
-                                    <option value="10">Lớp 10</option>
-                                    <option value="11">Lớp 11</option>
-                                    <option value="12">Lớp 12</option>
-                                </select>
+                                <label for="studentGrade">Lớp</label>
+                                <input type="text" inputmode="numeric" id="studentGrade" class="form-control" list="studentGradeOptions" maxlength="2" placeholder="Để trống hoặc chọn lớp 1-12">
+                                <datalist id="studentGradeOptions">
+                                    <option value="1"></option><option value="2"></option><option value="3"></option><option value="4"></option>
+                                    <option value="5"></option><option value="6"></option><option value="7"></option><option value="8"></option>
+                                    <option value="9"></option><option value="10"></option><option value="11"></option><option value="12"></option>
+                                </datalist>
                             </div>
                         </div>
                         <div class="student-form-row student-form-row-secondary">
@@ -1255,6 +1267,49 @@
                             <label for="editSessionContent">Nội dung học / ghi chú buổi học</label>
                             <textarea id="editSessionContent" class="form-control" rows="3"></textarea>
                         </div>
+
+                        <div class="form-group form-group-full repeat-session-section" id="editRepeatSessionSection">
+                            <label class="repeat-toggle-label">
+                                <input type="checkbox" id="editSessionRepeatToggle">
+                                <span id="editSessionRepeatToggleText">Lặp lại buổi học này</span>
+                            </label>
+                            <p id="editRepeatExistingHint" class="repeat-existing-hint" hidden>Buổi này đã thuộc một chuỗi lặp. Khi lưu, hệ thống sẽ hỏi sửa riêng buổi này hay cả các buổi phía sau.</p>
+                            <div id="editRepeatDatesPanel" class="repeat-dates-panel" style="display:none;">
+                                <div class="repeat-schedule-row">
+                                    <div>
+                                        <label for="editRepeatFrequency">Kiểu lặp lại</label>
+                                        <select id="editRepeatFrequency" class="form-control">
+                                            <option value="weekly">Mỗi tuần</option>
+                                            <option value="daily">Mỗi ngày</option>
+                                            <option value="monthly">Mỗi tháng</option>
+                                            <option value="custom">Tùy chỉnh chọn ngày</option>
+                                        </select>
+                                    </div>
+                                    <div id="editRepeatUntilGroup">
+                                        <label for="editRepeatUntilDate">Lặp đến ngày</label>
+                                        <input type="date" id="editRepeatUntilDate" class="form-control">
+                                    </div>
+                                </div>
+                                <div id="editRepeatWeekdaysGroup" class="repeat-weekdays-group">
+                                    <span class="repeat-weekdays-title">Lặp vào thứ</span>
+                                    <div class="repeat-weekday-options">
+                                        <label><input type="checkbox" name="editRepeatWeekdays" value="1"> T2</label>
+                                        <label><input type="checkbox" name="editRepeatWeekdays" value="2"> T3</label>
+                                        <label><input type="checkbox" name="editRepeatWeekdays" value="3"> T4</label>
+                                        <label><input type="checkbox" name="editRepeatWeekdays" value="4"> T5</label>
+                                        <label><input type="checkbox" name="editRepeatWeekdays" value="5"> T6</label>
+                                        <label><input type="checkbox" name="editRepeatWeekdays" value="6"> T7</label>
+                                        <label><input type="checkbox" name="editRepeatWeekdays" value="0"> CN</label>
+                                    </div>
+                                </div>
+                                <div class="repeat-dates-add-row" id="editRepeatExtraDateRow">
+                                    <input type="date" id="editRepeatExtraDateInput" class="form-control">
+                                    <button type="button" class="btn btn-secondary btn-sm" id="editAddRepeatDateBtn">+ Thêm ngày</button>
+                                </div>
+                                <div id="editRepeatDatesList" class="repeat-dates-chips"></div>
+                                <p id="editRepeatDatesHint" class="repeat-dates-hint">Chọn ngày kết thúc để xem các buổi lặp mỗi tuần. Tối đa 366 buổi.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1576,16 +1631,16 @@
          file ở giữa (app-shell, users, dashboard...) load trước/sau nhau
          thoải mái, không phụ thuộc lẫn nhau. -->
     <script src="landing-orbis.js?v=20260731-performance5"></script>
-    <script src="core.js?v=20260802-pink-minimal1"></script>
+    <script src="core.js?v=20260802-recurrence-weekdays2"></script>
     <script src="lithos-petals.js?v=20260802-pink-minimal1"></script>
-    <script src="app-shell.js?v=20260802-ai-owner1"></script>
+    <script src="app-shell.js?v=20260802-recurrence-weekdays2"></script>
     <script src="users.js"></script>
     <script src="dashboard.js"></script>
-    <script src="student-logs.js?v=20260730-invoice-template2"></script>
-    <script src="scores.js?v=20260731-performance5"></script>
-    <script src="calendar.js?v=20260728-score-filter1"></script>
+    <script src="student-logs.js?v=20260802-center-homework1"></script>
+    <script src="scores.js?v=20260802-class-label1"></script>
+    <script src="calendar.js?v=20260802-recurrence-weekdays2"></script>
     <script src="tuition-export.js?v=20260730-invoice-template1"></script>
-    <script src="students.js"></script>
+    <script src="students.js?v=20260802-optional-grade1"></script>
     <script src="ai-chat.js?v=20260802-ai-data2"></script>
     <script src="requests.js?v=20260802-requests-inbox1"></script>
     <script src="requests-edit.js?v=20260730-performance3"></script>

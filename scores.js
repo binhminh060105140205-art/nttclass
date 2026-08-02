@@ -68,7 +68,7 @@ Object.assign(PinkyClassApp.prototype, {
             .map(className => `<option value="class:${encodeURIComponent(className)}">${this.escapeHtml(className)}</option>`)
             .join('');
         const optionHtml = [
-            ...grades.map(grade => `<option value="grade:${grade}">Khối ${grade}</option>`),
+            ...grades.map(grade => `<option value="grade:${grade}">Lớp ${grade}</option>`),
             ...classes.map(className => `<option value="class:${encodeURIComponent(className)}">${this.escapeHtml(className)}</option>`)
         ].join('');
 

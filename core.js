@@ -36,7 +36,8 @@ class PinkyClassApp {
         this.CAL_HOUR_HEIGHT = 52; // px, phải khớp với .week-hour-label height trong CSS
         this.calDrag = null; // Trạng thái đang kéo-thả 1 buổi học trên lịch tuần (null = không kéo)
         this.calCreateDrag = null; // Trạng thái đang kéo-CHỌN 1 khung giờ trống để tạo ca học mới (null = không kéo)
-        this.repeatExtraDates = []; // Các ngày lặp lại thủ công được thêm vào form "Ghi Buổi Học Mới" (chỉ trong cùng tháng với Ngày học)
+        this.repeatExtraDates = []; // Các ngày sẽ tạo thêm từ form "Ghi Buổi Học Mới"
+        this.editRepeatExtraDates = []; // Các ngày sẽ tạo thêm khi biến một buổi có sẵn thành lịch lặp
         this.aiChatHistory = []; // Lịch sử hội thoại Trợ lý AI (chỉ lưu ở client, gửi kèm mỗi lần hỏi để AI nhớ ngữ cảnh)
         this.aiChatSavedLoaded = false;
         this.lastVisitedFeatureViewId = null;
@@ -311,7 +312,7 @@ class PinkyClassApp {
     // từ API thành đúng cấu trúc app cần — thiếu bước này là nguyên nhân khiến
     // giao diện hiển thị "undefined" ở khắp nơi dù DB đã có dữ liệu.
     normalizeStudent(s) {
-        // GradeLevel là cột mới (số nguyên 6-12). Với dữ liệu cũ chưa có cột này,
+        // GradeLevel là cột mới (số nguyên 1-12). Với dữ liệu cũ chưa có cột này,
         // suy ra tạm từ chuỗi Class (ví dụ "Lớp 8" -> 8) để không vỡ giao diện.
         let grade = s.GradeLevel;
         if (grade === undefined || grade === null || grade === '') {

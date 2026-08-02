@@ -1655,10 +1655,14 @@ app.post('/api/students', requireRole('teacher', 'assistant'), requireTeacherCon
     // Trim chuỗi để tránh lưu khoảng trắng thừa đầu/cuối (dễ gây ra 2 học
     // sinh trông "trùng tên" nhưng thực chất khác nhau ở khoảng trắng).
     name = (name || '').trim();
-    sClass = (sClass || '').trim();
     subject = (subject || '').trim();
+    const parsedGradeLevel = gradeLevel === undefined || gradeLevel === null || gradeLevel === '' ? null : Number(gradeLevel);
+    if (parsedGradeLevel !== null && (!Number.isInteger(parsedGradeLevel) || parsedGradeLevel < 1 || parsedGradeLevel > 12)) {
+        return res.status(400).json({ error: 'Lớp phải là số nguyên từ 1 đến 12 hoặc để trống.' });
+    }
+    sClass = parsedGradeLevel === null ? '' : `Lớp ${parsedGradeLevel}`;
 
-    if (!id || !name || !sClass || !subject) {
+    if (!id || !name || !subject) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
     }
 
@@ -1684,7 +1688,7 @@ app.post('/api/students', requireRole('teacher', 'assistant'), requireTeacherCon
             .input('id',          sql.VarChar,  id)
             .input('name',        sql.NVarChar, name)
             .input('class',       sql.NVarChar, sClass)
-            .input('gradeLevel',  sql.Int,      gradeLevel ? parseInt(gradeLevel) : null)
+            .input('gradeLevel',  sql.Int,      parsedGradeLevel)
             .input('subject',     sql.NVarChar, subject)
             .input('basePrice',   sql.Int,      parsedBasePrice)
             .input('teacherId',   sql.VarChar,  req.effectiveTeacherId)
@@ -1704,10 +1708,14 @@ app.put('/api/students/:id', requireRole('teacher', 'assistant'), requireTeacher
     let { name, class: sClass, subject, basePrice, gradeLevel, dateOfBirth } = req.body || {};
 
     name = (name || '').trim();
-    sClass = (sClass || '').trim();
     subject = (subject || '').trim();
+    const parsedGradeLevel = gradeLevel === undefined || gradeLevel === null || gradeLevel === '' ? null : Number(gradeLevel);
+    if (parsedGradeLevel !== null && (!Number.isInteger(parsedGradeLevel) || parsedGradeLevel < 1 || parsedGradeLevel > 12)) {
+        return res.status(400).json({ error: 'Lớp phải là số nguyên từ 1 đến 12 hoặc để trống.' });
+    }
+    sClass = parsedGradeLevel === null ? '' : `Lớp ${parsedGradeLevel}`;
 
-    if (!name || !sClass || !subject) {
+    if (!name || !subject) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
     }
 
@@ -1741,7 +1749,7 @@ app.put('/api/students/:id', requireRole('teacher', 'assistant'), requireTeacher
             .input('id',          sql.VarChar,  id)
             .input('name',        sql.NVarChar, name)
             .input('class',       sql.NVarChar, sClass)
-            .input('gradeLevel',  sql.Int,      gradeLevel ? parseInt(gradeLevel) : null)
+            .input('gradeLevel',  sql.Int,      parsedGradeLevel)
             .input('subject',     sql.NVarChar, subject)
             .input('basePrice',   sql.Int,      parsedBasePrice)
             .input('dateOfBirth', sql.Date,     dateOfBirth)
@@ -2003,6 +2011,166 @@ app.get('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCont
     }
 });
 
+function formatScheduleConflict(row, requestedDate, requestedStartTime, requestedEndTime) {
+    const conflictDate = String(row?.SessionDate || requestedDate || '').slice(0, 10);
+    const conflictName = String(row?.SessionName || '').trim() || 'Buổi học';
+    const conflictStart = String(row?.StartTime || '').slice(0, 5);
+    const conflictEnd = String(row?.EndTime || '').slice(0, 5);
+    return {
+        error: `Không thể lưu lịch ${requestedStartTime}-${requestedEndTime} ngày ${requestedDate} vì trùng với “${conflictName}” (${conflictStart}-${conflictEnd}) ngày ${conflictDate}. Hãy chọn lại ngày hoặc giờ.`,
+        conflict: { id: row?.Id || null, date: conflictDate, startTime: conflictStart, endTime: conflictEnd, sessionName: conflictName }
+    };
+}
+
+function normalizeRepeatDates(value, baseDate) {
+    if (value === undefined || value === null) return { dates: [] };
+    if (!Array.isArray(value)) return { error: 'Danh sách ngày lặp không hợp lệ.' };
+    if (value.length > 366) return { error: 'Lịch lặp chỉ được tạo tối đa 366 buổi bổ sung.' };
+    const dates = [];
+    const seen = new Set();
+    for (const rawDate of value) {
+        const date = String(rawDate || '').trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date <= baseDate) {
+            return { error: 'Mỗi ngày lặp phải hợp lệ và sau ngày học chính.' };
+        }
+        if (seen.has(date)) continue;
+        seen.add(date);
+        dates.push(date);
+    }
+    dates.sort();
+    return { dates };
+}
+
+function isStoredSessionCompleted(date, endTime) {
+    const normalizedTime = String(endTime || '23:59').slice(0, 5);
+    const endAt = new Date(`${date}T${normalizedTime}:00+07:00`);
+    return Number.isFinite(endAt.getTime()) && endAt.getTime() <= Date.now();
+}
+
+async function lockTeacherSchedule(transaction, teacherId) {
+    await new sql.Request(transaction)
+        .input('teacherId', sql.VarChar, teacherId)
+        .query('SELECT pg_advisory_xact_lock(hashtext(@teacherId))');
+}
+
+app.post('/api/sessions/batch', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
+    const baseSession = req.body?.baseSession;
+    const repeatResult = normalizeRepeatDates(req.body?.repeatDates, String(baseSession?.date || ''));
+    if (!baseSession || typeof baseSession !== 'object' || Array.isArray(baseSession)) {
+        return res.status(400).json({ error: 'Thiếu dữ liệu buổi học chính.' });
+    }
+    if (repeatResult.error) return res.status(400).json({ error: repeatResult.error });
+    if (repeatResult.dates.length === 0) return res.status(400).json({ error: 'Hãy chọn ít nhất một ngày lặp lại.' });
+
+    const { id, date, startTime, endTime, type, sessionName, studentIds, duration, price, content, generalComment, completed, studentDetails } = baseSession;
+    if (!id || !/^\d{4}-\d{2}-\d{2}$/.test(String(date || '')) || !startTime || !endTime || !type || !Array.isArray(studentIds) || studentIds.length === 0) {
+        return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
+    }
+    if (endTime <= startTime) return res.status(400).json({ error: 'Giờ kết thúc phải sau giờ bắt đầu.' });
+    const parsedPrice = parseInt(price);
+    if (isNaN(parsedPrice) || parsedPrice < 0) return res.status(400).json({ error: 'Học phí buổi học không được là số âm.' });
+
+    const allDates = [date, ...repeatResult.dates];
+    const recurrenceGroupId = String(baseSession.recurrenceGroupId || `rec_${crypto.randomUUID()}`).slice(0, 80);
+    let transaction;
+    try {
+        const pool = await poolPromise;
+        const ownershipCheck = await pool.request()
+            .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+            .query('SELECT Id, BasePrice FROM Students WHERE TeacherId = @teacherId');
+        const ownedIds = new Set(ownershipCheck.recordset.map(row => row.Id));
+        if (studentIds.some(studentId => !ownedIds.has(studentId))) {
+            return res.status(403).json({ error: 'Một hoặc nhiều học sinh không thuộc quyền quản lý của bạn.' });
+        }
+        const basePriceByStudent = Object.fromEntries(ownershipCheck.recordset.map(row => [row.Id, Number(row.BasePrice || 0)]));
+        const payingStudentIds = studentIds.filter(studentId => basePriceByStudent[studentId] > 0);
+        const fallbackFee = type === 'chung'
+            ? (payingStudentIds.length > 0 ? Math.round(parsedPrice / payingStudentIds.length) : 0)
+            : parsedPrice;
+        const preparedDetails = {};
+        for (const studentId of studentIds) {
+            const detail = (studentDetails && studentDetails[studentId]) || {};
+            const hasExplicitFee = detail.feeAmount !== undefined && detail.feeAmount !== null
+                && Number.isFinite(Number(detail.feeAmount)) && Number(detail.feeAmount) >= 0;
+            preparedDetails[studentId] = {
+                ...detail,
+                feeAmount: basePriceByStudent[studentId] > 0
+                    ? (hasExplicitFee ? Math.round(Number(detail.feeAmount)) : fallbackFee)
+                    : 0
+            };
+        }
+        const snapshottedSessionPrice = Object.values(preparedDetails).reduce((sum, detail) => sum + Number(detail.feeAmount || 0), 0);
+
+        transaction = new sql.Transaction(pool);
+        await transaction.begin();
+        await lockTeacherSchedule(transaction, req.effectiveTeacherId);
+        const overlapResult = await new sql.Request(transaction)
+            .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+            .input('minDate', sql.Date, allDates[0])
+            .input('maxDate', sql.Date, allDates[allDates.length - 1])
+            .input('startTime', sql.VarChar, startTime)
+            .input('endTime', sql.VarChar, endTime)
+            .query(`SELECT Id, SessionDate, StartTime, EndTime, SessionName FROM Sessions
+                    WHERE TeacherId = @teacherId
+                      AND SessionDate >= @minDate AND SessionDate <= @maxDate
+                      AND StartTime < @endTime AND EndTime > @startTime`);
+        const requestedDates = new Set(allDates);
+        const conflict = (overlapResult.recordset || []).find(row => requestedDates.has(String(row.SessionDate).slice(0, 10)));
+        if (conflict) {
+            await transaction.rollback();
+            transaction = null;
+            const conflictDate = String(conflict.SessionDate).slice(0, 10);
+            return res.status(409).json(formatScheduleConflict(conflict, conflictDate, startTime, endTime));
+        }
+
+        for (const [sequence, sessionDate] of allDates.entries()) {
+            const sessionId = sequence === 0 ? id : `sess_${crypto.randomUUID()}`;
+            const sessionCompleted = sequence === 0 ? !!completed : isStoredSessionCompleted(sessionDate, endTime);
+            await new sql.Request(transaction)
+                .input('id', sql.VarChar, sessionId)
+                .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+                .input('date', sql.Date, sessionDate)
+                .input('startTime', sql.VarChar, startTime)
+                .input('endTime', sql.VarChar, endTime)
+                .input('type', sql.VarChar, type)
+                .input('sessionName', sql.NVarChar, sessionName || '')
+                .input('price', sql.Int, snapshottedSessionPrice)
+                .input('duration', sql.Decimal(4, 2), parseFloat(duration) || 2.0)
+                .input('content', sql.NVarChar, content || '')
+                .input('generalComment', sql.NVarChar, generalComment || '')
+                .input('completed', sql.Bit, sessionCompleted ? 1 : 0)
+                .input('recurrenceGroupId', sql.VarChar, recurrenceGroupId)
+                .input('recurrenceSequence', sql.Int, sequence)
+                .query(`INSERT INTO Sessions (Id, SessionDate, StartTime, EndTime, SessionType, SessionName, Price, Duration, Content, GeneralComment, Completed, RecurrenceGroupId, RecurrenceSequence, TeacherId)
+                        VALUES (@id, @date, @startTime, @endTime, @type, @sessionName, @price, @duration, @content, @generalComment, @completed, @recurrenceGroupId, @recurrenceSequence, @teacherId)`);
+
+            for (const studentId of studentIds) {
+                const sourceDetail = preparedDetails[studentId] || {};
+                const detail = sequence === 0 ? sourceDetail : { feeAmount: sourceDetail.feeAmount, paid: false };
+                await new sql.Request(transaction)
+                    .input('sessionId', sql.VarChar, sessionId)
+                    .input('studentId', sql.VarChar, studentId)
+                    .input('homework', sql.NVarChar, sequence === 0 ? (detail.homework || '') : '')
+                    .input('attitude', sql.NVarChar, sequence === 0 ? String(detail.attitude ?? '').trim() : '')
+                    .input('individualComment', sql.NVarChar, sequence === 0 ? (detail.individualComment || '') : '')
+                    .input('note', sql.NVarChar, sequence === 0 ? (detail.note || '') : '')
+                    .input('feeAmount', sql.Int, Number(detail.feeAmount || 0))
+                    .input('paid', sql.Bit, detail.paid ? 1 : 0)
+                    .query(`INSERT INTO SessionDetails (SessionId, StudentId, Homework, Attitude, IndividualComment, Note, FeeAmount, Paid)
+                            VALUES (@sessionId, @studentId, @homework, @attitude, @individualComment, @note, @feeAmount, @paid)`);
+            }
+        }
+
+        await transaction.commit();
+        transaction = null;
+        return res.status(201).json({ message: `Đã tạo ${allDates.length} buổi trong lịch lặp.`, createdCount: allDates.length, recurrenceGroupId });
+    } catch (err) {
+        if (transaction) { try { await transaction.rollback(); } catch (_) {} }
+        console.error('[POST /api/sessions/batch]', err);
+        return res.status(500).json({ error: 'Không thể tạo chuỗi lịch lặp.' });
+    }
+});
+
 app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     const { id, date, startTime, endTime, type, sessionName, studentIds, duration, price, content, generalComment, completed, paid, studentDetails, recurrenceGroupId, recurrenceSequence } = req.body || {};
 
@@ -2071,6 +2239,21 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
 
         transaction = new sql.Transaction(pool);
         await transaction.begin();
+        await lockTeacherSchedule(transaction, req.effectiveTeacherId);
+        const overlapResult = await new sql.Request(transaction)
+            .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+            .input('date', sql.Date, date)
+            .input('startTime', sql.VarChar, startTime)
+            .input('endTime', sql.VarChar, endTime)
+            .query(`SELECT Id, SessionDate, StartTime, EndTime, SessionName FROM Sessions
+                    WHERE TeacherId = @teacherId AND SessionDate = @date
+                      AND StartTime < @endTime AND EndTime > @startTime`);
+        const conflict = (overlapResult.recordset || [])[0];
+        if (conflict) {
+            await transaction.rollback();
+            transaction = null;
+            return res.status(409).json(formatScheduleConflict(conflict, date, startTime, endTime));
+        }
 
         await new sql.Request(transaction)
             .input('id',             sql.VarChar,       id)
@@ -2313,7 +2496,7 @@ app.put('/api/sessions/:id/quick-entry', requireRole('teacher', 'assistant'), re
 
 app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     const { id } = req.params;
-    const { date, startTime, endTime, type, sessionName, studentIds, duration, price, content, generalComment, completed, studentDetails, pricingChanged, repriceExistingFees, updateScope } = req.body || {};
+    const { date, startTime, endTime, type, sessionName, studentIds, duration, price, content, generalComment, completed, studentDetails, pricingChanged, repriceExistingFees, updateScope, createRepeatDates } = req.body || {};
 
     if (!date || !startTime || !endTime || !type || !Array.isArray(studentIds) || studentIds.length === 0) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
@@ -2327,6 +2510,9 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
         return res.status(400).json({ error: 'Học phí buổi học không được là số âm.' });
     }
 
+    const repeatResult = normalizeRepeatDates(createRepeatDates, date);
+    if (repeatResult.error) return res.status(400).json({ error: repeatResult.error });
+    const newRepeatDates = repeatResult.dates;
     const scope = updateScope === 'following' ? 'following' : 'single';
     const utcDay = value => {
         const [year, month, day] = String(value || '').slice(0, 10).split('-').map(Number);
@@ -2364,6 +2550,10 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
         const hasRecurrence = selected.RecurrenceGroupId
             && selected.RecurrenceSequence !== null
             && selected.RecurrenceSequence !== undefined;
+        if (hasRecurrence && newRepeatDates.length > 0) {
+            return res.status(400).json({ error: 'Buổi học này đã thuộc một chuỗi lặp.' });
+        }
+        const newRecurrenceGroupId = !hasRecurrence && newRepeatDates.length > 0 ? `rec_${crypto.randomUUID()}` : null;
         if (scope === 'following' && hasRecurrence) {
             const recurringRows = await pool.request()
                 .input('teacherId', sql.VarChar, req.effectiveTeacherId)
@@ -2388,6 +2578,7 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
 
         transaction = new sql.Transaction(pool);
         await transaction.begin();
+        await lockTeacherSchedule(transaction, req.effectiveTeacherId);
 
         for (const target of targets) {
             const overlaps = await new sql.Request(transaction)
@@ -2395,7 +2586,7 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
                 .input('targetDate', sql.Date, target.targetDate)
                 .input('startTime', sql.VarChar, startTime)
                 .input('endTime', sql.VarChar, endTime)
-                .query(`SELECT Id FROM Sessions
+                .query(`SELECT Id, SessionDate, StartTime, EndTime, SessionName FROM Sessions
                         WHERE TeacherId = @teacherId
                           AND SessionDate = @targetDate
                           AND StartTime < @endTime
@@ -2404,7 +2595,25 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
             if (externalOverlap) {
                 await transaction.rollback();
                 transaction = null;
-                return res.status(409).json({ error: `Một buổi trong chuỗi sau khi đổi sẽ bị trùng lịch ngày ${target.targetDate}. Không có dữ liệu nào được thay đổi.` });
+                return res.status(409).json(formatScheduleConflict(externalOverlap, target.targetDate, startTime, endTime));
+            }
+        }
+        for (const repeatDate of newRepeatDates) {
+            const overlaps = await new sql.Request(transaction)
+                .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+                .input('targetDate', sql.Date, repeatDate)
+                .input('startTime', sql.VarChar, startTime)
+                .input('endTime', sql.VarChar, endTime)
+                .query(`SELECT Id, SessionDate, StartTime, EndTime, SessionName FROM Sessions
+                        WHERE TeacherId = @teacherId
+                          AND SessionDate = @targetDate
+                          AND StartTime < @endTime
+                          AND EndTime > @startTime`);
+            const externalOverlap = (overlaps.recordset || []).find(row => !targetIds.has(row.Id));
+            if (externalOverlap) {
+                await transaction.rollback();
+                transaction = null;
+                return res.status(409).json(formatScheduleConflict(externalOverlap, repeatDate, startTime, endTime));
             }
         }
 
@@ -2422,10 +2631,13 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
                 .input('content', sql.NVarChar, content || '')
                 .input('generalComment', sql.NVarChar, generalComment || '')
                 .input('completed', sql.Bit, target.Id === id ? (completed ? 1 : 0) : (target.Completed ? 1 : 0))
+                .input('recurrenceGroupId', sql.VarChar, target.RecurrenceGroupId || (target.Id === id ? newRecurrenceGroupId : null))
+                .input('recurrenceSequence', sql.Int, target.RecurrenceSequence ?? (target.Id === id && newRecurrenceGroupId ? 0 : null))
                 .query(`UPDATE Sessions
                         SET SessionDate = @date, StartTime = @startTime, EndTime = @endTime,
                             SessionType = @type, SessionName = @sessionName, Price = @price, Duration = @duration,
-                            Content = @content, GeneralComment = @generalComment, Completed = @completed
+                            Content = @content, GeneralComment = @generalComment, Completed = @completed,
+                            RecurrenceGroupId = @recurrenceGroupId, RecurrenceSequence = @recurrenceSequence
                         WHERE Id = @id`);
 
             const existingDetailsResult = await new sql.Request(transaction)
@@ -2473,13 +2685,59 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
             }
         }
 
+        let createdCount = 0;
+        if (newRecurrenceGroupId) {
+            for (const [repeatIndex, repeatDate] of newRepeatDates.entries()) {
+                const repeatedSessionId = `sess_${crypto.randomUUID()}`;
+                await new sql.Request(transaction)
+                    .input('id', sql.VarChar, repeatedSessionId)
+                    .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+                    .input('date', sql.Date, repeatDate)
+                    .input('startTime', sql.VarChar, startTime)
+                    .input('endTime', sql.VarChar, endTime)
+                    .input('type', sql.VarChar, type)
+                    .input('sessionName', sql.NVarChar, sessionName || '')
+                    .input('price', sql.Int, parsedPrice)
+                    .input('duration', sql.Decimal(4, 2), parseFloat(duration) || 2.0)
+                    .input('content', sql.NVarChar, content || '')
+                    .input('generalComment', sql.NVarChar, generalComment || '')
+                    .input('completed', sql.Bit, isStoredSessionCompleted(repeatDate, endTime) ? 1 : 0)
+                    .input('recurrenceGroupId', sql.VarChar, newRecurrenceGroupId)
+                    .input('recurrenceSequence', sql.Int, repeatIndex + 1)
+                    .query(`INSERT INTO Sessions (Id, SessionDate, StartTime, EndTime, SessionType, SessionName, Price, Duration, Content, GeneralComment, Completed, RecurrenceGroupId, RecurrenceSequence, TeacherId)
+                            VALUES (@id, @date, @startTime, @endTime, @type, @sessionName, @price, @duration, @content, @generalComment, @completed, @recurrenceGroupId, @recurrenceSequence, @teacherId)`);
+
+                for (const studentId of studentIds) {
+                    const incoming = (studentDetails && studentDetails[studentId]) || {};
+                    const feeAmount = Number.isFinite(Number(incoming.feeAmount)) && Number(incoming.feeAmount) >= 0
+                        ? Math.round(Number(incoming.feeAmount))
+                        : 0;
+                    await new sql.Request(transaction)
+                        .input('sessionId', sql.VarChar, repeatedSessionId)
+                        .input('studentId', sql.VarChar, studentId)
+                        .input('homework', sql.NVarChar, '')
+                        .input('attitude', sql.NVarChar, '')
+                        .input('individualComment', sql.NVarChar, '')
+                        .input('note', sql.NVarChar, '')
+                        .input('feeAmount', sql.Int, feeAmount)
+                        .input('paid', sql.Bit, 0)
+                        .query(`INSERT INTO SessionDetails (SessionId, StudentId, Homework, Attitude, IndividualComment, Note, FeeAmount, Paid)
+                                VALUES (@sessionId, @studentId, @homework, @attitude, @individualComment, @note, @feeAmount, @paid)`);
+                }
+                createdCount++;
+            }
+        }
+
         await transaction.commit();
         transaction = null;
         res.json({
-            message: scope === 'following' && targets.length > 1
-                ? `Đã cập nhật ${targets.length} buổi trong chuỗi lặp.`
-                : 'Cập nhật lịch học thành công!',
+            message: createdCount > 0
+                ? `Đã cập nhật buổi học và tạo thêm ${createdCount} buổi lặp.`
+                : scope === 'following' && targets.length > 1
+                    ? `Đã cập nhật ${targets.length} buổi trong chuỗi lặp.`
+                    : 'Cập nhật lịch học thành công!',
             updatedCount: targets.length,
+            createdCount,
             scope: scope === 'following' && hasRecurrence ? 'following' : 'single'
         });
     } catch (err) {
@@ -3212,7 +3470,7 @@ const APP_UI_GUIDE = Object.freeze({
     },
     'view-scheduler': {
         name: 'Lịch dạy & Chấm công',
-        description: 'Có chế độ Ngày/Tuần/Tháng, điều hướng thời gian, kéo thả lịch và nút Ghi buổi học mới. Form buổi học gồm học sinh, tên ca, ngày, giờ, giá, nội dung và lịch lặp; khi sửa/xóa lịch lặp có lựa chọn một buổi hoặc buổi đó cùng các buổi sau.'
+        description: 'Có chế độ Ngày/Tuần/Tháng, điều hướng thời gian, kéo thả lịch và nút Ghi buổi học mới. Form buổi học có lịch lặp theo ngày, tuần, tháng hoặc ngày tùy chỉnh; lịch tuần/tháng cho phép chọn nhiều thứ. Buổi có sẵn có thể chuyển thành lịch lặp; khi sửa/xóa chuỗi có lựa chọn một buổi hoặc buổi đó cùng các buổi sau.'
     },
     'view-tuition': {
         name: 'Học phí',
@@ -3220,11 +3478,11 @@ const APP_UI_GUIDE = Object.freeze({
     },
     'view-students': {
         name: 'Hồ sơ học sinh',
-        description: 'Tìm/lọc học sinh theo khối, xem hồ sơ, thêm hoặc sửa thông tin liên hệ và học phí cơ bản; giáo viên có thể quản lý tài khoản đăng nhập học sinh theo quyền được cấp.'
+        description: 'Tìm/lọc học sinh theo lớp, xem hồ sơ, thêm hoặc sửa thông tin liên hệ và học phí cơ bản; trường Lớp có thể để trống; giáo viên có thể quản lý tài khoản đăng nhập học sinh theo quyền được cấp.'
     },
     'view-scores': {
         name: 'Điểm số',
-        description: 'Có hai cách xem Theo bài kiểm tra và Theo học sinh; bộ lọc Học sinh, Lớp/khối, Tháng, Loại điểm; có khu vực Điểm ngoài buổi học để nhập điểm theo nhóm, tên bài, thang điểm, ngày chấm và ghi chú.'
+        description: 'Có hai cách xem Theo bài kiểm tra và Theo học sinh; bộ lọc Học sinh, Lớp, Tháng, Loại điểm; có khu vực Điểm ngoài buổi học để nhập điểm theo nhóm, tên bài, thang điểm, ngày chấm và ghi chú.'
     },
     'view-ai-chat': {
         name: 'Trợ lý AI',
@@ -3527,7 +3785,7 @@ async function buildAiContext(req) {
     const studentLines = students.map(student => [
         '- ' + clipAiContextText(student.Name, 160),
         clipAiContextText(student.Class || '(chưa có lớp)', 120),
-        'Khối ' + (student.GradeLevel || '?'),
+        'Lớp: ' + (student.GradeLevel || '(để trống)'),
         'Môn: ' + clipAiContextText(student.Subject, 120),
         'Ngày sinh: ' + aiContextDate(student.DateOfBirth),
         'Học phí/buổi: ' + (student.BasePrice != null ? student.BasePrice + 'đ' : '-'),

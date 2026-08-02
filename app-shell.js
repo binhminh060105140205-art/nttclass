@@ -436,28 +436,39 @@ Object.assign(PinkyClassApp.prototype, {
         this.initCalendarDragToCreate();
 
         // ----- Lặp lại buổi học theo ngày / tuần / tháng / ngày tùy chỉnh -----
-        const repeatToggle = document.getElementById('sessionRepeatToggle');
-        const repeatPanel = document.getElementById('repeatDatesPanel');
-        if (repeatToggle && repeatPanel) {
-            repeatToggle.addEventListener('change', () => {
-                repeatPanel.style.display = repeatToggle.checked ? '' : 'none';
-                if (repeatToggle.checked) this.updateRepeatScheduleUI();
-                if (!repeatToggle.checked) {
-                    this.repeatExtraDates = [];
-                    this.renderRepeatDatesChips();
-                }
+        const bindRepeatControls = (mode) => {
+            const config = this.getRepeatFormConfig(mode);
+            const repeatToggle = document.getElementById(config.toggleId);
+            const repeatPanel = document.getElementById(config.panelId);
+            if (repeatToggle && repeatPanel) {
+                repeatToggle.addEventListener('change', () => {
+                    repeatPanel.style.display = repeatToggle.checked && !repeatToggle.disabled ? '' : 'none';
+                    if (repeatToggle.checked && !repeatToggle.disabled) this.updateRepeatScheduleUI(mode);
+                    if (!repeatToggle.checked) {
+                        this.setRepeatDates(mode, []);
+                        this.renderRepeatDatesChips(mode);
+                    }
+                });
+            }
+            const addRepeatDateBtn = document.getElementById(config.addButtonId);
+            if (addRepeatDateBtn) addRepeatDateBtn.addEventListener('click', () => this.handleAddRepeatDate(mode));
+            const repeatFrequency = document.getElementById(config.frequencyId);
+            const repeatUntilDate = document.getElementById(config.untilId);
+            if (repeatFrequency) repeatFrequency.addEventListener('change', () => this.updateRepeatScheduleUI(mode));
+            if (repeatUntilDate) repeatUntilDate.addEventListener('change', () => this.generateRepeatDates(mode));
+            document.querySelectorAll(`input[name="${config.weekdayName}"]`).forEach(input => {
+                input.addEventListener('change', () => this.generateRepeatDates(mode));
             });
-        }
-        const addRepeatDateBtn = document.getElementById('addRepeatDateBtn');
-        if (addRepeatDateBtn) {
-            addRepeatDateBtn.addEventListener('click', () => this.handleAddRepeatDate());
-        }
-        const repeatFrequency = document.getElementById('repeatFrequency');
-        const repeatUntilDate = document.getElementById('repeatUntilDate');
-        if (repeatFrequency) repeatFrequency.addEventListener('change', () => this.updateRepeatScheduleUI());
-        if (repeatUntilDate) repeatUntilDate.addEventListener('change', () => this.generateRepeatDates());
-        const sessionDate = document.getElementById('sessionDate');
-        if (sessionDate) sessionDate.addEventListener('change', () => this.generateRepeatDates());
+            const sessionDate = document.getElementById(config.dateId);
+            if (sessionDate) {
+                sessionDate.addEventListener('change', () => {
+                    this.syncRepeatBaseWeekday(mode, true);
+                    this.generateRepeatDates(mode);
+                });
+            }
+        };
+        bindRepeatControls('create');
+        bindRepeatControls('edit');
     }
 
 });
@@ -768,22 +779,22 @@ Object.assign(PinkyClassApp.prototype, {
         const subtitleEl = document.getElementById('view-subtitle');
 
         if (viewId === 'view-dashboard') {
-            titleEl.innerText = "Tổng quan hệ thống";
+            titleEl.innerText = "TỔNG QUAN HỆ THỐNG";
             subtitleEl.innerText = "Bảng điều khiển học tập và lịch dạy cá nhân.";
         } else if (viewId === 'view-logs') {
             titleEl.innerText = "NHẬT KÝ HỌC TẬP";
             subtitleEl.innerText = `Theo dõi chi tiết tiến trình bài tập, ý thức học tập và nhận xét qua từng buổi học của ${this.getStudentName(this.currentStudentId)}.`;
         } else if (viewId === 'view-scores') {
-            titleEl.innerText = "Điểm số";
+            titleEl.innerText = "ĐIỂM SỐ";
             subtitleEl.innerText = "Tra cứu theo bài kiểm tra hoặc học sinh, lọc dữ liệu và tổng hợp kết quả học tập.";
         } else if (viewId === 'view-ai-chat') {
-            titleEl.innerText = "Trợ lý AI";
+            titleEl.innerText = "TRỢ LÝ AI";
             subtitleEl.innerText = "Hỏi về dữ liệu, giao diện, cách sử dụng hoặc nhờ tạo một mục Yêu cầu.";
         } else if (viewId === 'view-requests') {
-            titleEl.innerText = "Yêu cầu";
+            titleEl.innerText = "YÊU CẦU";
             subtitleEl.innerText = "Ghi lại yêu cầu cần thực hiện và theo dõi trạng thái hoàn thành.";
         } else if (viewId === 'view-scheduler') {
-            titleEl.innerText = "Lịch dạy & Chấm công";
+            titleEl.innerText = "LỊCH DẠY & CHẤM CÔNG";
             subtitleEl.innerText = "Sắp xếp lịch dạy học và tính công dạy hàng tuần.";
         } else if (viewId === 'view-tuition') {
             titleEl.innerText = "BÁO CÁO HỌC PHÍ";
@@ -792,7 +803,7 @@ Object.assign(PinkyClassApp.prototype, {
             titleEl.innerText = "HỒ SƠ HỌC SINH";
             subtitleEl.innerText = "Quản lý thông tin liên hệ và học phí cơ bản.";
         } else if (viewId === 'view-users') {
-            titleEl.innerText = "Quản lý Tài khoản";
+            titleEl.innerText = "QUẢN LÝ TÀI KHOẢN";
             subtitleEl.innerText = "Tạo, chỉnh sửa, kích hoạt/vô hiệu hóa tài khoản Giáo viên và Trợ giảng.";
         }
 

@@ -16,7 +16,7 @@ Object.assign(PinkyClassApp.prototype, {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="7" class="student-empty-cell">
-                        Chưa có học sinh${gradeFilter ? " trong khối lớp này" : ""}. Bấm nút phía trên để thêm mới!
+                        Chưa có học sinh${gradeFilter ? " trong lớp này" : ""}. Bấm nút phía trên để thêm mới!
                     </td>
                 </tr>
             `;
@@ -35,7 +35,7 @@ Object.assign(PinkyClassApp.prototype, {
                 lastGrade = student.gradeLevel;
                 const groupRow = document.createElement("tr");
                 groupRow.className = "student-grade-group-row";
-                groupRow.innerHTML = `<td colspan="7">${student.gradeLevel ? `Lớp ${student.gradeLevel}` : "Chưa xác định khối lớp"}</td>`;
+                groupRow.innerHTML = `<td colspan="7">${student.gradeLevel ? `Lớp ${student.gradeLevel}` : "Chưa nhập lớp"}</td>`;
                 tbody.appendChild(groupRow);
             }
 
@@ -101,7 +101,7 @@ Object.assign(PinkyClassApp.prototype, {
         document.getElementById("editStudentId").value = "";
         document.getElementById("studentModalTitle").innerText = "Thêm Học Sinh Mới";
         document.getElementById("saveStudentBtn").innerText = "Thêm học sinh";
-        document.getElementById("studentGrade").value = "8";
+        document.getElementById("studentGrade").value = "";
         document.getElementById("studentBasePrice").value = 250000;
         this.setStudentModalActions(false);
         this.openModal("addStudentModal");
@@ -119,7 +119,7 @@ Object.assign(PinkyClassApp.prototype, {
         document.getElementById("studentModalTitle").innerText = "Chỉnh Sửa Học Sinh";
         document.getElementById("saveStudentBtn").innerText = "Lưu thay đổi";
         document.getElementById("studentName").value = student.name;
-        document.getElementById("studentGrade").value = student.gradeLevel || 8;
+        document.getElementById("studentGrade").value = student.gradeLevel || "";
         document.getElementById("studentSubject").value = student.subject;
         document.getElementById("studentDob").value = student.dob || "";
         document.getElementById("studentBasePrice").value = student.basePrice;
@@ -163,18 +163,29 @@ Object.assign(PinkyClassApp.prototype, {
         });
     },
 
+    formatSessionConflictMessage(date, startTime, endTime, overlap) {
+        const participantNames = (overlap?.studentIds || []).map(studentId => this.getStudentName(studentId)).filter(Boolean);
+        const conflictName = String(overlap?.sessionName || '').trim() || participantNames.join(', ') || 'Buổi học';
+        return `Không thể lưu lịch ${startTime}-${endTime} ngày ${this.formatDateVN(date)} vì trùng với “${conflictName}” (${overlap?.startTime || '?'}-${overlap?.endTime || '?'}). Hãy chọn lại ngày hoặc giờ.`;
+    },
+
     async handleAddStudent() {
         const editId = document.getElementById('editStudentId').value;
         const name = document.getElementById('studentName').value.trim();
-        const gradeLevel = parseInt(document.getElementById('studentGrade').value);
-        const sClass = `Lớp ${gradeLevel}`;
+        const gradeValue = document.getElementById('studentGrade').value.trim();
+        const gradeLevel = gradeValue === '' ? null : Number(gradeValue);
+        if (gradeLevel !== null && (!Number.isInteger(gradeLevel) || gradeLevel < 1 || gradeLevel > 12)) {
+            this.showToast('Lớp phải là số nguyên từ 1 đến 12 hoặc để trống.', 'error');
+            return;
+        }
+        const sClass = gradeLevel === null ? '' : `Lớp ${gradeLevel}`;
         const subject = document.getElementById('studentSubject').value.trim();
         // Ngày sinh — không bắt buộc, để trống nếu chưa muốn nhập. Giá trị
         // input[type=date] đã sẵn ở dạng "yyyy-mm-dd" nên gửi thẳng lên API.
         const dob = document.getElementById('studentDob').value || null;
         const basePrice = parseInt(document.getElementById('studentBasePrice').value);
 
-        if (!name || !gradeLevel || !subject) return;
+        if (!name || !subject) return;
 
         // Học phí/buổi phải là số nguyên KHÔNG ÂM (>= 0) — cho phép để 0 (VD học
         // sinh học miễn phí/học thử), chỉ chặn số âm hoặc giá trị không hợp lệ.
