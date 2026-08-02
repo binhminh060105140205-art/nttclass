@@ -3242,9 +3242,9 @@ const APP_UI_GUIDE = Object.freeze({
 
 const APP_ROLE_ACCESS = Object.freeze({
     admin: 'Quản trị viên dùng trang Quản lý tài khoản. Các trang dữ liệu dạy học và Trợ lý AI không hiện trong menu admin.',
-    teacher: 'Giáo viên dùng các trang Tổng quan, Nhật ký, Lịch dạy, Học phí, Hồ sơ học sinh, Điểm số, Trợ lý AI và Yêu cầu.',
+    teacher: 'Giáo viên dùng các trang Tổng quan, Nhật ký, Lịch dạy, Học phí, Hồ sơ học sinh, Điểm số và Yêu cầu. Riêng tài khoản Nguyễn Thanh Thúy có thêm Trợ lý AI.',
     assistant: 'Trợ giảng dùng các trang dữ liệu của giáo viên được gán; nút sửa có thể bị ẩn hoặc khóa theo phân quyền.',
-    student: 'Học sinh chỉ dùng Nhật ký, Điểm số, Trợ lý AI và Yêu cầu; dữ liệu được giới hạn về chính học sinh đó.'
+    student: 'Học sinh chỉ dùng Nhật ký, Điểm số và Yêu cầu; dữ liệu được giới hạn về chính học sinh đó.'
 });
 
 const AI_CREATE_REQUEST_TOOL = Object.freeze({
@@ -3657,6 +3657,14 @@ function canManageAllTaskRequests(req) {
         && req.authUser?.userId === PROTECTED_OWNER_USER_ID;
 }
 
+function requireAiOwner(req, res, next) {
+    if (req.authUser?.accountType === 'user'
+        && req.authUser?.userId === PROTECTED_OWNER_USER_ID) {
+        return next();
+    }
+    return res.status(403).json({ error: 'Trợ lý AI chỉ dành cho tài khoản Nguyễn Thanh Thúy.' });
+}
+
 function taskRequestScope(req, alias = '', firstParameterIndex = 1) {
     if (canManageAllTaskRequests(req)) return { predicate: 'TRUE', params: [] };
     const prefix = alias ? `${alias}.` : '';
@@ -4009,7 +4017,7 @@ function validateAiConversationMessages(value) {
     return { value: messages };
 }
 
-app.get('/api/ai-conversation', requireAuth, async (req, res) => {
+app.get('/api/ai-conversation', requireAuth, requireAiOwner, async (req, res) => {
     try {
         const result = await pgPool.query('SELECT MessagesData AS "messages", UpdatedAt AS "updatedAt" FROM AiConversations WHERE OwnerId = $1 AND OwnerRole = $2', [req.authUser.userId, req.authUser.role]);
         res.setHeader('Cache-Control', 'no-store');
@@ -4023,7 +4031,7 @@ app.get('/api/ai-conversation', requireAuth, async (req, res) => {
     }
 });
 
-app.put('/api/ai-conversation', requireAuth, async (req, res) => {
+app.put('/api/ai-conversation', requireAuth, requireAiOwner, async (req, res) => {
     const validated = validateAiConversationMessages(req.body?.messages);
     if (validated.error) return res.status(400).json({ error: validated.error });
     try {
@@ -4035,7 +4043,7 @@ app.put('/api/ai-conversation', requireAuth, async (req, res) => {
     }
 });
 
-app.delete('/api/ai-conversation', requireAuth, async (req, res) => {
+app.delete('/api/ai-conversation', requireAuth, requireAiOwner, async (req, res) => {
     try {
         await pgPool.query('DELETE FROM AiConversations WHERE OwnerId = $1 AND OwnerRole = $2', [req.authUser.userId, req.authUser.role]);
         res.json({ message: 'Đã xoá hội thoại.' });
@@ -4045,7 +4053,7 @@ app.delete('/api/ai-conversation', requireAuth, async (req, res) => {
     }
 });
 
-app.post('/api/ai-chat', requireAuth, aiRateLimit, async (req, res) => {
+app.post('/api/ai-chat', requireAuth, requireAiOwner, aiRateLimit, async (req, res) => {
     const { message, history, currentView, contextView } = req.body || {};
     if (!message || typeof message !== 'string' || !message.trim()) {
         return res.status(400).json({ error: 'Vui lòng nhập câu hỏi.' });

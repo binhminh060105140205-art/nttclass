@@ -695,14 +695,11 @@ Object.assign(PinkyClassApp.prototype, {
             navScheduler.style.display = 'flex';
             navStudents.style.display = 'flex'; // TA can view classes/students of their assigned teacher
             navUsers.style.display = 'none';
-            navAiChat.style.display = 'flex';
             navRequests.style.display = 'flex';
         } else if (role === 'student') {
             // Học sinh: xem "Nhật ký học tập" + "Điểm số" của chính mình —
             // không thấy học phí, không thấy học sinh khác, không thấy lịch
-            // dạy tổng, không có quyền quản lý tài khoản. Vẫn được dùng Trợ
-            // lý AI nhưng chỉ đọc được đúng dữ liệu của chính mình (giới hạn
-            // ở phía server, xem /api/ai-chat).
+            // dạy tổng và không có quyền quản lý tài khoản.
             navDashboard.style.display = 'none';
             navLogs.style.display = 'flex';
             navScores.style.display = 'flex';
@@ -710,7 +707,6 @@ Object.assign(PinkyClassApp.prototype, {
             navScheduler.style.display = 'none';
             navStudents.style.display = 'none';
             navUsers.style.display = 'none';
-            navAiChat.style.display = 'flex';
             navRequests.style.display = 'flex';
         } else {
             // teacher: toàn quyền với các chức năng dạy học
@@ -721,9 +717,13 @@ Object.assign(PinkyClassApp.prototype, {
             navScheduler.style.display = 'flex';
             navStudents.style.display = 'flex';
             navUsers.style.display = 'none';
-            navAiChat.style.display = 'flex';
             navRequests.style.display = 'flex';
         }
+
+        const canUseAiAssistant = this.canUseAiAssistant();
+        navAiChat.style.display = canUseAiAssistant ? 'flex' : 'none';
+        const aiView = document.getElementById('view-ai-chat');
+        if (aiView) aiView.hidden = !canUseAiAssistant;
 
         this.applyPermissions();
         const roleLabel = role === 'admin' ? 'Quản trị viên' : role === 'teacher' ? 'Giáo viên' : role === 'assistant' ? 'Trợ giảng' : 'Học sinh';
@@ -737,7 +737,18 @@ Object.assign(PinkyClassApp.prototype, {
 // phân quyền theo vai trò, và vài hàm getter nhỏ dùng chung.
 // ================================================================
 Object.assign(PinkyClassApp.prototype, {
+    canUseAiAssistant() {
+        return String(this.currentUser?.id || '') === 'u_teacher';
+    },
+
     switchView(viewId) {
+        if (viewId === 'view-ai-chat' && !this.canUseAiAssistant()) {
+            viewId = this.currentRole === 'admin'
+                ? 'view-users'
+                : this.currentRole === 'student'
+                    ? 'view-logs'
+                    : 'view-dashboard';
+        }
         if (viewId !== 'view-ai-chat' && document.getElementById(viewId)?.classList.contains('view-section')) {
             this.lastVisitedFeatureViewId = viewId;
         }
