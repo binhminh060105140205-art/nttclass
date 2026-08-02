@@ -34,6 +34,12 @@ Object.assign(PinkyClassApp.prototype, {
         });
 
         list.addEventListener('click', (event) => {
+            const deleteButton = event.target.closest('.request-delete-button');
+            if (deleteButton) {
+                event.preventDefault();
+                this.deleteRequest(deleteButton.dataset.requestId, deleteButton);
+                return;
+            }
             const imageButton = event.target.closest('.request-item-image');
             if (!imageButton) return;
             this.openRequestImage(imageButton.dataset.requestId, imageButton.dataset.imageIndex);
@@ -179,9 +185,10 @@ Object.assign(PinkyClassApp.prototype, {
         document.body.classList.remove('request-image-viewer-open');
     },
 
-    async loadRequests() {
+    async loadRequests(options = {}) {
         if (!this.currentUser) return;
-        if (this.requestsLoaded) {
+        const force = options.force === true;
+        if (this.requestsLoaded && !force) {
             this.renderRequests();
             return;
         }
@@ -189,7 +196,9 @@ Object.assign(PinkyClassApp.prototype, {
 
         const ownerKey = `${this.currentUser.role}:${this.currentUser.id}`;
         const list = document.getElementById('requestList');
-        if (list) list.innerHTML = '<div class="request-empty">Đang tải yêu cầu...</div>';
+        if (list && !this.requestsLoaded) {
+            list.innerHTML = '<div class="request-empty">Đang tải yêu cầu...</div>';
+        }
 
         const loadPromise = (async () => {
             try {
@@ -276,6 +285,29 @@ Object.assign(PinkyClassApp.prototype, {
         }
     },
 
+    async deleteRequest(id, button) {
+        if (!id) return;
+        const item = this.requests.find(request => String(request.id) === String(id));
+        if (!item) return;
+        const preview = String(item.text || 'yêu cầu có ảnh đính kèm').trim().slice(0, 90);
+        if (!confirm(`Xóa yêu cầu “${preview}” khỏi hệ thống?`)) return;
+
+        if (button) button.disabled = true;
+        try {
+            const response = await this.authFetch(`${API_BASE_URL}/api/requests/${encodeURIComponent(id)}`, {
+                method: 'DELETE'
+            });
+            await this.requireApiSuccess(response, 'Không thể xóa yêu cầu.');
+            this.requests = this.requests.filter(request => String(request.id) !== String(id));
+            if (String(this.requestEditingId || '') === String(id)) this.cancelRequestEdit();
+            this.renderRequests();
+            this.showToast('Đã xóa yêu cầu.', 'success');
+        } catch (err) {
+            if (button?.isConnected) button.disabled = false;
+            this.showToast(err.message || 'Không thể xóa yêu cầu.', 'error');
+        }
+    },
+
     renderRequests() {
         const list = document.getElementById('requestList');
         if (!list) return;
@@ -311,6 +343,17 @@ Object.assign(PinkyClassApp.prototype, {
 
         list.innerHTML = visibleItems.map((item, index) => {
             const createdLabel = this.formatRequestDate(item.createdAt);
+            const ownerRoleLabel = {
+                admin: 'Quản trị viên',
+                teacher: 'Giáo viên',
+                assistant: 'Trợ giảng',
+                student: 'Học sinh'
+            }[item.ownerRole] || '';
+            const showOwner = item.ownerId
+                && String(item.ownerId) !== String(this.currentUser?.id || '');
+            const ownerHtml = showOwner
+                ? `<span class="request-owner">Người gửi: <strong>${this.escapeHtml(item.ownerName || item.ownerId)}</strong>${ownerRoleLabel ? ` · ${this.escapeHtml(ownerRoleLabel)}` : ''}</span>`
+                : '';
             const textHtml = item.text
                 ? `<div class="request-item-text">${this.escapeHtml(item.text).replace(/\n/g, '<br>')}</div>`
                 : '';
@@ -327,9 +370,15 @@ Object.assign(PinkyClassApp.prototype, {
                         ${item.priority ? '<div class="request-priority-label">Ưu tiên cao</div>' : ''}
                         ${textHtml}
                         ${imageHtml}
-                        <div class="request-item-meta">${createdLabel}</div>
+                        <div class="request-item-meta">
+                            ${ownerHtml}
+                            <span class="request-created-at">${createdLabel}</span>
+                        </div>
                     </div>
                     <div class="request-item-actions">
+                        <button type="button" class="request-delete-button"
+                            data-request-id="${this.escapeHtmlAttr(item.id)}"
+                            title="Xóa yêu cầu" aria-label="Xóa yêu cầu">Xóa</button>
                         <label class="request-status-control" title="${item.completed ? 'Chuyển về chưa hoàn thành' : 'Đánh dấu đã hoàn thành'}">
                             <input type="checkbox" class="request-complete-checkbox"
                                 data-request-id="${this.escapeHtmlAttr(item.id)}" ${item.completed ? 'checked' : ''}>

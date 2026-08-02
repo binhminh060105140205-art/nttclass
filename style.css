@@ -5110,7 +5110,8 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     min-width: 118px;
 }
 
-.request-edit-button {
+.request-edit-button,
+.request-delete-button {
     min-height: 30px;
     padding: 5px 10px;
     border: 1px solid var(--border-color);
@@ -5129,6 +5130,20 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     border-color: var(--primary);
     background: var(--primary-soft);
     color: var(--primary);
+    outline: none;
+}
+
+.request-delete-button {
+    border-color: rgba(220, 38, 38, .2);
+    background: rgba(254, 242, 242, .86);
+    color: #b91c1c;
+}
+
+.request-delete-button:hover,
+.request-delete-button:focus-visible {
+    border-color: rgba(220, 38, 38, .44);
+    background: #fee2e2;
+    color: #991b1b;
     outline: none;
 }
 
@@ -5244,9 +5259,21 @@ body.request-image-viewer-open { overflow: hidden; }
 }
 
 .request-item-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px 12px;
     margin-top: 9px;
     color: var(--text-muted);
     font-size: 12px;
+}
+
+.request-owner {
+    color: var(--text-main);
+}
+
+.request-owner strong {
+    color: var(--primary);
 }
 
 .request-status-control {
@@ -5435,6 +5462,19 @@ body.request-image-viewer-open { overflow: hidden; }
 [data-theme-mode="dark"] .btn-danger:hover {
     background: rgba(185, 28, 28, 0.45) !important;
     color: #fee2e2 !important;
+}
+
+[data-theme-mode="dark"] .request-delete-button {
+    border-color: rgba(248, 113, 113, .28);
+    background: rgba(127, 29, 29, .24);
+    color: #fca5a5;
+}
+
+[data-theme-mode="dark"] .request-delete-button:hover,
+[data-theme-mode="dark"] .request-delete-button:focus-visible {
+    border-color: rgba(248, 113, 113, .48);
+    background: rgba(153, 27, 27, .42);
+    color: #fee2e2;
 }
 
 /* ========================================================================

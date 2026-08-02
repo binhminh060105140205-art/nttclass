@@ -795,7 +795,7 @@ Object.assign(PinkyClassApp.prototype, {
         });
 
         this.renderView(viewId);
-        if (viewId === 'view-requests' && !this.requestsLoaded) this.loadRequests();
+        if (viewId === 'view-requests') this.loadRequests({ force: true });
         if (viewId === 'view-ai-chat' && !this.aiChatSavedLoaded) this.loadSavedAiChat();
         this.applyPermissions(targetView || document);
     },

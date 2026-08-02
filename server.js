@@ -3652,6 +3652,34 @@ function normalizeRequestRow(row, options = {}) {
     };
 }
 
+function canManageAllTaskRequests(req) {
+    return req.authUser?.accountType === 'user'
+        && req.authUser?.userId === PROTECTED_OWNER_USER_ID;
+}
+
+function taskRequestScope(req, alias = '', firstParameterIndex = 1) {
+    if (canManageAllTaskRequests(req)) return { predicate: 'TRUE', params: [] };
+    const prefix = alias ? `${alias}.` : '';
+    return {
+        predicate: `${prefix}OwnerId = $${firstParameterIndex} AND ${prefix}OwnerRole = $${firstParameterIndex + 1}`,
+        params: [req.authUser.userId, req.authUser.role]
+    };
+}
+
+async function attachTaskRequestOwnerName(request) {
+    if (!request?.ownerId) return request;
+    const result = await pgPool.query(`
+        SELECT COALESCE(
+            CASE WHEN $2 = 'student'
+                THEN (SELECT Name FROM Students WHERE Id = $1)
+                ELSE (SELECT Name FROM Users WHERE Id = $1)
+            END,
+            $1
+        ) AS "ownerName"`,
+    [request.ownerId, request.ownerRole]);
+    return { ...request, ownerName: result.rows[0]?.ownerName || request.ownerId };
+}
+
 function validateNewTaskRequest(rawInput) {
     const text = String(rawInput?.text || '').trim();
     const priority = rawInput?.priority ?? false;
@@ -3669,7 +3697,8 @@ async function createTaskRequestForOwner(ownerId, ownerRole, requestInput) {
     const result = await pgPool.query(`
         INSERT INTO TaskRequests (Id, OwnerId, OwnerRole, TextContent, ImageData, ImageName, ImagesData, Completed, Priority)
         VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8)
-        RETURNING Id AS "id", TextContent AS "text", ImageData AS "imageData",
+        RETURNING Id AS "id", OwnerId AS "ownerId", OwnerRole AS "ownerRole",
+                  TextContent AS "text", ImageData AS "imageData",
                   ImageName AS "imageName", ImagesData AS "imagesData", Completed AS "completed", Priority AS "priority",
                   CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"`,
     [
@@ -3682,7 +3711,7 @@ async function createTaskRequestForOwner(ownerId, ownerRole, requestInput) {
         JSON.stringify(requestInput.images),
         requestInput.priority
     ]);
-    return normalizeRequestRow(result.rows[0]);
+    return attachTaskRequestOwnerName(normalizeRequestRow(result.rows[0]));
 }
 
 async function runCreateRequestTool(req, toolCall, allowed) {
@@ -3739,11 +3768,15 @@ function decodeStoredRequestImage(imageData) {
 
 app.get('/api/requests', requireAuth, async (req, res) => {
     try {
+        const scope = taskRequestScope(req, 'request_item', 1);
         const result = await pgPool.query(`
-            SELECT Id AS "id", TextContent AS "text", ImageName AS "imageName",
+            SELECT request_item.Id AS "id", request_item.OwnerId AS "ownerId",
+                   request_item.OwnerRole AS "ownerRole",
+                   COALESCE(owner_user.Name, owner_student.Name, request_item.OwnerId) AS "ownerName",
+                   request_item.TextContent AS "text", request_item.ImageName AS "imageName",
                    CASE
-                       WHEN ImagesData IS NOT NULL AND BTRIM(ImagesData) <> ''
-                            AND jsonb_typeof(ImagesData::jsonb) = 'array'
+                       WHEN request_item.ImagesData IS NOT NULL AND BTRIM(request_item.ImagesData) <> ''
+                            AND jsonb_typeof(request_item.ImagesData::jsonb) = 'array'
                        THEN (
                            SELECT COALESCE(
                                jsonb_agg(
@@ -3752,19 +3785,25 @@ app.get('/api/requests', requireAuth, async (req, res) => {
                                ),
                                '[]'::jsonb
                            )
-                           FROM jsonb_array_elements(ImagesData::jsonb) WITH ORDINALITY
+                           FROM jsonb_array_elements(request_item.ImagesData::jsonb) WITH ORDINALITY
                                AS request_image(image, ordinality)
                        )
-                       WHEN ImageData IS NOT NULL AND ImageData <> ''
-                       THEN jsonb_build_array(jsonb_build_object('name', COALESCE(ImageName, '')))
+                       WHEN request_item.ImageData IS NOT NULL AND request_item.ImageData <> ''
+                       THEN jsonb_build_array(jsonb_build_object('name', COALESCE(request_item.ImageName, '')))
                        ELSE '[]'::jsonb
                    END AS "imageMetadata",
-                   Completed AS "completed", Priority AS "priority",
-                   CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"
-            FROM TaskRequests
-            WHERE OwnerId = $1 AND OwnerRole = $2
-            ORDER BY Priority DESC, Completed ASC, CreatedAt DESC`,
-        [req.authUser.userId, req.authUser.role]);
+                   request_item.Completed AS "completed", request_item.Priority AS "priority",
+                   request_item.CreatedAt AS "createdAt", request_item.UpdatedAt AS "updatedAt",
+                   request_item.CompletedAt AS "completedAt"
+            FROM TaskRequests request_item
+            LEFT JOIN Users owner_user
+                ON request_item.OwnerRole <> 'student' AND owner_user.Id = request_item.OwnerId
+            LEFT JOIN Students owner_student
+                ON request_item.OwnerRole = 'student' AND owner_student.Id = request_item.OwnerId
+            WHERE ${scope.predicate}
+            ORDER BY request_item.Priority DESC, request_item.Completed ASC, request_item.CreatedAt DESC`,
+        scope.params);
+        res.setHeader('Cache-Control', 'no-store');
         res.json(result.rows.map(row => normalizeRequestRow(row)));
     } catch (err) {
         console.error('[GET /api/requests]', err);
@@ -3779,11 +3818,13 @@ app.get('/api/requests/:id/images/:index', requireAuth, async (req, res) => {
     }
 
     try {
+        const scope = taskRequestScope(req, 'request_item', 2);
         const result = await pgPool.query(`
-            SELECT ImageData AS "imageData", ImageName AS "imageName", ImagesData AS "imagesData"
-            FROM TaskRequests
-            WHERE Id = $1 AND OwnerId = $2 AND OwnerRole = $3`,
-        [req.params.id, req.authUser.userId, req.authUser.role]);
+            SELECT request_item.ImageData AS "imageData", request_item.ImageName AS "imageName",
+                   request_item.ImagesData AS "imagesData"
+            FROM TaskRequests request_item
+            WHERE request_item.Id = $1 AND ${scope.predicate}`,
+        [req.params.id, ...scope.params]);
         if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy yêu cầu.' });
 
         const storedImage = parseStoredRequestImages(result.rows[0])[imageIndex];
@@ -3802,13 +3843,23 @@ app.get('/api/requests/:id/images/:index', requireAuth, async (req, res) => {
 
 app.get('/api/requests/:id', requireAuth, async (req, res) => {
     try {
+        const scope = taskRequestScope(req, 'request_item', 2);
         const result = await pgPool.query(`
-            SELECT Id AS "id", TextContent AS "text", ImageData AS "imageData",
-                   ImageName AS "imageName", ImagesData AS "imagesData", Completed AS "completed", Priority AS "priority",
-                   CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"
-            FROM TaskRequests
-            WHERE Id = $1 AND OwnerId = $2 AND OwnerRole = $3`,
-        [req.params.id, req.authUser.userId, req.authUser.role]);
+            SELECT request_item.Id AS "id", request_item.OwnerId AS "ownerId",
+                   request_item.OwnerRole AS "ownerRole",
+                   COALESCE(owner_user.Name, owner_student.Name, request_item.OwnerId) AS "ownerName",
+                   request_item.TextContent AS "text", request_item.ImageData AS "imageData",
+                   request_item.ImageName AS "imageName", request_item.ImagesData AS "imagesData",
+                   request_item.Completed AS "completed", request_item.Priority AS "priority",
+                   request_item.CreatedAt AS "createdAt", request_item.UpdatedAt AS "updatedAt",
+                   request_item.CompletedAt AS "completedAt"
+            FROM TaskRequests request_item
+            LEFT JOIN Users owner_user
+                ON request_item.OwnerRole <> 'student' AND owner_user.Id = request_item.OwnerId
+            LEFT JOIN Students owner_student
+                ON request_item.OwnerRole = 'student' AND owner_student.Id = request_item.OwnerId
+            WHERE request_item.Id = $1 AND ${scope.predicate}`,
+        [req.params.id, ...scope.params]);
         if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy yêu cầu.' });
         res.json(normalizeRequestRow(result.rows[0], { includeImageData: true }));
     } catch (err) {
@@ -3855,18 +3906,20 @@ app.put('/api/requests/:id', requireAuth, async (req, res) => {
 
     const firstImage = imageList.value[0] || { dataUrl: null, name: imageName || null };
     try {
+        const scope = taskRequestScope(req, '', 7);
         const result = await pgPool.query(`
             UPDATE TaskRequests
             SET TextContent = $1, ImageData = $2, ImageName = $3, ImagesData = $4,
                 Priority = $5, UpdatedAt = CURRENT_TIMESTAMP
-            WHERE Id = $6 AND OwnerId = $7 AND OwnerRole = $8
-            RETURNING Id AS id, TextContent AS text, ImageData AS imageData,
+            WHERE Id = $6 AND ${scope.predicate}
+            RETURNING Id AS id, OwnerId AS "ownerId", OwnerRole AS "ownerRole",
+                      TextContent AS text, ImageData AS imageData,
                       ImageName AS imageName, ImagesData AS imagesData, Completed AS completed, Priority AS priority,
                       CreatedAt AS createdAt, UpdatedAt AS updatedAt, CompletedAt AS completedAt`,
         [text, firstImage.dataUrl, firstImage.name || null, JSON.stringify(imageList.value), priority,
-         req.params.id, req.authUser.userId, req.authUser.role]);
+         req.params.id, ...scope.params]);
         if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy yêu cầu.' });
-        res.json(normalizeRequestRow(result.rows[0]));
+        res.json(await attachTaskRequestOwnerName(normalizeRequestRow(result.rows[0])));
     } catch (err) {
         console.error('[PUT /api/requests/:id]', err);
         res.status(500).json({ error: 'Không thể cập nhật yêu cầu.' });
@@ -3879,14 +3932,15 @@ app.put('/api/requests/:id/status', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'Trạng thái hoàn thành không hợp lệ.' });
     }
     try {
+        const scope = taskRequestScope(req, '', 3);
         const result = await pgPool.query(`
             UPDATE TaskRequests
             SET Completed = $1, UpdatedAt = CURRENT_TIMESTAMP,
                 CompletedAt = CASE WHEN $1 THEN CURRENT_TIMESTAMP ELSE NULL END
-            WHERE Id = $2 AND OwnerId = $3 AND OwnerRole = $4
+            WHERE Id = $2 AND ${scope.predicate}
             RETURNING Id AS "id", TextContent AS "text", Completed AS "completed", Priority AS "priority",
                       CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"`,
-        [completed, req.params.id, req.authUser.userId, req.authUser.role]);
+        [completed, req.params.id, ...scope.params]);
         if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy yêu cầu.' });
         res.json(result.rows[0]);
     } catch (err) {
@@ -3901,18 +3955,35 @@ app.put('/api/requests/:id/priority', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'Trạng thái ưu tiên không hợp lệ.' });
     }
     try {
+        const scope = taskRequestScope(req, '', 3);
         const result = await pgPool.query(`
             UPDATE TaskRequests
             SET Priority = $1, UpdatedAt = CURRENT_TIMESTAMP
-            WHERE Id = $2 AND OwnerId = $3 AND OwnerRole = $4
+            WHERE Id = $2 AND ${scope.predicate}
             RETURNING Id AS "id", TextContent AS "text", Completed AS "completed", Priority AS "priority",
                       CreatedAt AS "createdAt", UpdatedAt AS "updatedAt", CompletedAt AS "completedAt"`,
-        [priority, req.params.id, req.authUser.userId, req.authUser.role]);
+        [priority, req.params.id, ...scope.params]);
         if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy yêu cầu.' });
         res.json(result.rows[0]);
     } catch (err) {
         console.error('[PUT /api/requests/:id/priority]', err);
         res.status(500).json({ error: 'Không thể cập nhật mức độ ưu tiên.' });
+    }
+});
+
+app.delete('/api/requests/:id', requireAuth, async (req, res) => {
+    try {
+        const scope = taskRequestScope(req, '', 2);
+        const result = await pgPool.query(`
+            DELETE FROM TaskRequests
+            WHERE Id = $1 AND ${scope.predicate}
+            RETURNING Id AS "id"`,
+        [req.params.id, ...scope.params]);
+        if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy yêu cầu.' });
+        res.json({ id: result.rows[0].id, deleted: true });
+    } catch (err) {
+        console.error('[DELETE /api/requests/:id]', err);
+        res.status(500).json({ error: 'Không thể xóa yêu cầu.' });
     }
 });
 
