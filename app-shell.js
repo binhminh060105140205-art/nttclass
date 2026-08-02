@@ -26,7 +26,7 @@ Object.assign(PinkyClassApp.prototype, {
             gradeFilterEl.addEventListener('change', () => this.renderStudentList());
         }
 
-        // Lọc toàn hệ thống theo kỳ (Tổng quan / Nhật ký / Lịch dạy / Học phí).
+        // Lọc toàn hệ thống theo kỳ (Tổng quan / Nhật ký / Lịch dạy / Học phí / Điểm số).
         // Giá trị dropdown dạng "yyyy-m" (VD "2026-7") hoặc "" = tất cả.
         const monthFilterEl = document.getElementById('globalMonthFilter');
         if (monthFilterEl) {
@@ -95,7 +95,7 @@ Object.assign(PinkyClassApp.prototype, {
         document.querySelectorAll('[data-score-view-mode]').forEach(button => {
             button.addEventListener('click', () => this.setScoreViewMode(button.dataset.scoreViewMode));
         });
-        ['scoreFilterStudent', 'scoreFilterClass', 'scoreFilterMonth', 'scoreFilterType'].forEach(id => {
+        ['scoreFilterStudent', 'scoreFilterClass', 'scoreFilterType'].forEach(id => {
             document.getElementById(id)?.addEventListener('change', () => this.renderScores());
         });
         document.getElementById('resetScoreFiltersBtn')?.addEventListener('click', () => this.resetScoreFilters());

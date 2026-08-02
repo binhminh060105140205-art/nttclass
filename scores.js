@@ -33,7 +33,7 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     resetScoreFilters() {
-        ['scoreFilterStudent', 'scoreFilterClass', 'scoreFilterMonth', 'scoreFilterType'].forEach(id => {
+        ['scoreFilterStudent', 'scoreFilterClass', 'scoreFilterType'].forEach(id => {
             const control = document.getElementById(id);
             if (control && !(this.currentRole === 'student' && id === 'scoreFilterStudent')) control.value = '';
         });
@@ -108,14 +108,13 @@ Object.assign(PinkyClassApp.prototype, {
             ? this.currentStudentId
             : (document.getElementById('scoreFilterStudent')?.value || '');
         const selectedClass = document.getElementById('scoreFilterClass')?.value || '';
-        const selectedMonth = document.getElementById('scoreFilterMonth')?.value || '';
         const selectedType = document.getElementById('scoreFilterType')?.value || '';
+        const monthFilteredScores = this.filterByMonth(this.scores || []);
 
-        return (this.scores || []).filter(score => {
+        return monthFilteredScores.filter(score => {
             const student = (this.students || []).find(item => item.id === score.studentId);
             if (selectedStudent && score.studentId !== selectedStudent) return false;
             if (!this.scoreStudentMatchesClass(student, selectedClass)) return false;
-            if (selectedMonth && !String(score.date || '').startsWith(`${selectedMonth}-`)) return false;
             if (selectedType && score.scoreType !== selectedType) return false;
             return true;
         });
@@ -569,6 +568,7 @@ Object.assign(PinkyClassApp.prototype, {
             const payload = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(payload.error || 'Không thể tải lại điểm số.');
             this.scores = Array.isArray(payload) ? payload : [];
+            this.populateMonthFilterOptions();
         } catch (err) {
             console.error('[loadScores]', err.message);
             this.showToast(err.message || 'Không thể tải lại điểm số.', 'error');

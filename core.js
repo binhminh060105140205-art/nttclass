@@ -340,8 +340,8 @@ class PinkyClassApp {
     }
 
     // Trả về danh sách buổi học đã áp dụng bộ lọc "Tháng" toàn cục (dùng chung
-    // cho Tổng quan / Nhật ký / Lịch dạy / Học phí để đồng bộ số liệu).
-    // Sinh danh sách các "Tháng/Năm" thực sự có buổi học (dựa trên dữ liệu
+    // cho Tổng quan / Nhật ký / Lịch dạy / Học phí / Điểm số để đồng bộ số liệu).
+    // Sinh danh sách các "Tháng/Năm" thực sự có buổi học hoặc điểm số (dựa trên dữ liệu
     // thật, không cố định cứng 12 tháng) để đưa vào 1 dropdown "Kỳ" duy nhất
     // — thay cho việc phải chọn 2 ô Tháng + Năm riêng biệt (rườm rà). Giá trị
     // mỗi lựa chọn dạng "yyyy-m" (VD "2026-7"), luôn có năm đi kèm nên không
@@ -353,8 +353,8 @@ class PinkyClassApp {
         const monthNames = ['', 'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
 
         const keysSet = new Set();
-        (this.sessions || []).forEach(s => {
-            const parts = String(s.date).split('-'); // yyyy-mm-dd
+        [...(this.sessions || []), ...(this.scores || [])].forEach(item => {
+            const parts = String(item.date).split('-'); // yyyy-mm-dd
             if (parts.length >= 2) {
                 const y = parseInt(parts[0]), m = parseInt(parts[1]);
                 if (y && m) keysSet.add(`${y}-${m}`);
