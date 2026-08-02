@@ -79,16 +79,72 @@ Object.assign(PinkyClassApp.prototype, {
         }
     },
 
-    // Xoá toàn bộ hội thoại Trợ lý AI hiện tại (chỉ ở phía client) và quay
-    // lại lời chào ban đầu.
-    clearAiChat() {
-        this.aiChatHistory = [];
+    renderAiChatHistory(messages = this.aiChatHistory) {
         const wrap = document.getElementById('aiChatMessages');
-        wrap.innerHTML = `
-            <div class="ai-chat-msg ai-chat-msg-bot">
-                <div class="ai-chat-bubble">Xin chào! Mình là trợ lý AI của NttClass. Mình có thể hướng dẫn giao diện, giải thích chức năng, góp ý cách sử dụng, tra cứu dữ liệu trong phạm vi tài khoản và tạo mục Yêu cầu khi bạn nói rõ nội dung cần thêm.</div>
-            </div>
-        `;
+        wrap.innerHTML = '';
+        if (!messages.length) {
+            this.appendAiChatBubble('assistant', 'Xin chào! Mình là trợ lý AI của NttClass. Mình có thể hướng dẫn giao diện, giải thích chức năng, góp ý cách sử dụng, tra cứu dữ liệu trong phạm vi tài khoản và tạo mục Yêu cầu khi bạn nói rõ nội dung cần thêm.');
+            return;
+        }
+        messages.forEach(item => this.appendAiChatBubble(item.role, item.content));
+    },
+
+    async loadSavedAiChat() {
+        this.aiChatSavedLoaded = true;
+        try {
+            const response = await this.authFetch(API_BASE_URL + '/api/ai-conversation');
+            const payload = await this.requireApiSuccess(response, 'Không thể tải hội thoại đã lưu.');
+            const savedMessages = Array.isArray(payload.messages)
+                ? payload.messages.filter(item => item && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string').slice(-50)
+                : [];
+            if (!this.aiChatHistory.length && savedMessages.length) {
+                this.aiChatHistory = savedMessages;
+                this.renderAiChatHistory();
+            }
+        } catch (error) {
+            this.aiChatSavedLoaded = false;
+            this.showToast(error.message || 'Không thể tải hội thoại đã lưu.', 'error');
+        }
+    },
+
+    async saveAiChat() {
+        if (!this.aiChatHistory.length) {
+            this.showToast('Chưa có hội thoại để lưu.', 'error');
+            return;
+        }
+        const button = document.getElementById('btnSaveAiChat');
+        button.disabled = true;
+        try {
+            const response = await this.authFetch(API_BASE_URL + '/api/ai-conversation', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages: this.aiChatHistory.slice(-50) })
+            });
+            await this.requireApiSuccess(response, 'Không thể lưu hội thoại.');
+            this.aiChatSavedLoaded = true;
+            this.showToast('Đã lưu hội thoại.', 'success');
+        } catch (error) {
+            this.showToast(error.message || 'Không thể lưu hội thoại.', 'error');
+        } finally {
+            button.disabled = false;
+        }
+    },
+
+    // Xoá hội thoại ở cả client và bản đã lưu của đúng tài khoản hiện tại.
+    async clearAiChat() {
+        const previousHistory = this.aiChatHistory.slice();
+        this.aiChatHistory = [];
+        this.renderAiChatHistory();
+        try {
+            const response = await this.authFetch(API_BASE_URL + '/api/ai-conversation', { method: 'DELETE' });
+            await this.requireApiSuccess(response, 'Không thể xoá hội thoại đã lưu.');
+            this.aiChatSavedLoaded = true;
+            this.showToast('Đã xoá hội thoại.', 'success');
+        } catch (error) {
+            this.aiChatHistory = previousHistory;
+            this.renderAiChatHistory();
+            this.showToast(error.message || 'Không thể xoá hội thoại.', 'error');
+        }
     }
 
     // Lưu bảng nhập nhanh: MỖI học sinh được lưu nhận xét RIÊNG của mình (đọc

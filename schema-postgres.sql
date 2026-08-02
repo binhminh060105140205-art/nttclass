@@ -147,6 +147,15 @@ CREATE INDEX idx_taskrequests_owner_status
 CREATE INDEX idx_taskrequests_owner_priority
     ON TaskRequests (OwnerId, OwnerRole, Priority, CreatedAt DESC);
 
+-- 6A. HỘI THOẠI TRỢ LÝ AI ĐÃ LƯU THEO TỪNG TÀI KHOẢN
+CREATE TABLE AiConversations (
+    OwnerId VARCHAR(50) NOT NULL,
+    OwnerRole VARCHAR(20) NOT NULL,
+    MessagesData JSONB NOT NULL DEFAULT '[]'::jsonb,
+    UpdatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (OwnerId, OwnerRole)
+);
+
 -- 7. TÀI KHOẢN NGƯỜI DÙNG
 -- Mật khẩu lưu dạng văn bản thuần (plain text) — đồ án sinh viên quy mô nhỏ.
 -- ĐỔI username/password bên dưới thành tài khoản thật của bạn trước khi chạy.

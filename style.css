@@ -1475,6 +1475,14 @@ img, svg, video {
     height: min(72vh, 640px);
 }
 
+.ai-chat-header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
 .ai-chat-messages {
     flex: 1;
     overflow-y: auto;
@@ -1540,6 +1548,22 @@ img, svg, video {
 
 .ai-chat-input-row .form-control {
     flex: 1;
+}
+
+@media (max-width: 640px) {
+    #view-ai-chat .evaluation-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .ai-chat-header-actions {
+        width: 100%;
+    }
+
+    .ai-chat-header-actions .btn {
+        flex: 1;
+    }
 }
 
 .student-log-header {

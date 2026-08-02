@@ -648,6 +648,18 @@ let poolPromise = pgPool.query('SELECT 1')
         }
 
         try {
+            await pgPool.query(`CREATE TABLE IF NOT EXISTS AiConversations (
+                OwnerId VARCHAR(50) NOT NULL,
+                OwnerRole VARCHAR(20) NOT NULL,
+                MessagesData JSONB NOT NULL DEFAULT '[]'::jsonb,
+                UpdatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (OwnerId, OwnerRole)
+            )`);
+        } catch (migErr) {
+            console.error('AiConversations migration error:', migErr.message);
+        }
+
+        try {
             await pgPool.query(`CREATE TABLE IF NOT EXISTS InvoiceTemplates (
                 OwnerId VARCHAR(50) NOT NULL,
                 OwnerRole VARCHAR(20) NOT NULL,
@@ -3202,7 +3214,7 @@ const APP_UI_GUIDE = Object.freeze({
     },
     'view-ai-chat': {
         name: 'Trợ lý AI',
-        description: 'Khung hỏi đáp về dữ liệu và cách dùng NttClass; nút Xóa hội thoại chỉ xóa lịch sử chat hiện tại trên trình duyệt.'
+        description: 'Khung hỏi đáp về dữ liệu và cách dùng NttClass; có nút Lưu hội thoại để khôi phục ở lần mở sau và nút Xóa hội thoại để xóa cả bản đã lưu.'
     },
     'view-requests': {
         name: 'Yêu cầu',
@@ -3297,11 +3309,17 @@ function hasSpecificCreateRequestContent(message) {
 async function fetchOpenAiChatCompletion(body) {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
+        signal: AbortSignal.timeout(45000),
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${OPENAI_API_KEY}`
         },
         body: JSON.stringify(body)
+    }).catch(error => {
+        console.error('[OpenAI chat completion network]', error.name, error.message);
+        const providerError = new Error('OpenAI provider error');
+        providerError.isOpenAiProviderError = true;
+        throw providerError;
     });
 
     if (!response.ok) {
@@ -3320,20 +3338,59 @@ async function fetchOpenAiChatCompletion(body) {
 // đường vòng nào cho phép đọc dữ liệu ngoài phạm vi tài khoản.
 async function buildAiContext(req) {
     const role = req.authUser.role;
+    const pool = await poolPromise;
 
-    // Admin không sở hữu dữ liệu dạy học nào — trả về context rỗng, trợ lý
-    // sẽ tự nói rõ là không có dữ liệu thay vì suy đoán.
-    if (role === 'admin') return '(Tài khoản Admin không có dữ liệu lớp học/lịch dạy/điểm số.)';
+    const clipAiContextText = (value, maxLength = 240) => {
+        const text = String(value ?? '').replace(/\s+/g, ' ').trim();
+        if (!text) return '-';
+        return text.length > maxLength ? `${text.slice(0, maxLength)}…` : text;
+    };
+    const aiContextDate = value => value ? String(value).slice(0, 10) : '-';
+    const accountRequestsPromise = pgPool.query(`
+        SELECT TextContent, Completed, Priority, CreatedAt, UpdatedAt
+        FROM TaskRequests
+        WHERE OwnerId = $1 AND OwnerRole = $2
+        ORDER BY Priority DESC, Completed ASC, CreatedAt DESC
+        LIMIT 100`,
+    [req.authUser.userId, role]);
+
+    // Admin không sở hữu dữ liệu dạy học; AI chỉ đọc các yêu cầu của chính tài
+    // khoản admin, không mở đường đọc dữ liệu giáo viên hoặc học sinh.
+    if (role === 'admin') {
+        const requestsResult = await accountRequestsPromise;
+        const requestLines = requestsResult.rows.map(item =>
+            `- ${item.Priority ? '[Ưu tiên] ' : ''}${item.Completed ? '[Đã hoàn thành]' : '[Chưa hoàn thành]'} ${clipAiContextText(item.TextContent, 500)} | Tạo: ${aiContextDate(item.CreatedAt)} | Cập nhật: ${aiContextDate(item.UpdatedAt)}`
+        ).join('\n');
+        return [
+            '(Tài khoản Admin không có dữ liệu lớp học/lịch dạy/điểm số.)',
+            '',
+            'YÊU CẦU CỦA TÀI KHOẢN ĐANG ĐĂNG NHẬP:',
+            requestLines || '(chưa có yêu cầu nào)'
+        ].join('\n');
+    }
 
     const teacherId = effectiveTeacherId(req);
-    if (!teacherId) return '(Tài khoản chưa được gán giáo viên nên chưa có dữ liệu để tra cứu.)';
-
-    const pool = await poolPromise;
+    if (!teacherId) {
+        const requestsResult = await accountRequestsPromise;
+        const requestLines = requestsResult.rows.map(row =>
+            '- ' + (row.Completed ? '[Đã hoàn thành] ' : '[Chưa hoàn thành] ') + clipAiContextText(row.TextContent, 500)
+        ).join('\n');
+        return [
+            '(Tài khoản chưa được gán giáo viên nên chưa có dữ liệu dạy học để tra cứu.)',
+            '',
+            'YÊU CẦU CỦA TÀI KHOẢN ĐANG ĐĂNG NHẬP:',
+            requestLines || '(chưa có yêu cầu nào)'
+        ].join('\n');
+    }
 
     const studentsResult = await pool.request()
         .input('teacherId', sql.VarChar, teacherId)
         .query(`SELECT Id, Name, Class, GradeLevel, Subject, BasePrice FROM Students WHERE TeacherId = @teacherId ORDER BY GradeLevel NULLS LAST, Name`);
-    let students = studentsResult.recordset;
+    const studentProfileResult = await pool.request()
+        .input('teacherId', sql.VarChar, teacherId)
+        .query('SELECT Id, DateOfBirth, Username, AccountActive FROM Students WHERE TeacherId = @teacherId');
+    const studentProfileMap = new Map(studentProfileResult.recordset.map(row => [row.Id, row]));
+    let students = studentsResult.recordset.map(student => ({ ...student, ...studentProfileMap.get(student.Id) }));
 
     // Học sinh chỉ được đọc dữ liệu của chính mình.
     const onlyStudentId = role === 'student' ? req.authUser.userId : null;
@@ -3341,24 +3398,51 @@ async function buildAiContext(req) {
     const studentNameMap = {};
     students.forEach(s => { studentNameMap[s.Id] = s.Name; });
 
-    // Giới hạn lịch dạy trong khoảng 45 ngày trước -> 14 ngày sau để prompt
+    // Giới hạn lịch dạy trong khoảng 365 ngày trước -> 30 ngày sau để prompt
     // không phình quá to (giáo viên dạy lâu năm có thể có hàng nghìn buổi).
-    const sessionsResult = await pool.request()
-        .input('teacherId', sql.VarChar, teacherId)
-        .query(`
+    const sessionsRequest = pool.request().input('teacherId', sql.VarChar, teacherId);
+    if (onlyStudentId) sessionsRequest.input('studentId', sql.VarChar, onlyStudentId);
+    const sessionsResult = await sessionsRequest.query(`
             SELECT s.Id, s.SessionDate, s.StartTime, s.EndTime, s.SessionType, s.SessionName, s.Completed,
                    sd.StudentId, sd.Homework, sd.Attitude, sd.Paid
             FROM Sessions s
             LEFT JOIN SessionDetails sd ON s.Id = sd.SessionId
             WHERE s.TeacherId = @teacherId
-              AND s.SessionDate >= (NOW() AT TIME ZONE 'Asia/Bangkok')::date - INTERVAL '45 days'
-              AND s.SessionDate <= (NOW() AT TIME ZONE 'Asia/Bangkok')::date + INTERVAL '14 days'
+              ${onlyStudentId ? 'AND sd.StudentId = @studentId' : ''}
+              AND s.SessionDate >= (NOW() AT TIME ZONE 'Asia/Bangkok')::date - INTERVAL '365 days'
+              AND s.SessionDate <= (NOW() AT TIME ZONE 'Asia/Bangkok')::date + INTERVAL '30 days'
             ORDER BY s.SessionDate DESC
         `);
 
-    const scoresResult = await pool.request()
-        .input('teacherId', sql.VarChar, teacherId)
-        .query(`SELECT StudentId, ScoreType, ScoreValue, ScoreDate, Note FROM Scores WHERE TeacherId = @teacherId ORDER BY ScoreDate DESC`);
+    const journalRequest = pool.request().input('teacherId', sql.VarChar, teacherId);
+    if (onlyStudentId) journalRequest.input('studentId', sql.VarChar, onlyStudentId);
+    const journalResult = await journalRequest.query(`
+        SELECT s.SessionDate, s.StartTime, s.EndTime, s.SessionName, s.Content,
+               s.GeneralComment, sd.StudentId, sd.Homework, sd.Attitude,
+               sd.IndividualComment, sd.Note, sd.FeeAmount, sd.Paid
+        FROM Sessions s JOIN SessionDetails sd ON sd.SessionId = s.Id
+        WHERE s.TeacherId = @teacherId AND s.Completed = 1
+          ${onlyStudentId ? 'AND sd.StudentId = @studentId' : ''}
+        ORDER BY s.SessionDate DESC, s.StartTime DESC LIMIT 200`);
+
+    const scoreDetailRequest = pool.request().input('teacherId', sql.VarChar, teacherId);
+    if (onlyStudentId) scoreDetailRequest.input('studentId', sql.VarChar, onlyStudentId);
+    const scoreDetailsResult = await scoreDetailRequest.query(`
+        SELECT StudentId, ScoreType, TestName, ScoreValue, MaxScore, ScoreDate, Note
+        FROM Scores WHERE TeacherId = @teacherId
+          ${onlyStudentId ? 'AND StudentId = @studentId' : ''}
+        ORDER BY ScoreDate DESC LIMIT 250`);
+
+    const tuitionRequest = pool.request().input('teacherId', sql.VarChar, teacherId);
+    if (onlyStudentId) tuitionRequest.input('studentId', sql.VarChar, onlyStudentId);
+    const tuitionResult = await tuitionRequest.query(`
+        SELECT tp.StudentId, tp.PeriodMonth, tp.Amount, tp.PaymentDate,
+               tp.PaymentMethod, tp.Note, tp.CreatedAt
+        FROM TuitionPayments tp JOIN Students st ON st.Id = tp.StudentId
+        WHERE tp.TeacherId = @teacherId AND st.TeacherId = @teacherId
+          ${onlyStudentId ? 'AND tp.StudentId = @studentId' : ''}
+        ORDER BY tp.PaymentDate DESC, tp.CreatedAt DESC LIMIT 120`);
+    const requestsResult = await accountRequestsPromise;
 
     const sessionsMap = {};
     sessionsResult.recordset.forEach(row => {
@@ -3381,29 +3465,79 @@ async function buildAiContext(req) {
 
     const sessionLines = Object.values(sessionsMap)
         .filter(s => onlyStudentId ? s.students.length > 0 : true)
-        .slice(0, 80)
+        .slice(0, 120)
         .map(s => `- ${s.date} ${s.time} [${s.type}${s.name ? ' - ' + s.name : ''}]${s.completed ? '' : ' (chưa diễn ra)'}: ${s.students.join('; ') || 'chưa có học sinh'}`)
         .join('\n');
 
-    const scoreLines = scoresResult.recordset
-        .filter(r => !onlyStudentId || r.StudentId === onlyStudentId)
-        .slice(0, 150)
-        .map(r => `- ${studentNameMap[r.StudentId] || r.StudentId}: ${r.ScoreType} = ${r.ScoreValue} (${r.ScoreDate ? String(r.ScoreDate).slice(0, 10) : ''})${r.Note ? ' - ' + r.Note : ''}`)
-        .join('\n');
+    const formatJournalAiLine = row => [
+        '- ' + aiContextDate(row.SessionDate) + ' ' + row.StartTime + '-' + row.EndTime,
+        row.SessionName ? 'Buổi: ' + clipAiContextText(row.SessionName, 120) : null,
+        'Học sinh: ' + (studentNameMap[row.StudentId] || row.StudentId),
+        'Nội dung: ' + clipAiContextText(row.Content, 400),
+        'BTVN: ' + clipAiContextText(row.Homework),
+        'Ý thức: ' + clipAiContextText(row.Attitude),
+        'Nhận xét chung: ' + clipAiContextText(row.GeneralComment, 400),
+        'Nhận xét riêng: ' + clipAiContextText(row.IndividualComment, 400),
+        'Ghi chú: ' + clipAiContextText(row.Note),
+        'Học phí: ' + (row.FeeAmount ?? '-') + 'đ',
+        row.Paid ? 'đã thanh toán' : 'chưa thanh toán'
+    ].filter(Boolean).join(' | ');
+    const logLines = journalResult.recordset.map(formatJournalAiLine).join('\n');
 
-    const studentLines = students
-        .map(s => `- ${s.Name} | ${s.Class || '(chưa có lớp)'} | Khối ${s.GradeLevel || '?'} | Môn: ${s.Subject || '-'} | Học phí/buổi: ${s.BasePrice != null ? s.BasePrice + 'đ' : '-'}`)
-        .join('\n');
+    const scoreLines = scoreDetailsResult.recordset.map(row => [
+        '- ' + (studentNameMap[row.StudentId] || row.StudentId),
+        clipAiContextText(row.ScoreType, 100),
+        row.TestName ? clipAiContextText(row.TestName, 180) : null,
+        'Điểm: ' + row.ScoreValue + '/' + row.MaxScore,
+        'Ngày: ' + aiContextDate(row.ScoreDate),
+        row.Note ? 'Ghi chú: ' + clipAiContextText(row.Note, 300) : null
+    ].filter(Boolean).join(' | ')).join('\n');
+
+    const tuitionLines = tuitionResult.recordset.map(row => [
+        '- ' + (studentNameMap[row.StudentId] || row.StudentId),
+        'Kỳ: ' + row.PeriodMonth,
+        'Số tiền: ' + row.Amount + 'đ',
+        'Ngày thu: ' + aiContextDate(row.PaymentDate),
+        'Phương thức: ' + clipAiContextText(row.PaymentMethod, 80),
+        row.Note ? 'Ghi chú: ' + clipAiContextText(row.Note, 300) : null
+    ].filter(Boolean).join(' | ')).join('\n');
+
+    const requestLines = requestsResult.rows.map(row => [
+        '- ' + (row.Priority ? '[Ưu tiên]' : ''),
+        row.Completed ? '[Đã hoàn thành]' : '[Chưa hoàn thành]',
+        clipAiContextText(row.TextContent, 500),
+        'Tạo: ' + aiContextDate(row.CreatedAt),
+        'Cập nhật: ' + aiContextDate(row.UpdatedAt)
+    ].filter(Boolean).join(' ')).join('\n');
+
+    const studentLines = students.map(student => [
+        '- ' + clipAiContextText(student.Name, 160),
+        clipAiContextText(student.Class || '(chưa có lớp)', 120),
+        'Khối ' + (student.GradeLevel || '?'),
+        'Môn: ' + clipAiContextText(student.Subject, 120),
+        'Ngày sinh: ' + aiContextDate(student.DateOfBirth),
+        'Học phí/buổi: ' + (student.BasePrice != null ? student.BasePrice + 'đ' : '-'),
+        'Tài khoản học sinh: ' + (student.Username ? (student.AccountActive === false ? 'đã khóa' : 'đang hoạt động') : 'chưa tạo')
+    ].join(' | ')).join('\n');
 
     return [
         'DANH SÁCH HỌC SINH:',
         studentLines || '(không có học sinh nào)',
         '',
-        'LỊCH DẠY (45 ngày qua và 14 ngày sắp tới):',
+        'LỊCH DẠY (365 ngày qua và 30 ngày sắp tới):',
         sessionLines || '(không có buổi học nào trong khoảng thời gian này)',
         '',
+        'NHẬT KÝ HỌC TẬP CHI TIẾT:',
+        logLines || '(chưa có nhật ký buổi học đã hoàn thành)',
+        '',
         'ĐIỂM SỐ:',
-        scoreLines || '(chưa có điểm nào được ghi nhận)'
+        scoreLines || '(chưa có điểm nào được ghi nhận)',
+        '',
+        'THANH TOÁN HỌC PHÍ:',
+        tuitionLines || '(chưa có lần thu học phí nào)',
+        '',
+        'YÊU CẦU CỦA TÀI KHOẢN ĐANG ĐĂNG NHẬP:',
+        requestLines || '(chưa có yêu cầu nào)'
     ].join('\n');
 }
 
@@ -3768,6 +3902,64 @@ app.put('/api/requests/:id/priority', requireAuth, async (req, res) => {
     }
 });
 
+const AI_CONVERSATION_MAX_MESSAGES = 50;
+const AI_CONVERSATION_MAX_MESSAGE_CHARS = 5000;
+const AI_CONVERSATION_MAX_TOTAL_CHARS = 100000;
+
+function validateAiConversationMessages(value) {
+    if (!Array.isArray(value)) return { error: 'Danh sách hội thoại không hợp lệ.' };
+    if (value.length > AI_CONVERSATION_MAX_MESSAGES) return { error: 'Hội thoại chỉ được lưu tối đa 50 tin nhắn.' };
+    const messages = [];
+    let totalChars = 0;
+    for (const item of value) {
+        if (!item || !['user', 'assistant'].includes(item.role) || typeof item.content !== 'string') {
+            return { error: 'Tin nhắn hội thoại không hợp lệ.' };
+        }
+        const content = item.content.trim();
+        if (!content || content.length > AI_CONVERSATION_MAX_MESSAGE_CHARS) return { error: 'Mỗi tin nhắn phải có từ 1 đến 5.000 ký tự.' };
+        totalChars += content.length;
+        if (totalChars > AI_CONVERSATION_MAX_TOTAL_CHARS) return { error: 'Hội thoại vượt quá dung lượng cho phép.' };
+        messages.push({ role: item.role, content });
+    }
+    return { value: messages };
+}
+
+app.get('/api/ai-conversation', requireAuth, async (req, res) => {
+    try {
+        const result = await pgPool.query('SELECT MessagesData AS "messages", UpdatedAt AS "updatedAt" FROM AiConversations WHERE OwnerId = $1 AND OwnerRole = $2', [req.authUser.userId, req.authUser.role]);
+        res.setHeader('Cache-Control', 'no-store');
+        if (result.rowCount !== 1) return res.json({ messages: [] });
+        const validated = validateAiConversationMessages(result.rows[0].messages);
+        const messages = validated.error ? [] : validated.value;
+        res.json({ messages, updatedAt: result.rows[0].updatedAt });
+    } catch (error) {
+        console.error('[GET /api/ai-conversation]', error);
+        res.status(500).json({ error: 'Không thể tải hội thoại đã lưu.' });
+    }
+});
+
+app.put('/api/ai-conversation', requireAuth, async (req, res) => {
+    const validated = validateAiConversationMessages(req.body?.messages);
+    if (validated.error) return res.status(400).json({ error: validated.error });
+    try {
+        await pgPool.query('INSERT INTO AiConversations (OwnerId, OwnerRole, MessagesData, UpdatedAt) VALUES ($1, $2, $3::jsonb, CURRENT_TIMESTAMP) ON CONFLICT (OwnerId, OwnerRole) DO UPDATE SET MessagesData = EXCLUDED.MessagesData, UpdatedAt = CURRENT_TIMESTAMP', [req.authUser.userId, req.authUser.role, JSON.stringify(validated.value)]);
+        res.json({ message: 'Đã lưu hội thoại.', messages: validated.value });
+    } catch (error) {
+        console.error('[PUT /api/ai-conversation]', error);
+        res.status(500).json({ error: 'Không thể lưu hội thoại.' });
+    }
+});
+
+app.delete('/api/ai-conversation', requireAuth, async (req, res) => {
+    try {
+        await pgPool.query('DELETE FROM AiConversations WHERE OwnerId = $1 AND OwnerRole = $2', [req.authUser.userId, req.authUser.role]);
+        res.json({ message: 'Đã xoá hội thoại.' });
+    } catch (error) {
+        console.error('[DELETE /api/ai-conversation]', error);
+        res.status(500).json({ error: 'Không thể xoá hội thoại.' });
+    }
+});
+
 app.post('/api/ai-chat', requireAuth, aiRateLimit, async (req, res) => {
     const { message, history, currentView, contextView } = req.body || {};
     if (!message || typeof message !== 'string' || !message.trim()) {
@@ -3789,6 +3981,8 @@ Bạn không nhận toàn bộ mã nguồn, ảnh chụp màn hình hay DOM tr�
 Khi góp ý giao diện, trước tiên phải dựa vào đúng các thành phần đang có trong sổ tay, phân biệt rõ "hiện tại đang có" và "đề xuất cải thiện". Không được đề xuất thêm một nút, bộ lọc hoặc chế độ xem đã tồn tại; ưu tiên góp ý cụ thể về bố cục, thứ bậc thông tin, nhãn, khoảng cách, khả năng đọc và cách dùng trên desktop/mobile.
 Bạn có thể trả lời mọi câu hỏi, kể cả kiến thức chung không liên quan đến ứng dụng.
 Riêng với các câu hỏi về lịch dạy, điểm số, học sinh, học phí... của tài khoản này, hãy CHỈ dựa vào DỮ LIỆU thật dưới đây (dữ liệu riêng của đúng tài khoản đang hỏi) — nếu thông tin đó không có trong dữ liệu, hãy nói rõ là chưa có/không tìm thấy, KHÔNG được bịa đặt số liệu.
+Bạn được phép đọc và tổng hợp mọi nhóm dữ liệu nghiệp vụ xuất hiện trong DỮ LIỆU TÀI KHOẢN: hồ sơ học sinh, lịch dạy, nhật ký học tập chi tiết, điểm số, thanh toán học phí và yêu cầu. Không được tự nói rằng không đọc được các phần này khi chúng đã có trong dữ liệu.
+Bạn không có và không được yêu cầu hoặc suy đoán mật khẩu, mã OTP, khóa API, cookie, token, password hash hay dữ liệu của tài khoản khác.
 Khi công cụ create_request được cung cấp, chỉ gọi tối đa một lần nếu người dùng ra lệnh rõ ràng tạo/thêm/lưu một yêu cầu và đã nêu nội dung cụ thể. Nếu chưa rõ nội dung thì hỏi lại. Không được nói đã tạo yêu cầu nếu công cụ chưa trả về thành công.
 Trả lời ngắn gọn, rõ ràng, đúng trọng tâm, bằng tiếng Việt.
 

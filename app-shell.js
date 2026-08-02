@@ -323,6 +323,10 @@ Object.assign(PinkyClassApp.prototype, {
             this.sendAiChatMessage();
         });
 
+        document.getElementById('btnSaveAiChat').addEventListener('click', () => {
+            this.saveAiChat();
+        });
+
         // Nút xoá hội thoại Trợ lý AI
         document.getElementById('btnClearAiChat').addEventListener('click', () => {
             this.clearAiChat();
@@ -792,6 +796,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         this.renderView(viewId);
         if (viewId === 'view-requests' && !this.requestsLoaded) this.loadRequests();
+        if (viewId === 'view-ai-chat' && !this.aiChatSavedLoaded) this.loadSavedAiChat();
         this.applyPermissions(targetView || document);
     },
 
