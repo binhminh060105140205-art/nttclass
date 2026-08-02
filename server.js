@@ -2720,11 +2720,20 @@ const INVOICE_TEMPLATE_FIELD_LIMITS = Object.freeze({
     bankAccountNumber: 60,
     bankAccountHolder: 160,
     overview: 4000,
+    algebraLabel: 80,
     algebra: 4000,
+    geometryLabel: 80,
     geometry: 4000,
     roadmap: 4000,
     schedule: 4000,
     note: 2000
+});
+
+const INVOICE_TEMPLATE_FIELD_DEFAULTS = Object.freeze({
+    bankAccountNumber: '0978783058',
+    bankAccountHolder: 'Nguyễn Thanh Thúy',
+    algebraLabel: 'Đại số',
+    geometryLabel: 'Hình học'
 });
 
 function normalizeInvoiceTemplate(rawTemplate) {
@@ -2735,7 +2744,7 @@ function normalizeInvoiceTemplate(rawTemplate) {
         field,
         String(Object.prototype.hasOwnProperty.call(source, field)
             ? source[field]
-            : (field === 'bankAccountNumber' ? '0978783058' : field === 'bankAccountHolder' ? 'Nguyễn Thanh Thúy' : ''))
+            : (INVOICE_TEMPLATE_FIELD_DEFAULTS[field] || ''))
             .normalize('NFC').trim().slice(0, maxLength)
     ]));
 }

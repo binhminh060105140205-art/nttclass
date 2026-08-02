@@ -28,7 +28,9 @@ Object.assign(PinkyClassApp.prototype, {
             bankAccountNumber: 'invoiceBankAccountNumber',
             bankAccountHolder: 'invoiceBankAccountHolder',
             overview: 'invoiceOverview',
+            algebraLabel: 'invoiceAlgebraLabel',
             algebra: 'invoiceAlgebra',
+            geometryLabel: 'invoiceGeometryLabel',
             geometry: 'invoiceGeometry',
             roadmap: 'invoiceRoadmap',
             schedule: 'invoiceSchedule',
@@ -50,6 +52,71 @@ Object.assign(PinkyClassApp.prototype, {
             const element = document.getElementById(elementId);
             if (element) element.value = String(template[field] || '');
         });
+        this.syncInvoiceCommentLabels();
+    },
+
+    getInvoiceCommentLabelConfig(field) {
+        return {
+            algebra: {
+                inputId: 'invoiceAlgebraLabel',
+                textId: 'invoiceAlgebraLabelText',
+                textareaId: 'invoiceAlgebra',
+                fallback: 'Đại số'
+            },
+            geometry: {
+                inputId: 'invoiceGeometryLabel',
+                textId: 'invoiceGeometryLabelText',
+                textareaId: 'invoiceGeometry',
+                fallback: 'Hình học'
+            }
+        }[field] || null;
+    },
+
+    normalizeInvoiceCommentLabel(value, fallback) {
+        return String(value || '')
+            .normalize('NFC')
+            .replace(/[\r\n:]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 80) || fallback;
+    },
+
+    getInvoiceCommentLabel(field) {
+        const config = this.getInvoiceCommentLabelConfig(field);
+        if (!config) return '';
+        return this.normalizeInvoiceCommentLabel(document.getElementById(config.inputId)?.value, config.fallback);
+    },
+
+    syncInvoiceCommentLabels() {
+        ['algebra', 'geometry'].forEach(field => {
+            const config = this.getInvoiceCommentLabelConfig(field);
+            const label = this.getInvoiceCommentLabel(field);
+            const input = document.getElementById(config.inputId);
+            const text = document.getElementById(config.textId);
+            const textarea = document.getElementById(config.textareaId);
+            const button = text?.closest('.invoice-editable-label-row')?.querySelector('.invoice-label-edit-btn');
+            if (input) input.value = label;
+            if (text) text.textContent = label;
+            if (textarea) textarea.placeholder = 'Nhận xét phần ' + label + '...';
+            if (button) {
+                button.title = 'Đổi tên mục nhận xét ' + label;
+                button.setAttribute('aria-label', 'Đổi tên mục nhận xét ' + label);
+            }
+        });
+    },
+
+    editInvoiceCommentLabel(field) {
+        const config = this.getInvoiceCommentLabelConfig(field);
+        if (!config) return;
+        const currentLabel = this.getInvoiceCommentLabel(field);
+        const nextLabel = window.prompt(
+            'Nhập tên phần nhận xét mới (ví dụ: Số học). Để trống để dùng lại tên mặc định.',
+            currentLabel
+        );
+        if (nextLabel === null) return;
+        const input = document.getElementById(config.inputId);
+        if (input) input.value = this.normalizeInvoiceCommentLabel(nextLabel, config.fallback);
+        this.syncInvoiceCommentLabels();
     },
 
     async loadInvoiceTemplate(studentId) {
@@ -139,12 +206,15 @@ Object.assign(PinkyClassApp.prototype, {
         document.getElementById('invoiceBankAccountNumber').value = '0978783058';
         document.getElementById('invoiceBankAccountHolder').value = 'Nguyễn Thanh Thúy';
         document.getElementById('invoiceOverview').value = '';
+        document.getElementById('invoiceAlgebraLabel').value = 'Đại số';
         document.getElementById('invoiceAlgebra').value = '';
+        document.getElementById('invoiceGeometryLabel').value = 'Hình học';
         document.getElementById('invoiceGeometry').value = '';
         document.getElementById('invoiceRoadmap').value = '';
         document.getElementById('invoiceSchedule').value = '';
         document.getElementById('invoiceTuitionNote').value = '';
         document.getElementById('invoiceNote').value = 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.';
+        this.syncInvoiceCommentLabels();
 
         // QR và các số liệu theo tháng luôn lấy mới, không lưu trong mẫu.
         this.setInvoiceQrImage(null, { persist: false });
@@ -341,7 +411,9 @@ Object.assign(PinkyClassApp.prototype, {
         const bankAccountNumber = nfc(document.getElementById('invoiceBankAccountNumber').value) || '-';
         const bankAccountHolder = nfc(document.getElementById('invoiceBankAccountHolder').value) || '-';
         const overview = nfc(document.getElementById('invoiceOverview').value);
+        const algebraLabel = nfc(document.getElementById('invoiceAlgebraLabel').value) || 'Đại số';
         const algebra = nfc(document.getElementById('invoiceAlgebra').value);
+        const geometryLabel = nfc(document.getElementById('invoiceGeometryLabel').value) || 'Hình học';
         const geometry = nfc(document.getElementById('invoiceGeometry').value);
         const roadmap = nfc(document.getElementById('invoiceRoadmap').value);
         const schedule = nfc(document.getElementById('invoiceSchedule').value);
@@ -545,8 +617,8 @@ Object.assign(PinkyClassApp.prototype, {
 
         const comments = [
             overview ? plainComment('Tổng quan', overview) : null,
-            algebra ? plainComment('Đại số', algebra, true) : null,
-            geometry ? plainComment('Hình học', geometry, true) : null
+            algebra ? plainComment(algebraLabel, algebra, true) : null,
+            geometry ? plainComment(geometryLabel, geometry, true) : null
         ].filter(Boolean);
 
         const content = [
@@ -712,7 +784,9 @@ Object.assign(PinkyClassApp.prototype, {
         const bankAccountNumber = document.getElementById('invoiceBankAccountNumber').value.trim() || '-';
         const bankAccountHolder = document.getElementById('invoiceBankAccountHolder').value.trim() || '-';
         const overview = document.getElementById('invoiceOverview').value.trim();
+        const algebraLabel = this.getInvoiceCommentLabel('algebra');
         const algebra = document.getElementById('invoiceAlgebra').value.trim();
+        const geometryLabel = this.getInvoiceCommentLabel('geometry');
         const geometry = document.getElementById('invoiceGeometry').value.trim();
         const roadmap = document.getElementById('invoiceRoadmap').value.trim();
         const schedule = document.getElementById('invoiceSchedule').value.trim();
@@ -750,8 +824,8 @@ Object.assign(PinkyClassApp.prototype, {
         const bulletOrDashHTML = text => bulletListHTML(text);
         const quoteItemsHTML = [
             `<div class="plain-row"><strong>Tổng quan:</strong> ${overview ? nl2br(overview) : "-"}</div>`,
-            `<div class="plain-row is-stacked"><strong>Đại số:</strong><div class="stacked-list">${bulletOrDashHTML(algebra)}</div></div>`,
-            `<div class="plain-row is-stacked"><strong>Hình học:</strong><div class="stacked-list">${bulletOrDashHTML(geometry)}</div></div>`,
+            `<div class="plain-row is-stacked"><strong>${esc(algebraLabel)}:</strong><div class="stacked-list">${bulletOrDashHTML(algebra)}</div></div>`,
+            `<div class="plain-row is-stacked"><strong>${esc(geometryLabel)}:</strong><div class="stacked-list">${bulletOrDashHTML(geometry)}</div></div>`,
         ].join('');
 
         const scheduleHTML = bulletListHTML(schedule);
