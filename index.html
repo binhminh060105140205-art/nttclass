@@ -213,9 +213,6 @@
                 <p id="view-subtitle">Chào mừng cô giáo quay trở lại dạy học hôm nay!</p>
             </div>
             <div class="header-actions">
-                <!-- Role Badge Indicator -->
-                <div id="roleBadge" class="role-badge role-badge-admin"> Admin</div>
-
                 <!-- Bộ lọc kỳ học (áp dụng cho Tổng quan / Nhật ký / Lịch dạy / Học phí).
                      Gộp chung tháng+năm trong 1 dropdown duy nhất (value dạng
                      "yyyy-m"), danh sách được sinh tự động từ dữ liệu buổi học
@@ -227,9 +224,6 @@
                     </select>
                 </div>
 
-                <button class="btn btn-secondary btn-sm" id="logoutBtn" style="padding: 8px 16px; border-radius: 20px; display:none;">
-                    Đăng xuất
-                </button>
             </div>
         </header>
 
@@ -1440,6 +1434,9 @@
 
                     <button type="button" class="btn btn-primary btn-sm" onclick="app.changePassword()" style="width: 100%; justify-content: center; height: 42px; border-radius: 10px;">Đổi mật khẩu</button>
                 </div>
+                <div class="settings-section" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-color);">
+                    <button type="button" class="btn btn-danger btn-sm" id="logoutBtn" style="width: 100%; justify-content: center; height: 42px; border-radius: 10px; display:none;">Đăng xuất</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1534,7 +1531,7 @@
     <script src="landing-orbis.js?v=20260731-performance5"></script>
     <script src="core.js?v=20260731-theme-lock1"></script>
     <script src="lithos-petals.js?v=20260731-performance5"></script>
-    <script src="app-shell.js?v=20260731-theme-lock1"></script>
+    <script src="app-shell.js?v=20260802-settings-logout1"></script>
     <script src="users.js"></script>
     <script src="dashboard.js"></script>
     <script src="student-logs.js?v=20260730-invoice-template2"></script>

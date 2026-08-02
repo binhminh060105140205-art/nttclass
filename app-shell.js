@@ -77,6 +77,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         // Logout button
         document.getElementById('logoutBtn').addEventListener('click', () => {
+            this.closeModal('accountSettingsModal');
             this.handleLogout();
         });
 
@@ -641,7 +642,8 @@ Object.assign(PinkyClassApp.prototype, {
 
         // Update top badge
         const badge = document.getElementById('roleBadge');
-        badge.className = 'role-badge';
+        if (badge) {
+            badge.className = 'role-badge';
         if (role === 'admin') {
             badge.innerText = 'Quản trị viên';
             badge.classList.add('role-badge-admin');
@@ -654,6 +656,7 @@ Object.assign(PinkyClassApp.prototype, {
         } else {
             badge.innerText = 'Học sinh';
             badge.classList.add('role-badge-student');
+        }
         }
 
         // Show/hide navigation tabs
