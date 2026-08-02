@@ -166,7 +166,7 @@ Object.assign(PinkyClassApp.prototype, {
         // (trước đây "Từ ngày/Đến ngày" chỉ hiển thị cho có, sửa không có tác
         // dụng gì tới số liệu thực tế xuất ra).
         this._invoiceStudentId = studentId;
-        this._invoiceAllSessions = this.sessions
+        this._invoiceAllSessions = this.filterByMonth(this.sessions)
             .filter(sess => sess.studentIds.includes(studentId))
             .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
 

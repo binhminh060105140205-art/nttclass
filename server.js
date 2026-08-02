@@ -606,6 +606,7 @@ let poolPromise = pgPool.query('SELECT 1')
             await pgPool.query('UPDATE SessionDetails SET FeeAmount = 0 WHERE FeeAmount IS NULL');
             await pgPool.query('ALTER TABLE SessionDetails ALTER COLUMN FeeAmount SET DEFAULT 0');
             await pgPool.query('ALTER TABLE SessionDetails ALTER COLUMN FeeAmount SET NOT NULL');
+            await pgPool.query('UPDATE SessionDetails SET Paid = 1 WHERE FeeAmount <= 0 AND Paid = 0');
             await pgPool.query(`CREATE TABLE IF NOT EXISTS TuitionPayments (
                 Id VARCHAR(60) PRIMARY KEY,
                 TeacherId VARCHAR(50) NOT NULL REFERENCES Users(Id),
@@ -1999,7 +2000,7 @@ app.get('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCont
                     // Trạng thái đóng học phí RIÊNG của từng học sinh trong buổi
                     // học này (cột SessionDetails.Paid) — độc lập hoàn toàn với
                     // các học sinh khác cùng học chung buổi.
-                    paid:              row.Paid === true || row.Paid === 1
+                    paid:              Number(row.FeeAmount || 0) <= 0 || row.Paid === true || row.Paid === 1
                 };
             }
         });
@@ -2147,6 +2148,7 @@ app.post('/api/sessions/batch', requireRole('teacher', 'assistant'), requireTeac
             for (const studentId of studentIds) {
                 const sourceDetail = preparedDetails[studentId] || {};
                 const detail = sequence === 0 ? sourceDetail : { feeAmount: sourceDetail.feeAmount, paid: false };
+                const feeAmount = Number(detail.feeAmount || 0);
                 await new sql.Request(transaction)
                     .input('sessionId', sql.VarChar, sessionId)
                     .input('studentId', sql.VarChar, studentId)
@@ -2154,8 +2156,8 @@ app.post('/api/sessions/batch', requireRole('teacher', 'assistant'), requireTeac
                     .input('attitude', sql.NVarChar, sequence === 0 ? String(detail.attitude ?? '').trim() : '')
                     .input('individualComment', sql.NVarChar, sequence === 0 ? (detail.individualComment || '') : '')
                     .input('note', sql.NVarChar, sequence === 0 ? (detail.note || '') : '')
-                    .input('feeAmount', sql.Int, Number(detail.feeAmount || 0))
-                    .input('paid', sql.Bit, detail.paid ? 1 : 0)
+                    .input('feeAmount', sql.Int, feeAmount)
+                    .input('paid', sql.Bit, feeAmount <= 0 || detail.paid ? 1 : 0)
                     .query(`INSERT INTO SessionDetails (SessionId, StudentId, Homework, Attitude, IndividualComment, Note, FeeAmount, Paid)
                             VALUES (@sessionId, @studentId, @homework, @attitude, @individualComment, @note, @feeAmount, @paid)`);
             }
@@ -2288,7 +2290,7 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
                 // và được lưu RIÊNG cho từng học sinh (không còn dùng chung cấp
                 // buổi học nữa) — đây chính là điểm sửa lỗi "chọn 1 học sinh đã
                 // thanh toán thì cả buổi/cả lớp đều bị đổi theo".
-                .input('paid',              sql.Bit,      detail.paid ? 1 : 0)
+                .input('paid',              sql.Bit,      feeAmount <= 0 || detail.paid ? 1 : 0)
                 .query(`INSERT INTO SessionDetails (SessionId, StudentId, Homework, Attitude, IndividualComment, Note, FeeAmount, Paid)
                         VALUES (@sessionId, @studentId, @homework, @attitude, @individualComment, @note, @feeAmount, @paid)`);
         }
@@ -2670,6 +2672,7 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
                 const feeAmount = hasExistingFee && (keepPaid || !repriceExistingFees || !hasIncomingFee)
                     ? Number(existing.FeeAmount)
                     : (hasIncomingFee ? Math.round(Number(incoming.feeAmount)) : 0);
+                const effectivePaid = feeAmount <= 0 || keepPaid;
 
                 await new sql.Request(transaction)
                     .input('sessionId', sql.VarChar, target.Id)
@@ -2679,7 +2682,7 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
                     .input('individualComment', sql.NVarChar, useIncomingLog ? (incoming.individualComment || '') : (existing.IndividualComment || ''))
                     .input('note', sql.NVarChar, useIncomingLog ? (incoming.note || '') : (existing.Note || ''))
                     .input('feeAmount', sql.Int, feeAmount)
-                    .input('paid', sql.Bit, keepPaid ? 1 : 0)
+                    .input('paid', sql.Bit, effectivePaid ? 1 : 0)
                     .query(`INSERT INTO SessionDetails (SessionId, StudentId, Homework, Attitude, IndividualComment, Note, FeeAmount, Paid)
                             VALUES (@sessionId, @studentId, @homework, @attitude, @individualComment, @note, @feeAmount, @paid)`);
             }
@@ -2720,7 +2723,7 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
                         .input('individualComment', sql.NVarChar, '')
                         .input('note', sql.NVarChar, '')
                         .input('feeAmount', sql.Int, feeAmount)
-                        .input('paid', sql.Bit, 0)
+                        .input('paid', sql.Bit, feeAmount <= 0 ? 1 : 0)
                         .query(`INSERT INTO SessionDetails (SessionId, StudentId, Homework, Attitude, IndividualComment, Note, FeeAmount, Paid)
                                 VALUES (@sessionId, @studentId, @homework, @attitude, @individualComment, @note, @feeAmount, @paid)`);
                 }
@@ -3389,7 +3392,7 @@ app.get('/api/me/schedule', requireRole('student'), requireTeacherContext, async
             .query(`
             SELECT s.Id, s.SessionDate, s.StartTime, s.EndTime, s.SessionType, s.SessionName,
                    s.Content, s.GeneralComment, s.Completed,
-                   sd.Homework, sd.Attitude, sd.IndividualComment, sd.Note, sd.Paid
+                   sd.Homework, sd.Attitude, sd.IndividualComment, sd.Note, sd.FeeAmount, sd.Paid
             FROM SessionDetails sd
             JOIN Sessions s ON s.Id = sd.SessionId
             WHERE sd.StudentId = @studentId
@@ -3410,7 +3413,7 @@ app.get('/api/me/schedule', requireRole('student'), requireTeacherContext, async
             attitude:          row.Attitude,
             individualComment: row.IndividualComment || '',
             note:              row.Note || '',
-            paid:              row.Paid === true || row.Paid === 1
+            paid:              Number(row.FeeAmount || 0) <= 0 || row.Paid === true || row.Paid === 1
         }));
 
         res.json(rows);

@@ -17,31 +17,19 @@ Object.assign(PinkyClassApp.prototype, {
         }
 
         studentsList.forEach(student => {
-            const completedStudentSessions = this.sessions.filter(session =>
-                session.studentIds.includes(student.id) && this.isSessionCompleted(session)
-            );
-            const monthSessions = this.filterByMonth(completedStudentSessions);
-            const cumulativeSessions = this.filterThroughMonth(completedStudentSessions);
+            const tuition = this.getTuitionPeriodBreakdown(this.sessions, student.id);
+            const monthSessions = tuition.monthSessions;
             const totalSessionsCount = monthSessions.length;
             const totalHours = monthSessions.reduce((sum, session) => sum + parseFloat(session.duration || 0), 0);
 
-            let totalTuitionEarned = 0;
-            let paidTuition = 0;
-            let unpaidTuition = 0;
-            cumulativeSessions.forEach(session => {
-                const sessionFee = this.getStudentSessionFee(session, student.id);
-                if (sessionFee <= 0) return;
-                totalTuitionEarned += sessionFee;
-                const detail = session.studentDetails && session.studentDetails[student.id];
-                if (detail?.paid) paidTuition += sessionFee;
-                else unpaidTuition += sessionFee;
-            });
-
+            const totalTuitionEarned = tuition.totalTuition;
+            const paidTuition = tuition.paidTuition;
+            const unpaidTuition = tuition.unpaidTuition;
             paidSum += paidTuition;
             unpaidSum += unpaidTuition;
             rowNumber += 1;
 
-            const isFullyPaid = totalTuitionEarned > 0 && unpaidTuition === 0;
+            const isFullyPaid = unpaidTuition === 0;
             const studentIdArg = this.escapeHtmlAttr(JSON.stringify(String(student.id)));
 
             const statusSelect = `

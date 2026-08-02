@@ -407,6 +407,49 @@ class PinkyClassApp {
         return (sessions || []).filter(session => session.date && String(session.date).slice(0, 10) < endExclusive);
     }
 
+    getTuitionPeriodBreakdown(sessions, studentId) {
+        const completedSessions = (sessions || []).filter(session =>
+            session.studentIds?.includes(studentId) && this.isSessionCompleted(session)
+        );
+        const monthSessions = this.filterByMonth(completedSessions);
+        let currentMonthTuition = 0;
+        let currentMonthPaid = 0;
+        let currentMonthUnpaid = 0;
+
+        monthSessions.forEach(session => {
+            const sessionFee = this.getStudentSessionFee(session, studentId);
+            if (sessionFee <= 0) return;
+            currentMonthTuition += sessionFee;
+            const detail = session.studentDetails && session.studentDetails[studentId];
+            if (detail?.paid) currentMonthPaid += sessionFee;
+            else currentMonthUnpaid += sessionFee;
+        });
+
+        let carriedUnpaid = 0;
+        if (this.currentMonthFilter) {
+            const [yearValue, monthValue] = this.currentMonthFilter.split('-').map(Number);
+            const monthStart = `${yearValue}-${String(monthValue).padStart(2, '0')}-01`;
+            this.filterThroughMonth(completedSessions).forEach(session => {
+                if (!session.date || String(session.date).slice(0, 10) >= monthStart) return;
+                const sessionFee = this.getStudentSessionFee(session, studentId);
+                if (sessionFee <= 0) return;
+                const detail = session.studentDetails && session.studentDetails[studentId];
+                if (!detail?.paid) carriedUnpaid += sessionFee;
+            });
+        }
+
+        return {
+            monthSessions,
+            currentMonthTuition,
+            currentMonthPaid,
+            currentMonthUnpaid,
+            carriedUnpaid,
+            totalTuition: currentMonthTuition + carriedUnpaid,
+            paidTuition: currentMonthPaid,
+            unpaidTuition: currentMonthUnpaid + carriedUnpaid
+        };
+    }
+
     // API /api/sessions trả về 1 dòng cho MỖI (buổi học, học sinh) do LEFT JOIN
     // với SessionDetails -> cần gộp lại theo SessionId thành 1 object buổi học
     // có mảng studentIds + object studentDetails.
@@ -579,7 +622,14 @@ class PinkyClassApp {
     computeSessionPaidFlags() {
         (this.sessions || []).forEach(sess => {
             const ids = sess.studentIds || [];
-            sess.paid = ids.length > 0 && ids.every(sid => sess.studentDetails && sess.studentDetails[sid] && sess.studentDetails[sid].paid);
+            sess.paid = ids.length > 0 && ids.every(sid => {
+                const detail = sess.studentDetails && sess.studentDetails[sid];
+                if (this.getStudentSessionFee(sess, sid) <= 0) {
+                    if (detail) detail.paid = true;
+                    return true;
+                }
+                return !!detail?.paid;
+            });
         });
     }
 

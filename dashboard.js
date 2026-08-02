@@ -23,14 +23,7 @@ Object.assign(PinkyClassApp.prototype, {
             // với trạng thái "đã dạy/chưa dạy" VÀ với trạng thái đóng tiền của
             // các bạn học chung buổi khác). Nếu chính học sinh này học phí 0đ
             // thì không bao giờ bị tính là "chưa đóng" (vì không có gì để đóng).
-            studentSessions.forEach(sess => {
-                const feeAmount = this.getStudentSessionFee(sess, this.currentStudentId);
-                if (feeAmount <= 0) return;
-                const detail = sess.studentDetails && sess.studentDetails[this.currentStudentId];
-                if (!detail || !detail.paid) {
-                    unpaidTuition += feeAmount;
-                }
-            });
+            unpaidTuition = this.getTuitionPeriodBreakdown(this.sessions, this.currentStudentId).unpaidTuition;
         } else {
             // Teacher & Assistant see all stats
             totalSessions = monthSessions.length;
@@ -42,16 +35,8 @@ Object.assign(PinkyClassApp.prototype, {
             // (các) học sinh thực sự chưa đóng, không tính cả buổi. Học sinh
             // học phí 0đ được loại trừ hoàn toàn khỏi phép chia lẫn khỏi vòng
             // lặp tính "chưa đóng" (không đóng tiền thì không thể "nợ" học phí).
-            monthSessions.forEach(sess => {
-                (sess.studentIds || []).forEach(sid => {
-                    const portion = this.getStudentSessionFee(sess, sid);
-                    if (portion <= 0) return;
-                    const detail = sess.studentDetails && sess.studentDetails[sid];
-                    if (!detail || !detail.paid) {
-                        unpaidTuition += portion;
-                    }
-                });
-            });
+            unpaidTuition = this.students.reduce((sum, student) =>
+                sum + this.getTuitionPeriodBreakdown(this.sessions, student.id).unpaidTuition, 0);
         }
 
         document.getElementById('stat-total-sessions').innerText = totalSessions;

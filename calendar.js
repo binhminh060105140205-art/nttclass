@@ -1366,12 +1366,14 @@ Object.assign(PinkyClassApp.prototype, {
         const studentDetails = {};
         studentIds.forEach(stId => {
             const student = this.students.find(s => s.id === stId);
+            const feeAmount = student && Number(student.basePrice) > 0 ? unitPrice : 0;
             studentDetails[stId] = {
                 homework: null,
                 attitude: "",
                 individualComment: "",
                 note: "",
-                feeAmount: student && Number(student.basePrice) > 0 ? unitPrice : 0
+                feeAmount,
+                paid: feeAmount <= 0
             };
         });
         const price = Object.values(studentDetails).reduce((sum, detail) => sum + Number(detail.feeAmount || 0), 0);
@@ -1603,15 +1605,16 @@ Object.assign(PinkyClassApp.prototype, {
             const oldDetail = sess.studentDetails[stId] || {};
             const student = this.students.find(s => s.id === stId);
             const oldFee = Number(oldDetail.feeAmount);
+            const feeAmount = Number.isFinite(oldFee) && (oldDetail.paid || !priceWasChanged)
+                ? oldFee
+                : (student && Number(student.basePrice) > 0 ? unitPrice : 0);
             newStudentDetails[stId] = {
                 homework: oldDetail.homework ?? null,
                 attitude: oldDetail.attitude || "",
                 individualComment: oldDetail.individualComment || "",
                 note: oldDetail.note || "",
-                paid: !!oldDetail.paid,
-                feeAmount: Number.isFinite(oldFee) && (oldDetail.paid || !priceWasChanged)
-                    ? oldFee
-                    : (student && Number(student.basePrice) > 0 ? unitPrice : 0)
+                paid: feeAmount <= 0 || !!oldDetail.paid,
+                feeAmount
             };
         });
         const price = Object.values(newStudentDetails).reduce((sum, detail) => sum + Number(detail.feeAmount || 0), 0);
@@ -1754,12 +1757,7 @@ Object.assign(PinkyClassApp.prototype, {
         }
         const student = this.students.find(s => s.id === studentId);
         if (!student) return;
-        const dueAmount = this.filterThroughMonth(this.sessions)
-            .filter(sess => sess.studentIds.includes(studentId) && this.isSessionCompleted(sess))
-            .reduce((sum, sess) => {
-                const detail = sess.studentDetails && sess.studentDetails[studentId];
-                return sum + (!detail || detail.paid ? 0 : this.getStudentSessionFee(sess, studentId));
-            }, 0);
+        const dueAmount = this.getTuitionPeriodBreakdown(this.sessions, studentId).unpaidTuition;
         if (dueAmount <= 0) {
             this.showToast('Đến kỳ này không còn học phí cần thu.', 'info');
             return;
