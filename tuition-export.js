@@ -104,10 +104,45 @@ Object.assign(PinkyClassApp.prototype, {
 
     canvasToPngBlob(canvas) {
         return new Promise((resolve, reject) => {
-            canvas.toBlob(blob => {
+            let settled = false;
+            const finish = blob => {
+                if (settled) return;
+                settled = true;
                 if (blob) resolve(blob);
                 else reject(new Error('Không thể tạo file ảnh PNG.'));
-            }, 'image/png');
+            };
+            const useDataUrlFallback = () => {
+                if (settled) return;
+                try {
+                    const dataUrl = canvas.toDataURL('image/png');
+                    const parts = dataUrl.split(',');
+                    const bytes = atob(parts[1] || '');
+                    const buffer = new Uint8Array(bytes.length);
+                    for (let index = 0; index < bytes.length; index += 1) {
+                        buffer[index] = bytes.charCodeAt(index);
+                    }
+                    finish(new Blob([buffer], { type: 'image/png' }));
+                } catch (_) {
+                    finish(null);
+                }
+            };
+
+            if (typeof canvas.toBlob !== 'function') {
+                useDataUrlFallback();
+                return;
+            }
+
+            const fallbackTimer = setTimeout(useDataUrlFallback, 4000);
+            try {
+                canvas.toBlob(blob => {
+                    clearTimeout(fallbackTimer);
+                    if (blob) finish(blob);
+                    else useDataUrlFallback();
+                }, 'image/png');
+            } catch (_) {
+                clearTimeout(fallbackTimer);
+                useDataUrlFallback();
+            }
         });
     },
 
@@ -158,9 +193,58 @@ Object.assign(PinkyClassApp.prototype, {
             return 'preview';
         }
 
+        if (this.isMobileExportDevice()) {
+            const overlay = document.createElement('div');
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-label', 'Xem trước ảnh nhật ký học tập');
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#eef3f8;padding:12px;overflow:auto;color:#334155;font:14px sans-serif;';
+            overlay.innerHTML = `<div style="position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-12px -12px 12px;padding:10px 12px;background:#fff;box-shadow:0 2px 10px #0002"><strong>Nhật ký học tập</strong><button type="button" style="border:0;border-radius:999px;padding:9px 14px;background:#334155;color:#fff;font-weight:700">Đóng</button></div><p style="margin:0 0 10px">Nhấn giữ ảnh bên dưới để lưu hoặc chia sẻ.</p><img src="${objectUrl}" alt="Nhật ký học tập" style="display:block;width:100%;height:auto;background:#fff;box-shadow:0 4px 18px #0002">`;
+            const closeOverlay = () => {
+                overlay.remove();
+                URL.revokeObjectURL(objectUrl);
+            };
+            overlay.querySelector('button').addEventListener('click', closeOverlay);
+            document.body.appendChild(overlay);
+            return 'preview';
+        }
+
         const link = document.createElement('a');
         link.download = fileName;
         link.href = objectUrl;
+        link.rel = 'noopener';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 60 * 1000);
+        return 'downloaded';
+    },
+
+    async deliverStudentLogFile(blob, fileName, title) {
+        const objectUrl = URL.createObjectURL(blob);
+        const file = typeof File === 'function'
+            ? new File([blob], fileName, { type: blob.type || 'application/octet-stream' })
+            : null;
+
+        if (this.isMobileExportDevice() && file && typeof navigator.share === 'function') {
+            try {
+                const canShare = typeof navigator.canShare !== 'function'
+                    || navigator.canShare({ files: [file] });
+                if (canShare) {
+                    await navigator.share({ files: [file], title });
+                    URL.revokeObjectURL(objectUrl);
+                    return 'shared';
+                }
+            } catch (err) {
+                if (err && err.name === 'AbortError') {
+                    URL.revokeObjectURL(objectUrl);
+                    return 'cancelled';
+                }
+            }
+        }
+
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = fileName;
         link.rel = 'noopener';
         document.body.appendChild(link);
         link.click();
@@ -177,7 +261,8 @@ Object.assign(PinkyClassApp.prototype, {
         const studentName = this.getStudentName(studentId);
 
         const studentSessions = this.filterByMonth(this.sessions)
-            .filter(sess => sess.studentIds.includes(studentId));
+            .filter(sess => sess.studentIds.includes(studentId))
+            .filter(sess => this.isSessionCompleted(sess));
 
         if (studentSessions.length === 0) {
             this.showToast("Không có dữ liệu nhật ký để xuất!", "error");
@@ -204,11 +289,15 @@ Object.assign(PinkyClassApp.prototype, {
                 tableWrapperEl ? tableWrapperEl.scrollHeight : 0,
                 captureEl.getBoundingClientRect().height
             ));
-            const pixelBudget = 16000000;
-            const preferredScale = this.isMobileExportDevice() ? 1.5 : 2;
-            const scale = Math.max(1, Math.min(
+            const isMobile = this.isMobileExportDevice();
+            const pixelBudget = isMobile ? 4000000 : 20000000;
+            const maxCanvasDimension = isMobile ? 4096 : 8192;
+            const preferredScale = isMobile ? 1.25 : 2;
+            const scale = Math.max(0.1, Math.min(
                 preferredScale,
-                Math.sqrt(pixelBudget / Math.max(1, fullWidth * fullHeight))
+                Math.sqrt(pixelBudget / Math.max(1, fullWidth * fullHeight)),
+                maxCanvasDimension / Math.max(1, fullWidth),
+                maxCanvasDimension / Math.max(1, fullHeight)
             ));
 
             const canvas = await html2canvas(captureEl, {
@@ -302,6 +391,7 @@ Object.assign(PinkyClassApp.prototype, {
         // để số liệu xuất ra khớp 100% với những gì giáo viên đang xem.
         const studentSessions = this.filterByMonth(this.sessions)
             .filter(sess => sess.studentIds.includes(studentId))
+            .filter(sess => this.isSessionCompleted(sess))
             .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
 
         if (studentSessions.length === 0) {
@@ -311,8 +401,6 @@ Object.assign(PinkyClassApp.prototype, {
 
         this.setBtnLoading('btnExportLog', true, 'Đang tạo file Excel...');
         try {
-            const XLSX = await this.ensureXLSX();
-
             const header = ['STT', 'Ngày', 'Giờ học', 'Nội dung buổi học', 'Bài tập về nhà', 'Ý thức', 'Nhận xét của giáo viên', 'Ghi chú'];
             const rows = studentSessions.map((sess, idx) => {
                 const detail = sess.studentDetails[studentId] || { homework: 'Chưa làm', attitude: 'Tốt', individualComment: '', note: '' };
@@ -338,6 +426,34 @@ Object.assign(PinkyClassApp.prototype, {
 
             const titleRow = [`NHẬT KÝ HỌC TẬP - ${studentName.toUpperCase()} ${studentSubject} ${studentClass}`.trim()];
             const wsData = [titleRow, [], header, ...rows];
+            const todayStr = this.toISODateOnly(new Date());
+            const safeStudentName = studentName.replace(/\s+/g, '');
+
+            // iOS/iPadOS tải file do thư viện SheetJS tạo qua CDN không ổn định. CSV có
+            // BOM UTF-8 vẫn mở đúng bằng Excel và có thể chia sẻ ngay từ trình duyệt.
+            if (this.isMobileExportDevice()) {
+                const csvEscape = value => {
+                    const text = String(value ?? '').replace(/"/g, '""');
+                    return /[",\r\n]/.test(text) ? `"${text}"` : text;
+                };
+                const csv = '\uFEFF' + wsData
+                    .map(row => row.map(csvEscape).join(','))
+                    .join('\r\n');
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                const delivery = await this.deliverStudentLogFile(
+                    blob,
+                    `NhatKyHocTap_${safeStudentName}_${todayStr}.csv`,
+                    'Nhật ký học tập'
+                );
+                if (delivery === 'cancelled') {
+                    this.showToast('Đã hủy chia sẻ file nhật ký.', 'info');
+                } else {
+                    this.showToast('Đã xuất file nhật ký học tập thành công!', 'success');
+                }
+                return;
+            }
+
+            const XLSX = await this.ensureXLSX();
 
             const ws = XLSX.utils.aoa_to_sheet(wsData);
             ws['!cols'] = [
@@ -356,8 +472,7 @@ Object.assign(PinkyClassApp.prototype, {
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'Nhat ky hoc tap');
 
-            const todayStr = this.toISODateOnly(new Date());
-            XLSX.writeFile(wb, `NhatKyHocTap_${studentName.replace(/\s+/g, '')}_${todayStr}.xlsx`);
+            XLSX.writeFile(wb, `NhatKyHocTap_${safeStudentName}_${todayStr}.xlsx`);
 
             this.showToast("Đã xuất file Excel nhật ký học tập thành công!", "success");
         } catch (err) {

@@ -332,7 +332,11 @@ if (!process.env.DATABASE_URL) {
 
 const pgPool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false } // bắt buộc với Aiven (dùng sslmode=require)
+    ssl: { rejectUnauthorized: false }, // bắt buộc với Aiven (dùng sslmode=require)
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 30000,
+    max: 10,
+    options: '-c lock_timeout=5000 -c statement_timeout=30000'
 });
 
 // Bảng ánh xạ tên cột (PostgreSQL trả về chữ thường) -> đúng chữ hoa/thường
@@ -424,6 +428,10 @@ const sql = {
 let poolPromise = pgPool.query('SELECT 1')
     .then(async () => {
         console.log('Đã kết nối thành công với PostgreSQL (Aiven)!');
+
+        // Migration tự phục hồi chỉ chạy nền. API không chờ toàn bộ chuỗi DDL vì
+        // một ALTER TABLE bị khóa có thể làm đăng nhập, tải dữ liệu và lưu bị treo.
+        void (async () => {
 
         // Self-healing migration (Ngày sinh học sinh): thêm cột DateOfBirth vào
         // bảng Students nếu database cũ chưa có cột này, để không cần chạy lại
@@ -697,6 +705,10 @@ let poolPromise = pgPool.query('SELECT 1')
             console.error('AuthSessions migration error:', migrationError.message);
             throw migrationError;
         }
+
+        })()
+            .then(() => console.log('Đã hoàn tất kiểm tra schema nền.'))
+            .catch(err => console.error('Lỗi migration nền:', err.message));
 
         return { request: () => new sql.Request(pgPool) };
     })

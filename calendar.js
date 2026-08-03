@@ -518,8 +518,11 @@ Object.assign(PinkyClassApp.prototype, {
         listWrap.innerHTML = sess.studentIds.map(stId => {
             const detail = sess.studentDetails[stId] || { homework: null, attitude: '', individualComment: '', note: '' };
             const name = this.getStudentName(stId);
-            const homeworkVal = isDone ? this.normalizeHomeworkValue(detail.homework) : null;
-            const attitude = isDone ? (detail.attitude || '') : '';
+            // Luôn nạp lại giá trị đã lưu, kể cả khi buổi học chưa kết thúc. Trước đây
+            // form tự xóa trắng hai ô này ở buổi sắp tới nên dữ liệu đã lưu trong DB
+            // nhưng mở lại trông như bị mất.
+            const homeworkVal = this.normalizeHomeworkValue(detail.homework);
+            const attitude = detail.attitude || '';
             const homeworkOptionsHTML = this.getHomeworkLevels().map(level =>
                 `<option value="${level}" ${homeworkVal === level ? 'selected' : ''}>${level}</option>`
             ).join('');
