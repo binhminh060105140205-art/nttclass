@@ -1,4 +1,13 @@
 /* Giao diện Hồng nhẹ: dùng bố cục Lithos nhưng loại bỏ toàn bộ hoa, cành và hiệu ứng trang trí. */
+html[data-app-theme="lithos"][data-app-variant="pink"] body,
+html[data-app-theme="lithos"][data-app-variant="pink"] body * {
+    font-family: 'Comfortaa', sans-serif !important;
+}
+
+html[data-app-theme="lithos"][data-app-variant="pink"] :is(.logo-text, .header-title-box h1, .login-brand-name, .login-headline) {
+    font-style: normal !important;
+}
+
 html[data-app-theme="lithos"][data-app-variant="pink"] {
     --primary: #d36f98;
     --primary-rgb: 211, 111, 152;
