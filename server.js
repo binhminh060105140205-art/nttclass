@@ -299,7 +299,7 @@ const PUBLIC_ROOT_FILES = new Set([
     'lithos-petals.js', 'lithos-stat-bloom.svg', 'lithos-wood-bloom-pink.webp',
     'lithos-wood-pink.webp', 'main.js', 'pink-minimal-theme.css', 'requests-edit.js', 'requests.js', 'scores.js',
     'security-settings.js', 'student-journal.js', 'student-logs.js', 'students.js', 'style.css',
-    'tuition-export.js', 'users.js'
+    'tuition-export.js', 'ui-text-normalization.js', 'users.js'
 ]);
 const staticOptions = { dotfiles: 'deny', index: false, redirect: false, maxAge: '1h' };
 app.use('/assets', express.static(path.join(__dirname, 'assets'), staticOptions));
@@ -352,7 +352,7 @@ const COLUMN_CASE_MAP = {
     sessiontype: 'SessionType', price: 'Price', duration: 'Duration',
     sessionname: 'SessionName',
     recurrencegroupid: 'RecurrenceGroupId', recurrencesequence: 'RecurrenceSequence',
-    content: 'Content', generalcomment: 'GeneralComment', completed: 'Completed',
+    content: 'Content', homeworkcontent: 'HomeworkContent', generalcomment: 'GeneralComment', completed: 'Completed',
     paid: 'Paid', feeamount: 'FeeAmount',
     sessionid: 'SessionId', studentid: 'StudentId', homework: 'Homework',
     attitude: 'Attitude', individualcomment: 'IndividualComment', note: 'Note',
@@ -428,6 +428,11 @@ const sql = {
 let poolPromise = pgPool.query('SELECT 1')
     .then(async () => {
         console.log('Đã kết nối thành công với PostgreSQL (Aiven)!');
+
+        // Cột này được các API lịch đọc trực tiếp, vì vậy phải tồn tại trước khi
+        // poolPromise cho phép request đầu tiên chạy. Các migration không bắt buộc
+        // khác vẫn tiếp tục chạy nền để tránh làm chậm đăng nhập và tải dữ liệu.
+        await pgPool.query('ALTER TABLE Sessions ADD COLUMN IF NOT EXISTS HomeworkContent TEXT');
 
         // Migration tự phục hồi chỉ chạy nền. API không chờ toàn bộ chuỗi DDL vì
         // một ALTER TABLE bị khóa có thể làm đăng nhập, tải dữ liệu và lưu bị treo.
@@ -1937,7 +1942,7 @@ app.get('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCont
             .query(`
             SELECT
                 s.Id, s.SessionDate, s.StartTime, s.EndTime, s.SessionType, s.SessionName,
-                s.Price, s.Duration, s.Content, s.GeneralComment, s.Completed,
+                s.Price, s.Duration, s.Content, s.HomeworkContent, s.GeneralComment, s.Completed,
                 s.RecurrenceGroupId, s.RecurrenceSequence,
                 sd.StudentId, sd.Homework, sd.Attitude, sd.IndividualComment, sd.Note, sd.FeeAmount, sd.Paid
             FROM Sessions s
@@ -1967,6 +1972,7 @@ app.get('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCont
                     duration:       parseFloat(row.Duration),
                     price:          parseInt(row.Price),
                     content:        row.Content        || '',
+                    homeworkContent: row.HomeworkContent || '',
                     generalComment: row.GeneralComment || '',
                     completed:      row.Completed === true || row.Completed === 1,
                     recurrenceGroupId: row.RecurrenceGroupId || null,
@@ -2058,7 +2064,7 @@ app.post('/api/sessions/batch', requireRole('teacher', 'assistant'), requireTeac
     if (repeatResult.error) return res.status(400).json({ error: repeatResult.error });
     if (repeatResult.dates.length === 0) return res.status(400).json({ error: 'Hãy chọn ít nhất một ngày lặp lại.' });
 
-    const { id, date, startTime, endTime, type, sessionName, studentIds, duration, price, content, generalComment, completed, studentDetails } = baseSession;
+    const { id, date, startTime, endTime, type, sessionName, studentIds, duration, price, content, homeworkContent, generalComment, completed, studentDetails } = baseSession;
     if (!id || !/^\d{4}-\d{2}-\d{2}$/.test(String(date || '')) || !startTime || !endTime || !type || !Array.isArray(studentIds) || studentIds.length === 0) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
     }
@@ -2133,12 +2139,18 @@ app.post('/api/sessions/batch', requireRole('teacher', 'assistant'), requireTeac
                 .input('price', sql.Int, snapshottedSessionPrice)
                 .input('duration', sql.Decimal(4, 2), parseFloat(duration) || 2.0)
                 .input('content', sql.NVarChar, content || '')
+                .input('homeworkContent', sql.NVarChar, homeworkContent || '')
                 .input('generalComment', sql.NVarChar, generalComment || '')
                 .input('completed', sql.Bit, sessionCompleted ? 1 : 0)
                 .input('recurrenceGroupId', sql.VarChar, recurrenceGroupId)
                 .input('recurrenceSequence', sql.Int, sequence)
                 .query(`INSERT INTO Sessions (Id, SessionDate, StartTime, EndTime, SessionType, SessionName, Price, Duration, Content, GeneralComment, Completed, RecurrenceGroupId, RecurrenceSequence, TeacherId)
                         VALUES (@id, @date, @startTime, @endTime, @type, @sessionName, @price, @duration, @content, @generalComment, @completed, @recurrenceGroupId, @recurrenceSequence, @teacherId)`);
+
+            await new sql.Request(transaction)
+                .input('sessionId', sql.VarChar, sessionId)
+                .input('homeworkContent', sql.NVarChar, homeworkContent || '')
+                .query('UPDATE Sessions SET HomeworkContent = @homeworkContent WHERE Id = @sessionId');
 
             for (const studentId of studentIds) {
                 const sourceDetail = preparedDetails[studentId] || {};
@@ -2169,7 +2181,7 @@ app.post('/api/sessions/batch', requireRole('teacher', 'assistant'), requireTeac
 });
 
 app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
-    const { id, date, startTime, endTime, type, sessionName, studentIds, duration, price, content, generalComment, completed, paid, studentDetails, recurrenceGroupId, recurrenceSequence } = req.body || {};
+    const { id, date, startTime, endTime, type, sessionName, studentIds, duration, price, content, homeworkContent, generalComment, completed, paid, studentDetails, recurrenceGroupId, recurrenceSequence } = req.body || {};
 
     if (!id || !date || !startTime || !endTime || !type || !Array.isArray(studentIds) || studentIds.length === 0) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
@@ -2263,12 +2275,18 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
             .input('price',          sql.Int,           snapshottedSessionPrice)
             .input('duration',       sql.Decimal(4, 2), parseFloat(duration) || 2.0)
             .input('content',        sql.NVarChar,      content        || '')
+            .input('homeworkContent',sql.NVarChar,      homeworkContent || '')
             .input('generalComment', sql.NVarChar,      generalComment || '')
             .input('completed',      sql.Bit,           completed ? 1 : 0)
             .input('recurrenceGroupId', sql.VarChar, normalizedRecurrenceGroupId)
             .input('recurrenceSequence', sql.Int, normalizedRecurrenceSequence)
             .query(`INSERT INTO Sessions (Id, SessionDate, StartTime, EndTime, SessionType, SessionName, Price, Duration, Content, GeneralComment, Completed, RecurrenceGroupId, RecurrenceSequence, TeacherId)
                     VALUES (@id, @date, @startTime, @endTime, @type, @sessionName, @price, @duration, @content, @generalComment, @completed, @recurrenceGroupId, @recurrenceSequence, @teacherId)`);
+
+        await new sql.Request(transaction)
+            .input('sessionId', sql.VarChar, id)
+            .input('homeworkContent', sql.NVarChar, homeworkContent || '')
+            .query('UPDATE Sessions SET HomeworkContent = @homeworkContent WHERE Id = @sessionId');
 
         for (const stId of studentIds) {
             const detail = preparedDetails[stId];
@@ -2305,7 +2323,7 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
 // nhờ vậy học phí, trạng thái thanh toán và các giá trị nhật ký không bị reset.
 app.put('/api/sessions/:id/quick-entry', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     const { id } = req.params;
-    const { content, sessionName, generalComment, studentDetails, scoreMeta, scoreGroups } = req.body || {};
+    const { content, homeworkContent, sessionName, generalComment, studentDetails, scoreMeta, scoreGroups } = req.body || {};
     if (!studentDetails || typeof studentDetails !== 'object' || Array.isArray(studentDetails)) {
         return res.status(400).json({ error: 'Thiếu dữ liệu nhật ký của học sinh.' });
     }
@@ -2446,9 +2464,10 @@ app.put('/api/sessions/:id/quick-entry', requireRole('teacher', 'assistant'), re
         await new sql.Request(transaction)
             .input('sessionId', sql.VarChar, id)
             .input('content', sql.NVarChar, String(content ?? ''))
+            .input('homeworkContent', sql.NVarChar, String(homeworkContent ?? ''))
             .input('sessionName', sql.NVarChar, String(sessionName ?? ''))
             .input('generalComment', sql.NVarChar, String(generalComment ?? ''))
-            .query('UPDATE Sessions SET Content = @content, SessionName = @sessionName, GeneralComment = @generalComment WHERE Id = @sessionId');
+            .query('UPDATE Sessions SET Content = @content, HomeworkContent = @homeworkContent, SessionName = @sessionName, GeneralComment = @generalComment WHERE Id = @sessionId');
 
         for (const [studentId, rawDetail] of detailEntries) {
             const detail = rawDetail && typeof rawDetail === 'object' ? rawDetail : {};
@@ -2493,7 +2512,7 @@ app.put('/api/sessions/:id/quick-entry', requireRole('teacher', 'assistant'), re
 
 app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     const { id } = req.params;
-    const { date, startTime, endTime, type, sessionName, studentIds, duration, price, content, generalComment, completed, studentDetails, pricingChanged, repriceExistingFees, updateScope, createRepeatDates } = req.body || {};
+    const { date, startTime, endTime, type, sessionName, studentIds, duration, price, content, homeworkContent, generalComment, completed, studentDetails, pricingChanged, repriceExistingFees, updateScope, createRepeatDates } = req.body || {};
 
     if (!date || !startTime || !endTime || !type || !Array.isArray(studentIds) || studentIds.length === 0) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
@@ -2626,6 +2645,7 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
                 .input('price', sql.Int, effectivePrice)
                 .input('duration', sql.Decimal(4, 2), parseFloat(duration) || 2.0)
                 .input('content', sql.NVarChar, content || '')
+                .input('homeworkContent', sql.NVarChar, homeworkContent || '')
                 .input('generalComment', sql.NVarChar, generalComment || '')
                 .input('completed', sql.Bit, target.Id === id ? (completed ? 1 : 0) : (target.Completed ? 1 : 0))
                 .input('recurrenceGroupId', sql.VarChar, target.RecurrenceGroupId || (target.Id === id ? newRecurrenceGroupId : null))
@@ -2633,7 +2653,7 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
                 .query(`UPDATE Sessions
                         SET SessionDate = @date, StartTime = @startTime, EndTime = @endTime,
                             SessionType = @type, SessionName = @sessionName, Price = @price, Duration = @duration,
-                            Content = @content, GeneralComment = @generalComment, Completed = @completed,
+                            Content = @content, HomeworkContent = @homeworkContent, GeneralComment = @generalComment, Completed = @completed,
                             RecurrenceGroupId = @recurrenceGroupId, RecurrenceSequence = @recurrenceSequence
                         WHERE Id = @id`);
 
@@ -2698,12 +2718,18 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
                     .input('price', sql.Int, parsedPrice)
                     .input('duration', sql.Decimal(4, 2), parseFloat(duration) || 2.0)
                     .input('content', sql.NVarChar, content || '')
+                    .input('homeworkContent', sql.NVarChar, homeworkContent || '')
                     .input('generalComment', sql.NVarChar, generalComment || '')
                     .input('completed', sql.Bit, isStoredSessionCompleted(repeatDate, endTime) ? 1 : 0)
                     .input('recurrenceGroupId', sql.VarChar, newRecurrenceGroupId)
                     .input('recurrenceSequence', sql.Int, repeatIndex + 1)
                     .query(`INSERT INTO Sessions (Id, SessionDate, StartTime, EndTime, SessionType, SessionName, Price, Duration, Content, GeneralComment, Completed, RecurrenceGroupId, RecurrenceSequence, TeacherId)
                             VALUES (@id, @date, @startTime, @endTime, @type, @sessionName, @price, @duration, @content, @generalComment, @completed, @recurrenceGroupId, @recurrenceSequence, @teacherId)`);
+
+                await new sql.Request(transaction)
+                    .input('sessionId', sql.VarChar, repeatedSessionId)
+                    .input('homeworkContent', sql.NVarChar, homeworkContent || '')
+                    .query('UPDATE Sessions SET HomeworkContent = @homeworkContent WHERE Id = @sessionId');
 
                 for (const studentId of studentIds) {
                     const incoming = (studentDetails && studentDetails[studentId]) || {};
@@ -3386,7 +3412,7 @@ app.get('/api/me/schedule', requireRole('student'), requireTeacherContext, async
             .input('studentId', sql.VarChar, req.authUser.userId)
             .query(`
             SELECT s.Id, s.SessionDate, s.StartTime, s.EndTime, s.SessionType, s.SessionName,
-                   s.Content, s.GeneralComment, s.Completed,
+                   s.Content, s.HomeworkContent, s.GeneralComment, s.Completed,
                    sd.Homework, sd.Attitude, sd.IndividualComment, sd.Note, sd.FeeAmount, sd.Paid
             FROM SessionDetails sd
             JOIN Sessions s ON s.Id = sd.SessionId
@@ -3402,6 +3428,7 @@ app.get('/api/me/schedule', requireRole('student'), requireTeacherContext, async
             type:              row.SessionType,
             sessionName:       row.SessionName || '',
             content:           row.Content || '',
+            homeworkContent:   row.HomeworkContent || '',
             generalComment:    row.GeneralComment || '',
             completed:         row.Completed === true || row.Completed === 1,
             homework:          row.Homework,
@@ -3687,7 +3714,7 @@ async function buildAiContext(req) {
     const journalRequest = pool.request().input('teacherId', sql.VarChar, teacherId);
     if (onlyStudentId) journalRequest.input('studentId', sql.VarChar, onlyStudentId);
     const journalResult = await journalRequest.query(`
-        SELECT s.SessionDate, s.StartTime, s.EndTime, s.SessionName, s.Content,
+        SELECT s.SessionDate, s.StartTime, s.EndTime, s.SessionName, s.Content, s.HomeworkContent,
                s.GeneralComment, sd.StudentId, sd.Homework, sd.Attitude,
                sd.IndividualComment, sd.Note, sd.FeeAmount, sd.Paid
         FROM Sessions s JOIN SessionDetails sd ON sd.SessionId = s.Id

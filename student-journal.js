@@ -117,6 +117,7 @@ Object.assign(PinkyClassApp.prototype, {
         const sessionIdArg = this.escapeHtmlAttr(JSON.stringify(String(session.id)));
         const isEditing = String(this.studentJournalEditingSessionId || '') === String(session.id);
         const content = String(session.content || '').trim();
+        const assignedHomeworkContent = String(session.homeworkContent || '').trim();
         const normalizedHomework = this.normalizeHomeworkValue(detail.homework);
 
         let homeworkCell = homeworkBadge;
@@ -150,7 +151,13 @@ Object.assign(PinkyClassApp.prototype, {
                 + '</div>';
         }
 
-        const contentHtml = content ? this.nl2brText(content) : '<span class="student-journal-muted">-</span>';
+        const contentParts = [];
+        if (content) contentParts.push(this.nl2brText(content));
+        if (assignedHomeworkContent) {
+            contentParts.push('<div class="session-assigned-homework"><strong>BTVN:</strong> '
+                + this.nl2brText(assignedHomeworkContent) + '</div>');
+        }
+        const contentHtml = contentParts.join('') || '<span class="student-journal-muted">-</span>';
         return '<tr class="' + (isEditing ? 'student-journal-edit-row' : '') + '" data-session-id="'
             + this.escapeHtmlAttr(String(session.id)) + '">'
             + '<td class="session-number-cell"><span class="session-number-val">Buổi ' + (index + 1) + '</span>'

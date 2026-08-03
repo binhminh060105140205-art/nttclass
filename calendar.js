@@ -493,6 +493,7 @@ Object.assign(PinkyClassApp.prototype, {
             statusHint.style.color = isDone ? 'var(--hw-done-text, #16a34a)' : 'var(--primary)';
         }
         document.getElementById('quickEntryContent').value = sess.content || '';
+        document.getElementById('quickEntryHomeworkContent').value = sess.homeworkContent || '';
 
         const linkedScores = (this.scores || []).filter(score =>
             score.sessionId === sess.id && sess.studentIds.includes(score.studentId)
@@ -542,11 +543,11 @@ Object.assign(PinkyClassApp.prototype, {
                             <input type="text" class="qe-attitude" placeholder="Nhập tự do..." value="${this.escapeHtmlAttr(attitude)}">
                         </div>
                         <div class="full-span">
-                            <label>Nhận xét riêng cho ${this.escapeHtml(name)}</label>
+                            <label>Nhận xét</label>
                             <textarea class="qe-comment" rows="2" placeholder="Nhận xét riêng...">${detail.individualComment || ''}</textarea>
                         </div>
                         <div class="full-span">
-                            <label>Ghi chú (Minitest,...)</label>
+                            <label>Ghi chú</label>
                             <input type="text" class="qe-note" placeholder="Ghi chú thêm..." value="${this.escapeHtmlAttr(detail.note || '')}">
                         </div>
                     </div>
@@ -554,7 +555,19 @@ Object.assign(PinkyClassApp.prototype, {
             `;
         }).join('');
 
+        const resizeQuickEntryComment = textarea => {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.max(textarea.scrollHeight + 2, 64) + 'px';
+        };
+        const quickEntryComments = listWrap.querySelectorAll('.qe-comment');
+        quickEntryComments.forEach(textarea => {
+            textarea.addEventListener('input', () => resizeQuickEntryComment(textarea));
+        });
+
         this.openModal('quickSessionEntryModal');
+        requestAnimationFrame(() => {
+            quickEntryComments.forEach(resizeQuickEntryComment);
+        });
     },
 
     getQuickEntryScoreTypeOptions(selectedType) {
@@ -777,6 +790,7 @@ Object.assign(PinkyClassApp.prototype, {
         if (!sess) return;
 
         const content = document.getElementById('quickEntryContent').value.trim();
+        const homeworkContent = document.getElementById('quickEntryHomeworkContent').value.trim();
         const sessionName = document.getElementById('quickEntrySessionName').value.trim();
         const scoreGroups = [];
         const newStudentDetails = {};
@@ -859,6 +873,7 @@ Object.assign(PinkyClassApp.prototype, {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     content,
+                    homeworkContent,
                     sessionName,
                     generalComment: finalGeneralComment,
                     scoreGroups,
@@ -1301,6 +1316,7 @@ Object.assign(PinkyClassApp.prototype, {
         const duration = parseFloat(document.getElementById('sessionHours').value) || 2.0;
         const unitPrice = this.parsePriceValue(document.getElementById('sessionPrice').value);
         const content = document.getElementById('sessionContent').value.trim();
+        const homeworkContent = document.getElementById('sessionHomeworkContent').value.trim();
 
         if (!date || !startTime || !endTime) {
             this.showToast("Vui lòng nhập đầy đủ ngày học và giờ học!", "error");
@@ -1393,6 +1409,7 @@ Object.assign(PinkyClassApp.prototype, {
             duration,
             price,
             content,
+            homeworkContent,
             generalComment: content ? `Cả lớp học: ${content.split('\n')[0]}` : "",
             completed: this.isSessionCompleted({ date, endTime }), // Tự động theo lịch, không cần chấm công thủ công
             paid: false,     // QUAN TRỌNG: học phí LUÔN mặc định "chưa thanh toán" khi mới lên lịch
@@ -1480,6 +1497,7 @@ Object.assign(PinkyClassApp.prototype, {
         editPriceEl.dataset.originalUnitPrice = String(this.parsePriceValue(editPriceEl.value));
         editPriceEl.dataset.userEdited = 'true'; // giữ đúng giá đã lưu, không để bị tự động ghi đè
         document.getElementById('editSessionContent').value = sess.content || '';
+        document.getElementById('editSessionHomeworkContent').value = sess.homeworkContent || '';
 
         // Dựng lại danh sách checkbox học sinh (gom theo lớp), đánh dấu các
         // em đang tham gia — dùng chung hàm renderStudentSelectionGrid với
@@ -1509,6 +1527,7 @@ Object.assign(PinkyClassApp.prototype, {
         const originalUnitPrice = Number(document.getElementById('editSessionPrice').dataset.originalUnitPrice);
         const priceWasChanged = Number.isFinite(originalUnitPrice) && unitPrice !== originalUnitPrice;
         const content = document.getElementById('editSessionContent').value.trim();
+        const homeworkContent = document.getElementById('editSessionHomeworkContent').value.trim();
 
         if (!date || !startTime || !endTime) {
             this.showToast("Vui lòng nhập đầy đủ ngày học và giờ học!", "error");
@@ -1609,6 +1628,7 @@ Object.assign(PinkyClassApp.prototype, {
             duration,
             price,
             content,
+            homeworkContent,
             studentIds,
             pricingChanged,
             repriceExistingFees: priceWasChanged,

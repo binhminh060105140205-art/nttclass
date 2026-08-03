@@ -58,6 +58,7 @@ CREATE TABLE Sessions (
     Price INT NOT NULL DEFAULT 250000,
     Duration DECIMAL(4,2) NOT NULL DEFAULT 2.0,
     Content TEXT NULL,
+    HomeworkContent TEXT NULL,
     GeneralComment TEXT NULL,
     Completed SMALLINT NOT NULL DEFAULT 1, -- 1: Đã dạy, 0: Chưa dạy/Lên lịch
     RecurrenceGroupId VARCHAR(80) NULL,

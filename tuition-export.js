@@ -410,7 +410,11 @@ Object.assign(PinkyClassApp.prototype, {
 
                 const contentParts = [];
                 if (sess.sessionName) contentParts.push(sess.sessionName);
-                contentParts.push(sess.content && sess.content.trim() ? sess.content.trim() : 'Chưa có nội dung.');
+                if (sess.content && sess.content.trim()) contentParts.push(sess.content.trim());
+                if (sess.homeworkContent && sess.homeworkContent.trim()) {
+                    contentParts.push('BTVN: ' + sess.homeworkContent.trim());
+                }
+                if (contentParts.length === 0) contentParts.push('Chưa có nội dung.');
 
                 return [
                     `Buổi ${idx + 1}`,

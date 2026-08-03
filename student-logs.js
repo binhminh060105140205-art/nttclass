@@ -88,6 +88,20 @@ Object.assign(PinkyClassApp.prototype, {
                 <td class="role-restricted admin-tutor log-export-hide">${actionsHTML}</td>
             `;
 
+            const assignedHomeworkText = String(sess.homeworkContent || '').trim();
+            if (assignedHomeworkText) {
+                const contentElement = tr.querySelector('.session-content-text');
+                if (contentElement) {
+                    if (!contentText) contentElement.textContent = '';
+                    const assignedHomeworkElement = document.createElement('div');
+                    assignedHomeworkElement.className = 'session-assigned-homework';
+                    const assignedHomeworkLabel = document.createElement('strong');
+                    assignedHomeworkLabel.textContent = 'BTVN:';
+                    assignedHomeworkElement.append(assignedHomeworkLabel, document.createTextNode(' ' + assignedHomeworkText));
+                    contentElement.appendChild(assignedHomeworkElement);
+                }
+            }
+
             tbody.appendChild(tr);
         });
     },

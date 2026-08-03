@@ -1869,6 +1869,35 @@ html[data-app-theme="blue"] #globalMonthFilter {
     font-weight: 400;
 }
 
+.session-homework-label,
+.session-assigned-homework {
+    color: #1e3a8a !important;
+}
+
+.session-homework-label {
+    font-weight: 800;
+}
+
+.session-assigned-homework {
+    margin-top: 8px;
+    font-weight: 650;
+    line-height: 1.55;
+    white-space: pre-line;
+}
+
+.session-content-text > .session-assigned-homework:first-child {
+    margin-top: 0;
+}
+
+.session-assigned-homework strong {
+    font-weight: 800;
+}
+
+[data-theme-mode="dark"] .session-homework-label,
+[data-theme-mode="dark"] .session-assigned-homework {
+    color: #93c5fd !important;
+}
+
 /* Cột "NHẬN XÉT CỦA GIÁO VIÊN" — phóng to theo yêu cầu để nhận xét dễ đọc,
    không bị bó hẹp như trước. */
 .col-comment {
@@ -3224,6 +3253,14 @@ textarea.form-control {
 .qe-student-card textarea:focus,
 .qe-student-card select:focus {
     border-color: var(--primary);
+}
+
+.qe-student-card textarea.qe-comment {
+    box-sizing: border-box;
+    min-height: 64px;
+    height: auto;
+    overflow-y: hidden;
+    resize: none;
 }
 
 .quick-entry-score-entry {
