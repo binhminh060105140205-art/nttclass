@@ -120,7 +120,11 @@ Object.assign(PinkyClassApp.prototype, {
         document.getElementById("studentModalTitle").innerText = "Chỉnh Sửa Học Sinh";
         document.getElementById("saveStudentBtn").innerText = "Lưu thay đổi";
         document.getElementById("studentName").value = student.name;
-        document.getElementById("studentGrade").value = student.gradeLevel || "";
+        const storedClass = String(student.class || '').trim();
+        const standardClass = student.gradeLevel ? `Lớp ${student.gradeLevel}` : '';
+        document.getElementById("studentGrade").value = storedClass && storedClass !== standardClass
+            ? storedClass
+            : (student.gradeLevel || "");
         document.getElementById("studentSubject").value = student.subject;
         document.getElementById("studentDob").value = student.dob || "";
         document.getElementById("studentBasePrice").value = student.basePrice;
@@ -173,13 +177,14 @@ Object.assign(PinkyClassApp.prototype, {
     async handleAddStudent() {
         const editId = document.getElementById('editStudentId').value;
         const name = document.getElementById('studentName').value.trim();
-        const gradeValue = document.getElementById('studentGrade').value.trim();
-        const gradeLevel = gradeValue === '' ? null : Number(gradeValue);
-        if (gradeLevel !== null && (!Number.isInteger(gradeLevel) || gradeLevel < 1 || gradeLevel > 12)) {
-            this.showToast('Lớp phải là số nguyên từ 1 đến 12 hoặc để trống.', 'error');
-            return;
-        }
-        const sClass = gradeLevel === null ? '' : `Lớp ${gradeLevel}`;
+        const classInput = document.getElementById('studentGrade').value.trim().replace(/\s+/g, ' ');
+        const classWithoutPrefix = classInput.replace(/^lớp\s*/i, '');
+        const gradeMatch = classWithoutPrefix.match(/^(1[0-2]|[1-9])/);
+        const gradeCandidate = gradeMatch ? Number(gradeMatch[1]) : null;
+        const nextClassCharacter = gradeMatch ? classWithoutPrefix.charAt(gradeMatch[1].length) : '';
+        const gradeLevel = gradeCandidate && !/\d/.test(nextClassCharacter) ? gradeCandidate : null;
+        const isGradeOnly = gradeLevel !== null && classWithoutPrefix === String(gradeLevel);
+        const sClass = classInput && isGradeOnly ? 'Lớp ' + gradeLevel : classInput;
         const subject = document.getElementById('studentSubject').value.trim();
         // Ngày sinh — không bắt buộc, để trống nếu chưa muốn nhập. Giá trị
         // input[type=date] đã sẵn ở dạng "yyyy-mm-dd" nên gửi thẳng lên API.

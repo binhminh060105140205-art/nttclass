@@ -1657,11 +1657,25 @@ app.post('/api/students', requireRole('teacher', 'assistant'), requireTeacherCon
     // sinh trông "trùng tên" nhưng thực chất khác nhau ở khoảng trắng).
     name = (name || '').trim();
     subject = (subject || '').trim();
-    const parsedGradeLevel = gradeLevel === undefined || gradeLevel === null || gradeLevel === '' ? null : Number(gradeLevel);
+    sClass = String(sClass || '').trim().replace(/\s+/g, ' ');
+    if (sClass.length > 100) {
+        return res.status(400).json({ error: 'Tên lớp không được vượt quá 100 ký tự.' });
+    }
+    let parsedGradeLevel = gradeLevel === undefined || gradeLevel === null || gradeLevel === '' ? null : Number(gradeLevel);
     if (parsedGradeLevel !== null && (!Number.isInteger(parsedGradeLevel) || parsedGradeLevel < 1 || parsedGradeLevel > 12)) {
         return res.status(400).json({ error: 'Lớp phải là số nguyên từ 1 đến 12 hoặc để trống.' });
     }
+    const classWithoutPrefix = sClass.replace(/^lớp\s*/i, '');
+    const classGradeMatch = classWithoutPrefix.match(/^(1[0-2]|[1-9])/);
+    const classGradeCandidate = classGradeMatch ? Number(classGradeMatch[1]) : null;
+    const nextClassCharacter = classGradeMatch ? classWithoutPrefix.charAt(classGradeMatch[1].length) : '';
+    if (parsedGradeLevel === null && classGradeCandidate && !/\d/.test(nextClassCharacter)) {
+        parsedGradeLevel = classGradeCandidate;
+    }
+    const submittedClass = sClass;
     sClass = parsedGradeLevel === null ? '' : `Lớp ${parsedGradeLevel}`;
+    const classIsGradeOnly = parsedGradeLevel !== null && classWithoutPrefix === String(parsedGradeLevel);
+    if (submittedClass && !classIsGradeOnly) sClass = submittedClass;
 
     if (!id || !name || !subject) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
@@ -1710,11 +1724,17 @@ app.put('/api/students/:id', requireRole('teacher', 'assistant'), requireTeacher
 
     name = (name || '').trim();
     subject = (subject || '').trim();
-    const parsedGradeLevel = gradeLevel === undefined || gradeLevel === null || gradeLevel === '' ? null : Number(gradeLevel);
+    sClass = String(sClass || '').trim().replace(/\s+/g, ' ');
+    if (sClass.length > 100) {
+        return res.status(400).json({ error: 'Tên lớp không được vượt quá 100 ký tự.' });
+    }
+    let parsedGradeLevel = gradeLevel === undefined || gradeLevel === null || gradeLevel === '' ? null : Number(gradeLevel);
     if (parsedGradeLevel !== null && (!Number.isInteger(parsedGradeLevel) || parsedGradeLevel < 1 || parsedGradeLevel > 12)) {
         return res.status(400).json({ error: 'Lớp phải là số nguyên từ 1 đến 12 hoặc để trống.' });
     }
+    const submittedClass = sClass;
     sClass = parsedGradeLevel === null ? '' : `Lớp ${parsedGradeLevel}`;
+    if (submittedClass) sClass = submittedClass;
 
     if (!name || !subject) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
