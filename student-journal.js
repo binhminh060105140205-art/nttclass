@@ -52,14 +52,17 @@ Object.assign(PinkyClassApp.prototype, {
         const studentId = this.studentJournalStudentId;
         const tbody = document.getElementById('studentJournalTableBody');
         const meta = document.getElementById('studentJournalStudentMeta');
+        const monthHeader = document.getElementById('studentJournalMonthHeader');
         const monthSelect = document.getElementById('studentJournalMonthFilter');
-        if (!studentId || !tbody || !meta || !monthSelect) return;
+        if (!studentId || !tbody || !meta || !monthHeader || !monthSelect) return;
 
         const student = (this.students || []).find(item => String(item.id) === String(studentId));
         if (!student) return;
 
         const classLabel = student.class || (student.gradeLevel ? 'Lớp ' + student.gradeLevel : 'Chưa nhập lớp');
-        meta.innerText = (student.name || 'Học sinh') + ' • ' + classLabel + ' • ' + (student.subject || 'Chưa nhập môn');
+        meta.innerText = [student.name || 'Học sinh', student.subject || 'Chưa nhập môn', classLabel]
+            .join(' ')
+            .toUpperCase();
 
         const monthKeys = new Set();
         (this.sessions || []).forEach(session => {
@@ -80,6 +83,10 @@ Object.assign(PinkyClassApp.prototype, {
             return '<option value="' + this.escapeHtmlAttr(key) + '">Tháng ' + parts[1] + '/' + parts[0] + '</option>';
         }).join('');
         monthSelect.value = this.studentJournalMonthFilter || '';
+        const selectedMonthParts = String(this.studentJournalMonthFilter || '').split('-').map(Number);
+        monthHeader.innerText = selectedMonthParts[0] && selectedMonthParts[1]
+            ? 'THÁNG ' + selectedMonthParts[1] + '/' + selectedMonthParts[0]
+            : 'TẤT CẢ THÁNG';
 
         const sessions = this.getStudentJournalSessions(studentId);
         if (sessions.length === 0) {

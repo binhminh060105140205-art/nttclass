@@ -904,7 +904,6 @@
             <div class="modal-header student-journal-modal-header">
                 <div class="student-journal-modal-heading">
                     <h3 class="modal-title" id="studentJournalModalTitle">NHẬT KÝ HỌC TẬP</h3>
-                    <p id="studentJournalStudentMeta">Học sinh • Lớp • Môn học</p>
                 </div>
                 <div class="student-journal-modal-controls">
                     <label for="studentJournalMonthFilter">Tháng</label>
@@ -916,22 +915,31 @@
             </div>
             <div class="modal-body student-journal-modal-body">
                 <p class="student-journal-edit-hint">Chọn “Sửa trực tiếp” để cập nhật đánh giá; nội dung buổi học vẫn giữ nguyên.</p>
-                <div class="table-wrapper student-journal-table-wrap">
-                    <table class="custom-table student-journal-table">
-                        <thead>
-                            <tr>
-                                <th>STT</th>
-                                <th>NGÀY</th>
-                                <th>NỘI DUNG</th>
-                                <th>BTVN</th>
-                                <th>Ý THỨC</th>
-                                <th>NHẬN XÉT</th>
-                                <th>GHI CHÚ</th>
-                                <th>THAO TÁC</th>
-                            </tr>
-                        </thead>
-                        <tbody id="studentJournalTableBody"></tbody>
-                    </table>
+                <div class="student-journal-log-frame">
+                    <div class="student-log-header student-journal-log-header">
+                        <div>
+                            <span class="student-log-title" id="studentJournalStudentMeta">HỌC SINH MÔN HỌC LỚP</span>
+                            <span class="student-journal-header-divider">|</span>
+                            <span class="student-log-subtitle" id="studentJournalMonthHeader">TẤT CẢ THÁNG</span>
+                        </div>
+                    </div>
+                    <div class="table-wrapper student-journal-table-wrap">
+                        <table class="custom-table student-journal-table">
+                            <thead>
+                                <tr>
+                                    <th>STT</th>
+                                    <th>NGÀY</th>
+                                    <th>NỘI DUNG</th>
+                                    <th>BTVN</th>
+                                    <th>Ý THỨC</th>
+                                    <th>NHẬN XÉT</th>
+                                    <th>GHI CHÚ</th>
+                                    <th>CHỈNH SỬA</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentJournalTableBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer student-journal-modal-footer">
@@ -1640,7 +1648,7 @@
     <script src="users.js"></script>
     <script src="dashboard.js?v=20260802-dashboard-total1"></script>
     <script src="student-logs.js?v=20260803-session-homework1"></script>
-    <script src="student-journal.js?v=20260803-session-homework1"></script>
+    <script src="student-journal.js?v=20260803-profile-match1"></script>
     <script src="scores.js?v=20260802-runtime-cleanup1"></script>
     <script src="calendar.js?v=20260803-note-label1"></script>
     <script src="tuition-export.js?v=20260803-session-homework1"></script>
