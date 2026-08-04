@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Playfair+Display:ital,wght@1,400;1,500;1,600&amp;display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Comfortaa:wght@400;500;600;700&family=Condiment&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260803-auto-grow-comments1">
+    <link rel="stylesheet" href="style.css?v=20260804-requests-123-2">
     <link rel="stylesheet" href="landing-lithos-bundle.css?v=20260731-performance5">
     <link id="appThemeStylesheet" rel="stylesheet" href="lithos-app-bundle.css?v=20260802-sidebar-toggle1" media="not all" disabled>
     <link id="pinkAppThemeStylesheet" rel="stylesheet" href="pink-minimal-theme.css?v=20260803-blue-font1" media="not all" disabled>
@@ -1137,7 +1137,7 @@
     <div class="modal-backdrop" id="quickSessionEntryModal">
         <div class="modal-container" style="max-width: 700px;">
             <div class="modal-header">
-                <h3 class="modal-title">Cập Nhật Buổi Học</h3>
+                <h3 class="modal-title quick-entry-modal-title">CẬP NHẬT BUỔI HỌC</h3>
                 <button class="modal-close" onclick="app.closeModal('quickSessionEntryModal')">&times;</button>
             </div>
             <form id="quickSessionEntryForm">
@@ -1150,7 +1150,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="quickEntrySessionName">Tên ca học</label>
+                        <label for="quickEntrySessionName" class="quick-entry-section-label">TÊN CA HỌC</label>
                         <input type="text" id="quickEntrySessionName" class="form-control" maxlength="100" placeholder="Ví dụ: Ca sáng, Ôn thi giữa kỳ...">
                     </div>
 
@@ -1159,13 +1159,13 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="quickEntryContent">Nội dung buổi học (chung cho cả buổi)</label>
-                        <textarea id="quickEntryContent" class="form-control" placeholder="Ví dụ: Ôn tam giác, luyện đề..." rows="2"></textarea>
+                        <label for="quickEntryContent" class="quick-entry-section-label">NỘI DUNG BUỔI HỌC</label>
+                        <textarea id="quickEntryContent" class="form-control quick-entry-content-textarea" placeholder="Ví dụ: Ôn tam giác, luyện đề..." rows="3"></textarea>
                     </div>
 
                     <div class="form-group">
-                        <label for="quickEntryHomeworkContent" class="session-homework-label">BTVN</label>
-                        <textarea id="quickEntryHomeworkContent" class="form-control" placeholder="Ví dụ: Hoàn thành Phiếu 8.1, bài 1-5 trang 32..." rows="2"></textarea>
+                        <label for="quickEntryHomeworkContent" class="session-homework-label quick-entry-section-label">BÀI TẬP VỀ NHÀ</label>
+                        <textarea id="quickEntryHomeworkContent" class="form-control quick-entry-homework-textarea" placeholder="Ví dụ: Hoàn thành Phiếu 8.1, bài 1-5 trang 32..." rows="1"></textarea>
                     </div>
 
                     <div class="score-outside-entry quick-entry-score-entry">
@@ -1189,7 +1189,7 @@
                         </div>
                     </div>
                     <div>
-                        <label style="font-weight:700; display:block; margin-bottom:8px;"> Chấm riêng cho từng học sinh
+                        <label class="quick-entry-section-label quick-entry-detail-label">NHẬN XÉT CHI TIẾT
                         </label>
                         <!-- Filled dynamically: 1 card per student với BTVN / Ý thức / Nhận xét / Ghi chú RIÊNG -->
                         <div id="quickEntryStudentsList" style="display:flex; flex-direction:column; gap:14px;"></div>
@@ -1647,10 +1647,10 @@
     <script src="app-shell.js?v=20260802-runtime-cleanup1"></script>
     <script src="users.js"></script>
     <script src="dashboard.js?v=20260802-dashboard-total1"></script>
-    <script src="student-logs.js?v=20260803-session-homework1"></script>
-    <script src="student-journal.js?v=20260803-profile-match1"></script>
+    <script src="student-logs.js?v=20260804-requests-123-1"></script>
+    <script src="student-journal.js?v=20260804-requests-123-1"></script>
     <script src="scores.js?v=20260802-runtime-cleanup1"></script>
-    <script src="calendar.js?v=20260803-note-label1"></script>
+    <script src="calendar.js?v=20260804-requests-123-1"></script>
     <script src="tuition-export.js?v=20260803-session-homework1"></script>
     <script src="students.js?v=20260803-free-class-input1"></script>
     <script src="ai-chat.js?v=20260802-ai-data2"></script>

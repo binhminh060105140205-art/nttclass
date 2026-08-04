@@ -161,8 +161,8 @@ Object.assign(PinkyClassApp.prototype, {
         const contentParts = [];
         if (content) contentParts.push(this.nl2brText(content));
         if (assignedHomeworkContent) {
-            contentParts.push('<div class="session-assigned-homework"><strong>BTVN:</strong> '
-                + this.nl2brText(assignedHomeworkContent) + '</div>');
+            contentParts.push('<div class="session-assigned-homework"><strong>BTVN:</strong>'
+                + '<span class="session-assigned-homework-text">' + this.nl2brText(assignedHomeworkContent) + '</span></div>');
         }
         const contentHtml = contentParts.join('') || '<span class="student-journal-muted">-</span>';
         return '<tr class="' + (isEditing ? 'student-journal-edit-row' : '') + '" data-session-id="'

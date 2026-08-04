@@ -1890,7 +1890,13 @@ html[data-app-theme="blue"] #globalMonthFilter {
 }
 
 .session-assigned-homework strong {
+    display: block;
     font-weight: 800;
+}
+
+.session-assigned-homework-text {
+    display: block;
+    white-space: pre-line;
 }
 
 [data-theme-mode="dark"] .session-homework-label,
@@ -3073,7 +3079,7 @@ textarea.form-control {
     transform: translateY(calc(-100% - 3px));
     font-size: 0.6562rem;
     color: var(--text-muted);
-    text-align: right;
+    text-align: right !important;
     padding-right: 6px;
 }
 
@@ -3261,6 +3267,49 @@ textarea.form-control {
     height: auto;
     overflow-y: hidden;
     resize: none;
+}
+
+#quickSessionEntryModal .quick-entry-modal-title {
+    color: var(--primary);
+}
+
+#quickSessionEntryModal .quick-entry-section-label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-main);
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.4;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+}
+
+#quickSessionEntryModal .quick-entry-section-label.session-homework-label {
+    color: #1e3a8a !important;
+    font-weight: 400;
+}
+
+#quickSessionEntryModal .quick-entry-detail-label {
+    margin-bottom: 8px;
+}
+
+#quickEntryContent.quick-entry-content-textarea {
+    box-sizing: border-box;
+    min-height: 96px;
+    overflow-y: hidden;
+    resize: none;
+}
+
+#quickEntryHomeworkContent.quick-entry-homework-textarea {
+    box-sizing: border-box;
+    height: 58px;
+    min-height: 58px;
+    max-height: 120px;
+    resize: vertical;
+}
+
+[data-theme-mode="dark"] #quickSessionEntryModal .quick-entry-section-label.session-homework-label {
+    color: #93c5fd !important;
 }
 
 .quick-entry-score-entry {
@@ -6009,11 +6058,12 @@ body.request-image-viewer-open { overflow: hidden; }
     min-width: 74px;
 }
 
-.student-grade-group-row td {
+#studentsTableBody .student-grade-group-row td {
     padding: 9px 14px;
     color: var(--primary);
     background: var(--primary-soft);
     font-weight: 800;
+    text-align: right;
     text-transform: uppercase;
 }
 

@@ -97,7 +97,10 @@ Object.assign(PinkyClassApp.prototype, {
                     assignedHomeworkElement.className = 'session-assigned-homework';
                     const assignedHomeworkLabel = document.createElement('strong');
                     assignedHomeworkLabel.textContent = 'BTVN:';
-                    assignedHomeworkElement.append(assignedHomeworkLabel, document.createTextNode(' ' + assignedHomeworkText));
+                    const assignedHomeworkContent = document.createElement('span');
+                    assignedHomeworkContent.className = 'session-assigned-homework-text';
+                    assignedHomeworkContent.textContent = assignedHomeworkText;
+                    assignedHomeworkElement.append(assignedHomeworkLabel, assignedHomeworkContent);
                     contentElement.appendChild(assignedHomeworkElement);
                 }
             }

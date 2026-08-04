@@ -492,8 +492,15 @@ Object.assign(PinkyClassApp.prototype, {
             statusHint.style.background = isDone ? 'var(--hw-done-bg, #dcfce7)' : 'var(--primary-soft)';
             statusHint.style.color = isDone ? 'var(--hw-done-text, #16a34a)' : 'var(--primary)';
         }
-        document.getElementById('quickEntryContent').value = sess.content || '';
-        document.getElementById('quickEntryHomeworkContent').value = sess.homeworkContent || '';
+        const quickEntryContent = document.getElementById('quickEntryContent');
+        const quickEntryHomeworkContent = document.getElementById('quickEntryHomeworkContent');
+        quickEntryContent.value = sess.content || '';
+        quickEntryHomeworkContent.value = sess.homeworkContent || '';
+        const resizeQuickEntryContent = () => {
+            quickEntryContent.style.height = 'auto';
+            quickEntryContent.style.height = Math.max(quickEntryContent.scrollHeight + 2, 96) + 'px';
+        };
+        quickEntryContent.oninput = resizeQuickEntryContent;
 
         const linkedScores = (this.scores || []).filter(score =>
             score.sessionId === sess.id && sess.studentIds.includes(score.studentId)
@@ -566,6 +573,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         this.openModal('quickSessionEntryModal');
         requestAnimationFrame(() => {
+            resizeQuickEntryContent();
             quickEntryComments.forEach(resizeQuickEntryComment);
         });
     },
