@@ -92,7 +92,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         daySessions.forEach(sess => {
             const item = document.createElement('div');
-            item.style.padding = '12px';
+            item.style.padding = '12px 12px 15px';
             item.style.background = 'var(--card-bg)';
             item.style.border = '1px solid var(--border-color)';
             item.style.borderRadius = '10px';
@@ -109,8 +109,8 @@ Object.assign(PinkyClassApp.prototype, {
                     <span style="font-weight: 600; font-size: 13px; color: var(--primary);">${this.escapeHtml(sess.startTime)} - ${this.escapeHtml(sess.endTime)}</span>
                     <span class="badge ${badgeClass}" style="font-size: 10px; padding: 2px 8px;">${sess.type === 'chung' ? 'Lớp học' : '1-1'}</span>
                 </div>
-                <div style="font-size:14px; font-weight:700; color:var(--text-main);">${sess.sessionName ? this.escapeHtml(sess.sessionName) + ' — ' : ''}${names}</div>
-                <div style="font-size:12px; color:var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px;">
+                <div style="font-size:14px; font-weight:700; color:var(--text-main); line-height:1.5; overflow-wrap:anywhere;">${sess.sessionName ? this.escapeHtml(sess.sessionName) + ' — ' : ''}${names}</div>
+                <div style="font-size:12px; color:var(--text-muted); white-space:normal; overflow:visible; text-overflow:clip; overflow-wrap:anywhere; line-height:1.6; margin-top:5px; padding-bottom:2px;">
                     ${sess.content ? this.escapeHtml(sess.content).replace(/\n/g, ' | ') : 'Chưa có nội dung'}
                 </div>
             `;
