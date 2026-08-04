@@ -368,6 +368,7 @@ Object.assign(PinkyClassApp.prototype, {
         document.getElementById('addNewStudentBtn').addEventListener('click', () => {
             this.openAddStudentModal();
         });
+        if (typeof this.initStudentImportEvents === 'function') this.initStudentImportEvents();
 
         // Session Type selection (riêng/chung) thay đổi cách chọn học sinh + cách tính giá
         document.getElementById('sessionType').addEventListener('change', () => {

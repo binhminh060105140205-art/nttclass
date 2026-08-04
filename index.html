@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Playfair+Display:ital,wght@1,400;1,500;1,600&amp;display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Comfortaa:wght@400;500;600;700&family=Condiment&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260804-requests-123-2">
+    <link rel="stylesheet" href="style.css?v=20260804-student-import2">
     <link rel="stylesheet" href="landing-lithos-bundle.css?v=20260731-performance5">
     <link id="appThemeStylesheet" rel="stylesheet" href="lithos-app-bundle.css?v=20260802-sidebar-toggle1" media="not all" disabled>
     <link id="pinkAppThemeStylesheet" rel="stylesheet" href="pink-minimal-theme.css?v=20260803-blue-font1" media="not all" disabled>
@@ -781,12 +781,17 @@
                             <option value="12">Lớp 12</option>
                         </select>
                     </div>
-                    <div class="lithos-vine-button-wrap">
-                        <span class="lithos-vine-layer lithos-vine-layer-back" aria-hidden="true"></span>
-                        <button class="btn btn-primary students-add-btn" id="addNewStudentBtn">
-                            <span class="lithos-vine-layer lithos-vine-layer-front" aria-hidden="true"></span>
-                            <span class="lithos-vine-button-label"><span class="students-add-icon" aria-hidden="true">+</span> Thêm học sinh</span>
+                    <div class="students-profile-actions">
+                        <button type="button" class="btn btn-secondary students-import-btn" id="importStudentsBtn">
+                            <span class="students-import-icon" aria-hidden="true">⇧</span> Nhập từ file
                         </button>
+                        <div class="lithos-vine-button-wrap">
+                            <span class="lithos-vine-layer lithos-vine-layer-back" aria-hidden="true"></span>
+                            <button class="btn btn-primary students-add-btn" id="addNewStudentBtn">
+                                <span class="lithos-vine-layer lithos-vine-layer-front" aria-hidden="true"></span>
+                                <span class="lithos-vine-button-label"><span class="students-add-icon" aria-hidden="true">+</span> Thêm học sinh</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -895,6 +900,128 @@
                     </div>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL: NHẬP HỌC SINH TỪ EXCEL / WORD -->
+    <div class="modal-backdrop" id="studentImportModal">
+        <div class="modal-container student-import-modal-container" role="dialog" aria-modal="true" aria-labelledby="studentImportModalTitle">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title" id="studentImportModalTitle">Nhập học sinh từ file</h3>
+                    <p class="student-import-subtitle">Hỗ trợ Excel, CSV và bảng trong file Word (.docx). File chỉ được đọc trên thiết bị này.</p>
+                </div>
+                <button type="button" class="modal-close" id="studentImportCloseBtn" aria-label="Đóng">&times;</button>
+            </div>
+            <div class="modal-body student-import-modal-body">
+                <section class="student-import-section student-import-upload-section">
+                    <div class="student-import-section-heading">
+                        <div>
+                            <h4>1. Chọn file danh sách</h4>
+                            <p>Dòng đầu tiên nên là tên cột. Word cần trình bày danh sách dưới dạng bảng.</p>
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm" id="studentImportTemplateBtn">Tải file mẫu</button>
+                    </div>
+                    <input type="file" id="studentImportFile" accept=".xlsx,.xls,.csv,.docx" hidden>
+                    <button type="button" class="student-import-dropzone" id="studentImportDropzone">
+                        <span class="student-import-drop-icon" aria-hidden="true">⇧</span>
+                        <strong>Chọn hoặc kéo file vào đây</strong>
+                        <span>Tối đa 10 MB, tối đa 500 học sinh mỗi lần</span>
+                    </button>
+                    <div class="student-import-file-summary" id="studentImportFileSummary" hidden>
+                        <div>
+                            <strong id="studentImportFileName"></strong>
+                            <span id="studentImportFileMeta"></span>
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm" id="studentImportResetBtn">Chọn file khác</button>
+                    </div>
+                    <p class="student-import-status" id="studentImportStatus" aria-live="polite"></p>
+                </section>
+
+                <section class="student-import-section" id="studentImportMappingSection" hidden>
+                    <div class="student-import-section-heading">
+                        <div>
+                            <h4>2. Ghép cột dữ liệu</h4>
+                            <p>Hệ thống đã tự nhận diện. Có thể đổi lại nếu tiêu đề trong file khác.</p>
+                        </div>
+                    </div>
+                    <div class="student-import-mapping-grid">
+                        <div class="form-group">
+                            <label for="studentImportNameColumn">Họ tên <span class="student-import-required">*</span></label>
+                            <select id="studentImportNameColumn" class="form-control"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="studentImportClassColumn">Lớp</label>
+                            <select id="studentImportClassColumn" class="form-control"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="studentImportDobColumn">Ngày sinh</label>
+                            <select id="studentImportDobColumn" class="form-control"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="studentImportSubjectColumn">Môn học</label>
+                            <select id="studentImportSubjectColumn" class="form-control"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="studentImportFeeColumn">Học phí/buổi</label>
+                            <select id="studentImportFeeColumn" class="form-control"></select>
+                        </div>
+                    </div>
+                    <div class="student-import-defaults">
+                        <div class="form-group">
+                            <label for="studentImportDefaultSubject">Môn học mặc định nếu file để trống</label>
+                            <input type="text" id="studentImportDefaultSubject" class="form-control" maxlength="200" placeholder="Ví dụ: Toán">
+                        </div>
+                        <div class="form-group">
+                            <label for="studentImportDefaultFee">Học phí mặc định nếu file để trống</label>
+                            <input type="number" id="studentImportDefaultFee" class="form-control" min="0" step="1000" placeholder="Ví dụ: 250000">
+                        </div>
+                    </div>
+                    <div class="student-import-ignored" id="studentImportIgnoredColumns" hidden></div>
+                </section>
+
+                <section class="student-import-section" id="studentImportPreviewSection" hidden>
+                    <div class="student-import-section-heading student-import-preview-heading">
+                        <div>
+                            <h4>3. Kiểm tra trước khi nhập</h4>
+                            <p>Dòng lỗi sẽ không được gửi lên hệ thống. Dòng cảnh báo vẫn có thể nhập.</p>
+                        </div>
+                        <div class="student-import-stats" id="studentImportStats"></div>
+                    </div>
+                    <div class="student-import-duplicate-control">
+                        <label for="studentImportDuplicateMode">Nếu trùng Họ tên + Lớp + Môn học</label>
+                        <select id="studentImportDuplicateMode" class="form-control">
+                            <option value="skip">Bỏ qua học sinh trùng</option>
+                            <option value="update">Cập nhật thông tin học sinh đã có</option>
+                            <option value="create">Vẫn tạo thêm học sinh mới</option>
+                        </select>
+                    </div>
+                    <div class="table-wrapper student-import-preview-wrap">
+                        <table class="custom-table student-import-preview-table">
+                            <thead>
+                                <tr>
+                                    <th>Trạng thái</th>
+                                    <th>Dòng</th>
+                                    <th>Họ tên</th>
+                                    <th>Lớp</th>
+                                    <th>Ngày sinh</th>
+                                    <th>Môn học</th>
+                                    <th>Học phí/buổi</th>
+                                    <th>Ghi chú</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentImportPreviewBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+            <div class="modal-footer student-import-modal-footer">
+                <span id="studentImportFooterHint">Chọn file để bắt đầu.</span>
+                <div>
+                    <button type="button" class="btn btn-secondary" id="studentImportCancelBtn">Hủy bỏ</button>
+                    <button type="button" class="btn btn-primary" id="studentImportConfirmBtn" disabled>Nhập học sinh</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1644,7 +1771,7 @@
     <script src="ui-text-normalization.js?v=20260803-ascii-dash1"></script>
     <script src="core.js?v=20260802-runtime-cleanup1"></script>
     <script src="lithos-petals.js?v=20260802-pink-minimal1"></script>
-    <script src="app-shell.js?v=20260802-runtime-cleanup1"></script>
+    <script src="app-shell.js?v=20260804-student-import2"></script>
     <script src="users.js"></script>
     <script src="dashboard.js?v=20260804-upcoming-line1"></script>
     <script src="student-logs.js?v=20260804-requests-123-1"></script>
@@ -1653,6 +1780,7 @@
     <script src="calendar.js?v=20260804-requests-123-1"></script>
     <script src="tuition-export.js?v=20260803-session-homework1"></script>
     <script src="students.js?v=20260803-free-class-input1"></script>
+    <script src="student-import.js?v=20260804-bulk-import2"></script>
     <script src="ai-chat.js?v=20260802-ai-data2"></script>
     <script src="requests.js?v=20260802-requests-inbox1"></script>
     <script src="requests-edit.js?v=20260730-performance3"></script>

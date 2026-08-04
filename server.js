@@ -298,14 +298,16 @@ const PUBLIC_ROOT_FILES = new Set([
     'lithos-falling-blossom.svg', 'lithos-log-header-branch.svg', 'lithos-name-vine.svg',
     'lithos-petals.js', 'lithos-stat-bloom.svg', 'lithos-wood-bloom-pink.webp',
     'lithos-wood-pink.webp', 'main.js', 'pink-minimal-theme.css', 'requests-edit.js', 'requests.js', 'scores.js',
-    'security-settings.js', 'student-journal.js', 'student-logs.js', 'students.js', 'style.css',
+    'security-settings.js', 'student-import.js', 'student-journal.js', 'student-logs.js', 'students.js', 'style.css',
     'tuition-export.js', 'ui-text-normalization.js', 'users.js'
 ]);
 const staticOptions = { dotfiles: 'deny', index: false, redirect: false, maxAge: '1h' };
 app.use('/assets', express.static(path.join(__dirname, 'assets'), staticOptions));
 const PUBLIC_VENDOR_FILES = new Map([
     ['pdfmake.min.js', path.join(__dirname, 'node_modules', 'pdfmake', 'build', 'pdfmake.min.js')],
-    ['vfs_fonts.js', path.join(__dirname, 'node_modules', 'pdfmake', 'build', 'vfs_fonts.js')]
+    ['vfs_fonts.js', path.join(__dirname, 'node_modules', 'pdfmake', 'build', 'vfs_fonts.js')],
+    ['xlsx.full.min.js', path.join(__dirname, 'node_modules', 'xlsx', 'dist', 'xlsx.full.min.js')],
+    ['mammoth.browser.min.js', path.join(__dirname, 'node_modules', 'mammoth', 'mammoth.browser.min.js')]
 ]);
 app.get('/vendor/:file', (req, res, next) => {
     const vendorFile = PUBLIC_VENDOR_FILES.get(req.params.file);
@@ -1649,6 +1651,85 @@ app.get('/api/students', requireRole('teacher', 'assistant'), requireTeacherCont
     }
 });
 
+const MAX_STUDENT_BULK_IMPORT = 500;
+
+function isValidIsoDate(value) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const [year, month, day] = value.split('-').map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return date.getUTCFullYear() === year
+        && date.getUTCMonth() === month - 1
+        && date.getUTCDate() === day;
+}
+
+function normalizeStudentDuplicatePart(value) {
+    return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'D')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLowerCase();
+}
+
+function getStudentDuplicateKey(student) {
+    return [student.name, student.class, student.subject]
+        .map(normalizeStudentDuplicatePart)
+        .join('|');
+}
+
+function normalizeBulkStudent(rawStudent, index) {
+    const sourceRow = Number.isInteger(rawStudent?.sourceRow) && rawStudent.sourceRow > 0
+        ? rawStudent.sourceRow
+        : index + 2;
+    const errors = [];
+    const name = String(rawStudent?.name || '').trim().replace(/\s+/g, ' ');
+    const subject = String(rawStudent?.subject || '').trim().replace(/\s+/g, ' ');
+    let studentClass = String(rawStudent?.class || '').trim().replace(/\s+/g, ' ');
+
+    if (!name) errors.push('Thiếu họ tên.');
+    if (name.length > 200) errors.push('Họ tên vượt quá 200 ký tự.');
+    if (!subject) errors.push('Thiếu môn học.');
+    if (subject.length > 200) errors.push('Môn học vượt quá 200 ký tự.');
+    if (studentClass.length > 100) errors.push('Tên lớp vượt quá 100 ký tự.');
+
+    let gradeLevel = rawStudent?.gradeLevel === undefined || rawStudent?.gradeLevel === null || rawStudent?.gradeLevel === ''
+        ? null
+        : Number(rawStudent.gradeLevel);
+    if (gradeLevel !== null && (!Number.isInteger(gradeLevel) || gradeLevel < 1 || gradeLevel > 12)) {
+        errors.push('Lớp phải từ 1 đến 12 hoặc để trống.');
+    }
+
+    const classWithoutPrefix = studentClass.replace(/^lớp\s*/i, '');
+    const gradeMatch = classWithoutPrefix.match(/^(1[0-2]|[1-9])/);
+    const inferredGrade = gradeMatch ? Number(gradeMatch[1]) : null;
+    const nextClassCharacter = gradeMatch ? classWithoutPrefix.charAt(gradeMatch[1].length) : '';
+    if (gradeLevel === null && inferredGrade && !/\d/.test(nextClassCharacter)) gradeLevel = inferredGrade;
+    if (gradeLevel !== null && classWithoutPrefix === String(gradeLevel)) studentClass = `Lớp ${gradeLevel}`;
+
+    const dateOfBirth = String(rawStudent?.dateOfBirth || '').trim() || null;
+    if (dateOfBirth && !isValidIsoDate(dateOfBirth)) errors.push('Ngày sinh không hợp lệ.');
+
+    const basePrice = Number(rawStudent?.basePrice);
+    if (!Number.isInteger(basePrice) || basePrice < 0) {
+        errors.push('Học phí/buổi phải là số nguyên không âm.');
+    }
+
+    return {
+        sourceRow,
+        errors,
+        student: {
+            name,
+            class: studentClass,
+            gradeLevel,
+            subject,
+            basePrice,
+            dateOfBirth
+        }
+    };
+}
+
 app.post('/api/students', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     let { id, name, class: sClass, subject, basePrice, gradeLevel, dateOfBirth } = req.body || {};
     console.log('[POST /api/students] body nhận được:', req.body);
@@ -1714,6 +1795,124 @@ app.post('/api/students', requireRole('teacher', 'assistant'), requireTeacherCon
     } catch (err) {
         console.error('[POST /api/students]', err);
         res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
+    }
+});
+
+app.post('/api/students/bulk', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
+    const rows = req.body?.rows;
+    const duplicateMode = String(req.body?.duplicateMode || 'skip');
+    if (!Array.isArray(rows) || rows.length === 0) {
+        return res.status(400).json({ error: 'Danh sách học sinh nhập vào đang trống.' });
+    }
+    if (rows.length > MAX_STUDENT_BULK_IMPORT) {
+        return res.status(400).json({ error: `Mỗi lần chỉ được nhập tối đa ${MAX_STUDENT_BULK_IMPORT} học sinh.` });
+    }
+    if (!['skip', 'update', 'create'].includes(duplicateMode)) {
+        return res.status(400).json({ error: 'Cách xử lý học sinh trùng không hợp lệ.' });
+    }
+
+    const normalizedRows = rows.map((row, index) => normalizeBulkStudent(row, index));
+    const rowErrors = normalizedRows
+        .filter(row => row.errors.length > 0)
+        .map(row => ({ sourceRow: row.sourceRow, errors: row.errors }));
+    if (rowErrors.length > 0) {
+        return res.status(400).json({
+            error: 'Một số dòng chưa hợp lệ. Vui lòng kiểm tra lại bản xem trước.',
+            rowErrors
+        });
+    }
+
+    let transaction;
+    try {
+        await poolPromise;
+        transaction = new sql.Transaction();
+        await transaction.begin();
+
+        const currentStudents = await new sql.Request(transaction)
+            .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+            .query(`SELECT Id, Name, Class, GradeLevel, Subject, BasePrice, DateOfBirth
+                    FROM Students
+                    WHERE TeacherId = @teacherId
+                    FOR UPDATE`);
+        const studentsByKey = new Map();
+        currentStudents.recordset.forEach(student => {
+            const key = getStudentDuplicateKey({
+                name: student.Name,
+                class: student.Class,
+                subject: student.Subject
+            });
+            if (!studentsByKey.has(key)) studentsByKey.set(key, student);
+        });
+
+        let created = 0;
+        let updated = 0;
+        let skipped = 0;
+        for (const row of normalizedRows) {
+            const student = row.student;
+            const duplicateKey = getStudentDuplicateKey(student);
+            const duplicate = studentsByKey.get(duplicateKey);
+
+            if (duplicate && duplicateMode === 'skip') {
+                skipped += 1;
+                continue;
+            }
+
+            if (duplicate && duplicateMode === 'update') {
+                await new sql.Request(transaction)
+                    .input('id', sql.VarChar, duplicate.Id)
+                    .input('name', sql.NVarChar, student.name)
+                    .input('class', sql.NVarChar, student.class)
+                    .input('gradeLevel', sql.Int, student.gradeLevel)
+                    .input('subject', sql.NVarChar, student.subject)
+                    .input('basePrice', sql.Int, student.basePrice)
+                    .input('dateOfBirth', sql.Date, student.dateOfBirth)
+                    .query(`UPDATE Students
+                            SET Name = @name, Class = @class, GradeLevel = @gradeLevel,
+                                Subject = @subject, BasePrice = @basePrice, DateOfBirth = @dateOfBirth
+                            WHERE Id = @id`);
+                updated += 1;
+                continue;
+            }
+
+            const id = `hs_${Date.now().toString(36)}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
+            await new sql.Request(transaction)
+                .input('id', sql.VarChar, id)
+                .input('name', sql.NVarChar, student.name)
+                .input('class', sql.NVarChar, student.class)
+                .input('gradeLevel', sql.Int, student.gradeLevel)
+                .input('subject', sql.NVarChar, student.subject)
+                .input('basePrice', sql.Int, student.basePrice)
+                .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+                .input('dateOfBirth', sql.Date, student.dateOfBirth)
+                .query(`INSERT INTO Students
+                        (Id, Name, Class, GradeLevel, Subject, BasePrice, TeacherId, DateOfBirth)
+                        VALUES (@id, @name, @class, @gradeLevel, @subject, @basePrice, @teacherId, @dateOfBirth)`);
+            created += 1;
+            if (duplicateMode !== 'create') {
+                studentsByKey.set(duplicateKey, {
+                    Id: id,
+                    Name: student.name,
+                    Class: student.class,
+                    Subject: student.subject
+                });
+            }
+        }
+
+        await transaction.commit();
+        transaction = null;
+        return res.status(201).json({
+            message: 'Đã nhập danh sách học sinh thành công.',
+            total: normalizedRows.length,
+            created,
+            updated,
+            skipped
+        });
+    } catch (err) {
+        if (transaction) {
+            try { await transaction.rollback(); } catch (_) {}
+        }
+        console.error('[POST /api/students/bulk]', err);
+        return res.status(500).json({ error: 'Không thể nhập danh sách học sinh. Không có dữ liệu nào được thay đổi.' });
     }
 });
 
