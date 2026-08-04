@@ -34,6 +34,7 @@ Object.assign(PinkyClassApp.prototype, {
             geometry: 'invoiceGeometry',
             roadmap: 'invoiceRoadmap',
             schedule: 'invoiceSchedule',
+            tuitionNote: 'invoiceTuitionNote',
             note: 'invoiceNote'
         };
     },

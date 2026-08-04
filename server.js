@@ -3028,6 +3028,7 @@ const INVOICE_TEMPLATE_FIELD_LIMITS = Object.freeze({
     geometry: 4000,
     roadmap: 4000,
     schedule: 4000,
+    tuitionNote: 4000,
     note: 2000
 });
 
