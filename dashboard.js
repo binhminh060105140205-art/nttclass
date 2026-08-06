@@ -101,7 +101,10 @@ Object.assign(PinkyClassApp.prototype, {
             item.title = 'Bấm để nhập/xem nội dung buổi học';
             item.addEventListener('click', () => this.openSessionQuickEntry(sess.id));
 
-            const names = this.escapeHtml(sess.studentIds.map(id => this.getStudentName(id)).join(', '));
+            const studentNames = sess.studentIds.map(id => this.getStudentName(id)).filter(Boolean).join(', ');
+            const sessionTitle = sess.type === 'chung'
+                ? (String(sess.sessionName || '').trim() || 'Lớp học')
+                : (studentNames || String(sess.sessionName || '').trim() || 'Học sinh');
             const badgeClass = sess.type === 'riêng' ? 'badge-rieng' : 'badge-chung';
 
             item.innerHTML = `
@@ -109,7 +112,7 @@ Object.assign(PinkyClassApp.prototype, {
                     <span style="font-weight: 600; font-size: 13px; color: var(--primary);">${this.escapeHtml(sess.startTime)} - ${this.escapeHtml(sess.endTime)}</span>
                     <span class="badge ${badgeClass}" style="font-size: 10px; padding: 2px 8px;">${sess.type === 'chung' ? 'Lớp học' : '1-1'}</span>
                 </div>
-                <div style="font-size:14px; font-weight:700; color:var(--text-main); line-height:1.5; overflow-wrap:anywhere;">${sess.sessionName ? this.escapeHtml(sess.sessionName) + ' — ' : ''}${names}</div>
+                <div style="font-size:14px; font-weight:700; color:var(--text-main); line-height:1.5; overflow-wrap:anywhere;">${this.escapeHtml(sessionTitle)}</div>
                 <div style="font-size:12px; color:var(--text-muted); white-space:normal; overflow:visible; text-overflow:clip; overflow-wrap:anywhere; line-height:1.6; margin-top:5px; padding-bottom:2px;">
                     ${sess.content ? this.escapeHtml(sess.content).replace(/\n/g, ' | ') : 'Chưa có nội dung'}
                 </div>
