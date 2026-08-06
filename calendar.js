@@ -1504,6 +1504,8 @@ Object.assign(PinkyClassApp.prototype, {
     // "+ Ghi buổi học mới" để luôn bắt đầu từ 1 form sạch.
     resetSessionLoggerForm() {
         document.getElementById('sessionLoggerForm').reset();
+        const modalTitle = document.getElementById('createSessionModalTitle');
+        if (modalTitle) modalTitle.textContent = 'Ghi Buổi Học Mới';
         this.syncSessionTypeChoice('session');
         delete document.getElementById('sessionPrice').dataset.userEdited;
         const today = this.toISODateOnly(new Date());

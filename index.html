@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Playfair+Display:ital,wght@1,400;1,500;1,600&amp;display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Comfortaa:wght@400;500;600;700&family=Condiment&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260806-student-groups-button1">
+    <link rel="stylesheet" href="style.css?v=20260806-class-profiles1">
     <link rel="stylesheet" href="landing-lithos-bundle.css?v=20260731-performance5">
     <link id="appThemeStylesheet" rel="stylesheet" href="lithos-app-bundle.css?v=20260802-sidebar-toggle1" media="not all" disabled>
     <link id="pinkAppThemeStylesheet" rel="stylesheet" href="pink-minimal-theme.css?v=20260803-blue-font1" media="not all" disabled>
@@ -175,6 +175,10 @@
             <a href="#" class="menu-item" data-target="view-students" id="nav-students">
                 <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 21c0-3.87 3.13-7 7-7s7 3.13 7 7"/></svg>
                 <span>Hồ sơ học sinh</span>
+            </a>
+            <a href="#" class="menu-item" data-target="view-classes" id="nav-classes">
+                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21V8l9-5 9 5v13"/><path d="M3 10h18M8 21v-6h8v6M8 11h.01M12 11h.01M16 11h.01"/></svg>
+                <span>Hồ sơ lớp học</span>
             </a>
             <a href="#" class="menu-item" data-target="view-scores" id="nav-scores">
                 <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M11 20V4M18 20v-7"/></svg>
@@ -593,7 +597,7 @@
         <div class="modal-backdrop" id="createSessionModal">
             <div class="modal-container" style="max-width: 760px; max-height: 90vh; display: flex; flex-direction: column;">
                 <div class="modal-header">
-                    <h3 class="modal-title"> Ghi Buổi Học Mới</h3>
+                    <h3 class="modal-title" id="createSessionModalTitle"> Ghi Buổi Học Mới</h3>
                     <button class="modal-close" onclick="app.closeModal('createSessionModal')">&times;</button>
                 </div>
                 <form id="sessionLoggerForm" style="display: flex; flex-direction: column; min-height: 0;">
@@ -804,6 +808,27 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </section>
+
+        <section id="view-classes" class="view-section">
+            <div class="glass-card class-profiles-shell">
+                <div class="class-profiles-toolbar">
+                    <div>
+                        <h2>Danh sách lớp học</h2>
+                        <p>Sĩ số, môn học và học phí được đồng bộ tự động từ Hồ sơ học sinh.</p>
+                    </div>
+                    <button type="button" class="btn btn-secondary" onclick="app.switchView('view-students')">Quản lý học sinh</button>
+                </div>
+
+                <div class="class-profile-summary">
+                    <div><span>Tổng lớp</span><strong id="classProfileTotalClasses">0</strong></div>
+                    <div><span>Tổng học sinh</span><strong id="classProfileTotalStudents">0</strong></div>
+                    <div class="role-restricted admin-only"><span>Dự kiến tất cả lớp/buổi</span><strong id="classProfileExpectedTotal">0đ</strong></div>
+                    <div class="role-restricted admin-only"><span id="classProfilePeriodLabel">Tất cả kỳ</span><strong id="classProfilePeriodTotal">0đ</strong></div>
+                </div>
+
+                <div class="class-profiles-grid" id="classProfilesGrid"></div>
             </div>
         </section>
 
@@ -1766,15 +1791,16 @@
     <script src="ui-text-normalization.js?v=20260803-ascii-dash1"></script>
     <script src="core.js?v=20260804-thuy-requests-8-1"></script>
     <script src="lithos-petals.js?v=20260802-pink-minimal1"></script>
-    <script src="app-shell.js?v=20260806-invoice-live-2"></script>
+    <script src="app-shell.js?v=20260806-class-profiles1"></script>
     <script src="users.js?v=20260806-owner-admin-2"></script>
     <script src="dashboard.js?v=20260806-upcoming-class-name1"></script>
     <script src="student-logs.js?v=20260804-thuy-requests-5-1"></script>
     <script src="student-journal.js?v=20260804-requests-123-1"></script>
     <script src="scores.js?v=20260802-runtime-cleanup1"></script>
-    <script src="calendar.js?v=20260804-thuy-requests-378-2"></script>
+    <script src="calendar.js?v=20260806-class-profiles1"></script>
     <script src="tuition-export.js?v=20260803-session-homework1"></script>
     <script src="students.js?v=20260806-student-groups-button1"></script>
+    <script src="classes.js?v=20260806-class-profiles1"></script>
     <script src="student-import.js?v=20260804-bulk-import2"></script>
     <script src="ai-chat.js?v=20260802-ai-data2"></script>
     <script src="requests.js?v=20260802-requests-inbox1"></script>

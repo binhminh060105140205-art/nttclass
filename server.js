@@ -289,7 +289,7 @@ app.use((req, res, next) => {
 });
 
 const PUBLIC_ROOT_FILES = new Set([
-    'ai-chat.js', 'app-shell.js', 'calendar.js', 'core.js', 'dashboard.js',
+    'ai-chat.js', 'app-shell.js', 'calendar.js', 'classes.js', 'core.js', 'dashboard.js',
     'invoice-export.js', 'landing-lithos-bundle.css', 'landing-lithos-copy.js',
     'landing-lithos-dom.js', 'landing-lithos-heading.js', 'landing-lithos-loader.js',
     'landing-lithos-login.js', 'landing-lithos-nav-menu.js', 'landing-lithos-nav.js',

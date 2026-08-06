@@ -707,6 +707,7 @@ Object.assign(PinkyClassApp.prototype, {
         const navTuition = document.getElementById('nav-tuition');
         const navScheduler = document.getElementById('nav-scheduler');
         const navStudents = document.getElementById('nav-students');
+        const navClasses = document.getElementById('nav-classes');
         const navUsers = document.getElementById('nav-users');
         const navAiChat = document.getElementById('nav-ai-chat');
         const navRequests = document.getElementById('nav-requests');
@@ -722,6 +723,7 @@ Object.assign(PinkyClassApp.prototype, {
             navTuition.style.display = 'none';
             navScheduler.style.display = 'none';
             navStudents.style.display = 'none';
+            navClasses.style.display = 'none';
             navUsers.style.display = 'flex';
             navAiChat.style.display = 'none';
             navRequests.style.display = 'none';
@@ -732,6 +734,7 @@ Object.assign(PinkyClassApp.prototype, {
             navTuition.style.display = 'flex';
             navScheduler.style.display = 'flex';
             navStudents.style.display = 'flex'; // TA can view classes/students of their assigned teacher
+            navClasses.style.display = 'flex';
             navUsers.style.display = 'none';
             navRequests.style.display = 'flex';
         } else if (role === 'student') {
@@ -744,6 +747,7 @@ Object.assign(PinkyClassApp.prototype, {
             navTuition.style.display = 'none';
             navScheduler.style.display = 'none';
             navStudents.style.display = 'none';
+            navClasses.style.display = 'none';
             navUsers.style.display = 'none';
             navRequests.style.display = 'flex';
         } else {
@@ -754,6 +758,7 @@ Object.assign(PinkyClassApp.prototype, {
             navTuition.style.display = 'flex';
             navScheduler.style.display = 'flex';
             navStudents.style.display = 'flex';
+            navClasses.style.display = 'flex';
             navUsers.style.display = canManageUsers ? 'flex' : 'none';
             navRequests.style.display = 'flex';
         }
@@ -785,6 +790,9 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     switchView(viewId) {
+        if (viewId === 'view-classes' && !['teacher', 'assistant'].includes(this.currentRole)) {
+            viewId = this.currentRole === 'admin' ? 'view-users' : this.currentRole === 'student' ? 'view-logs' : 'view-dashboard';
+        }
         if (viewId === 'view-users' && !this.canManageUsers()) {
             viewId = this.currentRole === 'student' ? 'view-logs' : 'view-dashboard';
         }
@@ -837,6 +845,9 @@ Object.assign(PinkyClassApp.prototype, {
         } else if (viewId === 'view-students') {
             titleEl.innerText = "HỒ SƠ HỌC SINH";
             subtitleEl.innerText = "Thông tin học sinh và nhật ký học tập";
+        } else if (viewId === 'view-classes') {
+            titleEl.innerText = "HỒ SƠ LỚP HỌC";
+            subtitleEl.innerText = "Theo dõi sĩ số, học phí và xếp lịch nhanh cho từng lớp.";
         } else if (viewId === 'view-users') {
             titleEl.innerText = "QUẢN LÝ TÀI KHOẢN";
             subtitleEl.innerText = "Tạo, chỉnh sửa, kích hoạt/vô hiệu hóa tài khoản Giáo viên và Trợ giảng.";
@@ -864,6 +875,7 @@ Object.assign(PinkyClassApp.prototype, {
         else if (viewId === 'view-scheduler') this.renderCalendarView();
         else if (viewId === 'view-tuition') this.renderTuitionOverview();
         else if (viewId === 'view-students') this.renderStudentList();
+        else if (viewId === 'view-classes') this.renderClassProfiles();
         else if (viewId === 'view-users' && this.canManageUsers()) this.renderUsersTable();
         else if (viewId === 'view-requests' && this.requestsLoaded) this.renderRequests();
     },
