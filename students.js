@@ -88,11 +88,9 @@ Object.assign(PinkyClassApp.prototype, {
             groupRow.dataset.gradeGroup = groupKey;
             groupRow.innerHTML = `
                 <td colspan="7">
-                    <button type="button" class="student-grade-toggle" aria-expanded="${isExpanded}">
+                    <button type="button" class="student-grade-toggle" aria-expanded="${isExpanded}" aria-label="Xem danh sách ${this.escapeHtmlAttr(group.label)}" title="Bấm để xem danh sách học sinh">
                         <span class="student-grade-toggle-content">
                             <span class="student-grade-label">${this.escapeHtml(group.label)}</span>
-                            <span class="student-grade-count">${group.students.length} học sinh</span>
-                            <span class="student-grade-chevron" aria-hidden="true">⌄</span>
                         </span>
                     </button>
                 </td>

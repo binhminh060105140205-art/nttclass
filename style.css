@@ -6623,33 +6623,8 @@ body.request-image-viewer-open { overflow: hidden; }
     outline: none;
 }
 
-.student-grade-count {
-    color: var(--text-muted);
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: normal;
-    text-transform: none;
-}
-
 .student-grade-label {
-    min-width: 70px;
-}
-
-.student-grade-chevron {
-    display: inline-grid;
-    place-items: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 999px;
-    background: rgba(var(--primary-rgb), 0.12);
-    font-size: 1.05rem;
-    line-height: 1;
-    transform: rotate(-90deg);
-    transition: transform 0.18s ease, background 0.18s ease;
-}
-
-.student-grade-group-row.is-expanded .student-grade-chevron {
-    transform: rotate(0deg);
+    display: inline-block;
 }
 
 #studentsTableBody .student-data-row[hidden] {
