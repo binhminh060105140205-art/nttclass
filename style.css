@@ -6587,7 +6587,7 @@ body.request-image-viewer-open { overflow: hidden; }
     color: var(--primary);
     background: var(--primary-soft);
     font-weight: 800;
-    text-align: right;
+    text-align: left;
     text-transform: uppercase;
 }
 
@@ -6599,7 +6599,7 @@ body.request-image-viewer-open { overflow: hidden; }
     background: transparent;
     color: inherit;
     font: inherit;
-    text-align: right;
+    text-align: left;
     text-transform: inherit;
     cursor: pointer;
     transition: background 0.18s ease, color 0.18s ease;
@@ -6607,13 +6607,13 @@ body.request-image-viewer-open { overflow: hidden; }
 
 .student-grade-toggle-content {
     position: sticky;
-    right: 0;
+    left: 0;
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: flex-start;
     gap: 10px;
     width: max-content;
-    margin-left: auto;
+    margin-right: auto;
 }
 
 .student-grade-toggle:hover,

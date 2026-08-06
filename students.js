@@ -90,8 +90,8 @@ Object.assign(PinkyClassApp.prototype, {
                 <td colspan="7">
                     <button type="button" class="student-grade-toggle" aria-expanded="${isExpanded}">
                         <span class="student-grade-toggle-content">
-                            <span class="student-grade-count">${group.students.length} học sinh</span>
                             <span class="student-grade-label">${this.escapeHtml(group.label)}</span>
+                            <span class="student-grade-count">${group.students.length} học sinh</span>
                             <span class="student-grade-chevron" aria-hidden="true">⌄</span>
                         </span>
                     </button>
