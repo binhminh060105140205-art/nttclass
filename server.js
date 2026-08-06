@@ -35,8 +35,19 @@ require('dotenv').config();
 const express = require('express');
 const { Pool, types } = require('pg');
 const path    = require('path');
+const fs      = require('fs');
 const bcrypt  = require('bcryptjs'); // Hash mật khẩu tài khoản học sinh (pure-JS, không cần build native — an toàn khi deploy Render)
 const crypto  = require('crypto');
+const QRCode  = require('qrcode');
+const {
+    generateTotpSecret,
+    verifyTotp,
+    encryptText,
+    decryptText,
+    generateRecoveryCodes,
+    hashRecoveryCode,
+    getClientSecurityContext
+} = require('./account-security-utils');
 
 // ==========================================
 // FIX LỖI LỆCH NGÀY (QUAN TRỌNG)
@@ -70,6 +81,15 @@ const SESSION_COOKIE_NAME = IS_PRODUCTION ? '__Host-ntt_session' : 'ntt_session'
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const SESSION_CACHE_TTL_MS = 60 * 1000;
 const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
+const LOGIN_CHALLENGE_TTL_MS = 5 * 60 * 1000;
+const ALLOWED_IDLE_TIMEOUTS = new Set([15, 30, 60, 120, 240, 480]);
+const SECURITY_ENCRYPTION_MATERIAL = process.env.ACCOUNT_SECURITY_KEY
+    || process.env.DATABASE_URL
+    || 'nttclass-local-security-key';
+
+if (IS_PRODUCTION && !process.env.ACCOUNT_SECURITY_KEY) {
+    console.warn('[SECURITY] Nên cấu hình ACCOUNT_SECURITY_KEY riêng trên Render để mã hóa khóa OTP ổn định.');
+}
 
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
@@ -110,6 +130,27 @@ async function sendOtpEmail(to, code, purpose) {
         console.error('[EMAIL]', response.status);
         throw new Error('Không thể gửi email xác nhận lúc này.');
     }
+    return true;
+}
+
+async function sendLoginAlertEmail(to, context) {
+    const apiKey = process.env.RESEND_API_KEY;
+    const from = process.env.EMAIL_FROM;
+    if (!apiKey || !from || !to) return false;
+    const safe = value => String(value || '').replace(/[&<>]/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;'
+    }[character]));
+    const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            from,
+            to: [to],
+            subject: 'Đăng nhập mới vào NttClass',
+            html: `<div style=font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#172033><h2>Phát hiện đăng nhập mới</h2><p>Thiết bị: ${safe(context.deviceType)} · ${safe(context.browser)} · ${safe(context.platform)}</p><p>IP tương đối: ${safe(context.ipPrefix)}</p><p>Nếu không phải bạn, hãy đổi mật khẩu và đăng xuất khỏi tất cả thiết bị ngay.</p></div>`
+        })
+    });
+    if (!response.ok) throw new Error(`Email provider status ${response.status}`);
     return true;
 }
 
@@ -299,7 +340,7 @@ const PUBLIC_ROOT_FILES = new Set([
     'lithos-falling-blossom.svg', 'lithos-log-header-branch.svg', 'lithos-name-vine.svg',
     'lithos-petals.js', 'lithos-stat-bloom.svg', 'lithos-wood-bloom-pink.webp',
     'lithos-wood-pink.webp', 'main.js', 'pink-minimal-theme.css', 'requests-edit.js', 'requests.js', 'scores.js',
-    'security-settings.js', 'student-import.js', 'student-journal.js', 'student-logs.js', 'students.js', 'style.css',
+    'security-settings.js', 'settings-modern.js', 'student-import.js', 'student-journal.js', 'student-logs.js', 'students.js', 'style.css',
     'tuition-export.js', 'ui-text-normalization.js', 'users.js'
 ]);
 const staticOptions = { dotfiles: 'deny', index: false, redirect: false, maxAge: '1h' };
@@ -745,6 +786,24 @@ let poolPromise = pgPool.query('SELECT 1')
         process.exit(1); // Dừng server nếu không kết nối được DB
     });
 
+let securitySchemaReadyPromise = null;
+function ensureSecuritySchema() {
+    if (securitySchemaReadyPromise) return securitySchemaReadyPromise;
+    securitySchemaReadyPromise = fs.promises
+        .readFile(path.join(__dirname, 'security-schema.sql'), 'utf8')
+        .then(schemaSql => pgPool.query(schemaSql))
+        .catch(error => {
+            securitySchemaReadyPromise = null;
+            throw error;
+        });
+    return securitySchemaReadyPromise;
+}
+
+void poolPromise
+    .then(() => ensureSecuritySchema())
+    .then(() => console.log('Đã kiểm tra/đảm bảo schema bảo mật tài khoản tồn tại.'))
+    .catch(error => console.error('Account security migration error:', error.message));
+
 // ==========================================
 // AUTH MIDDLEWARE
 // ==========================================
@@ -798,31 +857,128 @@ function clearSessionCookie(res) {
     });
 }
 
-async function createSession(res, authUser) {
+async function ensureAccountSecurityRecord(accountType, userId) {
+    await ensureSecuritySchema();
+    await pgPool.query(`INSERT INTO AccountSecurity (AccountType, UserId)
+        VALUES ($1, $2)
+        ON CONFLICT (AccountType, UserId) DO NOTHING`, [accountType, userId]);
+}
+
+async function getAccountSecurityRecord(accountType, userId) {
+    await ensureAccountSecurityRecord(accountType, userId);
+    const result = await pgPool.query(`SELECT DisplayName AS "displayName", AvatarDataUrl AS "avatarDataUrl",
+            TotpSecretEncrypted AS "totpSecretEncrypted", TotpEnabled AS "totpEnabled",
+            PendingTotpSecretEncrypted AS "pendingTotpSecretEncrypted",
+            PendingTotpExpiresAt AS "pendingTotpExpiresAt",
+            RecoveryCodeHashes AS "recoveryCodeHashes", RecoveryCodeSalt AS "recoveryCodeSalt",
+            LoginAlertEnabled AS "loginAlertEnabled", IdleTimeoutMinutes AS "idleTimeoutMinutes",
+            DeleteRequestedAt AS "deleteRequestedAt", DeleteRequestStatus AS "deleteRequestStatus"
+        FROM AccountSecurity WHERE AccountType = $1 AND UserId = $2`, [accountType, userId]);
+    return result.rows[0] || {};
+}
+
+async function recordSecurityEvent(accountType, userId, eventType, options = {}) {
+    if (!accountType || !userId) return;
+    try {
+        await ensureSecuritySchema();
+        const context = options.context || {};
+        const deviceLabel = [context.deviceType, context.browser, context.platform].filter(Boolean).join(' · ');
+        await pgPool.query(`INSERT INTO SecurityEvents
+            (AccountType, UserId, EventType, Status, Detail, IpPrefix, DeviceLabel)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)`, [
+            accountType, userId, String(eventType || 'security_event').slice(0, 60),
+            String(options.status || 'success').slice(0, 20),
+            options.detail ? String(options.detail).slice(0, 500) : null,
+            context.ipPrefix || null,
+            deviceLabel ? deviceLabel.slice(0, 220) : null
+        ]);
+    } catch (error) {
+        console.error('[SECURITY EVENT]', error.message);
+    }
+}
+
+async function verifyAccountPassword(authUser, password) {
+    if (!authUser || typeof password !== 'string' || !password || password.length > MAX_PASSWORD_LENGTH) return false;
+    if (authUser.accountType === 'student') {
+        const result = await pgPool.query('SELECT PasswordHash FROM Students WHERE Id = $1', [authUser.userId]);
+        return !!result.rowCount && bcrypt.compare(password, result.rows[0].passwordhash || '');
+    }
+    const result = await pgPool.query('SELECT Password FROM Users WHERE Id = $1', [authUser.userId]);
+    return !!result.rowCount && passwordMatches(password, result.rows[0].password);
+}
+
+async function registerTrustedDevice(authUser, context) {
+    const current = await pgPool.query(`SELECT 1 FROM TrustedDevices
+        WHERE AccountType = $1 AND UserId = $2 AND DeviceHash = $3`, [
+        authUser.accountType, authUser.userId, context.deviceHash
+    ]);
+    await pgPool.query(`INSERT INTO TrustedDevices
+        (AccountType, UserId, DeviceHash, DeviceType, Browser, Platform, IpPrefix, FirstSeenAt, LastSeenAt)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT (AccountType, UserId, DeviceHash)
+        DO UPDATE SET DeviceType = EXCLUDED.DeviceType, Browser = EXCLUDED.Browser,
+            Platform = EXCLUDED.Platform, IpPrefix = EXCLUDED.IpPrefix, LastSeenAt = CURRENT_TIMESTAMP`, [
+        authUser.accountType, authUser.userId, context.deviceHash,
+        context.deviceType, context.browser, context.platform, context.ipPrefix
+    ]);
+    return current.rowCount === 0;
+}
+
+async function createSession(res, authUser, req = null, options = {}) {
     await poolPromise;
+    await ensureSecuritySchema();
     const token = crypto.randomBytes(32).toString('base64url');
     const sessionHash = hashSessionToken(token);
+    const sessionId = `ses_${crypto.randomBytes(18).toString('base64url')}`;
     const now = Date.now();
     const expiresAt = new Date(now + SESSION_TTL_MS);
+    const context = req ? getClientSecurityContext(req) : {
+        deviceHash: crypto.createHash('sha256').update(`server:${authUser.userId}:${now}`).digest('hex'),
+        deviceType: 'Thiết bị hiện tại',
+        browser: 'Không xác định',
+        platform: 'Không xác định',
+        ipPrefix: 'Không xác định',
+        userAgent: ''
+    };
+    const security = await getAccountSecurityRecord(authUser.accountType, authUser.userId);
+    const idleTimeoutMinutes = ALLOWED_IDLE_TIMEOUTS.has(Number(security.idleTimeoutMinutes))
+        ? Number(security.idleTimeoutMinutes)
+        : 60;
     await pgPool.query(`INSERT INTO AuthSessions
-        (SessionHash, UserId, AccountType, Role, AssignedTeacherId, ActorUserId, CreatedAt, LastSeenAt, ExpiresAt)
-        VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $7)`, [
-        sessionHash,
-        authUser.userId,
-        authUser.accountType,
-        authUser.role,
-        authUser.assignedTeacherId || null,
-        authUser.actorUserId || null,
-        expiresAt
+        (SessionHash, SessionId, UserId, AccountType, Role, AssignedTeacherId, ActorUserId,
+         DeviceHash, DeviceType, Browser, Platform, IpPrefix, UserAgent, IdleTimeoutMinutes,
+         CreatedAt, LastSeenAt, ExpiresAt)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $15)`, [
+        sessionHash, sessionId, authUser.userId, authUser.accountType, authUser.role,
+        authUser.assignedTeacherId || null, authUser.actorUserId || null,
+        context.deviceHash, context.deviceType, context.browser, context.platform,
+        context.ipPrefix, context.userAgent, idleTimeoutMinutes, expiresAt
     ]);
     sessionCache.set(sessionHash, {
         ...authUser,
         sessionHash,
+        sessionId,
+        idleTimeoutMinutes,
         expiresAt: expiresAt.getTime(),
         lastTouchedAt: now,
         validatedAt: now
     });
     res.cookie(SESSION_COOKIE_NAME, token, sessionCookieOptions());
+    const isNewDevice = await registerTrustedDevice(authUser, context);
+    await recordSecurityEvent(authUser.accountType, authUser.userId, options.eventType || 'login_success', {
+        context,
+        detail: options.detail || (isNewDevice ? 'Đăng nhập trên thiết bị mới.' : 'Đăng nhập thành công.')
+    });
+    if (isNewDevice && security.loginAlertEnabled !== false && options.suppressLoginAlert !== true) {
+        const table = authUser.accountType === 'student' ? 'Students' : 'Users';
+        const contact = await pgPool.query(`SELECT Email, EmailVerified FROM ${table} WHERE Id = $1`, [authUser.userId]);
+        if (contact.rows[0]?.email && contact.rows[0]?.emailverified) {
+            void sendLoginAlertEmail(contact.rows[0].email, context)
+                .catch(error => console.error('[LOGIN ALERT EMAIL]', error.message));
+        }
+    }
+    return { sessionId, idleTimeoutMinutes, isNewDevice, context, security };
 }
 
 async function deleteSessionByHash(sessionHash) {
@@ -866,17 +1022,19 @@ async function parseToken(req) {
         if (!validationPromise) {
             validationPromise = (async () => {
                 await poolPromise;
-                const result = await pgPool.query(`SELECT s.SessionHash AS "sessionHash", s.UserId AS "userId",
+                const result = await pgPool.query(`SELECT s.SessionHash AS "sessionHash", s.SessionId AS "sessionId", s.UserId AS "userId",
                         s.AccountType AS "accountType",
                         CASE WHEN s.AccountType = 'student' THEN 'student' ELSE u.Role END AS "role",
                         CASE WHEN s.AccountType = 'student' THEN st.TeacherId ELSE u.AssignedTeacherId END AS "assignedTeacherId",
                         s.ActorUserId AS "actorUserId",
-                        s.LastSeenAt AS "lastSeenAt", s.ExpiresAt AS "expiresAt"
+                        s.LastSeenAt AS "lastSeenAt", s.ExpiresAt AS "expiresAt",
+                        s.IdleTimeoutMinutes AS "idleTimeoutMinutes"
                     FROM AuthSessions s
                     LEFT JOIN Users u ON s.AccountType = 'user' AND s.UserId = u.Id
                     LEFT JOIN Students st ON s.AccountType = 'student' AND s.UserId = st.Id
                     LEFT JOIN Users actor ON s.ActorUserId = actor.Id
                     WHERE s.SessionHash = $1 AND s.ExpiresAt > CURRENT_TIMESTAMP
+                      AND s.LastSeenAt > CURRENT_TIMESTAMP - (COALESCE(s.IdleTimeoutMinutes, 60) * INTERVAL '1 minute')
                       AND ((s.AccountType = 'user' AND u.Id IS NOT NULL AND u.Active = 1)
                         OR (s.AccountType = 'student' AND st.Id IS NOT NULL AND COALESCE(st.AccountActive, TRUE) = TRUE))
                       AND (s.ActorUserId IS NULL OR (s.ActorUserId = $2 AND actor.Active = 1))`, [sessionHash, PROTECTED_OWNER_USER_ID]);
@@ -884,11 +1042,13 @@ async function parseToken(req) {
                 const row = result.rows[0];
                 return {
                     sessionHash,
+                    sessionId: row.sessionId,
                     userId: row.userId,
                     accountType: row.accountType,
                     role: row.role,
                     assignedTeacherId: row.assignedTeacherId || null,
                     actorUserId: row.actorUserId || null,
+                    idleTimeoutMinutes: Number(row.idleTimeoutMinutes) || 60,
                     expiresAt: new Date(row.expiresAt).getTime(),
                     lastTouchedAt: new Date(row.lastSeenAt).getTime(),
                     validatedAt: now
@@ -910,18 +1070,25 @@ async function parseToken(req) {
         sessionCache.set(sessionHash, session);
     }
 
+    if (now - session.lastTouchedAt > (Number(session.idleTimeoutMinutes) || 60) * 60 * 1000) {
+        await deleteSessionByHash(sessionHash);
+        return null;
+    }
+
     if (now - session.lastTouchedAt >= SESSION_TOUCH_INTERVAL_MS) {
         session.lastTouchedAt = now;
         pgPool.query('UPDATE AuthSessions SET LastSeenAt = CURRENT_TIMESTAMP WHERE SessionHash = $1', [sessionHash])
             .catch(error => console.error('[SESSION TOUCH]', error.message));
     }
     req.authSessionHash = sessionHash;
+    req.authSessionId = session.sessionId || null;
     return {
         userId: session.userId,
         accountType: session.accountType,
         role: session.role,
         assignedTeacherId: session.assignedTeacherId,
-        actorUserId: session.actorUserId || null
+        actorUserId: session.actorUserId || null,
+        idleTimeoutMinutes: Number(session.idleTimeoutMinutes) || 60
     };
 }
 
@@ -1005,22 +1172,29 @@ function requireTeacherContext(req, res, next) {
 
 async function publicUserFromAuth(authUser) {
     await poolPromise;
+    await ensureSecuritySchema();
     if (authUser.accountType === 'student') {
-        const result = await pgPool.query(`SELECT st.Id AS "id", st.Username AS "username", st.Name AS "name",
+        const result = await pgPool.query(`SELECT st.Id AS "id", st.Username AS "username",
+                COALESCE(NULLIF(sec.DisplayName, ''), st.Name) AS "name", st.Name AS "accountName",
                 st.AccountActive AS "active", st.TeacherId AS "assignedTeacherId",
-                teacher.Name AS "assignedTeacherName"
+                teacher.Name AS "assignedTeacherName", sec.AvatarDataUrl AS "avatarDataUrl",
+                COALESCE(sec.IdleTimeoutMinutes, 60) AS "idleTimeoutMinutes"
             FROM Students st
             LEFT JOIN Users teacher ON teacher.Id = st.TeacherId
+            LEFT JOIN AccountSecurity sec ON sec.AccountType = 'student' AND sec.UserId = st.Id
             WHERE st.Id = $1`, [authUser.userId]);
         const student = result.rows[0];
         if (!student || student.active === false) return null;
         return { ...student, role: 'student', active: true };
     }
     const result = await pgPool.query(`SELECT userAccount.Id AS "id", userAccount.Username AS "username",
-            userAccount.Name AS "name", userAccount.Role AS "role", userAccount.Active AS "active",
-            userAccount.AssignedTeacherId AS "assignedTeacherId", teacher.Name AS "assignedTeacherName"
+            COALESCE(NULLIF(sec.DisplayName, ''), userAccount.Name) AS "name", userAccount.Name AS "accountName",
+            userAccount.Role AS "role", userAccount.Active AS "active",
+            userAccount.AssignedTeacherId AS "assignedTeacherId", teacher.Name AS "assignedTeacherName",
+            sec.AvatarDataUrl AS "avatarDataUrl", COALESCE(sec.IdleTimeoutMinutes, 60) AS "idleTimeoutMinutes"
         FROM Users userAccount
         LEFT JOIN Users teacher ON teacher.Id = userAccount.AssignedTeacherId
+        LEFT JOIN AccountSecurity sec ON sec.AccountType = 'user' AND sec.UserId = userAccount.Id
         WHERE userAccount.Id = $1`, [authUser.userId]);
     const user = result.rows[0];
     if (!user || !user.active) return null;
@@ -1146,7 +1320,7 @@ app.post('/api/admin/impersonate', requireProtectedOwner, async (req, res) => {
             role: target.role,
             assignedTeacherId: target.assignedTeacherId || null,
             actorUserId: PROTECTED_OWNER_USER_ID
-        });
+        }, req, { suppressLoginAlert: true, eventType: 'impersonation_started', detail: 'Tài khoản chủ đăng nhập thay.' });
         console.log(`[IMPERSONATE] ${PROTECTED_OWNER_USER_ID} -> ${target.id}`);
         res.json({
             ...target,
@@ -1179,7 +1353,7 @@ app.post('/api/admin/impersonate/stop', requireAuth, async (req, res) => {
             accountType: 'user',
             role: owner.role,
             assignedTeacherId: owner.assignedTeacherId || null
-        });
+        }, req, { suppressLoginAlert: true, eventType: 'impersonation_stopped', detail: 'Đã quay lại tài khoản chủ.' });
         res.json({ ...owner, impersonating: false, impersonatorUserId: null });
     } catch (error) {
         console.error('[POST /api/admin/impersonate/stop]', error);
@@ -1190,6 +1364,11 @@ app.post('/api/admin/impersonate/stop', requireAuth, async (req, res) => {
 app.post('/api/logout', async (req, res) => {
     try {
         const authUser = await parseToken(req);
+        if (authUser) {
+            await recordSecurityEvent(authUser.accountType, authUser.userId, 'logout', {
+                context: getClientSecurityContext(req), detail: 'Đăng xuất thiết bị hiện tại.'
+            });
+        }
         if (req.authSessionHash) await deleteSessionByHash(req.authSessionHash);
         clearSessionCookie(res);
         res.status(204).end();
@@ -1199,6 +1378,50 @@ app.post('/api/logout', async (req, res) => {
         res.status(204).end();
     }
 });
+
+const loginChallenges = new Map();
+setInterval(() => {
+    const now = Date.now();
+    for (const [challengeId, challenge] of loginChallenges) {
+        if (challenge.expiresAt <= now) loginChallenges.delete(challengeId);
+    }
+}, 60 * 1000).unref();
+
+async function issueLoginChallenge(authUser, publicUser, req) {
+    const security = await getAccountSecurityRecord(authUser.accountType, authUser.userId);
+    if (!security.totpEnabled || !security.totpSecretEncrypted) return null;
+    const challengeId = crypto.randomBytes(24).toString('base64url');
+    const context = getClientSecurityContext(req);
+    loginChallenges.set(challengeId, {
+        authUser,
+        publicUser,
+        deviceHash: context.deviceHash,
+        ipPrefix: context.ipPrefix,
+        expiresAt: Date.now() + LOGIN_CHALLENGE_TTL_MS,
+        attempts: 0
+    });
+    return challengeId;
+}
+
+async function verifyLoginSecondFactor(challenge, suppliedCode) {
+    const security = await getAccountSecurityRecord(challenge.authUser.accountType, challenge.authUser.userId);
+    if (!security.totpEnabled || !security.totpSecretEncrypted) return { ok: false };
+    const code = String(suppliedCode || '').trim();
+    const secret = decryptText(security.totpSecretEncrypted, SECURITY_ENCRYPTION_MATERIAL);
+    if (verifyTotp(secret, code, { window: 1 })) return { ok: true, usedRecoveryCode: false };
+
+    const recoveryHashes = Array.isArray(security.recoveryCodeHashes) ? security.recoveryCodeHashes : [];
+    if (!security.recoveryCodeSalt || recoveryHashes.length === 0) return { ok: false };
+    const suppliedHash = hashRecoveryCode(code, security.recoveryCodeSalt);
+    const recoveryIndex = recoveryHashes.findIndex(hash => hash === suppliedHash);
+    if (recoveryIndex < 0) return { ok: false };
+    recoveryHashes.splice(recoveryIndex, 1);
+    await pgPool.query(`UPDATE AccountSecurity SET RecoveryCodeHashes = $1::jsonb, UpdatedAt = CURRENT_TIMESTAMP
+        WHERE AccountType = $2 AND UserId = $3`, [
+        JSON.stringify(recoveryHashes), challenge.authUser.accountType, challenge.authUser.userId
+    ]);
+    return { ok: true, usedRecoveryCode: true };
+}
 
 app.post('/api/login', loginIpRateLimit, loginRateLimit, async (req, res) => {
     const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
@@ -1223,11 +1446,17 @@ app.post('/api/login', loginIpRateLimit, loginRateLimit, async (req, res) => {
         if (result.recordset.length > 0) {
             const user = result.recordset[0];
             if (!(await passwordMatches(password, user.Password))) {
+                await recordSecurityEvent('user', user.Id, 'login_failed', {
+                    status: 'failed', context: getClientSecurityContext(req), detail: 'Sai mật khẩu.'
+                });
                 return res.status(401).json({
                     error: 'Tên đăng nhập hoặc mật khẩu không đúng.'
                 });
             }
             if (!user.Active) {
+                await recordSecurityEvent('user', user.Id, 'account_locked', {
+                    status: 'blocked', context: getClientSecurityContext(req), detail: 'Tài khoản đang bị khóa.'
+                });
                 return res.status(403).json({ error: 'Tài khoản đã bị vô hiệu hóa.' });
             }
 
@@ -1241,23 +1470,25 @@ app.post('/api/login', loginIpRateLimit, loginRateLimit, async (req, res) => {
                 return res.status(403).json({ error: 'Tài khoản trợ giảng của bạn chưa được Admin gán cho giáo viên nào. Vui lòng liên hệ Admin.' });
             }
 
-            if (req.authSessionHash) await deleteSessionByHash(req.authSessionHash);
-            await createSession(res, {
+            const authAccount = {
                 userId: user.Id,
                 accountType: 'user',
                 role: user.Role,
                 assignedTeacherId: user.AssignedTeacherId || null
-            });
+            };
+            const publicUser = await publicUserFromAuth(authAccount);
+            const challengeId = await issueLoginChallenge(authAccount, publicUser, req);
+            if (challengeId) {
+                return res.status(202).json({
+                    requiresTwoFactor: true,
+                    challengeId,
+                    message: 'Nhập mã từ ứng dụng OTP hoặc mã khôi phục.'
+                });
+            }
 
-            return res.json({
-                id:                user.Id,
-                username:          user.Username,
-                name:              user.Name,
-                role:              user.Role,
-                active:            user.Active,
-                assignedTeacherId: user.AssignedTeacherId || null,
-                assignedTeacherName: user.AssignedTeacherName || null
-            });
+            if (req.authSessionHash) await deleteSessionByHash(req.authSessionHash);
+            await createSession(res, authAccount, req);
+            return res.json(publicUser);
         }
 
         // Không khớp trong Users (admin/teacher/assistant) -> thử tài khoản
@@ -1277,32 +1508,85 @@ app.post('/api/login', loginIpRateLimit, loginRateLimit, async (req, res) => {
         const student = stuResult.recordset[0];
         const passwordOk = await bcrypt.compare(password, student.PasswordHash);
         if (!passwordOk) {
+            await recordSecurityEvent('student', student.Id, 'login_failed', {
+                status: 'failed', context: getClientSecurityContext(req), detail: 'Sai mật khẩu.'
+            });
             return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng.' });
         }
         if (student.AccountActive === false) {
+            await recordSecurityEvent('student', student.Id, 'account_locked', {
+                status: 'blocked', context: getClientSecurityContext(req), detail: 'Tài khoản đang bị khóa.'
+            });
             return res.status(403).json({ error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ giáo viên.' });
         }
 
-        if (req.authSessionHash) await deleteSessionByHash(req.authSessionHash);
-        await createSession(res, {
+        const authAccount = {
             userId: student.Id,
             accountType: 'student',
             role: 'student',
             assignedTeacherId: student.TeacherId || null
-        });
+        };
+        const publicUser = await publicUserFromAuth(authAccount);
+        const challengeId = await issueLoginChallenge(authAccount, publicUser, req);
+        if (challengeId) {
+            return res.status(202).json({
+                requiresTwoFactor: true,
+                challengeId,
+                message: 'Nhập mã từ ứng dụng OTP hoặc mã khôi phục.'
+            });
+        }
 
-        res.json({
-            id:                  student.Id,
-            username:            student.Username,
-            name:                student.Name,
-            role:                'student',
-            active:              true,
-            assignedTeacherId:   student.TeacherId || null,
-            assignedTeacherName: student.TeacherName || null
-        });
+        if (req.authSessionHash) await deleteSessionByHash(req.authSessionHash);
+        await createSession(res, authAccount, req);
+        res.json(publicUser);
     } catch (err) {
         console.error('[POST /api/login]', err);
         res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
+    }
+});
+
+app.post('/api/login/2fa', loginIpRateLimit, otpIpRateLimit, async (req, res) => {
+    const challengeId = String(req.body?.challengeId || '').trim();
+    const code = String(req.body?.code || '').trim();
+    const challenge = loginChallenges.get(challengeId);
+    if (!challenge || challenge.expiresAt <= Date.now()) {
+        loginChallenges.delete(challengeId);
+        return res.status(400).json({ error: 'Phiên xác thực đã hết hạn. Hãy đăng nhập lại.' });
+    }
+
+    const context = getClientSecurityContext(req);
+    if (challenge.deviceHash !== context.deviceHash || challenge.ipPrefix !== context.ipPrefix) {
+        loginChallenges.delete(challengeId);
+        return res.status(400).json({ error: 'Thiết bị xác thực đã thay đổi. Hãy đăng nhập lại.' });
+    }
+    challenge.attempts += 1;
+    if (challenge.attempts > 6) {
+        loginChallenges.delete(challengeId);
+        await recordSecurityEvent(challenge.authUser.accountType, challenge.authUser.userId, 'two_factor_failed', {
+            status: 'blocked', context, detail: 'Nhập sai mã xác thực quá nhiều lần.'
+        });
+        return res.status(429).json({ error: 'Bạn đã nhập sai quá nhiều lần. Hãy đăng nhập lại.' });
+    }
+
+    try {
+        const verification = await verifyLoginSecondFactor(challenge, code);
+        if (!verification.ok) {
+            await recordSecurityEvent(challenge.authUser.accountType, challenge.authUser.userId, 'two_factor_failed', {
+                status: 'failed', context, detail: 'Mã OTP hoặc mã khôi phục không đúng.'
+            });
+            return res.status(401).json({ error: 'Mã OTP hoặc mã khôi phục không đúng.' });
+        }
+        loginChallenges.delete(challengeId);
+        if (req.authSessionHash) await deleteSessionByHash(req.authSessionHash);
+        await createSession(res, challenge.authUser, req, {
+            detail: verification.usedRecoveryCode
+                ? 'Đăng nhập bằng mã khôi phục.'
+                : 'Đăng nhập có xác thực 2 bước.'
+        });
+        res.json({ ...challenge.publicUser, usedRecoveryCode: verification.usedRecoveryCode });
+    } catch (error) {
+        console.error('[POST /api/login/2fa]', error);
+        res.status(500).json({ error: 'Không thể hoàn tất xác thực 2 bước.' });
     }
 });
 
@@ -1321,14 +1605,385 @@ function accountTableFor(role) {
 app.get('/api/account/security', requireAuth, async (req, res) => {
     try {
         const table = accountTableFor(req.authUser.role);
-        const result = await pgPool.query(`SELECT Email, Phone, EmailVerified, PhoneVerified FROM ${table} WHERE Id = $1`, [req.authUser.userId]);
+        const result = await pgPool.query(`SELECT Name, Email, Phone, EmailVerified, PhoneVerified FROM ${table} WHERE Id = $1`, [req.authUser.userId]);
         const account = result.rows[0] || {};
+        const security = await getAccountSecurityRecord(req.authUser.accountType, req.authUser.userId);
+        const recoveryCodeHashes = Array.isArray(security.recoveryCodeHashes) ? security.recoveryCodeHashes : [];
         res.json({
-            email: account.email || '', phone: account.phone || '',
-            emailVerified: !!account.emailverified, phoneVerified: !!account.phoneverified
+            accountName: account.name || '',
+            displayName: security.displayName || account.name || '',
+            avatarDataUrl: security.avatarDataUrl || '',
+            email: account.email || '',
+            phone: account.phone || '',
+            emailVerified: !!account.emailverified,
+            phoneVerified: !!account.phoneverified,
+            phoneVerificationAvailable: false,
+            twoFactorEnabled: !!security.totpEnabled,
+            recoveryCodesRemaining: recoveryCodeHashes.length,
+            loginAlertEnabled: security.loginAlertEnabled !== false,
+            idleTimeoutMinutes: Number(security.idleTimeoutMinutes) || 60,
+            deleteRequestedAt: security.deleteRequestedAt || null,
+            deleteRequestStatus: security.deleteRequestStatus || null
         });
     } catch (err) {
+        console.error('[GET /api/account/security]', err);
         res.status(500).json({ error: 'Không thể tải cài đặt bảo mật.' });
+    }
+});
+
+app.put('/api/account/profile', requireAuth, async (req, res) => {
+    const displayName = String(req.body?.displayName || '').trim();
+    const avatarDataUrl = String(req.body?.avatarDataUrl || '').trim();
+    if (displayName.length < 2 || displayName.length > 160) {
+        return res.status(400).json({ error: 'Họ tên hiển thị cần từ 2 đến 160 ký tự.' });
+    }
+    if (avatarDataUrl && !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(avatarDataUrl)) {
+        return res.status(400).json({ error: 'Ảnh đại diện không hợp lệ.' });
+    }
+    if (avatarDataUrl.length > 420000) {
+        return res.status(413).json({ error: 'Ảnh đại diện quá lớn. Vui lòng chọn ảnh nhỏ hơn.' });
+    }
+    try {
+        await ensureAccountSecurityRecord(req.authUser.accountType, req.authUser.userId);
+        await pgPool.query(`UPDATE AccountSecurity
+            SET DisplayName = $1, AvatarDataUrl = $2, UpdatedAt = CURRENT_TIMESTAMP
+            WHERE AccountType = $3 AND UserId = $4`, [
+            displayName, avatarDataUrl || null, req.authUser.accountType, req.authUser.userId
+        ]);
+        const user = await publicUserFromAuth(req.authUser);
+        res.json({ message: 'Đã cập nhật hồ sơ tài khoản.', user });
+    } catch (error) {
+        console.error('[PUT /api/account/profile]', error);
+        res.status(500).json({ error: 'Không thể cập nhật hồ sơ tài khoản.' });
+    }
+});
+
+app.put('/api/account/security/preferences', requireAuth, async (req, res) => {
+    const loginAlertEnabled = req.body?.loginAlertEnabled !== false;
+    const idleTimeoutMinutes = Number(req.body?.idleTimeoutMinutes);
+    if (!ALLOWED_IDLE_TIMEOUTS.has(idleTimeoutMinutes)) {
+        return res.status(400).json({ error: 'Thời gian tự động đăng xuất không hợp lệ.' });
+    }
+    try {
+        await ensureAccountSecurityRecord(req.authUser.accountType, req.authUser.userId);
+        await pgPool.query(`UPDATE AccountSecurity
+            SET LoginAlertEnabled = $1, IdleTimeoutMinutes = $2, UpdatedAt = CURRENT_TIMESTAMP
+            WHERE AccountType = $3 AND UserId = $4`, [
+            loginAlertEnabled, idleTimeoutMinutes, req.authUser.accountType, req.authUser.userId
+        ]);
+        await pgPool.query(`UPDATE AuthSessions SET IdleTimeoutMinutes = $1
+            WHERE AccountType = $2 AND UserId = $3`, [
+            idleTimeoutMinutes, req.authUser.accountType, req.authUser.userId
+        ]);
+        for (const session of sessionCache.values()) {
+            if (session.accountType === req.authUser.accountType && session.userId === req.authUser.userId) {
+                session.idleTimeoutMinutes = idleTimeoutMinutes;
+            }
+        }
+        res.json({ message: 'Đã lưu cài đặt bảo mật.', loginAlertEnabled, idleTimeoutMinutes });
+    } catch (error) {
+        console.error('[PUT /api/account/security/preferences]', error);
+        res.status(500).json({ error: 'Không thể lưu cài đặt bảo mật.' });
+    }
+});
+
+app.get('/api/account/security/sessions', requireAuth, async (req, res) => {
+    try {
+        await ensureSecuritySchema();
+        const result = await pgPool.query(`SELECT SessionId AS "id", DeviceType AS "deviceType",
+                Browser AS "browser", Platform AS "platform", IpPrefix AS "ipPrefix",
+                CreatedAt AS "createdAt", LastSeenAt AS "lastSeenAt", ExpiresAt AS "expiresAt",
+                SessionHash AS "sessionHash"
+            FROM AuthSessions
+            WHERE AccountType = $1 AND UserId = $2 AND ExpiresAt > CURRENT_TIMESTAMP
+            ORDER BY LastSeenAt DESC`, [req.authUser.accountType, req.authUser.userId]);
+        res.json(result.rows.map(session => ({
+            id: session.id,
+            deviceType: session.deviceType || 'Thiết bị',
+            browser: session.browser || 'Không xác định',
+            platform: session.platform || 'Không xác định',
+            ipPrefix: session.ipPrefix || 'Không xác định',
+            createdAt: session.createdAt,
+            lastSeenAt: session.lastSeenAt,
+            expiresAt: session.expiresAt,
+            current: session.sessionHash === req.authSessionHash
+        })));
+    } catch (error) {
+        console.error('[GET /api/account/security/sessions]', error);
+        res.status(500).json({ error: 'Không thể tải danh sách thiết bị.' });
+    }
+});
+
+app.delete('/api/account/security/sessions/:sessionId', requireAuth, async (req, res) => {
+    const sessionId = String(req.params.sessionId || '').trim();
+    if (!/^ses_[A-Za-z0-9_-]{12,60}$|^legacy_[a-f0-9]{32}$/i.test(sessionId)) {
+        return res.status(400).json({ error: 'Phiên đăng nhập không hợp lệ.' });
+    }
+    try {
+        const result = await pgPool.query(`SELECT SessionHash AS "sessionHash" FROM AuthSessions
+            WHERE SessionId = $1 AND AccountType = $2 AND UserId = $3`, [
+            sessionId, req.authUser.accountType, req.authUser.userId
+        ]);
+        if (!result.rowCount) return res.status(404).json({ error: 'Thiết bị này đã đăng xuất.' });
+        const sessionHash = result.rows[0].sessionHash;
+        const isCurrent = sessionHash === req.authSessionHash;
+        await deleteSessionByHash(sessionHash);
+        await recordSecurityEvent(req.authUser.accountType, req.authUser.userId, 'session_revoked', {
+            context: getClientSecurityContext(req),
+            detail: isCurrent ? 'Đăng xuất thiết bị hiện tại.' : 'Đăng xuất một thiết bị từ xa.'
+        });
+        if (isCurrent) clearSessionCookie(res);
+        res.json({ message: 'Đã đăng xuất thiết bị.', current: isCurrent });
+    } catch (error) {
+        console.error('[DELETE /api/account/security/sessions/:sessionId]', error);
+        res.status(500).json({ error: 'Không thể đăng xuất thiết bị.' });
+    }
+});
+
+app.delete('/api/account/security/sessions', requireAuth, async (req, res) => {
+    try {
+        await recordSecurityEvent(req.authUser.accountType, req.authUser.userId, 'all_sessions_revoked', {
+            context: getClientSecurityContext(req), detail: 'Đăng xuất khỏi tất cả thiết bị.'
+        });
+        await revokeSessionsForAccount(req.authUser.accountType, req.authUser.userId);
+        clearSessionCookie(res);
+        res.json({ message: 'Đã đăng xuất khỏi tất cả thiết bị.' });
+    } catch (error) {
+        console.error('[DELETE /api/account/security/sessions]', error);
+        res.status(500).json({ error: 'Không thể đăng xuất khỏi tất cả thiết bị.' });
+    }
+});
+
+app.get('/api/account/security/events', requireAuth, async (req, res) => {
+    try {
+        await ensureSecuritySchema();
+        const result = await pgPool.query(`SELECT Id AS "id", EventType AS "eventType", Status AS "status",
+                Detail AS "detail", IpPrefix AS "ipPrefix", DeviceLabel AS "deviceLabel", CreatedAt AS "createdAt"
+            FROM SecurityEvents WHERE AccountType = $1 AND UserId = $2
+            ORDER BY CreatedAt DESC LIMIT 80`, [req.authUser.accountType, req.authUser.userId]);
+        res.json(result.rows);
+    } catch (error) {
+        console.error('[GET /api/account/security/events]', error);
+        res.status(500).json({ error: 'Không thể tải lịch sử bảo mật.' });
+    }
+});
+
+app.post('/api/account/security/2fa/setup', requireAuth, passwordChangeRateLimit, async (req, res) => {
+    const currentPassword = String(req.body?.currentPassword || '');
+    if (!(await verifyAccountPassword(req.authUser, currentPassword))) {
+        return res.status(401).json({ error: 'Mật khẩu hiện tại không đúng.' });
+    }
+    try {
+        const security = await getAccountSecurityRecord(req.authUser.accountType, req.authUser.userId);
+        if (security.totpEnabled) return res.status(409).json({ error: 'Xác thực 2 bước đã được bật.' });
+        const secret = generateTotpSecret();
+        const encryptedSecret = encryptText(secret, SECURITY_ENCRYPTION_MATERIAL);
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+        await pgPool.query(`UPDATE AccountSecurity
+            SET PendingTotpSecretEncrypted = $1, PendingTotpExpiresAt = $2, UpdatedAt = CURRENT_TIMESTAMP
+            WHERE AccountType = $3 AND UserId = $4`, [
+            encryptedSecret, expiresAt, req.authUser.accountType, req.authUser.userId
+        ]);
+        const user = await publicUserFromAuth(req.authUser);
+        const label = encodeURIComponent(`NttClass:${user?.username || req.authUser.userId}`);
+        const otpauthUri = `otpauth://totp/${label}?secret=${secret}&issuer=NttClass&algorithm=SHA1&digits=6&period=30`;
+        const qrDataUrl = await QRCode.toDataURL(otpauthUri, {
+            width: 240, margin: 1, errorCorrectionLevel: 'M', color: { dark: '#111827', light: '#ffffff' }
+        });
+        res.json({ secret, otpauthUri, qrDataUrl, expiresAt });
+    } catch (error) {
+        console.error('[POST /api/account/security/2fa/setup]', error);
+        res.status(500).json({ error: 'Không thể bắt đầu thiết lập xác thực 2 bước.' });
+    }
+});
+
+app.delete('/api/account/security/2fa/setup', requireAuth, async (req, res) => {
+    try {
+        await ensureAccountSecurityRecord(req.authUser.accountType, req.authUser.userId);
+        await pgPool.query(`UPDATE AccountSecurity
+            SET PendingTotpSecretEncrypted = NULL, PendingTotpExpiresAt = NULL, UpdatedAt = CURRENT_TIMESTAMP
+            WHERE AccountType = $1 AND UserId = $2`, [req.authUser.accountType, req.authUser.userId]);
+        res.status(204).end();
+    } catch (error) {
+        res.status(500).json({ error: 'Không thể hủy thiết lập xác thực 2 bước.' });
+    }
+});
+
+app.post('/api/account/security/2fa/confirm', requireAuth, otpIpRateLimit, async (req, res) => {
+    const code = String(req.body?.code || '').trim();
+    if (!/^\d{6}$/.test(code)) return res.status(400).json({ error: 'Mã OTP phải gồm 6 chữ số.' });
+    try {
+        const security = await getAccountSecurityRecord(req.authUser.accountType, req.authUser.userId);
+        if (!security.pendingTotpSecretEncrypted || !security.pendingTotpExpiresAt
+            || new Date(security.pendingTotpExpiresAt).getTime() <= Date.now()) {
+            return res.status(400).json({ error: 'Thiết lập OTP đã hết hạn. Hãy tạo mã QR mới.' });
+        }
+        const secret = decryptText(security.pendingTotpSecretEncrypted, SECURITY_ENCRYPTION_MATERIAL);
+        if (!verifyTotp(secret, code, { window: 1 })) {
+            return res.status(400).json({ error: 'Mã OTP không đúng.' });
+        }
+        const recoveryCodes = generateRecoveryCodes(10);
+        const recoveryCodeSalt = crypto.randomBytes(18).toString('base64url');
+        const recoveryCodeHashes = recoveryCodes.map(item => hashRecoveryCode(item, recoveryCodeSalt));
+        await pgPool.query(`UPDATE AccountSecurity SET TotpSecretEncrypted = PendingTotpSecretEncrypted,
+                TotpEnabled = TRUE, PendingTotpSecretEncrypted = NULL, PendingTotpExpiresAt = NULL,
+                RecoveryCodeHashes = $1::jsonb, RecoveryCodeSalt = $2, UpdatedAt = CURRENT_TIMESTAMP
+            WHERE AccountType = $3 AND UserId = $4`, [
+            JSON.stringify(recoveryCodeHashes), recoveryCodeSalt,
+            req.authUser.accountType, req.authUser.userId
+        ]);
+        await revokeSessionsForAccount(req.authUser.accountType, req.authUser.userId, req.authSessionHash);
+        await recordSecurityEvent(req.authUser.accountType, req.authUser.userId, 'two_factor_enabled', {
+            context: getClientSecurityContext(req), detail: 'Đã bật xác thực 2 bước bằng ứng dụng OTP.'
+        });
+        res.json({ message: 'Đã bật xác thực 2 bước.', recoveryCodes });
+    } catch (error) {
+        console.error('[POST /api/account/security/2fa/confirm]', error);
+        res.status(500).json({ error: 'Không thể bật xác thực 2 bước.' });
+    }
+});
+
+app.post('/api/account/security/2fa/disable', requireAuth, passwordChangeRateLimit, otpIpRateLimit, async (req, res) => {
+    const currentPassword = String(req.body?.currentPassword || '');
+    const code = String(req.body?.code || '').trim();
+    if (!(await verifyAccountPassword(req.authUser, currentPassword))) {
+        return res.status(401).json({ error: 'Mật khẩu hiện tại không đúng.' });
+    }
+    try {
+        const verification = await verifyLoginSecondFactor({ authUser: req.authUser }, code);
+        if (!verification.ok) return res.status(400).json({ error: 'Mã OTP hoặc mã khôi phục không đúng.' });
+        await pgPool.query(`UPDATE AccountSecurity SET TotpSecretEncrypted = NULL, TotpEnabled = FALSE,
+                PendingTotpSecretEncrypted = NULL, PendingTotpExpiresAt = NULL,
+                RecoveryCodeHashes = '[]'::jsonb, RecoveryCodeSalt = NULL, UpdatedAt = CURRENT_TIMESTAMP
+            WHERE AccountType = $1 AND UserId = $2`, [req.authUser.accountType, req.authUser.userId]);
+        await revokeSessionsForAccount(req.authUser.accountType, req.authUser.userId, req.authSessionHash);
+        await recordSecurityEvent(req.authUser.accountType, req.authUser.userId, 'two_factor_disabled', {
+            context: getClientSecurityContext(req), detail: 'Đã tắt xác thực 2 bước.'
+        });
+        res.json({ message: 'Đã tắt xác thực 2 bước.' });
+    } catch (error) {
+        console.error('[POST /api/account/security/2fa/disable]', error);
+        res.status(500).json({ error: 'Không thể tắt xác thực 2 bước.' });
+    }
+});
+
+app.post('/api/account/security/2fa/recovery-codes', requireAuth, passwordChangeRateLimit, otpIpRateLimit, async (req, res) => {
+    const currentPassword = String(req.body?.currentPassword || '');
+    const code = String(req.body?.code || '').trim();
+    if (!(await verifyAccountPassword(req.authUser, currentPassword))) {
+        return res.status(401).json({ error: 'Mật khẩu hiện tại không đúng.' });
+    }
+    try {
+        const verification = await verifyLoginSecondFactor({ authUser: req.authUser }, code);
+        if (!verification.ok) return res.status(400).json({ error: 'Mã OTP hoặc mã khôi phục không đúng.' });
+        const recoveryCodes = generateRecoveryCodes(10);
+        const recoveryCodeSalt = crypto.randomBytes(18).toString('base64url');
+        const recoveryCodeHashes = recoveryCodes.map(item => hashRecoveryCode(item, recoveryCodeSalt));
+        await pgPool.query(`UPDATE AccountSecurity
+            SET RecoveryCodeHashes = $1::jsonb, RecoveryCodeSalt = $2, UpdatedAt = CURRENT_TIMESTAMP
+            WHERE AccountType = $3 AND UserId = $4`, [
+            JSON.stringify(recoveryCodeHashes), recoveryCodeSalt,
+            req.authUser.accountType, req.authUser.userId
+        ]);
+        await recordSecurityEvent(req.authUser.accountType, req.authUser.userId, 'recovery_codes_regenerated', {
+            context: getClientSecurityContext(req), detail: 'Đã tạo bộ mã khôi phục mới.'
+        });
+        res.json({ message: 'Đã tạo bộ mã khôi phục mới.', recoveryCodes });
+    } catch (error) {
+        console.error('[POST /api/account/security/2fa/recovery-codes]', error);
+        res.status(500).json({ error: 'Không thể tạo lại mã khôi phục.' });
+    }
+});
+
+app.get('/api/account/data-export', requireAuth, async (req, res) => {
+    try {
+        const table = accountTableFor(req.authUser.role);
+        const accountResult = await pgPool.query(`SELECT Id, Username, Name, Email, Phone, EmailVerified, PhoneVerified
+            FROM ${table} WHERE Id = $1`, [req.authUser.userId]);
+        const security = await getAccountSecurityRecord(req.authUser.accountType, req.authUser.userId);
+        const events = await pgPool.query(`SELECT EventType, Status, Detail, IpPrefix, DeviceLabel, CreatedAt
+            FROM SecurityEvents WHERE AccountType = $1 AND UserId = $2 ORDER BY CreatedAt DESC`, [
+            req.authUser.accountType, req.authUser.userId
+        ]);
+        const requests = await pgPool.query(`SELECT TextContent, ImageName, Completed, Priority, CreatedAt, UpdatedAt, CompletedAt
+            FROM TaskRequests WHERE OwnerId = $1 AND OwnerRole = $2 ORDER BY CreatedAt DESC`, [
+            req.authUser.userId, req.authUser.role
+        ]).catch(() => ({ rows: [] }));
+        const invoiceSettings = await pgPool.query(`SELECT TeacherName, TeacherPhone, BankAccountNumber,
+                BankAccountHolder, UpdatedAt FROM InvoiceAccountSettings
+            WHERE OwnerId = $1 AND OwnerRole = $2`, [req.authUser.userId, req.authUser.role])
+            .catch(() => ({ rows: [] }));
+        const payload = {
+            exportedAt: new Date().toISOString(),
+            accountType: req.authUser.accountType,
+            role: req.authUser.role,
+            account: accountResult.rows[0] || null,
+            profile: {
+                displayName: security.displayName || null,
+                avatarIncluded: !!security.avatarDataUrl
+            },
+            security: {
+                twoFactorEnabled: !!security.totpEnabled,
+                loginAlertEnabled: security.loginAlertEnabled !== false,
+                idleTimeoutMinutes: Number(security.idleTimeoutMinutes) || 60,
+                deleteRequestedAt: security.deleteRequestedAt || null,
+                deleteRequestStatus: security.deleteRequestStatus || null,
+                history: events.rows
+            },
+            requests: requests.rows,
+            invoiceSettings: invoiceSettings.rows[0] || null
+        };
+        await recordSecurityEvent(req.authUser.accountType, req.authUser.userId, 'personal_data_exported', {
+            context: getClientSecurityContext(req), detail: 'Đã tải dữ liệu cá nhân.'
+        });
+        const safeId = String(req.authUser.userId).replace(/[^A-Za-z0-9_-]/g, '_');
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="nttclass-data-${safeId}.json"`);
+        res.send(JSON.stringify(payload, null, 2));
+    } catch (error) {
+        console.error('[GET /api/account/data-export]', error);
+        res.status(500).json({ error: 'Không thể tạo tệp dữ liệu cá nhân.' });
+    }
+});
+
+app.post('/api/account/deletion-request', requireAuth, passwordChangeRateLimit, async (req, res) => {
+    const currentPassword = String(req.body?.currentPassword || '');
+    if (!(await verifyAccountPassword(req.authUser, currentPassword))) {
+        return res.status(401).json({ error: 'Mật khẩu hiện tại không đúng.' });
+    }
+    try {
+        await ensureAccountSecurityRecord(req.authUser.accountType, req.authUser.userId);
+        const result = await pgPool.query(`UPDATE AccountSecurity
+            SET DeleteRequestedAt = CURRENT_TIMESTAMP, DeleteRequestStatus = 'pending', UpdatedAt = CURRENT_TIMESTAMP
+            WHERE AccountType = $1 AND UserId = $2
+            RETURNING DeleteRequestedAt AS "deleteRequestedAt"`, [req.authUser.accountType, req.authUser.userId]);
+        await recordSecurityEvent(req.authUser.accountType, req.authUser.userId, 'account_deletion_requested', {
+            context: getClientSecurityContext(req), detail: 'Đã gửi yêu cầu xóa tài khoản; dữ liệu chưa bị xóa.'
+        });
+        res.json({
+            message: 'Đã ghi nhận yêu cầu xóa tài khoản. Dữ liệu chưa bị xóa và quản trị viên sẽ xử lý riêng.',
+            deleteRequestedAt: result.rows[0]?.deleteRequestedAt,
+            deleteRequestStatus: 'pending'
+        });
+    } catch (error) {
+        console.error('[POST /api/account/deletion-request]', error);
+        res.status(500).json({ error: 'Không thể gửi yêu cầu xóa tài khoản.' });
+    }
+});
+
+app.delete('/api/account/deletion-request', requireAuth, async (req, res) => {
+    try {
+        await ensureAccountSecurityRecord(req.authUser.accountType, req.authUser.userId);
+        await pgPool.query(`UPDATE AccountSecurity
+            SET DeleteRequestedAt = NULL, DeleteRequestStatus = NULL, UpdatedAt = CURRENT_TIMESTAMP
+            WHERE AccountType = $1 AND UserId = $2`, [req.authUser.accountType, req.authUser.userId]);
+        await recordSecurityEvent(req.authUser.accountType, req.authUser.userId, 'account_deletion_cancelled', {
+            context: getClientSecurityContext(req), detail: 'Đã hủy yêu cầu xóa tài khoản.'
+        });
+        res.json({ message: 'Đã hủy yêu cầu xóa tài khoản.' });
+    } catch (error) {
+        console.error('[DELETE /api/account/deletion-request]', error);
+        res.status(500).json({ error: 'Không thể hủy yêu cầu xóa tài khoản.' });
     }
 });
 
@@ -1354,6 +2009,9 @@ app.put('/api/account/security/contact', requireAuth, async (req, res) => {
         const keepPhoneVerified = !!old.phoneverified && String(old.phone || '') === phone;
         const result = await pgPool.query(`UPDATE ${table} SET Email = $1, Phone = $2, EmailVerified = $3, PhoneVerified = $4 WHERE Id = $5`, [email || null, phone || null, keepEmailVerified, keepPhoneVerified, req.authUser.userId]);
         if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy tài khoản cần cập nhật.' });
+        await recordSecurityEvent(req.authUser.accountType, req.authUser.userId, 'contact_updated', {
+            context: getClientSecurityContext(req), detail: 'Đã cập nhật email hoặc số điện thoại.'
+        });
         res.json({ message: 'Đã lưu thông tin liên hệ. Hãy xác minh để dùng khôi phục mật khẩu.' });
     } catch (err) {
         res.status(500).json({ error: 'Không thể lưu thông tin liên hệ.' });
@@ -1443,6 +2101,9 @@ app.put('/api/account/security/password', requireAuth, passwordChangeRateLimit, 
             if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy tài khoản.' });
         }
         await revokeSessionsForAccount(req.authUser.accountType, req.authUser.userId, req.authSessionHash);
+        await recordSecurityEvent(req.authUser.accountType, req.authUser.userId, 'password_changed', {
+            context: getClientSecurityContext(req), detail: 'Đã đổi mật khẩu và thu hồi các phiên khác.'
+        });
         res.json({ message: 'Đổi mật khẩu thành công.' });
     } catch (err) {
         console.error('[PUT /api/account/security/password]', err);
@@ -1715,6 +2376,17 @@ app.put('/api/users/:id', requireAdminAccess, async (req, res) => {
 
         const updateResult = await request.query(`UPDATE Users SET ${sets.join(', ')} WHERE Id = @id`);
         if (updateResult.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy tài khoản cần cập nhật.' });
+        if (active !== undefined) {
+            await recordSecurityEvent('user', id, active ? 'account_unlocked' : 'account_locked', {
+                context: getClientSecurityContext(req),
+                detail: active ? 'Quản trị viên đã mở khóa tài khoản.' : 'Quản trị viên đã khóa tài khoản.'
+            });
+        }
+        if (password) {
+            await recordSecurityEvent('user', id, 'password_changed', {
+                context: getClientSecurityContext(req), detail: 'Quản trị viên đã đặt lại mật khẩu.'
+            });
+        }
         await revokeSessionsForAccount('user', id);
         res.json({ message: 'Cập nhật tài khoản thành công.' });
     } catch (err) {
@@ -2248,6 +2920,10 @@ app.put('/api/students/:id/account/toggle', requireRole('teacher'), requireTeach
         }
         await pool.request().input('id', sql.VarChar, id).input('active', sql.Bit, active ? 1 : 0)
             .query('UPDATE Students SET AccountActive = @active WHERE Id = @id');
+        await recordSecurityEvent('student', id, active ? 'account_unlocked' : 'account_locked', {
+            context: getClientSecurityContext(req),
+            detail: active ? 'Giáo viên đã mở khóa tài khoản.' : 'Giáo viên đã khóa tài khoản.'
+        });
         await revokeSessionsForAccount('student', id);
         res.json({ message: active ? 'Đã mở khóa tài khoản.' : 'Đã khóa tài khoản.' });
     } catch (err) {

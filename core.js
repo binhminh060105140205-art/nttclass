@@ -235,6 +235,7 @@ class PinkyClassApp {
     }
 
     clearSensitiveClientState() {
+        this.stopIdleLogoutMonitor?.();
         this.currentUser = null;
         this.currentRole = null;
         this.currentStudentId = null;

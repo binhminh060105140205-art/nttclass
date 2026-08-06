@@ -18,6 +18,8 @@ Object.assign(PinkyClassApp.prototype, {
             return;
         }
 
+        this.buildModernSettingsLayout?.();
+
         const accountThemeSection = document.getElementById('accountAppThemeSection');
         if (accountThemeSection) accountThemeSection.style.display = 'block';
 
@@ -36,6 +38,15 @@ Object.assign(PinkyClassApp.prototype, {
         document.getElementById('settingsCurrentPassword').value = '';
         document.getElementById('settingsNewPassword').value = '';
         document.getElementById('settingsConfirmPassword').value = '';
+        ['settingsTwoFactorSetupPassword', 'settingsTwoFactorConfirmCode',
+            'settingsTwoFactorManagePassword', 'settingsTwoFactorManageCode',
+            'settingsDeletionPassword'].forEach(id => {
+            const input = document.getElementById(id);
+            if (input) input.value = '';
+        });
+        const twoFactorSetupPanel = document.getElementById('settingsTwoFactorSetupPanel');
+        if (twoFactorSetupPanel) twoFactorSetupPanel.hidden = true;
+        this.hideRecoveryCodes?.();
         
         // Ẩn các khu vực nhập OTP nếu đang mở từ trước
         document.getElementById('emailOtpSection').style.display = 'none';
@@ -52,6 +63,7 @@ Object.assign(PinkyClassApp.prototype, {
             // Điền thông tin vào form
             document.getElementById('settingsEmail').value = data.email || '';
             document.getElementById('settingsPhone').value = data.phone || '';
+            this.applyModernSecurityData?.(data);
 
             // Cập nhật trạng thái xác minh Email
             const emailStatusEl = document.getElementById('settingsEmailStatus');
@@ -76,6 +88,9 @@ Object.assign(PinkyClassApp.prototype, {
                 if (data.phoneVerified) {
                     phoneStatusEl.innerHTML = '<span class="verification-badge verified">✓ Đã xác minh</span>';
                     btnVerifyPhone.style.display = 'none';
+                } else if (data.phoneVerificationAvailable === false) {
+                    phoneStatusEl.innerHTML = '<span class="verification-badge unverified">Chưa hỗ trợ SMS</span>';
+                    btnVerifyPhone.style.display = 'none';
                 } else {
                     phoneStatusEl.innerHTML = '<span class="verification-badge unverified">✗ Chưa xác minh</span>';
                     btnVerifyPhone.style.display = 'inline-flex';
@@ -89,6 +104,11 @@ Object.assign(PinkyClassApp.prototype, {
         } catch (err) {
             this.showToast(err.message || 'Lỗi khi kết nối máy chủ.', 'error');
         }
+
+
+        this.switchSettingsTab?.(options.focusInvoiceSetup ? 'invoice' : (options.tab || 'account'));
+        void this.loadSecuritySessions?.();
+        void this.loadSecurityHistory?.();
 
         if (canSetupInvoice && typeof this.loadInvoiceSetup === 'function') {
             try {

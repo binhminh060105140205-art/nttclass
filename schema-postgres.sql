@@ -16,6 +16,9 @@
 
 -- 1. XÓA BẢNG CŨ NẾU ĐÃ TỒN TẠI
 DROP TABLE IF EXISTS AuthSessions CASCADE;
+DROP TABLE IF EXISTS SecurityEvents CASCADE;
+DROP TABLE IF EXISTS TrustedDevices CASCADE;
+DROP TABLE IF EXISTS AccountSecurity CASCADE;
 DROP TABLE IF EXISTS InvoiceAccountSettings CASCADE;
 DROP TABLE IF EXISTS InvoiceTemplates CASCADE;
 DROP TABLE IF EXISTS TaskRequests CASCADE;
@@ -40,11 +43,19 @@ CREATE TABLE Users (
 
 CREATE TABLE AuthSessions (
     SessionHash CHAR(64) PRIMARY KEY,
+    SessionId VARCHAR(50) UNIQUE,
     UserId VARCHAR(120) NOT NULL,
     AccountType VARCHAR(20) NOT NULL,
     Role VARCHAR(20) NOT NULL,
     AssignedTeacherId VARCHAR(120) NULL,
     ActorUserId VARCHAR(120) NULL,
+    DeviceHash CHAR(64) NULL,
+    DeviceType VARCHAR(60) NULL,
+    Browser VARCHAR(100) NULL,
+    Platform VARCHAR(100) NULL,
+    IpPrefix VARCHAR(80) NULL,
+    UserAgent VARCHAR(500) NULL,
+    IdleTimeoutMinutes INTEGER NOT NULL DEFAULT 60,
     CreatedAt TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     LastSeenAt TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ExpiresAt TIMESTAMPTZ NOT NULL
@@ -52,6 +63,53 @@ CREATE TABLE AuthSessions (
 CREATE INDEX idx_authsessions_user ON AuthSessions (AccountType, UserId);
 CREATE INDEX idx_authsessions_actor ON AuthSessions (ActorUserId);
 CREATE INDEX idx_authsessions_expiry ON AuthSessions (ExpiresAt);
+
+CREATE TABLE AccountSecurity (
+    AccountType VARCHAR(20) NOT NULL,
+    UserId VARCHAR(120) NOT NULL,
+    DisplayName VARCHAR(160) NULL,
+    AvatarDataUrl TEXT NULL,
+    TotpSecretEncrypted TEXT NULL,
+    TotpEnabled BOOLEAN NOT NULL DEFAULT FALSE,
+    PendingTotpSecretEncrypted TEXT NULL,
+    PendingTotpExpiresAt TIMESTAMPTZ NULL,
+    RecoveryCodeHashes JSONB NOT NULL DEFAULT '[]'::jsonb,
+    RecoveryCodeSalt VARCHAR(80) NULL,
+    LoginAlertEnabled BOOLEAN NOT NULL DEFAULT TRUE,
+    IdleTimeoutMinutes INTEGER NOT NULL DEFAULT 60,
+    DeleteRequestedAt TIMESTAMPTZ NULL,
+    DeleteRequestStatus VARCHAR(30) NULL,
+    CreatedAt TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (AccountType, UserId)
+);
+
+CREATE TABLE TrustedDevices (
+    AccountType VARCHAR(20) NOT NULL,
+    UserId VARCHAR(120) NOT NULL,
+    DeviceHash CHAR(64) NOT NULL,
+    DeviceType VARCHAR(60) NULL,
+    Browser VARCHAR(100) NULL,
+    Platform VARCHAR(100) NULL,
+    IpPrefix VARCHAR(80) NULL,
+    FirstSeenAt TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    LastSeenAt TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (AccountType, UserId, DeviceHash)
+);
+
+CREATE TABLE SecurityEvents (
+    Id BIGSERIAL PRIMARY KEY,
+    AccountType VARCHAR(20) NOT NULL,
+    UserId VARCHAR(120) NOT NULL,
+    EventType VARCHAR(60) NOT NULL,
+    Status VARCHAR(20) NOT NULL DEFAULT 'success',
+    Detail TEXT NULL,
+    IpPrefix VARCHAR(80) NULL,
+    DeviceLabel VARCHAR(220) NULL,
+    CreatedAt TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_securityevents_account_created
+    ON SecurityEvents (AccountType, UserId, CreatedAt DESC);
 
 -- 3. BẢNG HỌC SINH (Students)
 CREATE TABLE Students (

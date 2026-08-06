@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Playfair+Display:ital,wght@1,400;1,500;1,600&amp;display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Comfortaa:wght@400;500;600;700&family=Condiment&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260806-invoice-labels3s1">
+    <link rel="stylesheet" href="style.css?v=20260806-account-security3">
     <link rel="stylesheet" href="landing-lithos-bundle.css?v=20260731-performance5">
     <link id="appThemeStylesheet" rel="stylesheet" href="lithos-app-bundle.css?v=20260802-sidebar-toggle1" media="not all" disabled>
     <link id="pinkAppThemeStylesheet" rel="stylesheet" href="pink-minimal-theme.css?v=20260803-blue-font1" media="not all" disabled>
@@ -121,6 +121,18 @@
                             <span>Ghi nhớ đăng nhập</span>
                         </label>
                         <a href="#" class="login-forgot-link" id="loginForgotLink">Quên mật khẩu?</a>
+                    </div>
+
+                    <div class="login-two-factor-panel" id="loginTwoFactorPanel" hidden>
+                        <div class="login-two-factor-icon" aria-hidden="true">✓</div>
+                        <div>
+                            <strong>Xác thực 2 bước</strong>
+                            <p>Nhập mã 6 số trong ứng dụng OTP hoặc một mã khôi phục.</p>
+                        </div>
+                        <input type="text" id="loginTwoFactorCode" class="form-control login-input"
+                            inputmode="text" maxlength="12" autocomplete="one-time-code"
+                            placeholder="Mã OTP hoặc mã khôi phục">
+                        <button type="button" class="login-two-factor-back" id="loginTwoFactorBack">Quay lại đăng nhập</button>
                     </div>
 
                     <button type="submit" class="btn btn-primary btn-block login-submit-btn" id="loginSubmitBtn">
@@ -1584,12 +1596,12 @@
     <div class="modal-backdrop" id="accountSettingsModal">
         <div class="modal-container account-settings-container">
             <div class="modal-header">
-                <h3 class="modal-title">⚙️ Cài Đặt Tài Khoản</h3>
+                <h3 class="modal-title">CÀI ĐẶT</h3>
                 <button class="modal-close" onclick="app.closeModal('accountSettingsModal')">&times;</button>
             </div>
-            <div class="modal-body" style="overflow-y: auto; padding: 20px;">
+            <div class="modal-body account-settings-body" id="accountSettingsBody">
                 <!-- Section: Giao diện hệ thống -->
-                <div class="settings-section" style="margin-bottom: 20px;">
+                <div class="settings-section" id="settingsThemeModeSection" style="margin-bottom: 20px;">
                     <h4 class="settings-section-title">🎨 Giao Diện Hệ Thống</h4>
                     <p class="settings-section-desc">Chọn chế độ hiển thị Sáng hoặc Tối.</p>
                     
@@ -1644,13 +1656,13 @@
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;">
 
                 <!-- Section 1: Thông tin liên hệ -->
-                <div class="settings-section">
+                <div class="settings-section" id="settingsContactSection">
                     <h4 class="settings-section-title">📧 Thông Tin Liên Hệ & Xác Minh</h4>
                     <p class="settings-section-desc">Email và số điện thoại được dùng để khôi phục mật khẩu khi bạn quên.</p>
                     
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label for="settingsEmail" style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13.5px; color: var(--text-main);">Địa chỉ Email</label>
-                        <div style="display: flex; gap: 10px; align-items: center;">
+                        <div class="settings-contact-control-row" style="display: flex; gap: 10px; align-items: center;">
                             <input type="email" id="settingsEmail" class="form-control" maxlength="254" placeholder="Nhập địa chỉ email của bạn" style="flex: 1;">
                             <span id="settingsEmailStatus"></span>
                             <button type="button" class="btn btn-secondary btn-sm" id="btnVerifyEmail" onclick="app.requestVerificationCode('email')" style="display: none;">Xác minh</button>
@@ -1667,7 +1679,7 @@
 
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label for="settingsPhone" style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13.5px; color: var(--text-main);">Số điện thoại</label>
-                        <div style="display: flex; gap: 10px; align-items: center;">
+                        <div class="settings-contact-control-row" style="display: flex; gap: 10px; align-items: center;">
                             <input type="text" id="settingsPhone" class="form-control" maxlength="20" placeholder="Nhập số điện thoại của bạn" style="flex: 1;">
                             <span id="settingsPhoneStatus"></span>
                             <button type="button" class="btn btn-secondary btn-sm" id="btnVerifyPhone" onclick="app.requestVerificationCode('phone')" style="display: none;">Xác minh</button>
@@ -1688,7 +1700,7 @@
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 24px 0;">
 
                 <!-- Section 2: Đổi mật khẩu -->
-                <div class="settings-section">
+                <div class="settings-section" id="settingsPasswordSection">
                     <h4 class="settings-section-title">🔑 Thay Đổi Mật Khẩu</h4>
                     <p class="settings-section-desc">Tạo mật khẩu mới cho tài khoản của bạn.</p>
                     
@@ -1709,7 +1721,7 @@
 
                     <button type="button" class="btn btn-primary btn-sm" onclick="app.changePassword()" style="width: 100%; justify-content: center; height: 42px; border-radius: 10px;">Đổi mật khẩu</button>
                 </div>
-                <div class="settings-section" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-color);">
+                <div class="settings-section" id="settingsLogoutSection" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-color);">
                     <button type="button" class="btn btn-danger btn-sm" id="logoutBtn" style="width: 100%; justify-content: center; height: 42px; border-radius: 10px; display:none;">Đăng xuất</button>
                 </div>
             </div>
@@ -1805,9 +1817,9 @@
          thoải mái, không phụ thuộc lẫn nhau. -->
     <script src="landing-orbis.js?v=20260731-performance5"></script>
     <script src="ui-text-normalization.js?v=20260803-ascii-dash1"></script>
-    <script src="core.js?v=20260804-thuy-requests-8-1"></script>
+    <script src="core.js?v=20260806-account-security1"></script>
     <script src="lithos-petals.js?v=20260802-pink-minimal1"></script>
-    <script src="app-shell.js?v=20260806-class-profiles1"></script>
+    <script src="app-shell.js?v=20260806-account-security1"></script>
     <script src="users.js?v=20260806-owner-admin-2"></script>
     <script src="dashboard.js?v=20260806-upcoming-class-name1"></script>
     <script src="student-logs.js?v=20260804-thuy-requests-5-1"></script>
@@ -1821,7 +1833,8 @@
     <script src="ai-chat.js?v=20260802-ai-data2"></script>
     <script src="requests.js?v=20260802-requests-inbox1"></script>
     <script src="requests-edit.js?v=20260730-performance3"></script>
-    <script src="security-settings.js?v=20260806-invoice-live-1"></script>
+    <script src="security-settings.js?v=20260806-account-security1"></script>
+    <script src="settings-modern.js?v=20260806-account-security2"></script>
     <script src="main.js"></script>
     <script src="invoice-export.js?v=20260806-invoice-labels3s1"></script>
 </body>

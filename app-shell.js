@@ -74,6 +74,10 @@ Object.assign(PinkyClassApp.prototype, {
                 this.openForgotPasswordModal();
             });
         }
+        document.getElementById('loginTwoFactorBack')?.addEventListener('click', () => {
+            this.resetLoginTwoFactorStep();
+            document.getElementById('loginPassword')?.focus();
+        });
 
         // Logout button
         document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -530,6 +534,7 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     showLoginPage() {
+        this.resetLoginTwoFactorStep?.();
         window.__nttLoginRequested = true;
         document.documentElement.setAttribute('data-app-surface', 'login');
         this.useLandingTheme({ render: false });
@@ -565,6 +570,7 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     async onLoginSuccess(user, save = true) {
+        this.resetLoginTwoFactorStep?.();
         this.currentUser = user;
         this.currentRole = user.role;
         this.appTheme = this.getResolvedAppTheme();
@@ -591,18 +597,51 @@ Object.assign(PinkyClassApp.prototype, {
             ? `${displayedRole} · Thúy đang đăng nhập thay`
             : displayedRole;
         const avatarEl = document.getElementById('sidebarUserAvatar');
-        if (avatarEl) avatarEl.innerText = (user.name || '?').trim().charAt(0).toUpperCase();
+        if (avatarEl) this.updateSidebarAccountAvatar?.(user);
         this.showAppPage();
         this.syncImpersonationUI(user);
         this.switchRole(user.role);
         this.switchView(user.role === 'admin' ? 'view-users' : user.role === 'student' ? 'view-logs' : 'view-dashboard');
+        this.startIdleLogoutMonitor?.(user.idleTimeoutMinutes || 60);
         this.showToast(`Đăng nhập thành công với vai trò: ${roleLabel}`, 'success');
+    },
+
+    showLoginTwoFactorStep(challengeId) {
+        this._loginChallengeId = challengeId;
+        document.querySelectorAll('#loginForm .login-input-group, #loginForm .login-options-row')
+            .forEach(element => { element.hidden = true; });
+        const panel = document.getElementById('loginTwoFactorPanel');
+        if (panel) panel.hidden = false;
+        const codeInput = document.getElementById('loginTwoFactorCode');
+        if (codeInput) {
+            codeInput.value = '';
+            setTimeout(() => codeInput.focus(), 0);
+        }
+        const submitText = document.getElementById('loginSubmitText');
+        if (submitText) submitText.innerText = 'Xác nhận';
+    },
+
+    resetLoginTwoFactorStep() {
+        this._loginChallengeId = null;
+        document.querySelectorAll('#loginForm .login-input-group, #loginForm .login-options-row')
+            .forEach(element => { element.hidden = false; });
+        const panel = document.getElementById('loginTwoFactorPanel');
+        if (panel) panel.hidden = true;
+        const codeInput = document.getElementById('loginTwoFactorCode');
+        if (codeInput) codeInput.value = '';
+        const submitText = document.getElementById('loginSubmitText');
+        if (submitText) submitText.innerText = 'Đăng nhập';
     },
 
     async handleLoginSubmit() {
         const username = document.getElementById('loginUsername').value.trim();
         const password = document.getElementById('loginPassword').value.trim();
-        if (!username || !password) {
+        const twoFactorCode = document.getElementById('loginTwoFactorCode')?.value.trim() || '';
+        if (this._loginChallengeId && !twoFactorCode) {
+            this.showToast('Vui lòng nhập mã OTP hoặc mã khôi phục.', 'error');
+            return;
+        }
+        if (!this._loginChallengeId && (!username || !password)) {
             this.showToast('Vui lòng nhập tên đăng nhập và mật khẩu.', 'error');
             return;
         }
@@ -613,30 +652,34 @@ Object.assign(PinkyClassApp.prototype, {
 
         submitBtn.disabled = true;
         submitBtn.classList.add('login-loading');
-        submitText.innerText = 'Đang đăng nhập...';
+        submitText.innerText = this._loginChallengeId ? 'Đang xác nhận...' : 'Đang đăng nhập...';
 
         try {
-            const res = await fetch(`${API_BASE_URL}/api/login`, {
+            const isTwoFactorStep = !!this._loginChallengeId;
+            const res = await fetch(`${API_BASE_URL}${isTwoFactorStep ? '/api/login/2fa' : '/api/login'}`, {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json', 'X-NTT-Client': 'web' },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify(isTwoFactorStep
+                    ? { challengeId: this._loginChallengeId, code: twoFactorCode }
+                    : { username, password })
             });
 
+            const payload = await res.json().catch(() => ({}));
             if (!res.ok) {
-                let payload;
-                try {
-                    payload = await res.json();
-                } catch (parseErr) {
-                    const text = await res.text();
-                    payload = { error: text || `Lỗi không xác định (${res.status})` };
-                }
                 throw new Error(payload.error || `Đăng nhập thất bại (${res.status})`);
             }
 
-            const user = await res.json();
+            if (payload.requiresTwoFactor && payload.challengeId) {
+                this.showLoginTwoFactorStep(payload.challengeId);
+                return;
+            }
+
             localStorage.removeItem('nttclass_remembered_username');
-            await this.onLoginSuccess(user);
+            await this.onLoginSuccess(payload);
+            if (payload.usedRecoveryCode) {
+                this.showToast('Đã dùng một mã khôi phục. Hãy tạo bộ mã mới trong Cài đặt.', 'info');
+            }
         } catch (err) {
             this.showToast(err.message || 'Đăng nhập thất bại.', 'error');
             // Hiệu ứng rung nhẹ thẻ đăng nhập khi sai thông tin — phản hồi thị
@@ -651,11 +694,11 @@ Object.assign(PinkyClassApp.prototype, {
         } finally {
             submitBtn.disabled = false;
             submitBtn.classList.remove('login-loading');
-            submitText.innerText = 'Đăng nhập';
+            submitText.innerText = this._loginChallengeId ? 'Xác nhận' : 'Đăng nhập';
         }
     },
 
-    async handleLogout() {
+    async handleLogout(message = 'Bạn đã đăng xuất.') {
         try {
             await fetch(`${API_BASE_URL}/api/logout`, {
                 method: 'POST',
@@ -671,10 +714,11 @@ Object.assign(PinkyClassApp.prototype, {
         localStorage.removeItem('pinky_sessions');
         localStorage.removeItem('nttclass_remembered_username');
         localStorage.removeItem('nttclass_invoice_qr');
+        this.stopIdleLogoutMonitor?.();
         this.clearSensitiveClientState();
         this.clearRequestImage();
         this.showLandingPage();
-        this.showToast('Bạn đã đăng xuất.', 'success');
+        this.showToast(message, 'success');
     },
 
     switchRole(role) {
