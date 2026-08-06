@@ -6273,12 +6273,77 @@ body.request-image-viewer-open { overflow: hidden; }
 }
 
 #studentsTableBody .student-grade-group-row td {
-    padding: 9px 14px;
+    padding: 0;
     color: var(--primary);
     background: var(--primary-soft);
     font-weight: 800;
     text-align: right;
     text-transform: uppercase;
+}
+
+.student-grade-toggle {
+    display: block;
+    width: 100%;
+    padding: 11px 14px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: right;
+    text-transform: inherit;
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease;
+}
+
+.student-grade-toggle-content {
+    position: sticky;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    width: max-content;
+    margin-left: auto;
+}
+
+.student-grade-toggle:hover,
+.student-grade-toggle:focus-visible {
+    background: rgba(var(--primary-rgb), 0.1);
+    color: var(--primary);
+    outline: none;
+}
+
+.student-grade-count {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: normal;
+    text-transform: none;
+}
+
+.student-grade-label {
+    min-width: 70px;
+}
+
+.student-grade-chevron {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: rgba(var(--primary-rgb), 0.12);
+    font-size: 1.05rem;
+    line-height: 1;
+    transform: rotate(-90deg);
+    transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.student-grade-group-row.is-expanded .student-grade-chevron {
+    transform: rotate(0deg);
+}
+
+#studentsTableBody .student-data-row[hidden] {
+    display: none;
 }
 
 .student-empty-cell {

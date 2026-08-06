@@ -18,6 +18,18 @@ Object.assign(PinkyClassApp.prototype, {
         filterEl.value = availableGrades.includes(Number(selectedGrade)) ? selectedGrade : "";
     },
 
+    toggleStudentGradeGroup(groupKey) {
+        if (!(this.expandedStudentGradeGroups instanceof Set)) {
+            this.expandedStudentGradeGroups = new Set();
+        }
+        if (this.expandedStudentGradeGroups.has(groupKey)) {
+            this.expandedStudentGradeGroups.delete(groupKey);
+        } else {
+            this.expandedStudentGradeGroups.add(groupKey);
+        }
+        this.renderStudentList();
+    },
+
     renderStudentList() {
         const tbody = document.getElementById("studentsTableBody");
         if (!tbody) return;
@@ -46,42 +58,80 @@ Object.assign(PinkyClassApp.prototype, {
             return String(a.name || "").localeCompare(String(b.name || ""), "vi");
         });
 
-        let lastGrade = null;
+        if (!(this.expandedStudentGradeGroups instanceof Set)) {
+            this.expandedStudentGradeGroups = new Set();
+        }
+
+        const groups = new Map();
         sorted.forEach((student, index) => {
-            if (student.gradeLevel !== lastGrade) {
-                lastGrade = student.gradeLevel;
-                const groupRow = document.createElement("tr");
-                groupRow.className = "student-grade-group-row";
-                groupRow.innerHTML = `<td colspan="7">${student.gradeLevel ? `Lớp ${student.gradeLevel}` : "Chưa nhập lớp"}</td>`;
-                tbody.appendChild(groupRow);
+            const numericGrade = Number(student.gradeLevel);
+            const hasGrade = Number.isInteger(numericGrade) && numericGrade >= 1 && numericGrade <= 12;
+            const groupKey = hasGrade ? `grade-${numericGrade}` : "unassigned";
+            if (!groups.has(groupKey)) {
+                groups.set(groupKey, {
+                    label: hasGrade ? `Lớp ${numericGrade}` : "Chưa nhập lớp",
+                    students: []
+                });
             }
+            groups.get(groupKey).students.push({ student, index });
+        });
 
-            const dobLabel = (() => {
-                if (!student.dob) return "-";
-                const [year, month, day] = String(student.dob).split("T")[0].split("-");
-                return year && month && day ? `${day}/${month}/${year}` : "-";
-            })();
-            const studentId = this.escapeHtmlAttr(JSON.stringify(String(student.id)));
-            const classLabel = student.class || (student.gradeLevel ? `Lớp ${student.gradeLevel}` : "-");
-            const actionsHtml = `
-                <div class="student-table-actions">
-                    <button class="btn btn-primary btn-sm" onclick="app.openStudentJournalModal(${studentId})">Nhật ký</button>
-                    <button class="btn btn-secondary btn-sm" onclick="app.openEditStudentModal(${studentId})">Sửa</button>
-                </div>
-            `;
+        const visibleGroupKeys = new Set(groups.keys());
+        [...this.expandedStudentGradeGroups].forEach(groupKey => {
+            if (!visibleGroupKeys.has(groupKey)) this.expandedStudentGradeGroups.delete(groupKey);
+        });
 
-            const row = document.createElement("tr");
-            row.className = "student-data-row";
-            row.innerHTML = `
-                <td class="student-stt-cell">${index + 1}</td>
-                <td class="student-name-cell">${this.escapeHtml(student.name || "-")}</td>
-                <td>${this.escapeHtml(classLabel)}</td>
-                <td><span class="student-subject-badge">${this.escapeHtml(student.subject || "-")}</span></td>
-                <td class="student-dob-cell">${dobLabel}</td>
-                <td class="role-restricted admin-only student-price-cell">${this.formatVND(student.basePrice)}</td>
-                <td class="student-actions-cell">${actionsHtml}</td>
+        groups.forEach((group, groupKey) => {
+            const isExpanded = this.expandedStudentGradeGroups.has(groupKey);
+            const groupRow = document.createElement("tr");
+            groupRow.className = `student-grade-group-row${isExpanded ? " is-expanded" : ""}`;
+            groupRow.dataset.gradeGroup = groupKey;
+            groupRow.innerHTML = `
+                <td colspan="7">
+                    <button type="button" class="student-grade-toggle" aria-expanded="${isExpanded}">
+                        <span class="student-grade-toggle-content">
+                            <span class="student-grade-count">${group.students.length} học sinh</span>
+                            <span class="student-grade-label">${this.escapeHtml(group.label)}</span>
+                            <span class="student-grade-chevron" aria-hidden="true">⌄</span>
+                        </span>
+                    </button>
+                </td>
             `;
-            tbody.appendChild(row);
+            groupRow.querySelector(".student-grade-toggle")?.addEventListener("click", () => {
+                this.toggleStudentGradeGroup(groupKey);
+            });
+            tbody.appendChild(groupRow);
+
+            group.students.forEach(({ student, index }) => {
+                const dobLabel = (() => {
+                    if (!student.dob) return "-";
+                    const [year, month, day] = String(student.dob).split("T")[0].split("-");
+                    return year && month && day ? `${day}/${month}/${year}` : "-";
+                })();
+                const studentId = this.escapeHtmlAttr(JSON.stringify(String(student.id)));
+                const classLabel = student.class || (student.gradeLevel ? `Lớp ${student.gradeLevel}` : "-");
+                const actionsHtml = `
+                    <div class="student-table-actions">
+                        <button class="btn btn-primary btn-sm" onclick="app.openStudentJournalModal(${studentId})">Nhật ký</button>
+                        <button class="btn btn-secondary btn-sm" onclick="app.openEditStudentModal(${studentId})">Sửa</button>
+                    </div>
+                `;
+
+                const row = document.createElement("tr");
+                row.className = "student-data-row";
+                row.dataset.gradeGroup = groupKey;
+                row.hidden = !isExpanded;
+                row.innerHTML = `
+                    <td class="student-stt-cell">${index + 1}</td>
+                    <td class="student-name-cell">${this.escapeHtml(student.name || "-")}</td>
+                    <td>${this.escapeHtml(classLabel)}</td>
+                    <td><span class="student-subject-badge">${this.escapeHtml(student.subject || "-")}</span></td>
+                    <td class="student-dob-cell">${dobLabel}</td>
+                    <td class="role-restricted admin-only student-price-cell">${this.formatVND(student.basePrice)}</td>
+                    <td class="student-actions-cell">${actionsHtml}</td>
+                `;
+                tbody.appendChild(row);
+            });
         });
     },
 
