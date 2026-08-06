@@ -16,6 +16,8 @@
 
 -- 1. XÓA BẢNG CŨ NẾU ĐÃ TỒN TẠI
 DROP TABLE IF EXISTS AuthSessions CASCADE;
+DROP TABLE IF EXISTS InvoiceAccountSettings CASCADE;
+DROP TABLE IF EXISTS InvoiceTemplates CASCADE;
 DROP TABLE IF EXISTS TaskRequests CASCADE;
 DROP TABLE IF EXISTS Scores CASCADE;
 DROP TABLE IF EXISTS SessionDetails CASCADE;
@@ -169,6 +171,30 @@ CREATE TABLE AiConversations (
     OwnerId VARCHAR(50) NOT NULL,
     OwnerRole VARCHAR(20) NOT NULL,
     MessagesData JSONB NOT NULL DEFAULT '[]'::jsonb,
+    UpdatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (OwnerId, OwnerRole)
+);
+
+-- 6B. MẪU NỘI DUNG PHIẾU HỌC PHÍ THEO TỪNG HỌC SINH
+CREATE TABLE InvoiceTemplates (
+    OwnerId VARCHAR(50) NOT NULL,
+    OwnerRole VARCHAR(20) NOT NULL,
+    StudentId VARCHAR(50) NOT NULL,
+    TemplateData JSONB NOT NULL DEFAULT '{}'::jsonb,
+    UpdatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (OwnerId, OwnerRole, StudentId)
+);
+CREATE INDEX idx_invoicetemplates_student ON InvoiceTemplates (StudentId);
+
+-- 6C. SETUP PHIẾU HỌC PHÍ DÙNG CHUNG CHO MỖI TÀI KHOẢN
+CREATE TABLE InvoiceAccountSettings (
+    OwnerId VARCHAR(50) NOT NULL,
+    OwnerRole VARCHAR(20) NOT NULL,
+    TeacherName TEXT NOT NULL DEFAULT '',
+    TeacherPhone VARCHAR(30) NOT NULL DEFAULT '',
+    BankAccountNumber VARCHAR(60) NOT NULL DEFAULT '',
+    BankAccountHolder TEXT NOT NULL DEFAULT '',
+    QrDataUrl TEXT NOT NULL DEFAULT '',
     UpdatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (OwnerId, OwnerRole)
 );

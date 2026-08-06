@@ -271,7 +271,8 @@ const requestImageJsonParser = express.json({ limit: '18mb', strict: true });
 app.use((req, res, next) => {
     const isRequestWrite = ['POST', 'PUT'].includes(req.method)
         && /^\/api\/requests(?:\/[^/]+)?$/.test(req.path);
-    return isRequestWrite ? requestImageJsonParser(req, res, next) : next();
+    const isInvoiceSetupWrite = req.method === 'PUT' && req.path === '/api/account/invoice-setup';
+    return (isRequestWrite || isInvoiceSetupWrite) ? requestImageJsonParser(req, res, next) : next();
 });
 app.use(express.json({ limit: '512kb', strict: true }));
 
@@ -670,6 +671,22 @@ let poolPromise = pgPool.query('SELECT 1')
             await pgPool.query('CREATE INDEX IF NOT EXISTS idx_invoicetemplates_student ON InvoiceTemplates (StudentId)');
         } catch (migErr) {
             console.error('InvoiceTemplates migration error:', migErr.message);
+        }
+
+        try {
+            await pgPool.query(`CREATE TABLE IF NOT EXISTS InvoiceAccountSettings (
+                OwnerId VARCHAR(50) NOT NULL,
+                OwnerRole VARCHAR(20) NOT NULL,
+                TeacherName TEXT NOT NULL DEFAULT '',
+                TeacherPhone VARCHAR(30) NOT NULL DEFAULT '',
+                BankAccountNumber VARCHAR(60) NOT NULL DEFAULT '',
+                BankAccountHolder TEXT NOT NULL DEFAULT '',
+                QrDataUrl TEXT NOT NULL DEFAULT '',
+                UpdatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (OwnerId, OwnerRole)
+            )`);
+        } catch (migErr) {
+            console.error('InvoiceAccountSettings migration error:', migErr.message);
         }
 
         try {
@@ -3329,10 +3346,6 @@ app.put('/api/students/:studentId/set-paid', requireRole('teacher'), requireTeac
 });
 
 const INVOICE_TEMPLATE_FIELD_LIMITS = Object.freeze({
-    teacherName: 160,
-    teacherPhone: 30,
-    bankAccountNumber: 60,
-    bankAccountHolder: 160,
     overview: 4000,
     algebraLabel: 80,
     algebra: 4000,
@@ -3345,8 +3358,6 @@ const INVOICE_TEMPLATE_FIELD_LIMITS = Object.freeze({
 });
 
 const INVOICE_TEMPLATE_FIELD_DEFAULTS = Object.freeze({
-    bankAccountNumber: '0978783058',
-    bankAccountHolder: 'Nguyễn Thanh Thúy',
     algebraLabel: 'Đại số',
     geometryLabel: 'Hình học'
 });
@@ -3363,6 +3374,129 @@ function normalizeInvoiceTemplate(rawTemplate) {
             .normalize('NFC').trim().slice(0, maxLength)
     ]));
 }
+
+const INVOICE_SETUP_FIELD_LIMITS = Object.freeze({
+    teacherName: 160,
+    teacherPhone: 30,
+    bankAccountNumber: 60,
+    bankAccountHolder: 160
+});
+const INVOICE_SETUP_REQUIRED_FIELDS = Object.freeze([
+    'teacherName',
+    'teacherPhone',
+    'bankAccountNumber',
+    'bankAccountHolder',
+    'qrDataUrl'
+]);
+const INVOICE_SETUP_FIELD_LABELS = Object.freeze({
+    teacherName: 'Tên giáo viên',
+    teacherPhone: 'Số điện thoại',
+    bankAccountNumber: 'Số tài khoản',
+    bankAccountHolder: 'Chủ tài khoản',
+    qrDataUrl: 'Ảnh QR thanh toán'
+});
+const MAX_INVOICE_QR_BYTES = 5 * 1024 * 1024;
+const MAX_INVOICE_QR_DATA_URL_LENGTH = 7_500_000;
+
+function normalizeInvoiceAccountSetup(rawSetup) {
+    const source = rawSetup && typeof rawSetup === 'object' && !Array.isArray(rawSetup) ? rawSetup : {};
+    const setup = Object.fromEntries(Object.entries(INVOICE_SETUP_FIELD_LIMITS).map(([field, maxLength]) => [
+        field,
+        String(source[field] || '').normalize('NFC').trim().slice(0, maxLength)
+    ]));
+    setup.qrDataUrl = String(source.qrDataUrl || '').trim();
+    return setup;
+}
+
+function getMissingInvoiceSetupFields(setup) {
+    return INVOICE_SETUP_REQUIRED_FIELDS.filter(field => !String(setup?.[field] || '').trim());
+}
+
+function isValidInvoiceQrDataUrl(value) {
+    if (!value || value.length > MAX_INVOICE_QR_DATA_URL_LENGTH) return false;
+    const match = value.match(/^data:image\/(?:png|jpe?g|webp);base64,([A-Za-z0-9+/]+={0,2})$/i);
+    if (!match) return false;
+    const base64 = match[1];
+    const padding = base64.endsWith('==') ? 2 : (base64.endsWith('=') ? 1 : 0);
+    const decodedBytes = Math.floor(base64.length * 3 / 4) - padding;
+    return decodedBytes <= MAX_INVOICE_QR_BYTES;
+}
+
+function buildInvoiceSetupResponse(setup) {
+    const normalizedSetup = normalizeInvoiceAccountSetup(setup);
+    const missingFields = getMissingInvoiceSetupFields(normalizedSetup);
+    return {
+        setup: normalizedSetup,
+        complete: missingFields.length === 0,
+        missingFields,
+        missingLabels: missingFields.map(field => INVOICE_SETUP_FIELD_LABELS[field])
+    };
+}
+
+app.get('/api/account/invoice-setup', requireRole('teacher', 'assistant'), async (req, res) => {
+    try {
+        const result = await pgPool.query(
+            `SELECT TeacherName AS "teacherName",
+                    TeacherPhone AS "teacherPhone",
+                    BankAccountNumber AS "bankAccountNumber",
+                    BankAccountHolder AS "bankAccountHolder",
+                    QrDataUrl AS "qrDataUrl"
+             FROM InvoiceAccountSettings
+             WHERE OwnerId = $1 AND OwnerRole = $2`,
+            [req.authUser.userId, req.authUser.role]
+        );
+        res.json(buildInvoiceSetupResponse(result.rows[0] || {}));
+    } catch (err) {
+        console.error('[GET /api/account/invoice-setup]', err);
+        res.status(500).json({ error: 'Không thể tải setup phiếu học phí.' });
+    }
+});
+
+app.put('/api/account/invoice-setup', requireRole('teacher', 'assistant'), async (req, res) => {
+    if (!req.body?.setup || typeof req.body.setup !== 'object' || Array.isArray(req.body.setup)) {
+        return res.status(400).json({ error: 'Setup phiếu học phí không hợp lệ.' });
+    }
+    const setup = normalizeInvoiceAccountSetup(req.body.setup);
+    const missingFields = getMissingInvoiceSetupFields(setup);
+    if (missingFields.length > 0) {
+        return res.status(400).json({
+            error: `Vui lòng nhập đủ: ${missingFields.map(field => INVOICE_SETUP_FIELD_LABELS[field]).join(', ')}.`
+        });
+    }
+    if (!/^[0-9+()\-\s]{8,20}$/.test(setup.teacherPhone)) {
+        return res.status(400).json({ error: 'Số điện thoại trên phiếu không hợp lệ.' });
+    }
+    if (!isValidInvoiceQrDataUrl(setup.qrDataUrl)) {
+        return res.status(400).json({ error: 'Ảnh QR phải là PNG, JPG hoặc WebP và không vượt quá 5MB.' });
+    }
+    try {
+        await pgPool.query(
+            `INSERT INTO InvoiceAccountSettings
+                (OwnerId, OwnerRole, TeacherName, TeacherPhone, BankAccountNumber, BankAccountHolder, QrDataUrl, UpdatedAt)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+             ON CONFLICT (OwnerId, OwnerRole)
+             DO UPDATE SET TeacherName = EXCLUDED.TeacherName,
+                           TeacherPhone = EXCLUDED.TeacherPhone,
+                           BankAccountNumber = EXCLUDED.BankAccountNumber,
+                           BankAccountHolder = EXCLUDED.BankAccountHolder,
+                           QrDataUrl = EXCLUDED.QrDataUrl,
+                           UpdatedAt = CURRENT_TIMESTAMP`,
+            [
+                req.authUser.userId,
+                req.authUser.role,
+                setup.teacherName,
+                setup.teacherPhone,
+                setup.bankAccountNumber,
+                setup.bankAccountHolder,
+                setup.qrDataUrl
+            ]
+        );
+        res.json(buildInvoiceSetupResponse(setup));
+    } catch (err) {
+        console.error('[PUT /api/account/invoice-setup]', err);
+        res.status(500).json({ error: 'Không thể lưu setup phiếu học phí.' });
+    }
+});
 
 async function canAccessInvoiceTemplateStudent(req, studentId) {
     const result = await pgPool.query(

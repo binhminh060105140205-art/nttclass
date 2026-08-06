@@ -21,12 +21,178 @@
 
 Object.assign(PinkyClassApp.prototype, {
 
+    getInvoiceSetupFieldLabels() {
+        return {
+            teacherName: 'Tên giáo viên',
+            teacherPhone: 'Số điện thoại',
+            bankAccountNumber: 'Số tài khoản',
+            bankAccountHolder: 'Chủ tài khoản',
+            qrDataUrl: 'Ảnh QR thanh toán'
+        };
+    },
+
+    getMissingInvoiceSetupFields(setup = this._invoiceSetup) {
+        return Object.keys(this.getInvoiceSetupFieldLabels()).filter(field => !String(setup?.[field] || '').trim());
+    },
+
+    isInvoiceSetupComplete(setup = this._invoiceSetup) {
+        return this.getMissingInvoiceSetupFields(setup).length === 0;
+    },
+
+    async loadInvoiceSetup({ force = false } = {}) {
+        if (!['teacher', 'assistant'].includes(this.currentRole)) return null;
+        if (!force && this._invoiceSetupLoaded) return this._invoiceSetup;
+        if (!force && this._invoiceSetupLoadPromise) return this._invoiceSetupLoadPromise;
+
+        this._invoiceSetupLoadPromise = (async () => {
+            const response = await this.authFetch(`${API_BASE_URL}/api/account/invoice-setup`, { cache: 'no-store' });
+            const data = await this.requireApiSuccess(response, 'Không thể tải setup phiếu học phí.');
+            this._invoiceSetup = data?.setup || null;
+            this._invoiceSetupLoaded = true;
+            this._invoiceQrDataUrl = this._invoiceSetup?.qrDataUrl || null;
+            this.applyInvoiceSetupToSettings(this._invoiceSetup);
+            this.updateInvoiceSetupGate();
+            return this._invoiceSetup;
+        })();
+
+        try {
+            return await this._invoiceSetupLoadPromise;
+        } finally {
+            this._invoiceSetupLoadPromise = null;
+        }
+    },
+
+    applyInvoiceSetupToSettings(setup = this._invoiceSetup) {
+        const values = {
+            teacherName: setup?.teacherName || this.currentUser?.name || '',
+            teacherPhone: setup?.teacherPhone || '',
+            bankAccountNumber: setup?.bankAccountNumber || '',
+            bankAccountHolder: setup?.bankAccountHolder || ''
+        };
+        Object.entries(values).forEach(([field, value]) => {
+            const input = document.getElementById(`settingsInvoice${field.charAt(0).toUpperCase()}${field.slice(1)}`);
+            if (input) input.value = value;
+        });
+        this.setInvoiceSetupQrImage(setup?.qrDataUrl || null, { updateSavedSetup: false });
+        this.updateInvoiceSetupDraftStatus();
+    },
+
+    setInvoiceSetupQrImage(dataUrl, { updateSavedSetup = false } = {}) {
+        this._invoiceSetupDraftQrDataUrl = dataUrl || null;
+        if (updateSavedSetup && this._invoiceSetup) this._invoiceSetup.qrDataUrl = dataUrl || '';
+
+        const previewWrap = document.getElementById('settingsInvoiceQrPreviewWrap');
+        const preview = document.getElementById('settingsInvoiceQrPreview');
+        const label = document.getElementById('settingsInvoiceQrLabel');
+        const input = document.getElementById('settingsInvoiceQrInput');
+        if (previewWrap && preview && label) {
+            if (this._invoiceSetupDraftQrDataUrl) {
+                preview.src = this._invoiceSetupDraftQrDataUrl;
+                previewWrap.hidden = false;
+                label.hidden = true;
+            } else {
+                preview.removeAttribute('src');
+                previewWrap.hidden = true;
+                label.hidden = false;
+                if (input) input.value = '';
+            }
+        }
+        this.updateInvoiceSetupDraftStatus();
+    },
+
+    readInvoiceSetupSettingsForm() {
+        return {
+            teacherName: String(document.getElementById('settingsInvoiceTeacherName')?.value || '').normalize('NFC').trim(),
+            teacherPhone: String(document.getElementById('settingsInvoiceTeacherPhone')?.value || '').normalize('NFC').trim(),
+            bankAccountNumber: String(document.getElementById('settingsInvoiceBankAccountNumber')?.value || '').normalize('NFC').trim(),
+            bankAccountHolder: String(document.getElementById('settingsInvoiceBankAccountHolder')?.value || '').normalize('NFC').trim(),
+            qrDataUrl: this._invoiceSetupDraftQrDataUrl || ''
+        };
+    },
+
+    updateInvoiceSetupDraftStatus() {
+        const status = document.getElementById('invoiceSetupStatus');
+        if (!status || !document.getElementById('settingsInvoiceTeacherName')) return;
+        const draft = this.readInvoiceSetupSettingsForm();
+        const missingFields = this.getMissingInvoiceSetupFields(draft);
+        const labels = this.getInvoiceSetupFieldLabels();
+        status.classList.toggle('is-complete', missingFields.length === 0);
+        status.classList.toggle('is-incomplete', missingFields.length > 0);
+        status.textContent = missingFields.length === 0
+            ? 'Đã nhập đủ. Bấm lưu để dùng tự động cho mọi phiếu.'
+            : `Chưa đủ: ${missingFields.map(field => labels[field]).join(', ')}.`;
+    },
+
+    async saveInvoiceSetup() {
+        const setup = this.readInvoiceSetupSettingsForm();
+        const missingFields = this.getMissingInvoiceSetupFields(setup);
+        const labels = this.getInvoiceSetupFieldLabels();
+        if (missingFields.length > 0) {
+            this.showToast(`Vui lòng nhập đủ: ${missingFields.map(field => labels[field]).join(', ')}.`, 'error');
+            return false;
+        }
+        if (!/^[0-9+()\-\s]{8,20}$/.test(setup.teacherPhone)) {
+            this.showToast('Số điện thoại trên phiếu không hợp lệ.', 'error');
+            return false;
+        }
+
+        this.setBtnLoading('btnSaveInvoiceSetup', true, 'Đang lưu setup...');
+        try {
+            const response = await this.authFetch(`${API_BASE_URL}/api/account/invoice-setup`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ setup })
+            });
+            const data = await this.requireApiSuccess(response, 'Không thể lưu setup phiếu học phí.');
+            this._invoiceSetup = data?.setup || setup;
+            this._invoiceSetupLoaded = true;
+            this._invoiceQrDataUrl = this._invoiceSetup.qrDataUrl || null;
+            this.applyInvoiceSetupToSettings(this._invoiceSetup);
+            this.updateInvoiceSetupGate();
+            this.showToast('Đã lưu Setup phiếu học phí cho tài khoản này.', 'success');
+
+            const pendingStudentId = this._pendingInvoiceStudentId;
+            this._pendingInvoiceStudentId = null;
+            if (pendingStudentId) {
+                this.closeModal('accountSettingsModal');
+                await this.openInvoiceModal(pendingStudentId);
+            } else if (document.getElementById('invoiceModal')?.classList.contains('show')) {
+                this.scheduleInvoiceLivePreview(0);
+            }
+            return true;
+        } catch (error) {
+            this.showToast(error.message || 'Không thể lưu setup phiếu học phí.', 'error');
+            return false;
+        } finally {
+            this.setBtnLoading('btnSaveInvoiceSetup', false);
+        }
+    },
+
+    async openInvoiceSetupFromInvoice() {
+        this._pendingInvoiceStudentId = String(document.getElementById('invoiceStudentId')?.value || this._invoiceStudentId || '');
+        this.closeModal('invoiceModal');
+        await this.openSettingsModal({ focusInvoiceSetup: true });
+    },
+
+    updateInvoiceSetupGate() {
+        const complete = this.isInvoiceSetupComplete();
+        const banner = document.getElementById('invoiceSetupRequiredBanner');
+        const summary = document.getElementById('invoiceSetupSummary');
+        const exportImageButton = document.getElementById('btnExportInvoice');
+        const exportPdfButton = document.getElementById('btnExportInvoicePdf');
+        if (banner) banner.hidden = complete;
+        if (exportImageButton) exportImageButton.disabled = !complete;
+        if (exportPdfButton) exportPdfButton.disabled = !complete;
+        if (summary) {
+            summary.textContent = complete
+                ? `${this._invoiceSetup.teacherName} · STK ${this._invoiceSetup.bankAccountNumber}`
+                : 'Chưa có Setup phiếu học phí đầy đủ.';
+        }
+        return complete;
+    },
+
     getInvoiceTemplateFields() {
         return {
-            teacherName: 'invoiceTeacherName',
-            teacherPhone: 'invoiceTeacherPhone',
-            bankAccountNumber: 'invoiceBankAccountNumber',
-            bankAccountHolder: 'invoiceBankAccountHolder',
             overview: 'invoiceOverview',
             algebraLabel: 'invoiceAlgebraLabel',
             algebra: 'invoiceAlgebra',
@@ -54,6 +220,7 @@ Object.assign(PinkyClassApp.prototype, {
             if (element) element.value = String(template[field] || '');
         });
         this.syncInvoiceCommentLabels();
+        this.scheduleInvoiceLivePreview();
     },
 
     getInvoiceCommentLabelConfig(field) {
@@ -118,6 +285,7 @@ Object.assign(PinkyClassApp.prototype, {
         const input = document.getElementById(config.inputId);
         if (input) input.value = this.normalizeInvoiceCommentLabel(nextLabel, config.fallback);
         this.syncInvoiceCommentLabels();
+        this.scheduleInvoiceLivePreview();
     },
 
     async loadInvoiceTemplate(studentId) {
@@ -157,7 +325,14 @@ Object.assign(PinkyClassApp.prototype, {
     async openInvoiceModal(studentId) {
         const st = this.students.find(s => s.id === studentId);
         if (!st) return;
-        this.closeInvoiceImagePreview();
+        try {
+            await this.loadInvoiceSetup();
+        } catch (error) {
+            this._invoiceSetup = null;
+            this._invoiceSetupLoaded = false;
+            this.showToast(error.message || 'Không thể tải setup phiếu học phí.', 'error');
+        }
+        this._invoiceQrDataUrl = this._invoiceSetup?.qrDataUrl || null;
 
         // Lưu TOÀN BỘ buổi học của học sinh này (không giới hạn theo bộ lọc
         // tháng/năm toàn cục) để người dùng có thể tự do chọn khoảng "Từ ngày
@@ -203,10 +378,6 @@ Object.assign(PinkyClassApp.prototype, {
             document.getElementById('invoiceTitle').value = `HỌC PHÍ THÁNG ${Number(titleMonth)}/${titleYear}`;
         }
 
-        document.getElementById('invoiceTeacherName').value = (this.currentUser && this.currentUser.name) || '';
-        document.getElementById('invoiceTeacherPhone').value = '';
-        document.getElementById('invoiceBankAccountNumber').value = '0978783058';
-        document.getElementById('invoiceBankAccountHolder').value = 'Nguyễn Thanh Thúy';
         document.getElementById('invoiceOverview').value = '';
         document.getElementById('invoiceAlgebraLabel').value = 'Đại số';
         document.getElementById('invoiceAlgebra').value = '';
@@ -218,11 +389,10 @@ Object.assign(PinkyClassApp.prototype, {
         document.getElementById('invoiceNote').value = 'Phụ huynh vui lòng kiểm tra thông tin học phí và lịch học trong tháng.';
         this.syncInvoiceCommentLabels();
 
-        // QR và các số liệu theo tháng luôn lấy mới, không lưu trong mẫu.
-        this.setInvoiceQrImage(null, { persist: false });
-
         this.recomputeInvoiceTotals();
         this.openModal('invoiceModal');
+        this.updateInvoiceSetupGate();
+        this.scheduleInvoiceLivePreview(0);
 
         const loadToken = `${studentId}:${Date.now()}`;
         this._invoiceTemplateLoadToken = loadToken;
@@ -232,33 +402,29 @@ Object.assign(PinkyClassApp.prototype, {
             if (this._invoiceTemplateLoadToken !== loadToken || this._invoiceStudentId !== studentId) return;
             if (JSON.stringify(this.readInvoiceTemplateForm()) !== initialTemplateState) return;
             this.applyInvoiceTemplate(template);
+            this.scheduleInvoiceLivePreview(0);
         } catch (error) {
             console.warn('[loadInvoiceTemplate]', error.message);
         }
     },
 
-    // Gán/xoá ảnh QR thanh toán đang dùng cho phiếu học phí và cập nhật khung
-    // xem trước. Dữ liệu chỉ tồn tại trong bộ nhớ của tab hiện tại.
-    setInvoiceQrImage(dataUrl, { persist = true } = {}) {
-        this._invoiceQrDataUrl = dataUrl || null;
+    setInvoiceLivePreviewState(message, state = 'loading') {
+        const status = document.getElementById('invoiceLivePreviewStatus');
+        if (!status) return;
+        status.textContent = message || '';
+        status.classList.toggle('is-ready', state === 'ready');
+        status.classList.toggle('is-error', state === 'error');
+    },
 
-        const wrap = document.getElementById('qrUploadPreviewWrap');
-        const preview = document.getElementById('qrUploadPreview');
-        const label = document.getElementById('qrUploadLabel');
-        const input = document.getElementById('invoiceQrInput');
-
-        if (this._invoiceQrDataUrl) {
-            preview.src = this._invoiceQrDataUrl;
-            wrap.style.display = '';
-            label.style.display = 'none';
-        } else {
-            preview.src = '';
-            wrap.style.display = 'none';
-            label.style.display = '';
-            if (input) input.value = '';
-        }
-
-
+    scheduleInvoiceLivePreview(delay = 260) {
+        if (!document.getElementById('invoiceModal')?.classList.contains('show')) return;
+        clearTimeout(this._invoiceLivePreviewTimer);
+        const renderToken = (this._invoiceLiveRenderToken || 0) + 1;
+        this._invoiceLiveRenderToken = renderToken;
+        this.setInvoiceLivePreviewState('Đang cập nhật phiếu...');
+        this._invoiceLivePreviewTimer = window.setTimeout(() => {
+            this.exportInvoice({ livePreview: true, renderToken });
+        }, Math.max(0, delay));
     },
 
     // Lọc this._invoiceAllSessions theo đúng khoảng "Từ ngày - Đến ngày" hiện
@@ -442,10 +608,11 @@ Object.assign(PinkyClassApp.prototype, {
         const groupUnit = groupCount > 0 ? Math.round(groupSum / groupCount) : 0;
         const nfc = value => String(value || '').normalize('NFC').trim();
         const title = nfc(document.getElementById('invoiceTitle').value) || 'PHIẾU HỌC PHÍ';
-        const teacherName = nfc(document.getElementById('invoiceTeacherName').value) || nfc(this.currentUser && this.currentUser.name) || 'Giáo viên phụ trách';
-        const teacherPhone = nfc(document.getElementById('invoiceTeacherPhone').value) || '-';
-        const bankAccountNumber = nfc(document.getElementById('invoiceBankAccountNumber').value) || '-';
-        const bankAccountHolder = nfc(document.getElementById('invoiceBankAccountHolder').value) || '-';
+        const setup = this._invoiceSetup || {};
+        const teacherName = nfc(setup.teacherName) || 'Chưa setup tên giáo viên';
+        const teacherPhone = nfc(setup.teacherPhone) || '-';
+        const bankAccountNumber = nfc(setup.bankAccountNumber) || '-';
+        const bankAccountHolder = nfc(setup.bankAccountHolder) || '-';
         const overview = nfc(document.getElementById('invoiceOverview').value);
         const algebraLabel = nfc(document.getElementById('invoiceAlgebraLabel').value) || 'Đại số';
         const algebra = nfc(document.getElementById('invoiceAlgebra').value);
@@ -733,6 +900,11 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     async exportInvoicePdf() {
+        if (!this.updateInvoiceSetupGate()) {
+            this.showToast('Hãy nhập đủ Setup phiếu học phí trước khi xuất PDF.', 'error');
+            await this.openInvoiceSetupFromInvoice();
+            return;
+        }
         const definition = this.buildInvoicePdfDefinition();
         if (!definition) return;
         this.setBtnLoading('btnExportInvoicePdf', true, 'Đang tạo PDF...');
@@ -774,59 +946,20 @@ Object.assign(PinkyClassApp.prototype, {
         }
     },
 
-    clearInvoiceImagePreview() {
-        const previewImage = document.getElementById('invoiceImagePreview');
-        if (this._invoicePreviewObjectUrl) URL.revokeObjectURL(this._invoicePreviewObjectUrl);
-        this._invoicePreviewBlob = null;
-        this._invoicePreviewFilename = '';
-        this._invoicePreviewObjectUrl = '';
-        if (previewImage) previewImage.removeAttribute('src');
-    },
-
-    closeInvoiceImagePreview() {
-        const previewModal = document.getElementById('invoiceImagePreviewModal');
-        if (previewModal) previewModal.classList.remove('show');
-        this.clearInvoiceImagePreview();
-    },
-
-    showInvoiceImagePreview(blob, filename) {
-        const previewImage = document.getElementById('invoiceImagePreview');
-        if (!previewImage || !(blob instanceof Blob)) throw new Error('Không thể tạo bản xem trước phiếu học phí.');
-        this.clearInvoiceImagePreview();
-        this._invoicePreviewBlob = blob;
-        this._invoicePreviewFilename = filename;
-        this._invoicePreviewObjectUrl = URL.createObjectURL(blob);
-        previewImage.src = this._invoicePreviewObjectUrl;
-        this.openModal('invoiceImagePreviewModal');
-    },
-
-    async prepareInvoiceImagePreview(canvas, student) {
+    async downloadInvoiceCanvas(canvas, student) {
         const blob = await new Promise((resolve, reject) => {
             canvas.toBlob(result => {
                 if (result) resolve(result);
-                else reject(new Error('Không thể tạo dữ liệu ảnh xem trước.'));
+                else reject(new Error('Không thể tạo dữ liệu ảnh phiếu học phí.'));
             }, 'image/png');
         });
         const todayStr = this.toISODateOnly(new Date());
         const safeStudentName = String(student?.name || 'HocSinh').normalize('NFC').replace(/\s+/g, '');
-        this.showInvoiceImagePreview(blob, `PhieuHocPhi_${safeStudentName}_${todayStr}.png`);
-    },
-
-    async confirmInvoiceImageExport() {
-        const previewBlob = this._invoicePreviewBlob;
-        const previewFilename = this._invoicePreviewFilename;
-        if (!(previewBlob instanceof Blob) || !previewFilename) {
-            this.showToast('Bản xem trước đã hết hạn. Vui lòng tạo lại ảnh.', 'error');
-            this.closeInvoiceImagePreview();
-            return;
-        }
-
-        this.setBtnLoading('btnConfirmInvoiceImageExport', true, 'Đang xuất ảnh...');
-        let downloadUrl = '';
+        const filename = `PhieuHocPhi_${safeStudentName}_${todayStr}.png`;
+        let downloadUrl = URL.createObjectURL(blob);
         try {
-            downloadUrl = URL.createObjectURL(previewBlob);
             const link = document.createElement('a');
-            link.download = previewFilename;
+            link.download = filename;
             link.href = downloadUrl;
             document.body.appendChild(link);
             link.click();
@@ -836,24 +969,24 @@ Object.assign(PinkyClassApp.prototype, {
             downloadUrl = '';
             await this.saveInvoiceTemplate();
             this.showToast('Đã xuất phiếu học phí dạng ảnh thành công!', 'success');
-            this.closeInvoiceImagePreview();
             this.closeModal('invoiceModal');
         } catch (err) {
             if (downloadUrl) URL.revokeObjectURL(downloadUrl);
-            console.error('Lỗi xác nhận xuất phiếu học phí:', err);
+            console.error('Lỗi tải ảnh phiếu học phí:', err);
             this.showToast(err.message || 'Không thể xuất ảnh phiếu học phí.', 'error');
-        } finally {
-            this.setBtnLoading('btnConfirmInvoiceImageExport', false);
         }
     },
 
-    // Render phiếu học phí ra 1 file ẢNH (PNG) chất lượng cao, dựa trên dữ
-    // liệu đã điền sẵn + phần nhận xét giáo viên vừa nhập thêm trong form.
-    // Trước đây mở cửa sổ mới rồi gọi window.print() (xuất PDF qua hộp thoại
-    // in của trình duyệt); nay dựng phiếu trong 1 khung ẩn ngay trên trang,
-    // đợi font/ảnh QR tải xong rồi dùng html2canvas tạo bản xem trước. Chỉ khi
-    // người dùng xác nhận trong màn xem trước thì file ảnh mới được tải xuống.
-    async exportInvoice() {
+    // Render phiếu học phí ra ảnh PNG. Cùng một luồng dựng ảnh được dùng cho
+    // phần xem trực tiếp bên phải và cho file chất lượng cao khi bấm xuất.
+    async exportInvoice(options = {}) {
+        const isLivePreview = options.livePreview === true;
+        const renderToken = options.renderToken || 0;
+        if (!isLivePreview && !this.updateInvoiceSetupGate()) {
+            this.showToast('Hãy nhập đủ Setup phiếu học phí trước khi xuất ảnh.', 'error');
+            await this.openInvoiceSetupFromInvoice();
+            return;
+        }
         const studentId = document.getElementById('invoiceStudentId').value;
         const st = this.students.find(s => s.id === studentId);
         if (!st) return;
@@ -886,10 +1019,11 @@ Object.assign(PinkyClassApp.prototype, {
         const groupUnit = groupCount > 0 ? Math.round(groupSum / groupCount) : 0;
 
         const title = document.getElementById('invoiceTitle').value.trim() || 'PHIẾU HỌC PHÍ';
-        const teacherName = document.getElementById('invoiceTeacherName').value.trim() || (this.currentUser && this.currentUser.name) || 'Giáo viên phụ trách';
-        const teacherPhone = document.getElementById('invoiceTeacherPhone').value.trim();
-        const bankAccountNumber = document.getElementById('invoiceBankAccountNumber').value.trim() || '-';
-        const bankAccountHolder = document.getElementById('invoiceBankAccountHolder').value.trim() || '-';
+        const setup = this._invoiceSetup || {};
+        const teacherName = String(setup.teacherName || '').trim() || 'CHƯA SETUP TÊN GIÁO VIÊN';
+        const teacherPhone = String(setup.teacherPhone || '').trim();
+        const bankAccountNumber = String(setup.bankAccountNumber || '').trim() || '-';
+        const bankAccountHolder = String(setup.bankAccountHolder || '').trim() || '-';
         const overview = document.getElementById('invoiceOverview').value.trim();
         const algebraLabel = this.getInvoiceCommentLabel('algebra');
         const algebra = document.getElementById('invoiceAlgebra').value.trim();
@@ -1071,7 +1205,7 @@ Object.assign(PinkyClassApp.prototype, {
     </div>
 </div>`;
 
-        this.setBtnLoading('btnExportInvoice', true, 'Đang tạo bản xem trước...');
+        if (!isLivePreview) this.setBtnLoading('btnExportInvoice', true, 'Đang xuất ảnh...');
 
         // Dựng khung ẩn NGOÀI vùng nhìn thấy (không dùng display:none, vì
         // html2canvas cần layout thật để đo/vẽ đúng) để chụp ảnh.
@@ -1082,7 +1216,7 @@ Object.assign(PinkyClassApp.prototype, {
         holder.style.zIndex = '-1';
         holder.innerHTML = sheetHTML;
         document.body.appendChild(holder);
-        const captureEl = document.getElementById('invoiceExportSheet');
+        const captureEl = holder.querySelector('#invoiceExportSheet');
         const reviewSection = captureEl.querySelector('.plain-section');
         reviewSection.querySelectorAll('.plain-row').forEach(row => {
             const rowValue = row.textContent.split(':').slice(1).join(':').trim();
@@ -1108,18 +1242,31 @@ Object.assign(PinkyClassApp.prototype, {
 
             const html2canvas = await this.ensureHtml2Canvas();
             const canvas = await html2canvas(captureEl, {
-                scale: 3, // ảnh nét, độ phân giải cao
+                scale: isLivePreview ? 1.35 : 3,
                 backgroundColor: colors.canvasBackground,
                 useCORS: true
             });
 
-            await this.prepareInvoiceImagePreview(canvas, st);
+            if (isLivePreview) {
+                if (renderToken !== this._invoiceLiveRenderToken) return;
+                const previewImage = document.getElementById('invoiceLivePreview');
+                if (previewImage) previewImage.src = canvas.toDataURL('image/png');
+                this.setInvoiceLivePreviewState('', 'ready');
+            } else {
+                await this.downloadInvoiceCanvas(canvas, st);
+            }
         } catch (err) {
-            console.error('Lỗi tạo bản xem trước phiếu học phí:', err);
-            this.showToast(err.message || 'Không thể tạo bản xem trước phiếu học phí.', 'error');
+            console.error('Lỗi tạo phiếu học phí:', err);
+            if (isLivePreview) {
+                if (renderToken === this._invoiceLiveRenderToken) {
+                    this.setInvoiceLivePreviewState(err.message || 'Không thể cập nhật phiếu.', 'error');
+                }
+            } else {
+                this.showToast(err.message || 'Không thể xuất ảnh phiếu học phí.', 'error');
+            }
         } finally {
-            document.body.removeChild(holder);
-            this.setBtnLoading('btnExportInvoice', false);
+            holder.remove();
+            if (!isLivePreview) this.setBtnLoading('btnExportInvoice', false);
         }
     }
 

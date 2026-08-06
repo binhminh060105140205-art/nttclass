@@ -315,9 +315,17 @@ Object.assign(PinkyClassApp.prototype, {
         });
 
         // Form Submit: Xuất phiếu học phí
-        document.getElementById('invoiceForm').addEventListener('submit', (e) => {
+        const invoiceForm = document.getElementById('invoiceForm');
+        invoiceForm.addEventListener('submit', (e) => {
             e.preventDefault();
             this.exportInvoice();
+        });
+        invoiceForm.addEventListener('input', () => this.scheduleInvoiceLivePreview());
+        invoiceForm.addEventListener('change', (event) => {
+            if (event.target.id === 'invoiceFromDate' || event.target.id === 'invoiceToDate') {
+                this.recomputeInvoiceTotals();
+            }
+            this.scheduleInvoiceLivePreview();
         });
 
         document.getElementById('monthlyPaymentForm').addEventListener('submit', (e) => {
@@ -346,13 +354,12 @@ Object.assign(PinkyClassApp.prototype, {
             console.error('[initRequestsFeature]', error);
         }
 
-        // Tải ảnh QR thanh toán lên phiếu học phí (tuỳ chọn) — đọc file thành
-        // base64 để nhúng thẳng vào ảnh xuất ra (không cần lưu file lên server).
-        document.getElementById('invoiceQrInput').addEventListener('change', (e) => {
+        // Ảnh QR được setup một lần theo tài khoản và tự động dùng cho mọi phiếu.
+        document.getElementById('settingsInvoiceQrInput')?.addEventListener('change', (e) => {
             const file = e.target.files && e.target.files[0];
             if (!file) return;
-            if (!file.type.startsWith('image/')) {
-                this.showToast('Vui lòng chọn 1 file ảnh (PNG/JPG) cho mã QR!', 'error');
+            if (!/^image\/(?:png|jpe?g|webp)$/i.test(file.type)) {
+                this.showToast('Vui lòng chọn ảnh PNG, JPG hoặc WebP cho mã QR.', 'error');
                 e.target.value = '';
                 return;
             }
@@ -362,21 +369,17 @@ Object.assign(PinkyClassApp.prototype, {
                 return;
             }
             const reader = new FileReader();
-            reader.onload = () => this.setInvoiceQrImage(reader.result);
+            reader.onload = () => this.setInvoiceSetupQrImage(reader.result);
             reader.onerror = () => this.showToast('Không đọc được ảnh QR, vui lòng thử lại.', 'error');
             reader.readAsDataURL(file);
         });
 
-        // Xoá ảnh QR đang chọn (quay lại trạng thái chưa có QR)
-        document.getElementById('btnRemoveQr').addEventListener('click', () => {
-            this.setInvoiceQrImage(null);
+        document.getElementById('btnRemoveSettingsInvoiceQr')?.addEventListener('click', () => {
+            this.setInvoiceSetupQrImage(null);
         });
-
-        // Khi giáo viên tự sửa "Từ ngày/Đến ngày" trong modal xuất phiếu, tính
-        // lại NGAY số buổi/học phí/giờ học tương ứng — trước đây 2 ô này chỉ
-        // để hiển thị, sửa xong không ảnh hưởng gì tới số liệu thực tế.
-        document.getElementById('invoiceFromDate').addEventListener('change', () => this.recomputeInvoiceTotals());
-        document.getElementById('invoiceToDate').addEventListener('change', () => this.recomputeInvoiceTotals());
+        document.getElementById('invoiceSetupSection')?.addEventListener('input', (event) => {
+            if (event.target.matches('input[type="text"]')) this.updateInvoiceSetupDraftStatus();
+        });
 
         // Student Manager Add Student Button
         document.getElementById('addNewStudentBtn').addEventListener('click', () => {

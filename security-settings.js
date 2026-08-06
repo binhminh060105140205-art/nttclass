@@ -12,7 +12,7 @@ Object.assign(PinkyClassApp.prototype, {
 
     // --- CÀI ĐẶT BẢO MẬT TÀI KHOẢN (KHI ĐÃ ĐĂNG NHẬP) ---
     
-    async openSettingsModal() {
+    async openSettingsModal(options = {}) {
         if (!this.currentUser) {
             this.showToast('Vui lòng đăng nhập để sử dụng tính năng này.', 'error');
             return;
@@ -25,6 +25,10 @@ Object.assign(PinkyClassApp.prototype, {
         if (adminThemeSection) {
             adminThemeSection.style.display = this.canManageUsers() ? 'block' : 'none';
         }
+        const invoiceSetupSection = document.getElementById('invoiceSetupSection');
+        const canSetupInvoice = ['teacher', 'assistant'].includes(this.currentRole);
+        if (invoiceSetupSection) invoiceSetupSection.hidden = !canSetupInvoice;
+        if (!options.focusInvoiceSetup) this._pendingInvoiceStudentId = null;
         this.updateAppThemeActiveButtons();
         this.openModal('accountSettingsModal');
 
@@ -84,6 +88,22 @@ Object.assign(PinkyClassApp.prototype, {
             this.updateThemeModeActiveButtons();
         } catch (err) {
             this.showToast(err.message || 'Lỗi khi kết nối máy chủ.', 'error');
+        }
+
+        if (canSetupInvoice && typeof this.loadInvoiceSetup === 'function') {
+            try {
+                const setup = await this.loadInvoiceSetup({ force: true });
+                this.applyInvoiceSetupToSettings(setup);
+            } catch (error) {
+                this.showToast(error.message || 'Không thể tải Setup phiếu học phí.', 'error');
+            }
+        }
+
+        if (options.focusInvoiceSetup && invoiceSetupSection) {
+            requestAnimationFrame(() => {
+                invoiceSetupSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                document.getElementById('settingsInvoiceTeacherName')?.focus({ preventScroll: true });
+            });
         }
     },
 

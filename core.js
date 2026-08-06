@@ -248,6 +248,13 @@ class PinkyClassApp {
         this.aiChatHistory = [];
         this.aiChatSavedLoaded = false;
         this._invoiceQrDataUrl = null;
+        this._invoiceSetup = null;
+        this._invoiceSetupLoaded = false;
+        this._invoiceSetupLoadPromise = null;
+        this._invoiceSetupDraftQrDataUrl = null;
+        this._invoiceLiveRenderToken = 0;
+        clearTimeout(this._invoiceLivePreviewTimer);
+        this._invoiceLivePreviewTimer = null;
         this._invoiceTemplateCache = new Map();
         this._invoiceTemplateLoadToken = null;
     }
