@@ -331,7 +331,18 @@ body {
     align-items: center;
     gap: 5px;
 }
-#invoiceModal .invoice-editable-label-row label { min-width: 0; }
+#invoiceModal .invoice-editable-label-row label {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+}
+#invoiceModal .invoice-editable-label-text {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 #invoiceModal .invoice-label-edit-btn {
     width: 25px;
     height: 25px;

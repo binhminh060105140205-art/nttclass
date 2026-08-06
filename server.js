@@ -3346,33 +3346,47 @@ app.put('/api/students/:studentId/set-paid', requireRole('teacher'), requireTeac
 });
 
 const INVOICE_TEMPLATE_FIELD_LIMITS = Object.freeze({
+    overviewLabel: 36,
     overview: 4000,
-    algebraLabel: 80,
+    algebraLabel: 36,
     algebra: 4000,
-    geometryLabel: 80,
+    geometryLabel: 36,
     geometry: 4000,
+    roadmapLabel: 36,
     roadmap: 4000,
+    scheduleLabel: 36,
     schedule: 4000,
+    tuitionLabel: 36,
     tuitionNote: 4000,
     note: 2000
 });
 
 const INVOICE_TEMPLATE_FIELD_DEFAULTS = Object.freeze({
+    overviewLabel: 'Tổng quan',
     algebraLabel: 'Đại số',
-    geometryLabel: 'Hình học'
+    geometryLabel: 'Hình học',
+    roadmapLabel: 'Lộ trình',
+    scheduleLabel: 'Lịch học',
+    tuitionLabel: 'Học phí'
 });
+
+const INVOICE_TEMPLATE_LABEL_FIELDS = new Set(Object.keys(INVOICE_TEMPLATE_FIELD_DEFAULTS));
 
 function normalizeInvoiceTemplate(rawTemplate) {
     const source = rawTemplate && typeof rawTemplate === 'object' && !Array.isArray(rawTemplate)
         ? rawTemplate
         : {};
-    return Object.fromEntries(Object.entries(INVOICE_TEMPLATE_FIELD_LIMITS).map(([field, maxLength]) => [
-        field,
-        String(Object.prototype.hasOwnProperty.call(source, field)
-            ? source[field]
-            : (INVOICE_TEMPLATE_FIELD_DEFAULTS[field] || ''))
-            .normalize('NFC').trim().slice(0, maxLength)
-    ]));
+    return Object.fromEntries(Object.entries(INVOICE_TEMPLATE_FIELD_LIMITS).map(([field, maxLength]) => {
+        const fallback = INVOICE_TEMPLATE_FIELD_DEFAULTS[field] || '';
+        let value = String(Object.prototype.hasOwnProperty.call(source, field) ? source[field] : fallback)
+            .normalize('NFC');
+        if (INVOICE_TEMPLATE_LABEL_FIELDS.has(field)) {
+            value = value.replace(/[\r\n:]+/g, ' ').replace(/\s+/g, ' ').trim() || fallback;
+        } else {
+            value = value.trim();
+        }
+        return [field, value.slice(0, maxLength)];
+    }));
 }
 
 const INVOICE_SETUP_FIELD_LIMITS = Object.freeze({
