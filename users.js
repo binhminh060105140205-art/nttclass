@@ -46,6 +46,9 @@ Object.assign(PinkyClassApp.prototype, {
     async renderUsersTable() {
         const tbody = document.getElementById('usersTableBody');
         if (!tbody) return;
+        const isProtectedOwner = String(this.currentUser?.id || '') === 'u_teacher';
+        const ownerPanel = document.getElementById('ownerAdminPanel');
+        if (ownerPanel) ownerPanel.hidden = !isProtectedOwner;
 
         try {
             const res = await this.authFetch(`${API_BASE_URL}/api/users`);
@@ -53,7 +56,7 @@ Object.assign(PinkyClassApp.prototype, {
             this.users = await res.json();
         } catch (err) {
             console.warn('Không tải được danh sách tài khoản: ', err.message);
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 20px;">Không thể tải danh sách tài khoản. Vui lòng kiểm tra kết nối máy chủ.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 20px;">Không thể tải danh sách tài khoản. Vui lòng kiểm tra kết nối máy chủ.</td></tr>`;
             return;
         }
 
@@ -63,27 +66,31 @@ Object.assign(PinkyClassApp.prototype, {
         }
 
         tbody.innerHTML = '';
-        this.users.forEach(u => {
+        this.users.forEach((u, index) => {
             const tr = document.createElement('tr');
             const userIdArg = this.escapeHtmlAttr(JSON.stringify(String(u.Id)));
             const isProtected = u.Id === 'u_teacher';
+            const canImpersonate = isProtectedOwner && !isProtected && !!u.Active;
             const activeBadge = u.Active
                 ? `<span class="badge" style="background: var(--hw-done-bg); color: var(--hw-done-text); border: 1px solid var(--hw-done-border);">Đang hoạt động</span>`
                 : `<span class="badge" style="background: var(--hw-not-done-bg); color: var(--hw-not-done-text); border: 1px solid var(--hw-not-done-border);">Đã vô hiệu hóa</span>`;
 
             tr.innerHTML = `
-                <td style="text-align:center; font-size:12px; color:var(--text-muted);">${this.escapeHtml(u.Id)}</td>
+                <td class="user-admin-index">${index + 1}</td>
                 <td><strong>${this.escapeHtml(u.Name)}</strong><div style="font-size:11px; margin-top:2px;">${activeBadge}</div></td>
                 <td>${this.escapeHtml(u.Username)}</td>
                 <td>${this.roleLabelText(u.Role)}</td>
                 <td>${u.Role === 'assistant' ? (this.escapeHtml(this.assignedTeacherName(u.AssignedTeacherId)) || '<span style="color:var(--text-muted);">Chưa gán</span>') : '<span style="color:var(--text-muted);">—</span>'}</td>
                 <td style="text-align:center;">
+                    <div class="user-admin-actions">
+                    ${canImpersonate ? `<button class="btn btn-primary btn-sm user-impersonate-btn" onclick="app.impersonateUser(${userIdArg})">Đăng nhập</button>` : ''}
                     <button class="btn btn-secondary btn-sm" onclick="app.openEditUserModal(${userIdArg})"> Sửa
                     </button>
                     <button class="btn ${u.Active ? 'btn-secondary' : 'btn-primary'} btn-sm" onclick="app.toggleUserActive(${userIdArg}, ${u.Active ? 'false' : 'true'})"> ${u.Active ? 'Khóa' : 'Mở khóa'}
                     </button>
                     <button class="btn btn-danger btn-sm" onclick="app.deleteUser(${userIdArg})"> Xóa
                     </button>
+                    </div>
                 </td>
             `;
             if (isProtected) {
@@ -230,6 +237,50 @@ Object.assign(PinkyClassApp.prototype, {
         await this.requireApiSuccess(res, 'Không thể xóa tài khoản.');
         this.showToast('Đã xóa tài khoản.', 'success');
         await this.runDeletionRefresh(() => this.renderUsersTable());
+    },
+
+    async impersonateUser(id) {
+        if (String(this.currentUser?.id || '') !== 'u_teacher') {
+            this.showToast('Chỉ tài khoản chủ Nguyễn Thanh Thúy mới dùng được chức năng này.', 'error');
+            return;
+        }
+        if (this._accountSwitchInProgress) return;
+        this._accountSwitchInProgress = true;
+        try {
+            const res = await this.authFetch(`${API_BASE_URL}/api/admin/impersonate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: id })
+            });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(payload.error || 'Không thể đăng nhập tài khoản này.');
+
+            this.clearSensitiveClientState();
+            await this.onLoginSuccess(payload, true);
+            this.showToast(`Đang đăng nhập thay tài khoản ${payload.name}.`, 'success');
+        } catch (error) {
+            this.showToast(error.message || 'Không thể đăng nhập tài khoản này.', 'error');
+        } finally {
+            this._accountSwitchInProgress = false;
+        }
+    },
+
+    async stopImpersonation() {
+        if (!this.currentUser?.impersonating || this._accountSwitchInProgress) return;
+        this._accountSwitchInProgress = true;
+        try {
+            const res = await this.authFetch(`${API_BASE_URL}/api/admin/impersonate/stop`, { method: 'POST' });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(payload.error || 'Không thể quay lại tài khoản Nguyễn Thanh Thúy.');
+
+            this.clearSensitiveClientState();
+            await this.onLoginSuccess(payload, true);
+            this.showToast('Đã quay lại tài khoản Nguyễn Thanh Thúy.', 'success');
+        } catch (error) {
+            this.showToast(error.message || 'Không thể quay lại tài khoản Nguyễn Thanh Thúy.', 'error');
+        } finally {
+            this._accountSwitchInProgress = false;
+        }
     },
 
     // ==========================================

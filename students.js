@@ -2,11 +2,28 @@
 // STUDENTS.JS — Trang "Hồ sơ học sinh": danh sách, thêm/sửa/xoá học sinh.
 // a================================================================
 Object.assign(PinkyClassApp.prototype, {
+    syncStudentGradeFilterOptions() {
+        const filterEl = document.getElementById("studentGradeFilter");
+        if (!filterEl) return;
+
+        const selectedGrade = filterEl.value;
+        const availableGrades = [...new Set((this.students || [])
+            .map(student => Number(student.gradeLevel))
+            .filter(grade => Number.isInteger(grade) && grade >= 1 && grade <= 12))]
+            .sort((a, b) => a - b);
+
+        filterEl.replaceChildren();
+        filterEl.add(new Option("Tất cả các lớp", ""));
+        availableGrades.forEach(grade => filterEl.add(new Option(`Lớp ${grade}`, String(grade))));
+        filterEl.value = availableGrades.includes(Number(selectedGrade)) ? selectedGrade : "";
+    },
+
     renderStudentList() {
         const tbody = document.getElementById("studentsTableBody");
         if (!tbody) return;
         tbody.innerHTML = "";
 
+        this.syncStudentGradeFilterOptions();
         const filterEl = document.getElementById("studentGradeFilter");
         const gradeFilter = filterEl ? filterEl.value : "";
         let list = this.students || [];

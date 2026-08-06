@@ -23,7 +23,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         const adminThemeSection = document.getElementById('adminAppThemeSection');
         if (adminThemeSection) {
-            adminThemeSection.style.display = this.currentRole === 'admin' ? 'block' : 'none';
+            adminThemeSection.style.display = this.canManageUsers() ? 'block' : 'none';
         }
         this.updateAppThemeActiveButtons();
         this.openModal('accountSettingsModal');
@@ -429,8 +429,8 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     async setAppTheme(theme) {
-        if (this.currentRole !== 'admin') {
-            this.showToast('Chỉ Admin được đổi giao diện toàn hệ thống.', 'error');
+        if (!this.canManageUsers()) {
+            this.showToast('Chỉ Admin hoặc tài khoản chủ Nguyễn Thanh Thúy được đổi giao diện toàn hệ thống.', 'error');
             return;
         }
 

@@ -30,7 +30,7 @@ class PinkyClassApp {
         // luôn quy đổi px <-> giờ:phút theo ĐÚNG 1 công thức, không thể lệch nhau.
         this.CAL_HOUR_START = 7;   // 07:00
         this.CAL_HOUR_END = 24;    // 24:00
-        this.CAL_HOUR_HEIGHT = 52; // px, phải khớp với .week-hour-label height trong CSS
+        this.CAL_HOUR_HEIGHT = 44; // px mỗi giờ: gọn hơn nhưng vẫn đủ chỗ đọc và kéo-thả
         this.calDrag = null; // Trạng thái đang kéo-thả 1 buổi học trên lịch tuần (null = không kéo)
         this.calCreateDrag = null; // Trạng thái đang kéo-CHỌN 1 khung giờ trống để tạo ca học mới (null = không kéo)
         this.repeatExtraDates = []; // Các ngày sẽ tạo thêm từ form "Ghi Buổi Học Mới"

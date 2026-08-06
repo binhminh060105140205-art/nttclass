@@ -701,11 +701,14 @@ let poolPromise = pgPool.query('SELECT 1')
                 AccountType VARCHAR(20) NOT NULL,
                 Role VARCHAR(20) NOT NULL,
                 AssignedTeacherId VARCHAR(120) NULL,
+                ActorUserId VARCHAR(120) NULL,
                 CreatedAt TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 LastSeenAt TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 ExpiresAt TIMESTAMPTZ NOT NULL
             )`);
+            await pgPool.query('ALTER TABLE AuthSessions ADD COLUMN IF NOT EXISTS ActorUserId VARCHAR(120) NULL');
             await pgPool.query('CREATE INDEX IF NOT EXISTS idx_authsessions_user ON AuthSessions (AccountType, UserId)');
+            await pgPool.query('CREATE INDEX IF NOT EXISTS idx_authsessions_actor ON AuthSessions (ActorUserId)');
             await pgPool.query('CREATE INDEX IF NOT EXISTS idx_authsessions_expiry ON AuthSessions (ExpiresAt)');
             await pgPool.query('DELETE FROM AuthSessions WHERE ExpiresAt <= CURRENT_TIMESTAMP');
         } catch (migrationError) {
@@ -785,13 +788,14 @@ async function createSession(res, authUser) {
     const now = Date.now();
     const expiresAt = new Date(now + SESSION_TTL_MS);
     await pgPool.query(`INSERT INTO AuthSessions
-        (SessionHash, UserId, AccountType, Role, AssignedTeacherId, CreatedAt, LastSeenAt, ExpiresAt)
-        VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $6)`, [
+        (SessionHash, UserId, AccountType, Role, AssignedTeacherId, ActorUserId, CreatedAt, LastSeenAt, ExpiresAt)
+        VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $7)`, [
         sessionHash,
         authUser.userId,
         authUser.accountType,
         authUser.role,
         authUser.assignedTeacherId || null,
+        authUser.actorUserId || null,
         expiresAt
     ]);
     sessionCache.set(sessionHash, {
@@ -815,14 +819,19 @@ async function revokeSessionsForAccount(accountType, userId, exceptSessionHash =
     if (!accountType || !userId) return;
     await poolPromise;
     const params = [accountType, userId];
-    let query = 'DELETE FROM AuthSessions WHERE AccountType = $1 AND UserId = $2';
+    const accountPredicate = accountType === 'user'
+        ? '((AccountType = $1 AND UserId = $2) OR ActorUserId = $2)'
+        : '(AccountType = $1 AND UserId = $2)';
+    let query = `DELETE FROM AuthSessions WHERE ${accountPredicate}`;
     if (exceptSessionHash) {
         params.push(exceptSessionHash);
         query += ' AND SessionHash <> $3';
     }
     await pgPool.query(query, params);
     for (const [sessionHash, session] of sessionCache) {
-        if (session.accountType === accountType && session.userId === userId && sessionHash !== exceptSessionHash) {
+        const belongsToAccount = session.accountType === accountType && session.userId === userId;
+        const belongsToActor = accountType === 'user' && session.actorUserId === userId;
+        if ((belongsToAccount || belongsToActor) && sessionHash !== exceptSessionHash) {
             sessionCache.delete(sessionHash);
         }
     }
@@ -844,13 +853,16 @@ async function parseToken(req) {
                         s.AccountType AS "accountType",
                         CASE WHEN s.AccountType = 'student' THEN 'student' ELSE u.Role END AS "role",
                         CASE WHEN s.AccountType = 'student' THEN st.TeacherId ELSE u.AssignedTeacherId END AS "assignedTeacherId",
+                        s.ActorUserId AS "actorUserId",
                         s.LastSeenAt AS "lastSeenAt", s.ExpiresAt AS "expiresAt"
                     FROM AuthSessions s
                     LEFT JOIN Users u ON s.AccountType = 'user' AND s.UserId = u.Id
                     LEFT JOIN Students st ON s.AccountType = 'student' AND s.UserId = st.Id
+                    LEFT JOIN Users actor ON s.ActorUserId = actor.Id
                     WHERE s.SessionHash = $1 AND s.ExpiresAt > CURRENT_TIMESTAMP
                       AND ((s.AccountType = 'user' AND u.Id IS NOT NULL AND u.Active = 1)
-                        OR (s.AccountType = 'student' AND st.Id IS NOT NULL AND COALESCE(st.AccountActive, TRUE) = TRUE))`, [sessionHash]);
+                        OR (s.AccountType = 'student' AND st.Id IS NOT NULL AND COALESCE(st.AccountActive, TRUE) = TRUE))
+                      AND (s.ActorUserId IS NULL OR (s.ActorUserId = $2 AND actor.Active = 1))`, [sessionHash, PROTECTED_OWNER_USER_ID]);
                 if (!result.rowCount) return null;
                 const row = result.rows[0];
                 return {
@@ -859,6 +871,7 @@ async function parseToken(req) {
                     accountType: row.accountType,
                     role: row.role,
                     assignedTeacherId: row.assignedTeacherId || null,
+                    actorUserId: row.actorUserId || null,
                     expiresAt: new Date(row.expiresAt).getTime(),
                     lastTouchedAt: new Date(row.lastSeenAt).getTime(),
                     validatedAt: now
@@ -890,7 +903,8 @@ async function parseToken(req) {
         userId: session.userId,
         accountType: session.accountType,
         role: session.role,
-        assignedTeacherId: session.assignedTeacherId
+        assignedTeacherId: session.assignedTeacherId,
+        actorUserId: session.actorUserId || null
     };
 }
 
@@ -927,6 +941,32 @@ function requireRole(...roles) {
             res.status(500).json({ error: 'Không thể xác thực quyền truy cập.' });
         }
     };
+}
+
+function hasAdminAccess(authUser) {
+    return authUser?.role === 'admin'
+        || (authUser?.accountType === 'user' && authUser?.userId === PROTECTED_OWNER_USER_ID);
+}
+
+function requireAdminAccess(req, res, next) {
+    return requireAuth(req, res, () => {
+        if (!hasAdminAccess(req.authUser)) {
+            return res.status(403).json({ error: 'Chỉ Admin hoặc tài khoản chủ Nguyễn Thanh Thúy mới có quyền truy cập.' });
+        }
+        next();
+    });
+}
+
+function requireProtectedOwner(req, res, next) {
+    return requireAuth(req, res, () => {
+        const isOwner = req.authUser?.accountType === 'user'
+            && req.authUser?.userId === PROTECTED_OWNER_USER_ID
+            && !req.authUser?.actorUserId;
+        if (!isOwner) {
+            return res.status(403).json({ error: 'Chỉ tài khoản chủ Nguyễn Thanh Thúy mới được đăng nhập thay tài khoản khác.' });
+        }
+        next();
+    });
 }
 
 function effectiveTeacherId(req) {
@@ -1016,7 +1056,7 @@ app.get('/api/app-settings/theme', async (req, res) => {
     }
 });
 
-app.put('/api/app-settings/theme', requireRole('admin'), async (req, res) => {
+app.put('/api/app-settings/theme', requireAdminAccess, async (req, res) => {
     const theme = String(req.body?.theme || '').trim();
     if (!['blue', 'lithos', 'pink'].includes(theme)) {
         return res.status(400).json({ error: 'Giao diện không hợp lệ.' });
@@ -1050,10 +1090,83 @@ app.get('/api/session', requireAuth, async (req, res) => {
             clearSessionCookie(res);
             return res.status(401).json({ error: 'Tài khoản không còn hoạt động.' });
         }
-        res.json(user);
+        res.json({
+            ...user,
+            impersonating: req.authUser.actorUserId === PROTECTED_OWNER_USER_ID,
+            impersonatorUserId: req.authUser.actorUserId || null
+        });
     } catch (error) {
         console.error('[GET /api/session]', error);
         res.status(500).json({ error: 'Không thể khôi phục phiên đăng nhập.' });
+    }
+});
+
+app.post('/api/admin/impersonate', requireProtectedOwner, async (req, res) => {
+    const targetUserId = String(req.body?.userId || '').trim();
+    if (!targetUserId) return res.status(400).json({ error: 'Thiếu tài khoản cần đăng nhập.' });
+    if (targetUserId === PROTECTED_OWNER_USER_ID) {
+        return res.status(400).json({ error: 'Bạn đang đăng nhập tài khoản chủ Nguyễn Thanh Thúy.' });
+    }
+
+    try {
+        const result = await pgPool.query(`SELECT target.Id AS "id", target.Username AS "username",
+                target.Name AS "name", target.Role AS "role", target.Active AS "active",
+                target.AssignedTeacherId AS "assignedTeacherId", teacher.Name AS "assignedTeacherName"
+            FROM Users target
+            LEFT JOIN Users teacher ON teacher.Id = target.AssignedTeacherId
+            WHERE target.Id = $1`, [targetUserId]);
+        const target = result.rows[0];
+        if (!target) return res.status(404).json({ error: 'Không tìm thấy tài khoản cần đăng nhập.' });
+        if (!target.active) return res.status(403).json({ error: 'Tài khoản này đang bị khóa.' });
+        if (target.role === 'assistant' && !target.assignedTeacherId) {
+            return res.status(403).json({ error: 'Trợ giảng chưa được gán cho giáo viên nên chưa thể đăng nhập.' });
+        }
+
+        if (req.authSessionHash) await deleteSessionByHash(req.authSessionHash);
+        await createSession(res, {
+            userId: target.id,
+            accountType: 'user',
+            role: target.role,
+            assignedTeacherId: target.assignedTeacherId || null,
+            actorUserId: PROTECTED_OWNER_USER_ID
+        });
+        console.log(`[IMPERSONATE] ${PROTECTED_OWNER_USER_ID} -> ${target.id}`);
+        res.json({
+            ...target,
+            impersonating: true,
+            impersonatorUserId: PROTECTED_OWNER_USER_ID
+        });
+    } catch (error) {
+        console.error('[POST /api/admin/impersonate]', error);
+        res.status(500).json({ error: 'Không thể đăng nhập thay tài khoản này.' });
+    }
+});
+
+app.post('/api/admin/impersonate/stop', requireAuth, async (req, res) => {
+    if (req.authUser.actorUserId !== PROTECTED_OWNER_USER_ID) {
+        return res.status(403).json({ error: 'Phiên hiện tại không phải phiên đăng nhập thay.' });
+    }
+
+    try {
+        const owner = await publicUserFromAuth({
+            userId: PROTECTED_OWNER_USER_ID,
+            accountType: 'user',
+            role: 'teacher',
+            assignedTeacherId: null
+        });
+        if (!owner) return res.status(403).json({ error: 'Tài khoản chủ Nguyễn Thanh Thúy không còn hoạt động.' });
+
+        if (req.authSessionHash) await deleteSessionByHash(req.authSessionHash);
+        await createSession(res, {
+            userId: owner.id,
+            accountType: 'user',
+            role: owner.role,
+            assignedTeacherId: owner.assignedTeacherId || null
+        });
+        res.json({ ...owner, impersonating: false, impersonatorUserId: null });
+    } catch (error) {
+        console.error('[POST /api/admin/impersonate/stop]', error);
+        res.status(500).json({ error: 'Không thể quay lại tài khoản Nguyễn Thanh Thúy.' });
     }
 });
 
@@ -1452,7 +1565,7 @@ app.post('/api/forgot-password/reset', otpIpRateLimit, otpRateLimit, async (req,
 });
 
 // GET tất cả users
-app.get('/api/users', requireRole('admin'), async (req, res) => {
+app.get('/api/users', requireAdminAccess, async (req, res) => {
     try {
         const pool   = await poolPromise;
         const result = await pool.request()
@@ -1465,7 +1578,7 @@ app.get('/api/users', requireRole('admin'), async (req, res) => {
 });
 
 // POST tạo user mới
-app.post('/api/users', requireRole('admin'), async (req, res) => {
+app.post('/api/users', requireAdminAccess, async (req, res) => {
     const { username, password, name, role, assignedTeacherId } = req.body || {};
     if (!username || !password || !name || !role) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc: username, password, name, role.' });
@@ -1529,7 +1642,7 @@ app.post('/api/users', requireRole('admin'), async (req, res) => {
 });
 
 // PUT cập nhật user (role/name/password, không đổi username)
-app.put('/api/users/:id', requireRole('admin'), async (req, res) => {
+app.put('/api/users/:id', requireAdminAccess, async (req, res) => {
     const { id } = req.params;
     const { name, role, password, active, assignedTeacherId } = req.body || {};
 
@@ -1594,7 +1707,7 @@ app.put('/api/users/:id', requireRole('admin'), async (req, res) => {
 });
 
 // DELETE user
-app.delete('/api/users/:id', requireRole('admin'), async (req, res) => {
+app.delete('/api/users/:id', requireAdminAccess, async (req, res) => {
     const { id } = req.params;
     if (req.authUser.userId === id) {
         return res.status(400).json({ error: 'Bạn không thể tự xóa tài khoản đang đăng nhập.' });

@@ -1819,7 +1819,7 @@ html[data-app-theme="blue"] #globalMonthFilter {
 /* Homework status badge (chỉ hiển thị, không thể bấm sửa ở bảng Nhật ký) */
 .custom-table td.student-log-homework-cell {
     text-align: center !important;
-    vertical-align: middle !important;
+    vertical-align: top !important;
 }
 
 .homework-badge {
@@ -1979,8 +1979,18 @@ html[data-app-theme="blue"] #globalMonthFilter {
 .student-log-note {
     color: var(--text-main);
     text-align: center;
-    vertical-align: middle !important;
+    vertical-align: top !important;
     font-weight: 400;
+}
+
+#studentLogsTable th {
+    font-size: 0.9062rem;
+    letter-spacing: 0.035em;
+}
+
+#studentLogsTable td.student-log-attitude-cell {
+    text-align: center;
+    vertical-align: top !important;
 }
 
 .log-student-picker {
@@ -1993,7 +2003,7 @@ html[data-app-theme="blue"] #globalMonthFilter {
 
 .select-arrow-picker {
     position: relative;
-    padding-right: 38px;
+    padding-right: 0;
 }
 
 .select-arrow-picker::after {
@@ -2011,7 +2021,7 @@ html[data-app-theme="blue"] #globalMonthFilter {
 
 .select-arrow-picker .student-select {
     width: 100%;
-    padding-right: 0;
+    padding-right: 38px;
 }
 
 .log-export-btn,
@@ -2851,6 +2861,11 @@ textarea.form-control {
     gap: 2px;
 }
 
+#view-scheduler .calendar-toolbar .btn,
+#view-scheduler .calendar-toolbar .cal-view-btn {
+    font-size: 0.8125rem;
+}
+
 .cal-view-btn {
     border: none;
     background: none;
@@ -3001,6 +3016,7 @@ textarea.form-control {
 }
 
 .week-calendar-wrapper {
+    position: relative;
     border: 1px solid var(--border-color);
     border-radius: 16px;
     overflow: hidden;
@@ -3083,6 +3099,10 @@ textarea.form-control {
     padding-right: 6px;
 }
 
+.week-hour-label.is-first-hour {
+    transform: translateY(4px);
+}
+
 /* Container chứa các đường kẻ ngang — trải dài HẾT chiều rộng thật (gutter +
    7 cột ngày) trong 1 lần vẽ duy nhất, dùng CHUNG toạ độ "top" với nhãn giờ
    (xem renderWeekCalendar trong app.js) nên không thể lệch nhau. */
@@ -3144,6 +3164,27 @@ textarea.form-control {
     opacity: 0.9;
     box-shadow: 0 8px 20px rgba(0,0,0,0.25);
     filter: brightness(1.05);
+}
+
+.week-calendar-wrapper.is-drag-edge-prev::after,
+.week-calendar-wrapper.is-drag-edge-next::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 12;
+    width: 52px;
+    pointer-events: none;
+}
+
+.week-calendar-wrapper.is-drag-edge-prev::after {
+    left: 0;
+    background: linear-gradient(90deg, rgba(var(--primary-rgb), 0.24), transparent);
+}
+
+.week-calendar-wrapper.is-drag-edge-next::after {
+    right: 0;
+    background: linear-gradient(270deg, rgba(var(--primary-rgb), 0.24), transparent);
 }
 
 .week-event-block.type-rieng {
@@ -3273,6 +3314,50 @@ textarea.form-control {
     color: var(--primary);
 }
 
+#quickSessionEntryModal .quick-entry-meta-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 12px;
+    background: var(--primary-soft);
+    border: 1px solid var(--primary-light);
+    border-radius: 12px;
+}
+
+#quickSessionEntryModal .quick-entry-meta-copy > div:first-child {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+#quickSessionEntryModal .quick-entry-meta-copy > div:last-child {
+    margin-top: 4px;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+#quickSessionEntryModal .quick-entry-status {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 11px;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+#quickSessionEntryModal .quick-entry-status.is-completed {
+    color: #047857;
+    background: #d1fae5;
+}
+
+#quickSessionEntryModal .quick-entry-status.is-upcoming {
+    color: var(--primary);
+    background: rgba(255, 255, 255, 0.72);
+}
+
 #quickSessionEntryModal .quick-entry-section-label {
     display: block;
     margin-bottom: 8px;
@@ -3287,6 +3372,12 @@ textarea.form-control {
 #quickSessionEntryModal .quick-entry-section-label.session-homework-label {
     color: #1e3a8a !important;
     font-weight: 400;
+}
+
+#quickSessionEntryModal .quick-entry-section-label.quick-entry-primary-label {
+    color: #111827 !important;
+    font-weight: 800;
+    text-transform: none;
 }
 
 #quickSessionEntryModal .quick-entry-detail-label {
@@ -3310,6 +3401,10 @@ textarea.form-control {
 
 [data-theme-mode="dark"] #quickSessionEntryModal .quick-entry-section-label.session-homework-label {
     color: #93c5fd !important;
+}
+
+[data-theme-mode="dark"] #quickSessionEntryModal .quick-entry-section-label.quick-entry-primary-label {
+    color: #f8fafc !important;
 }
 
 .quick-entry-score-entry {
@@ -4273,15 +4368,6 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
         min-width: 0;
         max-width: 100%;
     }
-    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-    select,
-    textarea,
-    .form-control,
-    .form-select,
-    .student-select,
-    .role-selector {
-        font-size: 16px !important;
-    }
     .glass-card:hover,
     .stat-card:hover,
     .channel-option-card:hover,
@@ -4432,6 +4518,18 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
         min-width: 760px;
     }
     
+}
+
+@media (max-width: 767px) and (hover: none) and (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    select,
+    textarea,
+    .form-control,
+    .form-select,
+    .student-select,
+    .role-selector {
+        font-size: 16px !important;
+    }
 }
 
 /* Login: quieter, more trustworthy and product-focused. */
@@ -4693,6 +4791,103 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
     border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 700;
+}
+
+.owner-admin-panel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding: 13px 16px;
+    border: 1px solid rgba(var(--primary-rgb), 0.28);
+    border-radius: 14px;
+    background: linear-gradient(120deg, rgba(var(--primary-rgb), 0.12), rgba(var(--accent-rgb), 0.08));
+    color: var(--text-main);
+}
+
+.owner-admin-panel[hidden] {
+    display: none !important;
+}
+
+.owner-admin-panel strong {
+    color: var(--primary);
+}
+
+.owner-admin-panel span {
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+    text-align: right;
+}
+
+.user-admin-index {
+    text-align: center;
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+.user-admin-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(88px, 1fr));
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.user-admin-actions .btn {
+    width: 100%;
+    justify-content: center;
+}
+
+#view-users .custom-table th:last-child,
+#view-users .custom-table td:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    min-width: 220px;
+    background: var(--card-bg);
+    box-shadow: -8px 0 14px rgba(15, 23, 42, 0.04);
+}
+
+#view-users .custom-table th:last-child {
+    z-index: 3;
+    background: #eef5fc;
+}
+
+[data-theme-mode="dark"] #view-users .custom-table th:last-child {
+    background: #172236;
+}
+
+.user-impersonate-btn {
+    white-space: nowrap;
+}
+
+.impersonation-return-btn {
+    border-color: #f59e0b;
+    background: #fffbeb;
+    color: #92400e;
+    white-space: nowrap;
+}
+
+.impersonation-return-btn[hidden] {
+    display: none !important;
+}
+
+.impersonation-return-btn:hover {
+    border-color: #d97706;
+    background: #fef3c7;
+    color: #78350f;
+}
+
+@media (max-width: 767px) {
+    .owner-admin-panel {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .owner-admin-panel span {
+        text-align: left;
+    }
 }
 
 /* ==========================================================================
@@ -5923,7 +6118,7 @@ body.request-image-viewer-open { overflow: hidden; }
 .student-grade-filter {
     width: 100%;
     min-width: 0;
-    padding: 0;
+    padding: 0 38px 0 0;
     border: 0;
     border-radius: 0;
     background: transparent;
@@ -6793,6 +6988,14 @@ html body .modal-container .session-time-range-control .session-time-input.form-
 
 html body .modal-container .session-time-range-control .session-time-input.form-control:focus {
     box-shadow: none !important;
+}
+
+.session-time-input[type="time"]::-webkit-calendar-picker-indicator {
+    width: 0;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    pointer-events: none;
 }
 
 .session-time-separator {

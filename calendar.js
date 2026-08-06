@@ -148,7 +148,8 @@ Object.assign(PinkyClassApp.prototype, {
         let hourLinesHTML = '';
         for (let h = HOUR_START; h <= HOUR_END; h++) {
             const top = (h - HOUR_START) * HOUR_HEIGHT;
-            hourLabelsHTML += `<div class="week-hour-label" style="top:${top}px;">${h}:00</div>`;
+            const firstHourClass = h === HOUR_START ? ' is-first-hour' : '';
+            hourLabelsHTML += `<div class="week-hour-label${firstHourClass}" style="top:${top}px;">${h}:00</div>`;
             hourLinesHTML += `<div class="week-hour-line" style="top:${top}px;"></div>`;
         }
 
@@ -329,6 +330,63 @@ Object.assign(PinkyClassApp.prototype, {
 
         const DRAG_THRESHOLD = 6; // px di chuyển tối thiểu mới coi là "đang kéo" (để không phá vỡ click mở chi tiết)
         const SNAP_MINUTES = 30;
+        const EDGE_ACTIVATION_PX = 22;
+        const EDGE_SWITCH_COOLDOWN_MS = 700;
+        const calendarWrapper = document.getElementById('weekCalendarWrapper');
+
+        const clearEdgeSwitch = () => {
+            calendarWrapper?.classList.remove('is-drag-edge-prev', 'is-drag-edge-next');
+        };
+
+        const updateDragPlacement = (drag, clientY, targetColumn) => {
+            if (!targetColumn) return;
+            if (targetColumn !== drag.block.parentElement) targetColumn.appendChild(drag.block);
+
+            const colRect = targetColumn.getBoundingClientRect();
+            let newTopPx = clientY - colRect.top - drag.grabOffsetY;
+            const totalMinutes = (this.CAL_HOUR_END - this.CAL_HOUR_START) * 60;
+            const pxPerMinute = this.CAL_HOUR_HEIGHT / 60;
+            let minutesFromStart = newTopPx / pxPerMinute;
+            minutesFromStart = Math.round(minutesFromStart / SNAP_MINUTES) * SNAP_MINUTES;
+            const durationMinutes = Math.round((drag.blockHeightPx + 2) / pxPerMinute / SNAP_MINUTES) * SNAP_MINUTES || SNAP_MINUTES;
+            minutesFromStart = Math.max(0, Math.min(minutesFromStart, totalMinutes - durationMinutes));
+            newTopPx = minutesFromStart * pxPerMinute;
+
+            drag.block.style.top = `${newTopPx}px`;
+            drag.pendingDate = targetColumn.dataset.date;
+            drag.pendingMinutesFromStart = minutesFromStart;
+        };
+
+        const switchWeekAtEdge = (drag, clientX) => {
+            if (this.calendarViewMode !== 'week' || !calendarWrapper) {
+                clearEdgeSwitch();
+                return null;
+            }
+
+            const rect = calendarWrapper.getBoundingClientRect();
+            let direction = 0;
+            if (clientX <= rect.left + EDGE_ACTIVATION_PX) direction = -1;
+            else if (clientX >= rect.right - EDGE_ACTIVATION_PX) direction = 1;
+
+            if (!direction || Date.now() < Number(drag.edgeSwitchCooldownUntil || 0)) {
+                clearEdgeSwitch();
+                return null;
+            }
+
+            clearEdgeSwitch();
+            calendarWrapper.classList.add(direction < 0 ? 'is-drag-edge-prev' : 'is-drag-edge-next');
+            const shiftedWeek = new Date(this.currentWeekStart);
+            shiftedWeek.setDate(shiftedWeek.getDate() + direction * 7);
+            this.currentWeekStart = shiftedWeek;
+            this.renderCalendarView();
+
+            const columns = Array.from(body.querySelectorAll('.week-day-column'));
+            const targetColumn = direction > 0 ? columns[0] : columns[columns.length - 1];
+            drag.block.classList.add('is-dragging');
+            drag.edgeSwitchCooldownUntil = Date.now() + EDGE_SWITCH_COOLDOWN_MS;
+            clearEdgeSwitch();
+            return targetColumn || null;
+        };
 
         body.addEventListener('pointerdown', (e) => {
             const block = e.target.closest('.week-event-block');
@@ -366,43 +424,29 @@ Object.assign(PinkyClassApp.prototype, {
                 drag.block.classList.add('is-dragging');
                 drag.block.setPointerCapture && drag.block.setPointerCapture(drag.pointerId);
             }
+            const edgeTargetColumn = switchWeekAtEdge(drag, e.clientX);
 
             // Xác định cột ngày đang ở dưới con trỏ (so khoảng cách trái/phải của
             // mỗi cột với vị trí X hiện tại của con trỏ)
             const columns = Array.from(body.querySelectorAll('.week-day-column'));
-            let targetColumn = drag.originalColumn;
-            for (const col of columns) {
-                const rect = col.getBoundingClientRect();
-                if (e.clientX >= rect.left && e.clientX < rect.right) {
-                    targetColumn = col;
-                    break;
+            let targetColumn = edgeTargetColumn || drag.block.closest('.week-day-column') || columns[0];
+            if (!edgeTargetColumn) {
+                for (const col of columns) {
+                    const rect = col.getBoundingClientRect();
+                    if (e.clientX >= rect.left && e.clientX < rect.right) {
+                        targetColumn = col;
+                        break;
+                    }
                 }
             }
-            if (targetColumn !== drag.block.parentElement) {
-                targetColumn.appendChild(drag.block);
-            }
-
-            // Tính vị trí top mới theo con trỏ, snap về mốc 30 phút
-            const colRect = targetColumn.getBoundingClientRect();
-            let newTopPx = e.clientY - colRect.top - drag.grabOffsetY;
-            const totalMinutes = (this.CAL_HOUR_END - this.CAL_HOUR_START) * 60;
-            const pxPerMinute = this.CAL_HOUR_HEIGHT / 60;
-            let minutesFromStart = newTopPx / pxPerMinute;
-            minutesFromStart = Math.round(minutesFromStart / SNAP_MINUTES) * SNAP_MINUTES;
-            // Không cho kéo vượt ra ngoài khung giờ hiển thị 07:00 - 24:00
-            const durationMinutes = Math.round((drag.blockHeightPx + 2) / pxPerMinute / SNAP_MINUTES) * SNAP_MINUTES || SNAP_MINUTES;
-            minutesFromStart = Math.max(0, Math.min(minutesFromStart, totalMinutes - durationMinutes));
-            newTopPx = minutesFromStart * pxPerMinute;
-
-            drag.block.style.top = `${newTopPx}px`;
-            drag.pendingDate = targetColumn.dataset.date;
-            drag.pendingMinutesFromStart = minutesFromStart;
+            updateDragPlacement(drag, e.clientY, targetColumn);
         });
 
         const endDrag = (e) => {
             const drag = this.calDrag;
             if (!drag || e.pointerId !== drag.pointerId) return;
             this.calDrag = null;
+            clearEdgeSwitch();
             drag.block.classList.remove('is-dragging');
 
             if (!drag.isDragging) return; // chỉ là 1 cú click bình thường, không kéo gì cả
@@ -488,9 +532,9 @@ Object.assign(PinkyClassApp.prototype, {
         const isDone = this.isSessionCompleted(sess);
         const statusHint = document.getElementById('quickEntryStatusHint');
         if (statusHint) {
-            statusHint.innerText = isDone ? '✓ Đã dạy (tự động theo lịch)' : '⏳ Sắp tới — chưa đến giờ dạy';
-            statusHint.style.background = isDone ? 'var(--hw-done-bg, #dcfce7)' : 'var(--primary-soft)';
-            statusHint.style.color = isDone ? 'var(--hw-done-text, #16a34a)' : 'var(--primary)';
+            statusHint.innerText = isDone ? '✓ Đã dạy' : '⏳ Sắp tới';
+            statusHint.classList.toggle('is-completed', isDone);
+            statusHint.classList.toggle('is-upcoming', !isDone);
         }
         const quickEntryContent = document.getElementById('quickEntryContent');
         const quickEntryHomeworkContent = document.getElementById('quickEntryHomeworkContent');
@@ -2078,7 +2122,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         const priceLabel = document.getElementById(priceLabelId);
         if (priceLabel) {
-            priceLabel.innerText = isGroup ? 'Đơn giá buổi học (VNĐ/học sinh)' : 'Học phí buổi học (VNĐ)';
+            priceLabel.innerText = isGroup ? 'Học phí/buổi (VNĐ/học sinh)' : 'Học phí/buổi (VNĐ)';
         }
 
         document.querySelectorAll(`#${gridId} .select-all-class-checkbox`).forEach(cb => {

@@ -15,6 +15,7 @@
 -- nội dung file này vào, chọn hết (Ctrl+A) rồi Run.
 
 -- 1. XÓA BẢNG CŨ NẾU ĐÃ TỒN TẠI
+DROP TABLE IF EXISTS AuthSessions CASCADE;
 DROP TABLE IF EXISTS TaskRequests CASCADE;
 DROP TABLE IF EXISTS Scores CASCADE;
 DROP TABLE IF EXISTS SessionDetails CASCADE;
@@ -34,6 +35,21 @@ CREATE TABLE Users (
     CONSTRAINT UQ_Users_Username UNIQUE (Username),
     CONSTRAINT FK_Users_AssignedTeacher FOREIGN KEY (AssignedTeacherId) REFERENCES Users(Id)
 );
+
+CREATE TABLE AuthSessions (
+    SessionHash CHAR(64) PRIMARY KEY,
+    UserId VARCHAR(120) NOT NULL,
+    AccountType VARCHAR(20) NOT NULL,
+    Role VARCHAR(20) NOT NULL,
+    AssignedTeacherId VARCHAR(120) NULL,
+    ActorUserId VARCHAR(120) NULL,
+    CreatedAt TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    LastSeenAt TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ExpiresAt TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX idx_authsessions_user ON AuthSessions (AccountType, UserId);
+CREATE INDEX idx_authsessions_actor ON AuthSessions (ActorUserId);
+CREATE INDEX idx_authsessions_expiry ON AuthSessions (ExpiresAt);
 
 -- 3. BẢNG HỌC SINH (Students)
 CREATE TABLE Students (

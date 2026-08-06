@@ -82,7 +82,7 @@ Object.assign(PinkyClassApp.prototype, {
                 <td class="session-date-cell">${dateStr}</td>
                 <td class="col-content-compact">${contentHTML}</td>
                 <td class="student-log-homework-cell">${homeworkBadge}</td>
-                <td>${this.escapeHtml(displayedAttitude || '-')}</td>
+                <td class="student-log-attitude-cell">${this.escapeHtml(displayedAttitude || '-')}</td>
                 <td class="col-comment">${commentHTML}</td>
                 <td class="student-log-note">${this.escapeHtml(detail.note || '-')}</td>
                 <td class="role-restricted admin-tutor log-export-hide">${actionsHTML}</td>

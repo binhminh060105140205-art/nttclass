@@ -80,6 +80,9 @@ Object.assign(PinkyClassApp.prototype, {
             this.closeModal('accountSettingsModal');
             this.handleLogout();
         });
+        document.getElementById('stopImpersonationBtn')?.addEventListener('click', () => {
+            this.stopImpersonation();
+        });
 
         // Global Student Picker Change
         document.getElementById('globalStudentPicker').addEventListener('change', (e) => {
@@ -259,6 +262,17 @@ Object.assign(PinkyClassApp.prototype, {
         };
         document.getElementById('editSessionStartTime').addEventListener('change', editTimeChangeHandler);
         document.getElementById('editSessionEndTime').addEventListener('change', editTimeChangeHandler);
+
+        // Ẩn icon đồng hồ native nhưng vẫn mở bảng chọn giờ khi bấm vào bất kỳ
+        // vị trí nào trong ô; người dùng vẫn có thể gõ giờ trực tiếp như cũ.
+        ['sessionStartTime', 'sessionEndTime', 'editSessionStartTime', 'editSessionEndTime'].forEach(id => {
+            const input = document.getElementById(id);
+            if (!input) return;
+            input.addEventListener('click', () => {
+                if (typeof input.showPicker !== 'function') return;
+                try { input.showPicker(); } catch (_) {}
+            });
+        });
 
         // Form Submit: Log a Session
         document.getElementById('sessionLoggerForm').addEventListener('submit', (e) => {
@@ -507,6 +521,7 @@ Object.assign(PinkyClassApp.prototype, {
         document.querySelector('.sidebar').classList.add('hidden');
         document.querySelector('.main-content').classList.add('hidden');
         document.getElementById('logoutBtn').style.display = 'none';
+        this.syncImpersonationUI(null);
         this.currentUser = null;
         this.currentRole = null;
     },
@@ -520,6 +535,7 @@ Object.assign(PinkyClassApp.prototype, {
         document.querySelector('.sidebar').classList.add('hidden');
         document.querySelector('.main-content').classList.add('hidden');
         document.getElementById('logoutBtn').style.display = 'none';
+        this.syncImpersonationUI(null);
         this.currentUser = null;
         this.currentRole = null;
         document.getElementById('sidebarUserName').innerText = 'Chưa đăng nhập';
@@ -535,6 +551,14 @@ Object.assign(PinkyClassApp.prototype, {
         document.querySelector('.sidebar').classList.remove('hidden');
         document.querySelector('.main-content').classList.remove('hidden');
         document.getElementById('logoutBtn').style.display = 'inline-flex';
+    },
+
+    syncImpersonationUI(user = this.currentUser) {
+        const isImpersonating = user?.impersonating === true
+            && user?.impersonatorUserId === 'u_teacher';
+        const returnButton = document.getElementById('stopImpersonationBtn');
+        if (returnButton) returnButton.hidden = !isImpersonating;
+        document.documentElement.toggleAttribute('data-impersonating', isImpersonating);
     },
 
     async onLoginSuccess(user, save = true) {
@@ -557,12 +581,16 @@ Object.assign(PinkyClassApp.prototype, {
         }
         const roleLabel = user.role === 'admin' ? 'Quản trị viên' : user.role === 'teacher' ? 'Giáo viên' : user.role === 'assistant' ? 'Trợ giảng' : 'Học sinh';
         document.getElementById('sidebarUserName').innerText = user.name;
-        document.getElementById('sidebarUserRole').innerText = user.role === 'assistant' && user.assignedTeacherName
+        const displayedRole = user.role === 'assistant' && user.assignedTeacherName
             ? `${roleLabel} (của ${user.assignedTeacherName})`
             : roleLabel;
+        document.getElementById('sidebarUserRole').innerText = user.impersonating
+            ? `${displayedRole} · Thúy đang đăng nhập thay`
+            : displayedRole;
         const avatarEl = document.getElementById('sidebarUserAvatar');
         if (avatarEl) avatarEl.innerText = (user.name || '?').trim().charAt(0).toUpperCase();
         this.showAppPage();
+        this.syncImpersonationUI(user);
         this.switchRole(user.role);
         this.switchView(user.role === 'admin' ? 'view-users' : user.role === 'student' ? 'view-logs' : 'view-dashboard');
         this.showToast(`Đăng nhập thành công với vai trò: ${roleLabel}`, 'success');
@@ -679,6 +707,7 @@ Object.assign(PinkyClassApp.prototype, {
         const navUsers = document.getElementById('nav-users');
         const navAiChat = document.getElementById('nav-ai-chat');
         const navRequests = document.getElementById('nav-requests');
+        const canManageUsers = this.canManageUsers();
 
         if (role === 'admin') {
             // Admin: chỉ được quản lý tài khoản người dùng, không truy cập
@@ -722,7 +751,7 @@ Object.assign(PinkyClassApp.prototype, {
             navTuition.style.display = 'flex';
             navScheduler.style.display = 'flex';
             navStudents.style.display = 'flex';
-            navUsers.style.display = 'none';
+            navUsers.style.display = canManageUsers ? 'flex' : 'none';
             navRequests.style.display = 'flex';
         }
 
@@ -743,11 +772,19 @@ Object.assign(PinkyClassApp.prototype, {
 // phân quyền theo vai trò, và vài hàm getter nhỏ dùng chung.
 // ================================================================
 Object.assign(PinkyClassApp.prototype, {
+    canManageUsers() {
+        return this.currentRole === 'admin'
+            || String(this.currentUser?.id || '') === 'u_teacher';
+    },
+
     canUseAiAssistant() {
         return String(this.currentUser?.id || '') === 'u_teacher';
     },
 
     switchView(viewId) {
+        if (viewId === 'view-users' && !this.canManageUsers()) {
+            viewId = this.currentRole === 'student' ? 'view-logs' : 'view-dashboard';
+        }
         if (viewId === 'view-ai-chat' && !this.canUseAiAssistant()) {
             viewId = this.currentRole === 'admin'
                 ? 'view-users'
@@ -824,7 +861,7 @@ Object.assign(PinkyClassApp.prototype, {
         else if (viewId === 'view-scheduler') this.renderCalendarView();
         else if (viewId === 'view-tuition') this.renderTuitionOverview();
         else if (viewId === 'view-students') this.renderStudentList();
-        else if (viewId === 'view-users' && this.currentRole === 'admin') this.renderUsersTable();
+        else if (viewId === 'view-users' && this.canManageUsers()) this.renderUsersTable();
         else if (viewId === 'view-requests' && this.requestsLoaded) this.renderRequests();
     },
 
