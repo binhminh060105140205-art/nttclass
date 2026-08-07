@@ -997,6 +997,11 @@ async function recordSecurityEvent(accountType, userId, eventType, options = {})
     }
 }
 
+async function recordAuthenticatedSecurityEvent(authUser, eventType, options = {}) {
+    if (!authUser || authUser.actorUserId) return;
+    return recordSecurityEvent(authUser.accountType, authUser.userId, eventType, options);
+}
+
 async function verifyAccountPassword(authUser, password) {
     if (!authUser || typeof password !== 'string' || !password || password.length > MAX_PASSWORD_LENGTH) return false;
     if (authUser.accountType === 'student') {
@@ -1065,8 +1070,11 @@ async function createSession(res, authUser, req = null, options = {}) {
         validatedAt: now
     });
     res.cookie(SESSION_COOKIE_NAME, token, sessionCookieOptions());
-    const isNewDevice = await registerTrustedDevice(authUser, context);
-    await recordSecurityEvent(authUser.accountType, authUser.userId, options.eventType || 'login_success', {
+    const shouldTrackSecurity = !authUser.actorUserId && options.suppressSecurityTracking !== true;
+    let isNewDevice = false;
+    if (shouldTrackSecurity) {
+        isNewDevice = await registerTrustedDevice(authUser, context);
+        await recordAuthenticatedSecurityEvent(authUser, options.eventType || 'login_success', {
         context,
         detail: options.detail || (isNewDevice ? 'Đăng nhập trên thiết bị mới.' : 'Đăng nhập thành công.')
     });
@@ -1077,6 +1085,7 @@ async function createSession(res, authUser, req = null, options = {}) {
             void sendLoginAlertEmail(contact.rows[0].email, context)
                 .catch(error => console.error('[LOGIN ALERT EMAIL]', error.message));
         }
+    }
     }
     return { sessionId, idleTimeoutMinutes, isNewDevice, context, security };
 }
@@ -1515,7 +1524,7 @@ app.post('/api/admin/impersonate', requireProtectedOwner, async (req, res) => {
             role: target.role,
             assignedTeacherId: target.assignedTeacherId || null,
             actorUserId: PROTECTED_OWNER_USER_ID
-        }, req, { suppressLoginAlert: true, eventType: 'impersonation_started', detail: 'Tài khoản chủ đăng nhập thay.' });
+        }, req, { suppressLoginAlert: true, suppressSecurityTracking: true });
         console.log(`[IMPERSONATE] ${PROTECTED_OWNER_USER_ID} -> ${target.id}`);
         res.json({
             ...target,
@@ -1548,7 +1557,7 @@ app.post('/api/admin/impersonate/stop', requireAuth, async (req, res) => {
             accountType: 'user',
             role: owner.role,
             assignedTeacherId: owner.assignedTeacherId || null
-        }, req, { suppressLoginAlert: true, eventType: 'impersonation_stopped', detail: 'Đã quay lại tài khoản chủ.' });
+        }, req, { suppressLoginAlert: true, suppressSecurityTracking: true });
         res.json({ ...owner, impersonating: false, impersonatorUserId: null });
     } catch (error) {
         console.error('[POST /api/admin/impersonate/stop]', error);
@@ -1560,7 +1569,7 @@ app.post('/api/logout', async (req, res) => {
     try {
         const authUser = await parseToken(req);
         if (authUser) {
-            await recordSecurityEvent(authUser.accountType, authUser.userId, 'logout', {
+            await recordAuthenticatedSecurityEvent(authUser, 'logout', {
                 context: getClientSecurityContext(req), detail: 'Đăng xuất thiết bị hiện tại.'
             });
         }
@@ -1883,6 +1892,7 @@ app.put('/api/account/security/preferences', requireAuth, async (req, res) => {
 });
 
 app.get('/api/account/security/sessions', requireAuth, async (req, res) => {
+    if (req.authUser.actorUserId) return res.json([]);
     try {
         await ensureSecuritySchema();
         const result = await pgPool.query(`SELECT SessionId AS "id", DeviceType AS "deviceType",
@@ -1890,7 +1900,8 @@ app.get('/api/account/security/sessions', requireAuth, async (req, res) => {
                 CreatedAt AS "createdAt", LastSeenAt AS "lastSeenAt", ExpiresAt AS "expiresAt",
                 SessionHash AS "sessionHash"
             FROM AuthSessions
-            WHERE AccountType = $1 AND UserId = $2 AND ExpiresAt > CURRENT_TIMESTAMP
+            WHERE AccountType = $1 AND UserId = $2 AND ActorUserId IS NULL
+              AND ExpiresAt > CURRENT_TIMESTAMP
             ORDER BY LastSeenAt DESC`, [req.authUser.accountType, req.authUser.userId]);
         res.json(result.rows.map(session => ({
             id: session.id,
@@ -1910,20 +1921,21 @@ app.get('/api/account/security/sessions', requireAuth, async (req, res) => {
 });
 
 app.delete('/api/account/security/sessions/:sessionId', requireAuth, async (req, res) => {
+    if (req.authUser.actorUserId) return res.sendStatus(403);
     const sessionId = String(req.params.sessionId || '').trim();
     if (!/^ses_[A-Za-z0-9_-]{12,60}$|^legacy_[a-f0-9]{32}$/i.test(sessionId)) {
         return res.status(400).json({ error: 'Phiên đăng nhập không hợp lệ.' });
     }
     try {
         const result = await pgPool.query(`SELECT SessionHash AS "sessionHash" FROM AuthSessions
-            WHERE SessionId = $1 AND AccountType = $2 AND UserId = $3`, [
+            WHERE SessionId = $1 AND AccountType = $2 AND UserId = $3 AND ActorUserId IS NULL`, [
             sessionId, req.authUser.accountType, req.authUser.userId
         ]);
         if (!result.rowCount) return res.status(404).json({ error: 'Thiết bị này đã đăng xuất.' });
         const sessionHash = result.rows[0].sessionHash;
         const isCurrent = sessionHash === req.authSessionHash;
         await deleteSessionByHash(sessionHash);
-        await recordSecurityEvent(req.authUser.accountType, req.authUser.userId, 'session_revoked', {
+        await recordAuthenticatedSecurityEvent(req.authUser, 'session_revoked', {
             context: getClientSecurityContext(req),
             detail: isCurrent ? 'Đăng xuất thiết bị hiện tại.' : 'Đăng xuất một thiết bị từ xa.'
         });
@@ -1936,8 +1948,9 @@ app.delete('/api/account/security/sessions/:sessionId', requireAuth, async (req,
 });
 
 app.delete('/api/account/security/sessions', requireAuth, async (req, res) => {
+    if (req.authUser.actorUserId) return res.sendStatus(403);
     try {
-        await recordSecurityEvent(req.authUser.accountType, req.authUser.userId, 'all_sessions_revoked', {
+        await recordAuthenticatedSecurityEvent(req.authUser, 'all_sessions_revoked', {
             context: getClientSecurityContext(req), detail: 'Đăng xuất khỏi tất cả thiết bị.'
         });
         await revokeSessionsForAccount(req.authUser.accountType, req.authUser.userId);
@@ -1950,11 +1963,13 @@ app.delete('/api/account/security/sessions', requireAuth, async (req, res) => {
 });
 
 app.get('/api/account/security/events', requireAuth, async (req, res) => {
+    if (req.authUser.actorUserId) return res.json([]);
     try {
         await ensureSecuritySchema();
         const result = await pgPool.query(`SELECT Id AS "id", EventType AS "eventType", Status AS "status",
                 Detail AS "detail", IpPrefix AS "ipPrefix", DeviceLabel AS "deviceLabel", CreatedAt AS "createdAt"
             FROM SecurityEvents WHERE AccountType = $1 AND UserId = $2
+              AND EventType NOT IN ('impersonation_started', 'impersonation_stopped')
             ORDER BY CreatedAt DESC LIMIT 80`, [req.authUser.accountType, req.authUser.userId]);
         res.json(result.rows);
     } catch (error) {
@@ -2028,7 +2043,7 @@ app.post('/api/account/security/2fa/confirm', requireAuth, otpIpRateLimit, async
             req.authUser.accountType, req.authUser.userId
         ]);
         await revokeSessionsForAccount(req.authUser.accountType, req.authUser.userId, req.authSessionHash);
-        await recordSecurityEvent(req.authUser.accountType, req.authUser.userId, 'two_factor_enabled', {
+        await recordAuthenticatedSecurityEvent(req.authUser, 'two_factor_enabled', {
             context: getClientSecurityContext(req), detail: 'Đã bật xác thực 2 bước bằng ứng dụng OTP.'
         });
         res.json({ message: 'Đã bật xác thực 2 bước.', recoveryCodes });
@@ -2052,7 +2067,7 @@ app.post('/api/account/security/2fa/disable', requireAuth, passwordChangeRateLim
                 RecoveryCodeHashes = '[]'::jsonb, RecoveryCodeSalt = NULL, UpdatedAt = CURRENT_TIMESTAMP
             WHERE AccountType = $1 AND UserId = $2`, [req.authUser.accountType, req.authUser.userId]);
         await revokeSessionsForAccount(req.authUser.accountType, req.authUser.userId, req.authSessionHash);
-        await recordSecurityEvent(req.authUser.accountType, req.authUser.userId, 'two_factor_disabled', {
+        await recordAuthenticatedSecurityEvent(req.authUser, 'two_factor_disabled', {
             context: getClientSecurityContext(req), detail: 'Đã tắt xác thực 2 bước.'
         });
         res.json({ message: 'Đã tắt xác thực 2 bước.' });
@@ -2080,7 +2095,7 @@ app.post('/api/account/security/2fa/recovery-codes', requireAuth, passwordChange
             JSON.stringify(recoveryCodeHashes), recoveryCodeSalt,
             req.authUser.accountType, req.authUser.userId
         ]);
-        await recordSecurityEvent(req.authUser.accountType, req.authUser.userId, 'recovery_codes_regenerated', {
+        await recordAuthenticatedSecurityEvent(req.authUser, 'recovery_codes_regenerated', {
             context: getClientSecurityContext(req), detail: 'Đã tạo bộ mã khôi phục mới.'
         });
         res.json({ message: 'Đã tạo bộ mã khôi phục mới.', recoveryCodes });
@@ -2097,7 +2112,9 @@ app.get('/api/account/data-export', requireAuth, async (req, res) => {
             FROM ${table} WHERE Id = $1`, [req.authUser.userId]);
         const security = await getAccountSecurityRecord(req.authUser.accountType, req.authUser.userId);
         const events = await pgPool.query(`SELECT EventType, Status, Detail, IpPrefix, DeviceLabel, CreatedAt
-            FROM SecurityEvents WHERE AccountType = $1 AND UserId = $2 ORDER BY CreatedAt DESC`, [
+            FROM SecurityEvents WHERE AccountType = $1 AND UserId = $2
+              AND EventType NOT IN ('impersonation_started', 'impersonation_stopped')
+            ORDER BY CreatedAt DESC`, [
             req.authUser.accountType, req.authUser.userId
         ]);
         const requests = await pgPool.query(`SELECT TextContent, ImageName, Completed, Priority, CreatedAt, UpdatedAt, CompletedAt
@@ -2128,7 +2145,7 @@ app.get('/api/account/data-export', requireAuth, async (req, res) => {
             requests: requests.rows,
             invoiceSettings: invoiceSettings.rows[0] || null
         };
-        await recordSecurityEvent(req.authUser.accountType, req.authUser.userId, 'personal_data_exported', {
+        await recordAuthenticatedSecurityEvent(req.authUser, 'personal_data_exported', {
             context: getClientSecurityContext(req), detail: 'Đã tải dữ liệu cá nhân.'
         });
         const safeId = String(req.authUser.userId).replace(/[^A-Za-z0-9_-]/g, '_');
@@ -2152,7 +2169,7 @@ app.post('/api/account/deletion-request', requireAuth, passwordChangeRateLimit, 
             SET DeleteRequestedAt = CURRENT_TIMESTAMP, DeleteRequestStatus = 'pending', UpdatedAt = CURRENT_TIMESTAMP
             WHERE AccountType = $1 AND UserId = $2
             RETURNING DeleteRequestedAt AS "deleteRequestedAt"`, [req.authUser.accountType, req.authUser.userId]);
-        await recordSecurityEvent(req.authUser.accountType, req.authUser.userId, 'account_deletion_requested', {
+        await recordAuthenticatedSecurityEvent(req.authUser, 'account_deletion_requested', {
             context: getClientSecurityContext(req), detail: 'Đã gửi yêu cầu xóa tài khoản; dữ liệu chưa bị xóa.'
         });
         res.json({
@@ -2172,7 +2189,7 @@ app.delete('/api/account/deletion-request', requireAuth, async (req, res) => {
         await pgPool.query(`UPDATE AccountSecurity
             SET DeleteRequestedAt = NULL, DeleteRequestStatus = NULL, UpdatedAt = CURRENT_TIMESTAMP
             WHERE AccountType = $1 AND UserId = $2`, [req.authUser.accountType, req.authUser.userId]);
-        await recordSecurityEvent(req.authUser.accountType, req.authUser.userId, 'account_deletion_cancelled', {
+        await recordAuthenticatedSecurityEvent(req.authUser, 'account_deletion_cancelled', {
             context: getClientSecurityContext(req), detail: 'Đã hủy yêu cầu xóa tài khoản.'
         });
         res.json({ message: 'Đã hủy yêu cầu xóa tài khoản.' });
@@ -2204,7 +2221,7 @@ app.put('/api/account/security/contact', requireAuth, async (req, res) => {
         const keepPhoneVerified = !!old.phoneverified && String(old.phone || '') === phone;
         const result = await pgPool.query(`UPDATE ${table} SET Email = $1, Phone = $2, EmailVerified = $3, PhoneVerified = $4 WHERE Id = $5`, [email || null, phone || null, keepEmailVerified, keepPhoneVerified, req.authUser.userId]);
         if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy tài khoản cần cập nhật.' });
-        await recordSecurityEvent(req.authUser.accountType, req.authUser.userId, 'contact_updated', {
+        await recordAuthenticatedSecurityEvent(req.authUser, 'contact_updated', {
             context: getClientSecurityContext(req), detail: 'Đã cập nhật email hoặc số điện thoại.'
         });
         res.json({ message: 'Đã lưu thông tin liên hệ. Hãy xác minh để dùng khôi phục mật khẩu.' });
@@ -2296,7 +2313,7 @@ app.put('/api/account/security/password', requireAuth, passwordChangeRateLimit, 
             if (result.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy tài khoản.' });
         }
         await revokeSessionsForAccount(req.authUser.accountType, req.authUser.userId, req.authSessionHash);
-        await recordSecurityEvent(req.authUser.accountType, req.authUser.userId, 'password_changed', {
+        await recordAuthenticatedSecurityEvent(req.authUser, 'password_changed', {
             context: getClientSecurityContext(req), detail: 'Đã đổi mật khẩu và thu hồi các phiên khác.'
         });
         res.json({ message: 'Đổi mật khẩu thành công.' });

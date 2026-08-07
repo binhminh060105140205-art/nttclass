@@ -9,16 +9,6 @@
 // ================================================================
 Object.assign(PinkyClassApp.prototype, {
     initialize24HourTimeInputs() {
-        const optionList = document.getElementById('time24HourOptions');
-        if (optionList && !optionList.children.length) {
-            const options = [];
-            for (let totalMinutes = 0; totalMinutes <= 24 * 60; totalMinutes += 30) {
-                const hours = Math.floor(totalMinutes / 60);
-                const minutes = totalMinutes % 60;
-                options.push(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
-            }
-            optionList.innerHTML = options.map(value => `<option value="${value}"></option>`).join('');
-        }
 
         ['sessionStartTime', 'sessionEndTime', 'editSessionStartTime', 'editSessionEndTime'].forEach(id => {
             const input = document.getElementById(id);

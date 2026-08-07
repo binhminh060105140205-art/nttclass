@@ -201,6 +201,7 @@ html[data-app-theme="lithos"][data-app-variant="pink"] .stats-grid .stat-card .s
 }
 
 html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=light] #view-scheduler .stats-grid > .glass-card,
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=light] #view-classes .class-profile-summary > .glass-card,
 html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=light] #view-tuition .grid-form > .glass-card.stat-card {
     background-color: #fffdfd !important;
     background-image: linear-gradient(145deg, #fffdfd, #fbeaf1) !important;
@@ -210,6 +211,7 @@ html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=light] #view-
 
 html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] #view-dashboard > .stats-grid > .glass-card,
 html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] #view-scheduler .stats-grid > .glass-card,
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] #view-classes .class-profile-summary > .glass-card,
 html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] #view-tuition .grid-form > .glass-card.stat-card {
     color: #f8eaf0 !important;
     background-color: #2a1b22 !important;

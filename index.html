@@ -657,9 +657,9 @@
                             <div class="form-group session-time-range-group">
                                 <label id="sessionTimeRangeLabel">Giờ bắt đầu – kết thúc <span style="color:red;">*</span></label>
                                 <div class="session-time-range-control" role="group" aria-labelledby="sessionTimeRangeLabel">
-                                    <input type="text" inputmode="numeric" id="sessionStartTime" class="form-control session-time-input" value="16:00" maxlength="5" pattern="(?:[01]\d|2[0-3]):[0-5]\d" placeholder="00:00" list="time24HourOptions" autocomplete="off" aria-label="Giờ bắt đầu theo định dạng 24 giờ" required>
+                                    <input type="text" inputmode="numeric" id="sessionStartTime" class="form-control session-time-input" value="16:00" maxlength="5" pattern="(?:[01]\d|2[0-3]):[0-5]\d" placeholder="00:00" autocomplete="off" aria-label="Giờ bắt đầu theo định dạng 24 giờ" required>
                                     <span class="session-time-separator" aria-hidden="true">–</span>
-                                    <input type="text" inputmode="numeric" id="sessionEndTime" class="form-control session-time-input" value="18:00" maxlength="5" pattern="(?:(?:[01]\d|2[0-3]):[0-5]\d|24:00)" placeholder="24:00" list="time24HourOptions" data-allow-24="true" autocomplete="off" aria-label="Giờ kết thúc theo định dạng 24 giờ" required><datalist id="time24HourOptions"></datalist>
+                                    <input type="text" inputmode="numeric" id="sessionEndTime" class="form-control session-time-input" value="18:00" maxlength="5" pattern="(?:(?:[01]\d|2[0-3]):[0-5]\d|24:00)" placeholder="24:00" data-allow-24="true" autocomplete="off" aria-label="Giờ kết thúc theo định dạng 24 giờ" required>
                                 </div>
                             </div>
 
@@ -754,6 +754,23 @@
                     </div>
                 </div>
 
+                <section class="glass-card tuition-trend-card" aria-labelledby="tuitionTrendTitle">
+                    <div class="tuition-trend-header">
+                        <div>
+                            <h2 id="tuitionTrendTitle">Biến động học phí theo tháng</h2>
+                            <p id="tuitionTrendPeriod">Học phí phát sinh trong 6 tháng gần nhất.</p>
+                        </div>
+                        <div class="tuition-trend-header-meta">
+                            <div class="tuition-trend-legend" aria-label="Chú thích biểu đồ">
+                                <span><i class="tuition-trend-dot is-paid" aria-hidden="true"></i>Đã thu</span>
+                                <span><i class="tuition-trend-dot is-unpaid" aria-hidden="true"></i>Chưa thu</span>
+                            </div>
+                            <strong id="tuitionTrendDelta" class="tuition-trend-delta">Chưa có dữ liệu so sánh</strong>
+                        </div>
+                    </div>
+                    <div id="tuitionTrendChart" class="tuition-trend-chart" role="img" aria-label="Biểu đồ học phí theo tháng"></div>
+                </section>
+
                 <div class="table-wrapper tuition-table-wrapper">
                     <table class="custom-table" id="tuitionOverviewTable">
                         <thead>
@@ -832,11 +849,11 @@
                     <button type="button" class="btn btn-secondary" onclick="app.switchView('view-students')">Quản lý học sinh</button>
                 </div>
 
-                <div class="class-profile-summary">
-                    <div><span>Tổng lớp</span><strong id="classProfileTotalClasses">0</strong></div>
-                    <div><span>Tổng học sinh</span><strong id="classProfileTotalStudents">0</strong></div>
-                    <div class="role-restricted admin-only"><span>Dự kiến tất cả lớp/buổi</span><strong id="classProfileExpectedTotal">0đ</strong></div>
-                    <div class="role-restricted admin-only"><span id="classProfilePeriodLabel">Tất cả kỳ</span><strong id="classProfilePeriodTotal">0đ</strong></div>
+                <div class="class-profile-summary stats-grid">
+                    <div class="glass-card"><span>Tổng lớp</span><strong id="classProfileTotalClasses">0</strong></div>
+                    <div class="glass-card"><span>Tổng học sinh</span><strong id="classProfileTotalStudents">0</strong></div>
+                    <div class="glass-card role-restricted admin-only"><span>Dự kiến tất cả lớp/buổi</span><strong id="classProfileExpectedTotal">0đ</strong></div>
+                    <div class="glass-card role-restricted admin-only"><span id="classProfilePeriodLabel">Tất cả kỳ</span><strong id="classProfilePeriodTotal">0đ</strong></div>
                 </div>
 
                 <div class="class-profiles-grid" id="classProfilesGrid"></div>
@@ -1363,9 +1380,9 @@
                         <div class="form-group session-time-range-group">
                             <label id="editSessionTimeRangeLabel">Giờ bắt đầu – kết thúc <span style="color:red;">*</span></label>
                             <div class="session-time-range-control" role="group" aria-labelledby="editSessionTimeRangeLabel">
-                                <input type="text" inputmode="numeric" id="editSessionStartTime" class="form-control session-time-input" maxlength="5" pattern="(?:[01]\d|2[0-3]):[0-5]\d" placeholder="00:00" list="time24HourOptions" autocomplete="off" aria-label="Giờ bắt đầu theo định dạng 24 giờ" required>
+                                <input type="text" inputmode="numeric" id="editSessionStartTime" class="form-control session-time-input" maxlength="5" pattern="(?:[01]\d|2[0-3]):[0-5]\d" placeholder="00:00" autocomplete="off" aria-label="Giờ bắt đầu theo định dạng 24 giờ" required>
                                 <span class="session-time-separator" aria-hidden="true">–</span>
-                                <input type="text" inputmode="numeric" id="editSessionEndTime" class="form-control session-time-input" maxlength="5" pattern="(?:(?:[01]\d|2[0-3]):[0-5]\d|24:00)" placeholder="24:00" list="time24HourOptions" data-allow-24="true" autocomplete="off" aria-label="Giờ kết thúc theo định dạng 24 giờ" required>
+                                <input type="text" inputmode="numeric" id="editSessionEndTime" class="form-control session-time-input" maxlength="5" pattern="(?:(?:[01]\d|2[0-3]):[0-5]\d|24:00)" placeholder="24:00" data-allow-24="true" autocomplete="off" aria-label="Giờ kết thúc theo định dạng 24 giờ" required>
                             </div>
                         </div>
 

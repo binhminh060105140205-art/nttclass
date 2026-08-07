@@ -69,6 +69,10 @@ Object.assign(PinkyClassApp.prototype, {
         const securityPanel = shell.querySelector('[data-settings-panel="security"]');
         const appearancePanel = shell.querySelector('[data-settings-panel="appearance"]');
         const invoicePanel = shell.querySelector('[data-settings-panel="invoice"]');
+        const devicesTab = shell.querySelector('[data-settings-tab="devices"]');
+        const devicesPanel = shell.querySelector('[data-settings-panel="devices"]');
+        if (devicesTab) devicesTab.id = 'settingsDevicesTabButton';
+        if (devicesPanel) devicesPanel.id = 'settingsDevicesPanel';
         const dataCard = shell.querySelector('#settingsDataCard');
         if (contactSection) accountPanel.insertBefore(contactSection, dataCard);
         if (logoutSection) dataCard?.appendChild(logoutSection);
@@ -89,7 +93,8 @@ Object.assign(PinkyClassApp.prototype, {
 
     switchSettingsTab(tabName) {
         const available = ['account', 'security', 'devices', 'appearance', 'invoice'];
-        const tab = available.includes(tabName) ? tabName : 'account';
+        const requestedTab = available.includes(tabName) ? tabName : 'account';
+        const tab = requestedTab === 'devices' && this.currentUser?.impersonating ? 'account' : requestedTab;
         document.querySelectorAll('#accountSettingsModal [data-settings-tab]').forEach(button => {
             button.classList.toggle('active', button.dataset.settingsTab === tab);
         });
@@ -110,6 +115,10 @@ Object.assign(PinkyClassApp.prototype, {
     async loadSecuritySessions() {
         const container = document.getElementById('settingsSessionsList');
         if (!container || !this.currentUser) return;
+        if (this.currentUser.impersonating) {
+            container.replaceChildren();
+            return;
+        }
         container.innerHTML = '<div class="settings-loading">Đang tải thiết bị...</div>';
         try {
             const response = await this.authFetch(`${API_BASE_URL}/api/account/security/sessions`);
@@ -410,6 +419,14 @@ Object.assign(PinkyClassApp.prototype, {
 
         const invoiceTab = document.getElementById('settingsInvoiceTabButton');
         if (invoiceTab) invoiceTab.hidden = !['teacher', 'assistant'].includes(this.currentRole);
+        const hideDelegatedSessions = !!this.currentUser?.impersonating;
+        const devicesTab = document.getElementById('settingsDevicesTabButton');
+        const devicesPanel = document.getElementById('settingsDevicesPanel');
+        if (devicesTab) devicesTab.hidden = hideDelegatedSessions;
+        if (devicesPanel) devicesPanel.hidden = hideDelegatedSessions;
+        if (hideDelegatedSessions && devicesPanel?.classList.contains('active')) {
+            this.switchSettingsTab('account');
+        }
         const enabled = !!data.twoFactorEnabled;
         const status = document.getElementById('settingsTwoFactorStatus');
         if (status) {

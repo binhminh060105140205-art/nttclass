@@ -91,6 +91,9 @@ Object.assign(PinkyClassApp.prototype, {
                     <button type="button" class="student-grade-toggle" aria-expanded="${isExpanded}" aria-label="Xem danh sách ${this.escapeHtmlAttr(group.label)}" title="Bấm để xem danh sách học sinh">
                         <span class="student-grade-toggle-content">
                             <span class="student-grade-label">${this.escapeHtml(group.label)}</span>
+                            <svg class="student-grade-chevron" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                <path d="M5.75 7.5 10 11.75 14.25 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
                         </span>
                     </button>
                 </td>

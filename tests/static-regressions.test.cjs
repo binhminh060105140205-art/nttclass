@@ -57,6 +57,43 @@ test('phiếu học phí thêm tiền tố giáo viên và số điện thoại 
     assert.match(invoice, /teacherPhoneDisplay/);
 });
 
+test('hồ sơ học sinh có mũi tên thu gọn theo từng lớp', () => {
+    const students = read('students.js');
+    const style = read('style.css');
+    assert.match(students, /student-grade-chevron/);
+    assert.match(style, /student-grade-group-row\.is-expanded \.student-grade-chevron/);
+});
+
+test('thống kê lớp học đồng bộ kiểu thẻ lịch dạy', () => {
+    const html = read('index.html');
+    const style = read('style.css');
+    assert.match(html, /class-profile-summary stats-grid/);
+    assert.match(html, /class-profile-summary stats-grid[\s\S]*?class="glass-card"/);
+    assert.match(style, /#view-classes \.class-profile-summary > \.glass-card/);
+    assert.match(style, /\.class-profile-summary > div[\s\S]*?text-align: center/);
+});
+
+test('nhãn popup cập nhật buổi học nằm sát ô nhập', () => {
+    const style = read('style.css');
+    assert.match(style, /#quickSessionEntryModal \.form-group[\s\S]*?gap: 4px/);
+    assert.match(style, /#quickSessionEntryModal \.form-group > \.quick-entry-section-label[\s\S]*?margin-bottom: 0/);
+});
+
+test('báo cáo học phí có biểu đồ biến động sáu tháng không dùng thư viện ngoài', () => {
+    const html = read('index.html');
+    const tuition = read('tuition-export.js');
+    const style = read('style.css');
+    const packageJson = read('package.json');
+    assert.match(html, /id="tuitionTrendChart"/);
+    assert.match(tuition, /getTuitionTrendMonthKeys\(monthCount = 6\)/);
+    assert.match(tuition, /getTuitionTrendData\(monthCount = 6\)/);
+    assert.match(tuition, /isSessionCompleted\(session\)/);
+    assert.match(tuition, /getStudentSessionFee\(session, studentId\)/);
+    assert.match(tuition, /this\.renderTuitionTrend\(\)/);
+    assert.match(style, /\.tuition-trend-plot/);
+    assert.doesNotMatch(packageJson, /chart\.js|highcharts|apexcharts/i);
+});
+
 test('hoàn tác thao tác xóa chỉ kéo dài 5 giây', () => {
     const core = read('core.js');
     const style = read('style.css');
@@ -84,10 +121,24 @@ test('ô giờ buổi học luôn dùng định dạng 24 giờ', () => {
     assert.doesNotMatch(html, /type="time" id="(?:session|editSession)(?:Start|End)Time"/);
     assert.match(html, /id="sessionStartTime"[\s\S]*?inputmode="numeric"/);
     assert.match(html, /id="sessionEndTime"[\s\S]*?data-allow-24="true"/);
-    assert.match(html, /id="time24HourOptions"/);
+    assert.doesNotMatch(html, /time24HourOptions/);
     assert.match(shell, /initialize24HourTimeInputs/);
-    assert.ok(shell.includes('totalMinutes <= 24 * 60'));
+    assert.doesNotMatch(shell, /optionList|time24HourOptions/);
     assert.doesNotMatch(shell, /showPicker/);
     assert.match(server, /isValidSessionClockTime/);
     assert.ok(server.includes("time === '24:00'"));
+});
+
+test('impersonated login tracking is suppressed', () => {
+    const server = read('server.js');
+    const settings = read('settings-modern.js');
+    const securitySchema = read('security-schema.sql');
+    assert.ok(server.includes('if (!authUser || authUser.actorUserId) return;'));
+    assert.ok(server.includes('suppressSecurityTracking: true'));
+    assert.ok(server.includes('UserId = $2 AND ActorUserId IS NULL'));
+    assert.ok(server.includes("if (req.authUser.actorUserId) return res.json([]);"));
+    assert.ok(server.includes("if (req.authUser.actorUserId) return res.sendStatus(403);"));
+    assert.ok(settings.includes("requestedTab === 'devices' && this.currentUser?.impersonating"));
+    assert.ok(settings.includes('devicesTab.hidden = hideDelegatedSessions'));
+    assert.ok(securitySchema.includes('DELETE FROM AuthSessions WHERE ActorUserId IS NOT NULL'));
 });

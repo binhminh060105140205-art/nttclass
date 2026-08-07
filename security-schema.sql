@@ -92,3 +92,8 @@ WHERE SessionId IS NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_authsessions_public_id ON AuthSessions (SessionId);
 CREATE INDEX IF NOT EXISTS idx_authsessions_account_last_seen
     ON AuthSessions (AccountType, UserId, LastSeenAt DESC);
+
+-- Impersonated sessions are internal checks, not devices owned by the target account.
+DELETE FROM AuthSessions WHERE ActorUserId IS NOT NULL;
+DELETE FROM SecurityEvents
+WHERE EventType IN ('impersonation_started', 'impersonation_stopped');

@@ -3,6 +3,164 @@
 // ra ảnh PNG / file Excel-CSV.
 // ================================================================
 Object.assign(PinkyClassApp.prototype, {
+    getTuitionTrendMonthKeys(monthCount = 6) {
+        const safeMonthCount = Math.max(2, Math.min(12, Number(monthCount) || 6));
+        const selectedMatch = String(this.currentMonthFilter || '').match(/^(\d{4})-(\d{1,2})$/);
+        let anchorYear = selectedMatch ? Number(selectedMatch[1]) : null;
+        let anchorMonth = selectedMatch ? Number(selectedMatch[2]) : null;
+
+        if (!anchorYear || !anchorMonth) {
+            const latestSessionKey = (this.sessions || [])
+                .filter(session => session.date && this.isSessionCompleted(session))
+                .map(session => String(session.date).slice(0, 7))
+                .filter(key => /^\d{4}-\d{2}$/.test(key))
+                .sort()
+                .at(-1);
+            const latestMatch = latestSessionKey?.match(/^(\d{4})-(\d{2})$/);
+            if (latestMatch) {
+                anchorYear = Number(latestMatch[1]);
+                anchorMonth = Number(latestMatch[2]);
+            }
+        }
+
+        if (!anchorYear || !anchorMonth) {
+            const now = new Date();
+            anchorYear = now.getFullYear();
+            anchorMonth = now.getMonth() + 1;
+        }
+
+        return Array.from({ length: safeMonthCount }, (_, index) => {
+            const monthOffset = index - safeMonthCount + 1;
+            const date = new Date(anchorYear, anchorMonth - 1 + monthOffset, 1);
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            return {
+                key: `${year}-${month}`,
+                year,
+                month,
+                shortLabel: `T${month}/${String(year).slice(-2)}`,
+                fullLabel: `Tháng ${month}/${year}`
+            };
+        });
+    },
+
+    getTuitionTrendData(monthCount = 6) {
+        const months = this.getTuitionTrendMonthKeys(monthCount).map(month => ({
+            ...month,
+            paid: 0,
+            unpaid: 0,
+            total: 0
+        }));
+        const monthMap = new Map(months.map(month => [month.key, month]));
+        let visibleStudents = this.students || [];
+        if (this.currentRole === 'student') {
+            visibleStudents = visibleStudents.filter(student => student.id === this.currentStudentId);
+        }
+        const visibleStudentIds = new Set(visibleStudents.map(student => String(student.id)));
+
+        (this.sessions || []).forEach(session => {
+            if (!session.date || !this.isSessionCompleted(session)) return;
+            const dateMatch = String(session.date).match(/^(\d{4})-(\d{1,2})-/);
+            if (!dateMatch) return;
+            const month = monthMap.get(`${Number(dateMatch[1])}-${Number(dateMatch[2])}`);
+            if (!month) return;
+
+            (session.studentIds || []).forEach(studentId => {
+                if (!visibleStudentIds.has(String(studentId))) return;
+                const fee = this.getStudentSessionFee(session, studentId);
+                if (fee <= 0) return;
+                const detail = session.studentDetails && session.studentDetails[studentId];
+                if (detail?.paid) month.paid += fee;
+                else month.unpaid += fee;
+                month.total += fee;
+            });
+        });
+
+        return months;
+    },
+
+    formatTuitionTrendValue(value) {
+        const amount = Math.max(0, Number(value) || 0);
+        const formatter = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 });
+        if (amount >= 1000000) return `${formatter.format(amount / 1000000)}tr`;
+        if (amount >= 1000) return `${formatter.format(amount / 1000)}k`;
+        return `${formatter.format(amount)}đ`;
+    },
+
+    renderTuitionTrend() {
+        const chart = document.getElementById('tuitionTrendChart');
+        const period = document.getElementById('tuitionTrendPeriod');
+        const delta = document.getElementById('tuitionTrendDelta');
+        if (!chart || !period || !delta) return;
+
+        const trendData = this.getTuitionTrendData(6);
+        const latest = trendData[trendData.length - 1];
+        const previous = trendData[trendData.length - 2];
+        period.textContent = `${trendData[0].fullLabel} - ${latest.fullLabel} · Học phí phát sinh từng tháng`;
+
+        const difference = latest.total - previous.total;
+        delta.className = 'tuition-trend-delta';
+        if (difference > 0) {
+            delta.classList.add('is-up');
+            delta.textContent = `Tăng ${this.formatVND(difference)} so với tháng trước`;
+        } else if (difference < 0) {
+            delta.classList.add('is-down');
+            delta.textContent = `Giảm ${this.formatVND(Math.abs(difference))} so với tháng trước`;
+        } else {
+            delta.classList.add('is-flat');
+            delta.textContent = 'Không đổi so với tháng trước';
+        }
+
+        chart.setAttribute('aria-label', trendData.map(month =>
+            `${month.fullLabel}: tổng ${this.formatVND(month.total)}, đã thu ${this.formatVND(month.paid)}, chưa thu ${this.formatVND(month.unpaid)}`
+        ).join('; '));
+
+        const maximumTotal = Math.max(...trendData.map(month => month.total), 0);
+        if (maximumTotal <= 0) {
+            const empty = document.createElement('div');
+            empty.className = 'tuition-trend-empty';
+            empty.textContent = 'Chưa có học phí phát sinh trong 6 tháng này.';
+            chart.replaceChildren(empty);
+            return;
+        }
+
+        const plot = document.createElement('div');
+        plot.className = 'tuition-trend-plot';
+        trendData.forEach((month, index) => {
+            const paidHeight = month.paid > 0 ? (month.paid / maximumTotal) * 100 : 0;
+            const unpaidHeight = month.unpaid > 0 ? (month.unpaid / maximumTotal) * 100 : 0;
+            const column = document.createElement('div');
+            column.className = `tuition-trend-column${index === trendData.length - 1 ? ' is-anchor' : ''}`;
+            column.title = `${month.fullLabel}: ${this.formatVND(month.total)} · Đã thu ${this.formatVND(month.paid)} · Chưa thu ${this.formatVND(month.unpaid)}`;
+
+            const value = document.createElement('span');
+            value.className = 'tuition-trend-value';
+            value.textContent = this.formatTuitionTrendValue(month.total);
+
+            const barStack = document.createElement('div');
+            barStack.className = 'tuition-trend-bar-stack';
+            barStack.setAttribute('aria-hidden', 'true');
+
+            const paidSegment = document.createElement('span');
+            paidSegment.className = 'tuition-trend-segment is-paid';
+            paidSegment.style.height = `${paidHeight.toFixed(2)}%`;
+
+            const unpaidSegment = document.createElement('span');
+            unpaidSegment.className = 'tuition-trend-segment is-unpaid';
+            unpaidSegment.style.height = `${unpaidHeight.toFixed(2)}%`;
+            unpaidSegment.style.bottom = `${paidHeight.toFixed(2)}%`;
+
+            const monthLabel = document.createElement('span');
+            monthLabel.className = 'tuition-trend-month';
+            monthLabel.textContent = month.shortLabel;
+
+            barStack.append(paidSegment, unpaidSegment);
+            column.append(value, barStack, monthLabel);
+            plot.appendChild(column);
+        });
+        chart.replaceChildren(plot);
+    },
+
     renderTuitionOverview() {
         const tbody = document.getElementById('tuitionOverviewTableBody');
         tbody.innerHTML = '';
@@ -64,6 +222,7 @@ Object.assign(PinkyClassApp.prototype, {
         document.getElementById('tuition-paid-sum').innerText = this.formatVND(paidSum);
         document.getElementById('tuition-unpaid-sum').innerText = this.formatVND(unpaidSum);
         document.getElementById('tuition-total-sum').innerText = this.formatVND(paidSum + unpaidSum);
+        this.renderTuitionTrend();
 
         document.querySelectorAll('.tuition-status-select').forEach(select => {
             select.addEventListener('change', event => {

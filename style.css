@@ -3748,6 +3748,14 @@ textarea.form-control {
     text-transform: none;
 }
 
+#quickSessionEntryModal .form-group {
+    gap: 4px;
+}
+
+#quickSessionEntryModal .form-group > .quick-entry-section-label {
+    margin-bottom: 0;
+}
+
 #quickSessionEntryModal .quick-entry-detail-label {
     margin-bottom: 8px;
 }
@@ -5556,12 +5564,14 @@ body { color:#14213d; background:radial-gradient(circle at 92% 1%,rgba(56,189,24
 /* Preserve only the score-card background colors on existing metric blocks. */
 #view-dashboard > .stats-grid > .glass-card,
 #view-scheduler .stats-grid > .glass-card,
+#view-classes .class-profile-summary > .glass-card,
 #view-tuition .grid-form > .glass-card.stat-card {
     background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.9), var(--primary-soft)) !important;
 }
 
 [data-theme-mode=dark] #view-dashboard > .stats-grid > .glass-card,
 [data-theme-mode=dark] #view-scheduler .stats-grid > .glass-card,
+[data-theme-mode=dark] #view-classes .class-profile-summary > .glass-card,
 [data-theme-mode=dark] #view-tuition .grid-form > .glass-card.stat-card {
     background-image: linear-gradient(135deg, rgba(15, 23, 42, 0.8), var(--primary-soft)) !important;
 }
@@ -7503,6 +7513,19 @@ body.request-image-viewer-open { overflow: hidden; }
     display: inline-block;
 }
 
+.student-grade-chevron {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    color: currentColor;
+    transform: rotate(-90deg);
+    transition: transform 0.18s ease;
+}
+
+.student-grade-group-row.is-expanded .student-grade-chevron {
+    transform: rotate(0deg);
+}
+
 #studentsTableBody .student-data-row[hidden] {
     display: none;
 }
@@ -7546,27 +7569,31 @@ body.request-image-viewer-open { overflow: hidden; }
 }
 
 .class-profile-summary > div {
-    min-height: 82px;
-    padding: 14px 16px;
+    min-height: auto;
+    padding: 12px;
     border: 1px solid var(--border-color);
-    border-radius: 14px;
-    background: var(--primary-soft);
+    border-radius: 12px;
     display: flex;
+    align-items: center;
     justify-content: center;
     flex-direction: column;
-    gap: 5px;
+    gap: 2px;
+    text-align: center;
 }
 
 .class-profile-summary span {
     color: var(--text-muted);
-    font-size: 0.72rem;
-    font-weight: 700;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.25;
+    text-transform: uppercase;
 }
 
 .class-profile-summary strong {
     color: var(--primary);
-    font-size: 1.1rem;
-    font-weight: 800;
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.2;
 }
 
 .class-profiles-grid {
@@ -8601,6 +8628,213 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .session-time-range-contr
 .tuition-summary-total,
 #tuitionOverviewTable .tuition-hours { color: var(--primary); }
 
+.tuition-trend-card {
+    margin-bottom: 18px;
+    padding: 18px 20px;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.tuition-trend-card:hover {
+    transform: none;
+}
+
+.tuition-trend-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 16px;
+}
+
+.tuition-trend-header h2 {
+    margin: 0;
+    color: var(--text-main);
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: -.02em;
+}
+
+.tuition-trend-header p {
+    margin: 5px 0 0;
+    color: var(--text-muted);
+    font-size: .75rem;
+}
+
+.tuition-trend-header-meta {
+    display: flex;
+    align-items: flex-end;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.tuition-trend-legend {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+    color: var(--text-muted);
+    font-size: .72rem;
+    font-weight: 700;
+}
+
+.tuition-trend-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.tuition-trend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+}
+
+.tuition-trend-dot.is-paid {
+    background: #22c55e;
+}
+
+.tuition-trend-dot.is-unpaid {
+    background: #ef4444;
+}
+
+.tuition-trend-delta {
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-size: .7rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.tuition-trend-delta.is-up {
+    background: rgba(34, 197, 94, .12);
+    color: #15803d;
+}
+
+.tuition-trend-delta.is-down {
+    background: rgba(239, 68, 68, .12);
+    color: #b91c1c;
+}
+
+.tuition-trend-delta.is-flat {
+    color: var(--text-muted);
+}
+
+[data-theme-mode="dark"] .tuition-trend-delta.is-up {
+    color: #86efac;
+}
+
+[data-theme-mode="dark"] .tuition-trend-delta.is-down {
+    color: #fca5a5;
+}
+
+.tuition-trend-chart {
+    width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+}
+
+.tuition-trend-plot {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(66px, 1fr));
+    align-items: end;
+    gap: 14px;
+    min-width: 530px;
+    min-height: 224px;
+    padding: 8px 8px 0;
+}
+
+.tuition-trend-column {
+    display: grid;
+    grid-template-rows: 24px 170px 24px;
+    align-items: end;
+    justify-items: center;
+    gap: 5px;
+    min-width: 0;
+}
+
+.tuition-trend-value {
+    color: var(--text-main);
+    font-size: .7rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.tuition-trend-bar-stack {
+    position: relative;
+    width: min(48px, 72%);
+    height: 170px;
+    overflow: hidden;
+    border: 1px solid rgba(var(--primary-rgb), .12);
+    border-radius: 10px 10px 5px 5px;
+    background-color: rgba(var(--primary-rgb), .045);
+    background-image: repeating-linear-gradient(to top, transparent 0, transparent calc(25% - 1px), rgba(var(--primary-rgb), .08) 25%);
+    transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.tuition-trend-column:hover .tuition-trend-bar-stack {
+    border-color: rgba(var(--primary-rgb), .35);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .1);
+    transform: translateY(-2px);
+}
+
+[data-theme-mode="dark"] .tuition-trend-column:hover .tuition-trend-bar-stack {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, .28);
+}
+
+.tuition-trend-column.is-anchor .tuition-trend-bar-stack {
+    border-color: rgba(var(--primary-rgb), .5);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), .08);
+}
+
+.tuition-trend-segment {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    min-height: 0;
+    transition: height .35s ease, filter .18s ease;
+}
+
+.tuition-trend-segment.is-paid {
+    background: linear-gradient(180deg, #4ade80, #16a34a);
+}
+
+.tuition-trend-segment.is-unpaid {
+    background: linear-gradient(180deg, #fb7185, #dc2626);
+}
+
+.tuition-trend-column:hover .tuition-trend-segment {
+    filter: saturate(1.12) brightness(1.03);
+}
+
+.tuition-trend-month {
+    color: var(--text-muted);
+    font-size: .7rem;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+.tuition-trend-column.is-anchor .tuition-trend-month {
+    color: var(--primary);
+    font-weight: 850;
+}
+
+.tuition-trend-empty {
+    display: grid;
+    min-height: 190px;
+    place-items: center;
+    border: 1px dashed var(--border-color);
+    border-radius: 14px;
+    color: var(--text-muted);
+    font-size: .8rem;
+    text-align: center;
+}
+
 .tuition-table-wrapper {
     border-radius: 16px;
     overflow-x: auto;
@@ -8656,6 +8890,24 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .session-time-range-contr
     .tuition-summary-card {
         min-height: 70px;
         padding: 10px 13px !important;
+    }
+
+    .tuition-trend-card {
+        padding: 14px;
+    }
+
+    .tuition-trend-header {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .tuition-trend-header-meta {
+        align-items: flex-start;
+    }
+
+    .tuition-trend-legend {
+        justify-content: flex-start;
     }
 }
 
