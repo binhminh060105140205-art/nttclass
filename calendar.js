@@ -1751,8 +1751,12 @@ Object.assign(PinkyClassApp.prototype, {
             return;
         }
 
-        const month = String(this.currentMonthFilter || '').trim();
-        if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+        const monthMatch = String(this.currentMonthFilter || '').trim().match(/^(\d{4})-(\d{1,2})$/);
+        const monthNumber = monthMatch ? Number(monthMatch[2]) : 0;
+        const month = monthMatch && monthNumber >= 1 && monthNumber <= 12
+            ? `${monthMatch[1]}-${String(monthNumber).padStart(2, '0')}`
+            : '';
+        if (!month) {
             this.showToast('Hãy chọn một tháng học phí trước khi cập nhật.', 'error');
             this.renderTuitionOverview();
             return;

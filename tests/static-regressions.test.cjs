@@ -113,7 +113,10 @@ test('học phí chỉ dùng trạng thái đã thanh toán hoặc chưa thanh t
     assert.doesNotMatch(html, /monthlyPaymentModal|monthlyPaymentForm|Ghi chú đối soát/);
     assert.doesNotMatch(calendar, /submitMonthlyPayment|openMonthlyPaymentModal|monthly-payments/);
     assert.ok(calendar.includes('body: JSON.stringify({ paid: !!paid, month })'));
+    assert.match(calendar, /String\(monthNumber\)\.padStart\(2, '0'\)/);
     assert.ok(!server.includes("app.post('/api/students/:studentId/monthly-payments'"));
+    assert.match(server, /String\(month \|\| ''\)\.trim\(\)\.match/);
+    assert.match(server, /monthNumber < 1 \|\| monthNumber > 12/);
     assert.match(server, /s.SessionDate >= @fromDate AND s.SessionDate < @toDate/);
 });
 

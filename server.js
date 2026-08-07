@@ -4124,11 +4124,13 @@ app.put('/api/session-details/:sessionId/:studentId', requireRole('teacher', 'as
 app.put('/api/students/:studentId/set-paid', requireRole('teacher'), requireTeacherContext, async (req, res) => {
     const { studentId } = req.params;
     const { paid, month } = req.body || {};
+    const monthMatch = String(month || '').trim().match(/^(\d{4})-(\d{1,2})$/);
+    const year = monthMatch ? Number(monthMatch[1]) : 0;
+    const monthNumber = monthMatch ? Number(monthMatch[2]) : 0;
     if (typeof paid !== 'boolean') return res.status(400).json({ error: 'Trạng thái thanh toán không hợp lệ.' });
-    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(month || ''))) {
+    if (!monthMatch || monthNumber < 1 || monthNumber > 12) {
         return res.status(400).json({ error: 'Tháng học phí phải có dạng YYYY-MM.' });
     }
-    const [year, monthNumber] = month.split('-').map(Number);
     const fromDate = `${year}-${String(monthNumber).padStart(2, '0')}-01`;
     const nextYear = monthNumber === 12 ? year + 1 : year;
     const nextMonthNumber = monthNumber === 12 ? 1 : monthNumber + 1;
