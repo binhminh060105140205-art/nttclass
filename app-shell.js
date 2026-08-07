@@ -8,7 +8,66 @@
 // cho các nút, form trên giao diện khi app khởi động.
 // ================================================================
 Object.assign(PinkyClassApp.prototype, {
+    initialize24HourTimeInputs() {
+        const optionList = document.getElementById('time24HourOptions');
+        if (optionList && !optionList.children.length) {
+            const options = [];
+            for (let totalMinutes = 0; totalMinutes <= 24 * 60; totalMinutes += 30) {
+                const hours = Math.floor(totalMinutes / 60);
+                const minutes = totalMinutes % 60;
+                options.push(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
+            }
+            optionList.innerHTML = options.map(value => `<option value="${value}"></option>`).join('');
+        }
+
+        ['sessionStartTime', 'sessionEndTime', 'editSessionStartTime', 'editSessionEndTime'].forEach(id => {
+            const input = document.getElementById(id);
+            if (!input || input.dataset.time24Bound === 'true') return;
+            input.dataset.time24Bound = 'true';
+            const normalize = () => {
+                const raw = String(input.value || '').trim();
+                if (!raw) {
+                    input.setCustomValidity('Hãy nhập giờ theo dạng 00:00–24:00.');
+                    return false;
+                }
+                let hours;
+                let minutes;
+                if (/^\d{1,4}$/.test(raw)) {
+                    const digits = raw.padStart(raw.length <= 2 ? 2 : 3, '0');
+                    if (digits.length <= 2) {
+                        hours = Number(digits);
+                        minutes = 0;
+                    } else {
+                        hours = Number(digits.slice(0, -2));
+                        minutes = Number(digits.slice(-2));
+                    }
+                } else {
+                    const match = raw.match(/^(\d{1,2}):(\d{1,2})$/);
+                    if (match) {
+                        hours = Number(match[1]);
+                        minutes = Number(match[2]);
+                    }
+                }
+                const allow24 = input.dataset.allow24 === 'true';
+                const valid = Number.isInteger(hours) && Number.isInteger(minutes)
+                    && minutes >= 0 && minutes <= 59
+                    && ((hours >= 0 && hours <= 23) || (allow24 && hours === 24 && minutes === 0));
+                if (!valid) {
+                    input.setCustomValidity(allow24 ? 'Nhập giờ từ 00:00 đến 24:00.' : 'Nhập giờ từ 00:00 đến 23:59.');
+                    return false;
+                }
+                input.value = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+                input.setCustomValidity('');
+                return true;
+            };
+            input.addEventListener('input', () => input.setCustomValidity(''));
+            input.addEventListener('change', normalize);
+            input.addEventListener('blur', normalize);
+        });
+    },
+
     registerEvents() {
+        this.initialize24HourTimeInputs();
         this.initSidebarCollapse();
         // Bộ chọn màu giao diện (3 chấm màu ở cuối sidebar)
         this.bindThemeSwitcher();
@@ -267,17 +326,6 @@ Object.assign(PinkyClassApp.prototype, {
         document.getElementById('editSessionStartTime').addEventListener('change', editTimeChangeHandler);
         document.getElementById('editSessionEndTime').addEventListener('change', editTimeChangeHandler);
 
-        // Ẩn icon đồng hồ native nhưng vẫn mở bảng chọn giờ khi bấm vào bất kỳ
-        // vị trí nào trong ô; người dùng vẫn có thể gõ giờ trực tiếp như cũ.
-        ['sessionStartTime', 'sessionEndTime', 'editSessionStartTime', 'editSessionEndTime'].forEach(id => {
-            const input = document.getElementById(id);
-            if (!input) return;
-            input.addEventListener('click', () => {
-                if (typeof input.showPicker !== 'function') return;
-                try { input.showPicker(); } catch (_) {}
-            });
-        });
-
         // Form Submit: Log a Session
         document.getElementById('sessionLoggerForm').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -332,10 +380,6 @@ Object.assign(PinkyClassApp.prototype, {
             this.scheduleInvoiceLivePreview();
         });
 
-        document.getElementById('monthlyPaymentForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.submitMonthlyPayment();
-        });
 
         // Form Submit: Trợ lý AI — gửi câu hỏi
         document.getElementById('aiChatForm').addEventListener('submit', (e) => {

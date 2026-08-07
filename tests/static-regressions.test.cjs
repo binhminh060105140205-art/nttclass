@@ -43,3 +43,51 @@ test('toolbar xuất nhật ký có bố cục mobile hai nút', () => {
     assert.match(read('index.html'), /log-export-actions/);
     assert.match(read('style.css'), /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
 });
+
+test('cài đặt không còn hiển thị lịch sử bảo mật', () => {
+    const settings = read('settings-modern.js');
+    assert.doesNotMatch(settings, /settingsHistoryCard|settingsSecurityHistory|loadSecurityHistory/);
+});
+
+test('phiếu học phí thêm tiền tố giáo viên và số điện thoại khi xuất', () => {
+    const invoice = read('invoice-export.js');
+    assert.ok(invoice.includes("return `GV. ${name || '-'}`;"));
+    assert.ok(invoice.includes("return `SĐT. ${phone || '-'}`;"));
+    assert.match(invoice, /teacherNameDisplay/);
+    assert.match(invoice, /teacherPhoneDisplay/);
+});
+
+test('hoàn tác thao tác xóa chỉ kéo dài 5 giây', () => {
+    const core = read('core.js');
+    const style = read('style.css');
+    assert.match(core, /Sẽ xóa sau 5 giây/);
+    assert.ok(core.includes('}, 5000);'));
+    assert.match(style, /undo-countdown 5s linear forwards/);
+    assert.doesNotMatch([core, style, read('calendar.js'), read('students.js'), read('users.js')].join('\n'), /7 giây để hoàn tác|Sẽ xóa sau 7 giây|undo-countdown 7s/);
+});
+
+test('học phí chỉ dùng trạng thái đã thanh toán hoặc chưa thanh toán', () => {
+    const html = read('index.html');
+    const calendar = read('calendar.js');
+    const server = read('server.js');
+    assert.doesNotMatch(html, /monthlyPaymentModal|monthlyPaymentForm|Ghi chú đối soát/);
+    assert.doesNotMatch(calendar, /submitMonthlyPayment|openMonthlyPaymentModal|monthly-payments/);
+    assert.ok(calendar.includes('body: JSON.stringify({ paid: !!paid, month })'));
+    assert.ok(!server.includes("app.post('/api/students/:studentId/monthly-payments'"));
+    assert.match(server, /s.SessionDate >= @fromDate AND s.SessionDate < @toDate/);
+});
+
+test('ô giờ buổi học luôn dùng định dạng 24 giờ', () => {
+    const html = read('index.html');
+    const shell = read('app-shell.js');
+    const server = read('server.js');
+    assert.doesNotMatch(html, /type="time" id="(?:session|editSession)(?:Start|End)Time"/);
+    assert.match(html, /id="sessionStartTime"[\s\S]*?inputmode="numeric"/);
+    assert.match(html, /id="sessionEndTime"[\s\S]*?data-allow-24="true"/);
+    assert.match(html, /id="time24HourOptions"/);
+    assert.match(shell, /initialize24HourTimeInputs/);
+    assert.ok(shell.includes('totalMinutes <= 24 * 60'));
+    assert.doesNotMatch(shell, /showPicker/);
+    assert.match(server, /isValidSessionClockTime/);
+    assert.ok(server.includes("time === '24:00'"));
+});

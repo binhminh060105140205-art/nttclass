@@ -4476,7 +4476,7 @@ textarea.form-control {
 .undo-deletion-copy strong { font-size: 0.9rem; }
 .undo-deletion-copy span { color: #cbd5e1; font-size: 0.75rem; }
 .undo-deletion-btn { flex: none; border: 0; border-radius: 9px; padding: 7px 10px; color: #fff; background: var(--primary); font-weight: 700; cursor: pointer; }
-.undo-deletion-progress { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--primary); transform-origin: left; animation: undo-countdown 7s linear forwards; }
+.undo-deletion-progress { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--primary); transform-origin: left; animation: undo-countdown 5s linear forwards; }
 @keyframes undo-countdown { to { transform: scaleX(0); } }
 
 @media (max-width: 767px) {
@@ -6951,8 +6951,7 @@ body.request-image-viewer-open { overflow: hidden; }
     flex: 0 0 150px;
 }
 
-.settings-session-list,
-.settings-history-list {
+.settings-session-list {
     display: grid;
     gap: 10px;
 }
@@ -7018,53 +7017,7 @@ body.request-image-viewer-open { overflow: hidden; }
     font-size: .68rem;
 }
 
-.settings-history-card {
-    margin-bottom: 0 !important;
-}
 
-.settings-history-list {
-    max-height: 310px;
-    overflow-y: auto;
-}
-
-.settings-history-item {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 10px;
-    padding: 10px 0;
-    border-top: 1px solid var(--border-color);
-}
-
-.settings-history-item > i {
-    width: 9px;
-    height: 9px;
-    margin-top: 5px;
-    border-radius: 50%;
-    background: #22c55e;
-    box-shadow: 0 0 0 4px #dcfce7;
-}
-
-.settings-history-item.status-failed > i,
-.settings-history-item.status-blocked > i {
-    background: #ef4444;
-    box-shadow: 0 0 0 4px #fee2e2;
-}
-
-.settings-history-item strong {
-    color: var(--text-main);
-    font-size: .77rem;
-}
-
-.settings-history-item p {
-    margin: 2px 0;
-    color: var(--text-muted);
-    font-size: .71rem;
-}
-
-.settings-history-item span {
-    color: var(--text-muted);
-    font-size: .65rem;
-}
 
 .settings-loading,
 .settings-empty-state {
@@ -8481,19 +8434,14 @@ html body .modal-container .session-time-range-control .session-time-input.form-
     border: 0 !important;
     border-radius: 0;
     box-shadow: none !important;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
 }
 
 html body .modal-container .session-time-range-control .session-time-input.form-control:focus {
     box-shadow: none !important;
 }
 
-.session-time-input[type="time"]::-webkit-calendar-picker-indicator {
-    width: 0;
-    margin: 0;
-    padding: 0;
-    opacity: 0;
-    pointer-events: none;
-}
 
 .session-time-separator {
     padding: 0 5px;

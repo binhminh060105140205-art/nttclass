@@ -228,7 +228,7 @@ Object.assign(PinkyClassApp.prototype, {
             this.showToast('Bạn không thể tự xóa tài khoản đang đăng nhập!', 'error');
             return;
         }
-        if (!confirm('Xóa tài khoản này? Bạn có 7 giây để hoàn tác.')) return;
+        if (!confirm('Xóa tài khoản này? Bạn có 5 giây để hoàn tác.')) return;
         this.queueDeletion('Tài khoản', () => this.commitDeleteUser(id));
     },
 

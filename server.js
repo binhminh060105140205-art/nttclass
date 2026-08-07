@@ -3254,6 +3254,20 @@ function normalizeRepeatDates(value, baseDate) {
     return { dates };
 }
 
+function isValidSessionClockTime(value, allow24 = false) {
+    const time = String(value || '').trim();
+    if (allow24 && time === '24:00') return true;
+    return /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time);
+}
+
+function getSessionTimeValidationError(startTime, endTime) {
+    if (!isValidSessionClockTime(startTime) || !isValidSessionClockTime(endTime, true)) {
+        return 'Giờ học phải theo định dạng 24 giờ từ 00:00 đến 24:00.';
+    }
+    if (endTime <= startTime) return 'Giờ kết thúc phải sau giờ bắt đầu.';
+    return '';
+}
+
 function isStoredSessionCompleted(date, endTime) {
     const normalizedTime = String(endTime || '23:59').slice(0, 5);
     const endAt = new Date(`${date}T${normalizedTime}:00+07:00`);
@@ -3279,7 +3293,8 @@ app.post('/api/sessions/batch', requireRole('teacher', 'assistant'), requireTeac
     if (!id || !/^\d{4}-\d{2}-\d{2}$/.test(String(date || '')) || !startTime || !endTime || !type || !Array.isArray(studentIds) || studentIds.length === 0) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
     }
-    if (endTime <= startTime) return res.status(400).json({ error: 'Giờ kết thúc phải sau giờ bắt đầu.' });
+    const timeValidationError = getSessionTimeValidationError(startTime, endTime);
+    if (timeValidationError) return res.status(400).json({ error: timeValidationError });
     const parsedPrice = parseInt(price);
     if (isNaN(parsedPrice) || parsedPrice < 0) return res.status(400).json({ error: 'Học phí buổi học không được là số âm.' });
 
@@ -3398,11 +3413,9 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
     }
 
-    // Giờ kết thúc phải sau giờ bắt đầu — validate lại ở backend để chặn cả
-    // khi gọi thẳng API (không đi qua form ở frontend).
-    if (endTime <= startTime) {
-        return res.status(400).json({ error: 'Giờ kết thúc phải sau giờ bắt đầu.' });
-    }
+    // Validate lại ở backend để chặn cả request gọi thẳng API.
+    const timeValidationError = getSessionTimeValidationError(startTime, endTime);
+    if (timeValidationError) return res.status(400).json({ error: timeValidationError });
 
     const normalizedRecurrenceGroupId = recurrenceGroupId == null || recurrenceGroupId === ''
         ? null
@@ -3727,9 +3740,8 @@ app.put('/api/sessions/:id', requireRole('teacher', 'assistant'), requireTeacher
     if (!date || !startTime || !endTime || !type || !Array.isArray(studentIds) || studentIds.length === 0) {
         return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
     }
-    if (endTime <= startTime) {
-        return res.status(400).json({ error: 'Giờ kết thúc phải sau giờ bắt đầu.' });
-    }
+    const timeValidationError = getSessionTimeValidationError(startTime, endTime);
+    if (timeValidationError) return res.status(400).json({ error: timeValidationError });
 
     const parsedPrice = parseInt(price);
     if (isNaN(parsedPrice) || parsedPrice < 0) {
@@ -4091,26 +4103,20 @@ app.put('/api/session-details/:sessionId/:studentId', requireRole('teacher', 'as
     }
 });
 
-// Thu học phí hàng loạt (chỉ admin + teacher)
-// Chuyển trạng thái học phí (Đã thanh toán <-> Chưa thanh toán) cho TẤT CẢ các
-// buổi học của một học sinh. Cột Paid hoàn toàn tách biệt với Completed (trạng
-// thái "đã dạy/chưa dạy"), để tránh lỗi tự động coi buổi học mới lên lịch là
-// đã đóng tiền.
-app.post('/api/students/:studentId/monthly-payments', requireRole('teacher'), requireTeacherContext, async (req, res) => {
+// Cập nhật trạng thái học phí theo kỳ đang chọn, không thu thập ngày, phương thức hay ghi chú.
+app.put('/api/students/:studentId/set-paid', requireRole('teacher'), requireTeacherContext, async (req, res) => {
     const { studentId } = req.params;
-    const { month, paymentDate, amount, method, note } = req.body || {};
+    const { paid, month } = req.body || {};
+    if (typeof paid !== 'boolean') return res.status(400).json({ error: 'Trạng thái thanh toán không hợp lệ.' });
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(month || ''))) {
-        return res.status(400).json({ error: 'Tháng thanh toán phải có dạng YYYY-MM.' });
-    }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(paymentDate || ''))) {
-        return res.status(400).json({ error: 'Ngày thanh toán không hợp lệ.' });
+        return res.status(400).json({ error: 'Tháng học phí phải có dạng YYYY-MM.' });
     }
     const [year, monthNumber] = month.split('-').map(Number);
+    const fromDate = `${year}-${String(monthNumber).padStart(2, '0')}-01`;
     const nextYear = monthNumber === 12 ? year + 1 : year;
     const nextMonthNumber = monthNumber === 12 ? 1 : monthNumber + 1;
     const toDate = `${nextYear}-${String(nextMonthNumber).padStart(2, '0')}-01`;
-    const paymentMethod = ['Tiền mặt', 'Chuyển khoản', 'Ví điện tử', 'Khác'].includes(method) ? method : 'Tiền mặt';
-    let transaction;
+
     try {
         const pool = await poolPromise;
         const owner = await pool.request()
@@ -4119,87 +4125,30 @@ app.post('/api/students/:studentId/monthly-payments', requireRole('teacher'), re
         if (owner.recordset.length === 0) return res.status(404).json({ error: 'Không tìm thấy học sinh.' });
         if (owner.recordset[0].TeacherId !== req.effectiveTeacherId) return res.status(403).json({ error: 'Bạn không có quyền với học sinh này.' });
 
-        transaction = new sql.Transaction(pool);
-        await transaction.begin();
-        const dueRows = await new sql.Request(transaction)
+        const dateScope = paid
+            ? 's.SessionDate < @toDate'
+            : 's.SessionDate >= @fromDate AND s.SessionDate < @toDate';
+        const updateResult = await pool.request()
             .input('studentId', sql.VarChar, studentId)
             .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+            .input('paid', sql.Bit, paid ? 1 : 0)
+            .input('fromDate', sql.Date, fromDate)
             .input('toDate', sql.Date, toDate)
-            .query(`SELECT sd.SessionId, sd.FeeAmount
-                FROM SessionDetails sd
-                JOIN Sessions s ON s.Id = sd.SessionId
-                WHERE sd.StudentId = @studentId AND s.TeacherId = @teacherId
-                  AND s.SessionDate < @toDate
-                  AND sd.Paid = 0 AND sd.FeeAmount > 0
-                  AND (s.SessionDate < (NOW() AT TIME ZONE 'Asia/Bangkok')::date
-                       OR (s.SessionDate = (NOW() AT TIME ZONE 'Asia/Bangkok')::date
-                       AND s.EndTime <= TO_CHAR(NOW() AT TIME ZONE 'Asia/Bangkok', 'HH24:MI')))`);
-        const due = dueRows.recordset || [];
-        const dueAmount = due.reduce((sum, row) => sum + Number(row.FeeAmount || 0), 0);
-        if (due.length === 0) {
-            await transaction.rollback();
-            return res.status(400).json({ error: 'Đến kỳ này không còn buổi học chưa thanh toán.' });
-        }
-        if (Number(amount) !== dueAmount) {
-            await transaction.rollback();
-            return res.status(409).json({ error: 'Số tiền đã thay đổi. Vui lòng tải lại báo cáo trước khi thu.' });
-        }
-        const paymentId = `pay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        await new sql.Request(transaction)
-            .input('id', sql.VarChar, paymentId)
-            .input('teacherId', sql.VarChar, req.effectiveTeacherId)
-            .input('studentId', sql.VarChar, studentId)
-            .input('periodMonth', sql.VarChar, month)
-            .input('amount', sql.Int, dueAmount)
-            .input('paymentDate', sql.Date, paymentDate)
-            .input('method', sql.NVarChar, paymentMethod)
-            .input('note', sql.NVarChar, String(note || '').trim().slice(0, 1000))
-            .query(`INSERT INTO TuitionPayments (Id, TeacherId, StudentId, PeriodMonth, Amount, PaymentDate, PaymentMethod, Note)
-                    VALUES (@id, @teacherId, @studentId, @periodMonth, @amount, @paymentDate, @method, @note)`);
-        for (const row of due) {
-            await new sql.Request(transaction)
-                .input('sessionId', sql.VarChar, row.SessionId)
-                .input('studentId', sql.VarChar, studentId)
-                .query('UPDATE SessionDetails SET Paid = 1 WHERE SessionId = @sessionId AND StudentId = @studentId');
-        }
-        await transaction.commit();
-        res.status(201).json({ message: 'Đã ghi nhận thanh toán theo tháng.', amount: dueAmount, sessionCount: due.length, paymentId });
-    } catch (err) {
-        if (transaction) { try { await transaction.rollback(); } catch (_) {} }
-        console.error('[POST /api/students/:studentId/monthly-payments]', err);
-        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
-    }
-});
-
-app.put('/api/students/:studentId/set-paid', requireRole('teacher'), requireTeacherContext, async (req, res) => {
-    const { studentId } = req.params;
-    const { paid } = req.body || {};
-    return res.status(410).json({ error: 'Thao tác thanh toán tất cả các tháng đã bị tắt. Hãy dùng thanh toán theo từng tháng.' });
-    try {
-        const pool = await poolPromise;
-        const owner = await pool.request()
-            .input('id', sql.VarChar, studentId)
-            .query('SELECT TeacherId FROM Students WHERE Id = @id');
-        if (owner.recordset.length === 0) {
-            return res.status(404).json({ error: 'Không tìm thấy học sinh.' });
-        }
-        if (owner.recordset[0].TeacherId !== req.effectiveTeacherId) {
-            return res.status(403).json({ error: 'Bạn không có quyền với học sinh của giáo viên khác.' });
-        }
-        // FIX LỖI: trước đây UPDATE thẳng vào bảng Sessions (cấp cả buổi học),
-        // nên với buổi học CHUNG (nhiều học sinh cùng 1 buổi), đánh dấu 1 em đã
-        // đóng tiền sẽ khiến TẤT CẢ học sinh khác học chung buổi đó cũng tự động
-        // bị đổi thành "đã thanh toán" theo, dù các em đó chưa hề đóng.
-        // Sửa: cập nhật đúng cột Paid trong bảng SessionDetails, lọc theo
-        // StudentId — chỉ ảnh hưởng ĐÚNG 1 học sinh này, độc lập hoàn toàn với
-        // các bạn học chung buổi.
-        await pool.request()
-            .input('studentId', sql.VarChar, studentId)
-            .input('paid',      sql.Bit,     paid ? 1 : 0)
-            .query(`UPDATE SessionDetails
+            .query(`UPDATE SessionDetails sd
                     SET Paid = @paid
-                    WHERE StudentId = @studentId`);
-        res.json({ message: paid ? 'Đã đánh dấu đã thanh toán!' : 'Đã đánh dấu chưa thanh toán!' });
+                    FROM Sessions s
+                    WHERE s.Id = sd.SessionId
+                      AND sd.StudentId = @studentId
+                      AND s.TeacherId = @teacherId
+                      AND sd.FeeAmount > 0
+                      AND ${dateScope}
+                      AND (s.SessionDate < (NOW() AT TIME ZONE 'Asia/Bangkok')::date
+                           OR (s.SessionDate = (NOW() AT TIME ZONE 'Asia/Bangkok')::date
+                           AND s.EndTime <= TO_CHAR(NOW() AT TIME ZONE 'Asia/Bangkok', 'HH24:MI')))`);
+        res.json({
+            message: paid ? 'Đã đánh dấu đã thanh toán.' : 'Đã đánh dấu chưa thanh toán.',
+            updatedCount: updateResult.rowCount || 0
+        });
     } catch (err) {
         console.error('[PUT /api/students/:studentId/set-paid]', err);
         res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });

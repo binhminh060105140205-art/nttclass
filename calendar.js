@@ -1185,7 +1185,7 @@ Object.assign(PinkyClassApp.prototype, {
         const followingButton = document.getElementById('recurrenceScopeFollowingBtn');
         if (title) title.innerText = `${actionLabel.charAt(0).toUpperCase() + actionLabel.slice(1)} lịch lặp lại`;
         if (message) message.innerText = `Buổi này thuộc một chuỗi lặp. Bạn muốn ${actionLabel} riêng buổi này hay áp dụng cho buổi này và các buổi lặp lại phía sau?`
-            + (actionLabel === 'xóa' ? ' Sau khi chọn, bạn vẫn có 7 giây để hoàn tác.' : '');
+            + (actionLabel === 'xóa' ? ' Sau khi chọn, bạn vẫn có 5 giây để hoàn tác.' : '');
         if (followingButton) followingButton.innerText = `Buổi này và ${following.length - 1} buổi sau`;
         this.openModal('recurrenceScopeModal');
 
@@ -1726,7 +1726,7 @@ Object.assign(PinkyClassApp.prototype, {
         if (following.length > 1) {
             deleteScope = await this.requestRecurrenceScope(session, 'xóa');
             if (!deleteScope) return;
-        } else if (!confirm('Xóa buổi học này? Bạn có 7 giây để hoàn tác.')) {
+        } else if (!confirm('Xóa buổi học này? Bạn có 5 giây để hoàn tác.')) {
             return;
         }
 
@@ -1743,66 +1743,7 @@ Object.assign(PinkyClassApp.prototype, {
         this.showToast(result?.message || "Đã xóa buổi học thành công.", "success");
     },
 
-    // Chuyển trạng thái học phí (Đã thanh toán <-> Chưa thanh toán) cho TẤT CẢ
-    // buổi học của 1 học sinh. Hoàn toàn tách biệt với trạng thái "đã dạy" —
-    // dùng field Paid riêng, không còn dùng chung với Completed nữa.
-    openMonthlyPaymentModal(studentId) {
-        if (this.currentRole !== 'teacher' || !this.currentMonthFilter) {
-            this.showToast('Hãy chọn đúng tháng học phí trước khi thanh toán.', 'error');
-            return;
-        }
-        const student = this.students.find(s => s.id === studentId);
-        if (!student) return;
-        const dueAmount = this.getTuitionPeriodBreakdown(this.sessions, studentId).unpaidTuition;
-        if (dueAmount <= 0) {
-            this.showToast('Đến kỳ này không còn học phí cần thu.', 'info');
-            return;
-        }
-        const [year, month] = this.currentMonthFilter.split('-');
-        const period = `${year}-${String(month).padStart(2, '0')}`;
-        const now = new Date();
-        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        document.getElementById('monthlyPaymentStudentId').value = studentId;
-        document.getElementById('monthlyPaymentMonth').value = period;
-        document.getElementById('monthlyPaymentAmountRaw').value = String(Math.round(dueAmount));
-        document.getElementById('monthlyPaymentStudentName').innerText = `${student.name} — tháng ${Number(month)}/${year}`;
-        document.getElementById('monthlyPaymentAmount').innerText = this.formatVND(dueAmount);
-        document.getElementById('monthlyPaymentDate').value = today;
-        document.getElementById('monthlyPaymentMethod').value = 'Tiền mặt';
-        document.getElementById('monthlyPaymentNote').value = '';
-        this.openModal('monthlyPaymentModal');
-    },
-
-    async submitMonthlyPayment() {
-        const studentId = document.getElementById('monthlyPaymentStudentId').value;
-        const month = document.getElementById('monthlyPaymentMonth').value;
-        const amount = Number(document.getElementById('monthlyPaymentAmountRaw').value);
-        const paymentDate = document.getElementById('monthlyPaymentDate').value;
-        const method = document.getElementById('monthlyPaymentMethod').value;
-        const note = document.getElementById('monthlyPaymentNote').value.trim();
-        if (!studentId || !month || !paymentDate || !Number.isFinite(amount) || amount <= 0) {
-            this.showToast('Thiếu thông tin thanh toán.', 'error');
-            return;
-        }
-        this.setBtnLoading('monthlyPaymentSubmitBtn', true, 'Đang lưu...');
-        try {
-            const res = await this.authFetch(`${API_BASE_URL}/api/students/${studentId}/monthly-payments`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ month, amount, paymentDate, method, note })
-            });
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.error || 'Không thể lưu thanh toán.');
-            this.closeModal('monthlyPaymentModal');
-            await this.loadData();
-            this.showToast(`Đã ghi nhận ${this.formatVND(data.amount || amount)} cho tháng ${month}.`, 'success');
-        } catch (err) {
-            this.showToast(err.message || 'Không thể lưu thanh toán.', 'error');
-        } finally {
-            this.setBtnLoading('monthlyPaymentSubmitBtn', false);
-        }
-    },
-
+    // Chỉ cập nhật trạng thái Đã thanh toán / Chưa thanh toán theo tháng đang chọn.
     async setStudentPaidStatus(studentId, paid) {
         if (this.currentRole !== 'teacher') {
             this.showToast("Chỉ Giáo viên mới có quyền cập nhật học phí!", "error");
@@ -1810,21 +1751,30 @@ Object.assign(PinkyClassApp.prototype, {
             return;
         }
 
-        // Không còn cho phép cập nhật hàng loạt tất cả tháng. Dropdown cũ chỉ
-        // là lối vào tương thích: chọn "Đã thanh toán" sẽ mở phiếu thu của kỳ
-        // đang lọc; chọn ngược lại không xóa chứng từ đã tạo.
-        if (!this.currentMonthFilter) {
-            this.showToast('Hãy chọn một tháng học phí trước khi thanh toán.', 'error');
+        const month = String(this.currentMonthFilter || '').trim();
+        if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+            this.showToast('Hãy chọn một tháng học phí trước khi cập nhật.', 'error');
             this.renderTuitionOverview();
             return;
         }
-        if (paid) {
-            this.openMonthlyPaymentModal(studentId);
-        } else {
-            this.showToast('Không thể bỏ trạng thái bằng thao tác nhanh vì cần giữ lịch sử đối soát.', 'info');
+
+        const select = document.querySelector(`.tuition-status-select[data-student="${CSS.escape(String(studentId))}"]`);
+        if (select) select.disabled = true;
+        try {
+            const response = await this.authFetch(`${API_BASE_URL}/api/students/${studentId}/set-paid`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ paid: !!paid, month })
+            });
+            const result = await this.requireApiSuccess(response, 'Không thể cập nhật trạng thái học phí.');
+            await this.loadData();
+            this.showToast(result.message || (paid ? 'Đã đánh dấu đã thanh toán.' : 'Đã đánh dấu chưa thanh toán.'), 'success');
+        } catch (error) {
+            this.showToast(error.message || 'Không thể cập nhật trạng thái học phí.', 'error');
+            this.renderTuitionOverview();
+        } finally {
+            if (select?.isConnected) select.disabled = false;
         }
-        this.renderTuitionOverview();
-        return;
     }
 });
 

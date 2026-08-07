@@ -39,6 +39,16 @@ Object.assign(PinkyClassApp.prototype, {
         return this.getMissingInvoiceSetupFields(setup).length === 0;
     },
 
+    formatInvoiceTeacherName(value) {
+        const name = String(value || '').trim().replace(/^GV\.\s*/i, '');
+        return `GV. ${name || '-'}`;
+    },
+
+    formatInvoiceTeacherPhone(value) {
+        const phone = String(value || '').trim().replace(/^SĐT\.\s*/i, '');
+        return `SĐT. ${phone || '-'}`;
+    },
+
     async loadInvoiceSetup({ force = false } = {}) {
         if (!['teacher', 'assistant'].includes(this.currentRole)) return null;
         if (!force && this._invoiceSetupLoaded) return this._invoiceSetup;
@@ -654,7 +664,9 @@ Object.assign(PinkyClassApp.prototype, {
         const title = nfc(document.getElementById('invoiceTitle').value) || 'PHIẾU HỌC PHÍ';
         const setup = this._invoiceSetup || {};
         const teacherName = nfc(setup.teacherName) || 'Chưa setup tên giáo viên';
-        const teacherPhone = nfc(setup.teacherPhone) || '-';
+        const teacherPhone = nfc(setup.teacherPhone);
+        const teacherNameDisplay = this.formatInvoiceTeacherName(teacherName);
+        const teacherPhoneDisplay = this.formatInvoiceTeacherPhone(teacherPhone);
         const bankAccountNumber = nfc(setup.bankAccountNumber) || '-';
         const bankAccountHolder = nfc(setup.bankAccountHolder) || '-';
         const overviewLabel = this.getInvoiceLabel('overview');
@@ -874,8 +886,8 @@ Object.assign(PinkyClassApp.prototype, {
                 table: {
                     widths: ['*', 'auto'],
                     body: [[
-                        { stack: [{ text: 'NttClass', style: 'brand' }, { text: teacherName, style: 'meta', margin: [0, 2, 0, 0] }] },
-                        { stack: [{ text: 'PHIẾU HỌC PHÍ', style: 'eyebrow', alignment: 'right' }, { text: teacherPhone, style: 'meta', alignment: 'right', margin: [0, 2, 0, 0] }] }
+                        { stack: [{ text: 'NttClass', style: 'brand' }, { text: teacherNameDisplay, style: 'meta', margin: [0, 2, 0, 0] }] },
+                        { stack: [{ text: 'PHIẾU HỌC PHÍ', style: 'eyebrow', alignment: 'right' }, { text: teacherPhoneDisplay, style: 'meta', alignment: 'right', margin: [0, 2, 0, 0] }] }
                     ]]
                 },
                 layout: {
@@ -1070,6 +1082,8 @@ Object.assign(PinkyClassApp.prototype, {
         const setup = this._invoiceSetup || {};
         const teacherName = String(setup.teacherName || '').trim() || 'CHƯA SETUP TÊN GIÁO VIÊN';
         const teacherPhone = String(setup.teacherPhone || '').trim();
+        const teacherNameDisplay = this.formatInvoiceTeacherName(teacherName);
+        const teacherPhoneDisplay = this.formatInvoiceTeacherPhone(teacherPhone);
         const bankAccountNumber = String(setup.bankAccountNumber || '').trim() || '-';
         const bankAccountHolder = String(setup.bankAccountHolder || '').trim() || '-';
         const overviewLabel = this.getInvoiceLabel('overview');
@@ -1219,8 +1233,8 @@ Object.assign(PinkyClassApp.prototype, {
     </style>
     <div class="card-main">
         <div class="header">
-            <span class="badge">${esc(teacherName)}</span>
-            <span class="phone">${teacherPhone ? esc(teacherPhone) : '-'}</span>
+            <span class="badge">${esc(teacherNameDisplay)}</span>
+            <span class="phone">${esc(teacherPhoneDisplay)}</span>
         </div>
         <div class="title">${esc(title)}</div>
 

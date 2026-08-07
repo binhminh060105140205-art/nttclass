@@ -157,7 +157,7 @@ Object.assign(PinkyClassApp.prototype, {
             this.showToast("Chỉ Giáo viên mới có quyền xóa học sinh!", "error");
             return;
         }
-        if (!confirm('Xóa học sinh này cùng toàn bộ ca học liên quan? Bạn có 7 giây để hoàn tác.')) return;
+        if (!confirm('Xóa học sinh này cùng toàn bộ ca học liên quan? Bạn có 5 giây để hoàn tác.')) return;
         this.closeModal("addStudentModal");
         this.queueDeletion('Học sinh', () => this.commitDeleteStudent(studentId));
     },
@@ -307,7 +307,7 @@ Object.assign(PinkyClassApp.prototype, {
             this.showToast("Chỉ Giáo viên mới có quyền xóa học sinh!", "error");
             return;
         }
-        if (!confirm('Xóa học sinh này cùng toàn bộ ca học liên quan? Bạn có 7 giây để hoàn tác.')) return;
+        if (!confirm('Xóa học sinh này cùng toàn bộ ca học liên quan? Bạn có 5 giây để hoàn tác.')) return;
         this.queueDeletion('Học sinh', () => this.commitDeleteStudent(id));
     },
 

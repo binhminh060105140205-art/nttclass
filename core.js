@@ -778,7 +778,7 @@ Object.assign(PinkyClassApp.prototype, {
         item.innerHTML = `
             <div class="undo-deletion-copy">
                 <strong>${this.escapeHtml ? this.escapeHtml(label) : label}</strong>
-                <span>Sẽ xóa sau 7 giây</span>
+                <span>Sẽ xóa sau 5 giây</span>
             </div>
             <button type="button" class="undo-deletion-btn">Hoàn tác</button>
             <span class="undo-deletion-progress" aria-hidden="true"></span>
@@ -807,7 +807,7 @@ Object.assign(PinkyClassApp.prototype, {
             } catch (err) {
                 this.showToast(err.message || `Không thể xóa ${label.toLowerCase()}.`, 'error');
             }
-        }, 7000);
+        }, 5000);
     },
 
     async runDeletionRefresh(refresh) {

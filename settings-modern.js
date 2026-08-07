@@ -56,7 +56,6 @@ Object.assign(PinkyClassApp.prototype, {
                         <label class="settings-select-row" for="settingsIdleTimeout"><span><strong>Tự động đăng xuất khi không hoạt động</strong><small>Áp dụng cho tất cả thiết bị của tài khoản.</small></span><select id="settingsIdleTimeout" class="form-control"><option value="20160">2 tuần</option></select></label>
                         <button type="button" class="btn btn-primary btn-sm" onclick="app.saveSecurityPreferences()">Lưu cài đặt bảo mật</button>
                     </div>
-                    <div class="settings-card settings-history-card" id="settingsHistoryCard"><div class="settings-card-heading"><div><h4>Lịch sử bảo mật</h4><p>Đăng nhập, đổi mật khẩu, nhập sai và khóa tài khoản.</p></div><button type="button" class="btn btn-secondary btn-sm" onclick="app.loadSecurityHistory()">Làm mới</button></div><div id="settingsSecurityHistory" class="settings-history-list"><div class="settings-loading">Đang tải lịch sử...</div></div></div>
                 </section>
                 <section class="settings-panel" data-settings-panel="devices">
                     <div class="settings-panel-heading"><div><span>THIẾT BỊ</span><h4>Phiên đang đăng nhập</h4><p>Kiểm tra và đăng xuất thiết bị lạ từ xa.</p></div><button type="button" class="btn btn-danger btn-sm" onclick="app.logoutAllDevices()">Đăng xuất tất cả</button></div>
@@ -71,10 +70,9 @@ Object.assign(PinkyClassApp.prototype, {
         const appearancePanel = shell.querySelector('[data-settings-panel="appearance"]');
         const invoicePanel = shell.querySelector('[data-settings-panel="invoice"]');
         const dataCard = shell.querySelector('#settingsDataCard');
-        const historyCard = shell.querySelector('#settingsHistoryCard');
         if (contactSection) accountPanel.insertBefore(contactSection, dataCard);
         if (logoutSection) dataCard?.appendChild(logoutSection);
-        if (passwordSection) securityPanel.insertBefore(passwordSection, historyCard);
+        if (passwordSection) securityPanel.appendChild(passwordSection);
         [themeModeSection, personalThemeSection, adminThemeSection].forEach(section => {
             if (section) appearancePanel.appendChild(section);
         });
@@ -100,7 +98,6 @@ Object.assign(PinkyClassApp.prototype, {
         });
         document.querySelector('.account-settings-body')?.scrollTo({ top: 0, behavior: 'auto' });
         if (tab === 'devices') void this.loadSecuritySessions();
-        if (tab === 'security') void this.loadSecurityHistory();
         if (tab === 'invoice' && ['teacher', 'assistant'].includes(this.currentRole)) {
             void this.loadInvoiceSetup?.().catch(error => {
                 this.showToast(error.message || 'Không thể tải Setup phiếu học phí.', 'error');
@@ -151,7 +148,6 @@ Object.assign(PinkyClassApp.prototype, {
             }
             this.showToast(result.message, 'success');
             void this.loadSecuritySessions();
-            void this.loadSecurityHistory();
         } catch (error) {
             this.showToast(error.message, 'error');
         }
@@ -180,49 +176,6 @@ Object.assign(PinkyClassApp.prototype, {
         this.clearRequestImage();
         this.showLandingPage();
         this.showToast(message || 'Bạn đã đăng xuất.', 'success');
-    },
-
-    getSecurityEventLabel(eventType) {
-        return {
-            login_success: 'Đăng nhập thành công',
-            login_failed: 'Đăng nhập sai',
-            two_factor_failed: 'Sai mã xác thực 2 bước',
-            logout: 'Đăng xuất',
-            password_changed: 'Đổi mật khẩu',
-            account_locked: 'Khóa tài khoản',
-            account_unlocked: 'Mở khóa tài khoản',
-            two_factor_enabled: 'Bật xác thực 2 bước',
-            two_factor_disabled: 'Tắt xác thực 2 bước',
-            recovery_codes_regenerated: 'Tạo lại mã khôi phục',
-            session_revoked: 'Đăng xuất thiết bị',
-            all_sessions_revoked: 'Đăng xuất tất cả thiết bị',
-            contact_updated: 'Cập nhật liên hệ',
-            personal_data_exported: 'Tải dữ liệu cá nhân',
-            account_deletion_requested: 'Yêu cầu xóa tài khoản',
-            account_deletion_cancelled: 'Hủy yêu cầu xóa',
-            impersonation_started: 'Bắt đầu đăng nhập thay',
-            impersonation_stopped: 'Kết thúc đăng nhập thay'
-        }[eventType] || 'Hoạt động bảo mật';
-    },
-
-    async loadSecurityHistory() {
-        const container = document.getElementById('settingsSecurityHistory');
-        if (!container || !this.currentUser) return;
-        container.innerHTML = '<div class="settings-loading">Đang tải lịch sử...</div>';
-        try {
-            const response = await this.authFetch(`${API_BASE_URL}/api/account/security/events`);
-            const events = await this.requireApiSuccess(response, 'Không thể tải lịch sử bảo mật.');
-            if (!Array.isArray(events) || !events.length) {
-                container.innerHTML = '<div class="settings-empty-state">Chưa có hoạt động bảo mật.</div>';
-                return;
-            }
-            container.innerHTML = events.map(event => `
-                <div class="settings-history-item status-${this.escapeHtmlAttr(event.status || 'success')}">
-                    <i></i><div><strong>${this.escapeHtml(this.getSecurityEventLabel(event.eventType))}</strong><p>${this.escapeHtml(event.detail || '')}</p><span>${this.formatSettingsDateTime(event.createdAt)}${event.ipPrefix ? ` · IP ${this.escapeHtml(event.ipPrefix)}` : ''}${event.deviceLabel ? ` · ${this.escapeHtml(event.deviceLabel)}` : ''}</span></div>
-                </div>`).join('');
-        } catch (error) {
-            container.innerHTML = `<div class="settings-empty-state is-error">${this.escapeHtml(error.message)}</div>`;
-        }
     },
 
     startIdleLogoutMonitor(timeoutMinutes) {
@@ -330,7 +283,6 @@ Object.assign(PinkyClassApp.prototype, {
             status.classList.add('is-enabled');
             this.renderRecoveryCodes(result.recoveryCodes);
             this.showToast(result.message, 'success');
-            void this.loadSecurityHistory();
         } catch (error) {
             this.showToast(error.message, 'error');
         }
@@ -365,7 +317,6 @@ Object.assign(PinkyClassApp.prototype, {
             status.classList.remove('is-enabled');
             this.hideRecoveryCodes();
             this.showToast(result.message, 'success');
-            void this.loadSecurityHistory();
         } catch (error) {
             this.showToast(error.message, 'error');
         }
