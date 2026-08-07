@@ -87,6 +87,92 @@ Object.assign(PinkyClassApp.prototype, {
         return `${formatter.format(amount)}đ`;
     },
 
+    renderTuitionTrendArea(chart, trendData, maximumTotal) {
+        const baseline = 92;
+        const top = 10;
+        const startX = 2;
+        const endX = 98;
+        const pointCount = Math.max(1, trendData.length - 1);
+        const toY = value => baseline - ((Math.max(0, Number(value) || 0) / maximumTotal) * (baseline - top));
+        const pointsFor = key => trendData.map((month, index) => ({
+            x: startX + ((index / pointCount) * (endX - startX)),
+            y: toY(month[key])
+        }));
+        const paidPoints = pointsFor('paid');
+        const totalPoints = pointsFor('total');
+        const curveSegments = points => points.slice(1).map((point, index) => {
+            const previous = points[index];
+            const middleX = (previous.x + point.x) / 2;
+            return 'C ' + middleX.toFixed(2) + ' ' + previous.y.toFixed(2) + ', ' + middleX.toFixed(2) + ' ' + point.y.toFixed(2) + ', ' + point.x.toFixed(2) + ' ' + point.y.toFixed(2);
+        }).join(' ');
+        const linePath = points => 'M ' + points[0].x.toFixed(2) + ' ' + points[0].y.toFixed(2) + ' ' + curveSegments(points);
+        const lastPaid = paidPoints[paidPoints.length - 1];
+        const reversePaidPoints = [...paidPoints].reverse();
+        const paidAreaPath = 'M ' + paidPoints[0].x.toFixed(2) + ' ' + baseline + ' L ' + paidPoints[0].x.toFixed(2) + ' ' + paidPoints[0].y.toFixed(2) + ' ' + curveSegments(paidPoints) + ' L ' + lastPaid.x.toFixed(2) + ' ' + baseline + ' Z';
+        const unpaidAreaPath = linePath(totalPoints) + ' L ' + lastPaid.x.toFixed(2) + ' ' + lastPaid.y.toFixed(2) + ' ' + curveSegments(reversePaidPoints) + ' Z';
+        const layout = document.createElement('div');
+        layout.className = 'tuition-trend-area-layout';
+        const scale = document.createElement('div');
+        scale.className = 'tuition-trend-area-scale';
+        [maximumTotal, maximumTotal / 2, 0].forEach(value => {
+            const label = document.createElement('span');
+            label.textContent = this.formatTuitionTrendValue(value);
+            scale.appendChild(label);
+        });
+        const canvas = document.createElement('div');
+        canvas.className = 'tuition-trend-area-canvas';
+        const svgNamespace = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(svgNamespace, 'svg');
+        svg.classList.add('tuition-trend-area-svg');
+        svg.setAttribute('viewBox', '0 0 100 100');
+        svg.setAttribute('preserveAspectRatio', 'none');
+        svg.setAttribute('aria-hidden', 'true');
+        [top, (top + baseline) / 2, baseline].forEach(y => {
+            const gridLine = document.createElementNS(svgNamespace, 'line');
+            gridLine.setAttribute('x1', '0');
+            gridLine.setAttribute('x2', '100');
+            gridLine.setAttribute('y1', String(y));
+            gridLine.setAttribute('y2', String(y));
+            gridLine.classList.add('tuition-trend-area-grid-line');
+            svg.appendChild(gridLine);
+        });
+        const appendPath = (pathData, className) => {
+            const path = document.createElementNS(svgNamespace, 'path');
+            path.setAttribute('d', pathData);
+            path.classList.add('tuition-trend-area-shape', className);
+            svg.appendChild(path);
+        };
+        appendPath(paidAreaPath, 'is-paid');
+        appendPath(unpaidAreaPath, 'is-unpaid');
+        appendPath(linePath(totalPoints), 'is-total-line');
+        const monthAxis = document.createElement('div');
+        monthAxis.className = 'tuition-trend-area-months';
+        trendData.forEach((month, index) => {
+            const item = document.createElement('div');
+            item.className = 'tuition-trend-area-month' + (index === trendData.length - 1 ? ' is-anchor' : '');
+            const value = document.createElement('strong');
+            value.textContent = this.formatTuitionTrendValue(month.total);
+            const label = document.createElement('span');
+            label.textContent = month.shortLabel;
+            item.append(value, label);
+            monthAxis.appendChild(item);
+        });
+        const markerLayer = document.createElement('div');
+        markerLayer.className = 'tuition-trend-area-markers';
+        trendData.forEach((month, index) => {
+            const marker = document.createElement('span');
+            marker.className = 'tuition-trend-area-marker' + (index === trendData.length - 1 ? ' is-anchor' : '');
+            marker.style.left = totalPoints[index].x + '%';
+            marker.style.top = totalPoints[index].y + '%';
+            marker.title = month.fullLabel + ': ' + this.formatVND(month.total);
+            markerLayer.appendChild(marker);
+        });
+        const axisSpacer = document.createElement('div');
+        canvas.append(svg, markerLayer);
+        layout.append(scale, canvas, axisSpacer, monthAxis);
+        chart.replaceChildren(layout);
+    },
+
     renderTuitionTrend() {
         const chart = document.getElementById('tuitionTrendChart');
         const period = document.getElementById('tuitionTrendPeriod');
@@ -124,6 +210,9 @@ Object.assign(PinkyClassApp.prototype, {
             return;
         }
 
+        this.renderTuitionTrendArea(chart, trendData, maximumTotal);
+        return;
+
         const plot = document.createElement('div');
         plot.className = 'tuition-trend-plot';
         trendData.forEach((month, index) => {
@@ -150,13 +239,6 @@ Object.assign(PinkyClassApp.prototype, {
             unpaidSegment.style.height = `${unpaidHeight.toFixed(2)}%`;
             unpaidSegment.style.bottom = `${paidHeight.toFixed(2)}%`;
 
-            const monthLabel = document.createElement('span');
-            monthLabel.className = 'tuition-trend-month';
-            monthLabel.textContent = month.shortLabel;
-
-            barStack.append(paidSegment, unpaidSegment);
-            column.append(value, barStack, monthLabel);
-            plot.appendChild(column);
         });
         chart.replaceChildren(plot);
     },

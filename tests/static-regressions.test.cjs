@@ -89,8 +89,11 @@ test('báo cáo học phí có biểu đồ biến động sáu tháng không d�
     assert.match(tuition, /getTuitionTrendData\(monthCount = 6\)/);
     assert.match(tuition, /isSessionCompleted\(session\)/);
     assert.match(tuition, /getStudentSessionFee\(session, studentId\)/);
+    assert.match(tuition, /renderTuitionTrendArea\(chart, trendData, maximumTotal\)/);
+    assert.match(tuition, /appendPath\(unpaidAreaPath, 'is-unpaid'\)/);
     assert.match(tuition, /this\.renderTuitionTrend\(\)/);
-    assert.match(style, /\.tuition-trend-plot/);
+    assert.match(style, /\.tuition-trend-area-layout/);
+    assert.match(style, /\.tuition-trend-area-shape\.is-total-line/);
     assert.doesNotMatch(packageJson, /chart\.js|highcharts|apexcharts/i);
 });
 
