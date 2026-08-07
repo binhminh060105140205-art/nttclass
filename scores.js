@@ -40,6 +40,36 @@ Object.assign(PinkyClassApp.prototype, {
         this.renderScores();
     },
 
+    scoreClassKey(value) {
+        const raw = String(value ?? '').trim();
+        const normalized = raw.replace(/^lớp\s*/i, '').replace(/\s+/g, ' ').trim().toLocaleLowerCase('vi');
+        if (!normalized) return '';
+        const numeric = Number(normalized);
+        if (Number.isInteger(numeric) && numeric >= 1 && numeric <= 12) return `grade-${numeric}`;
+        return `class-${normalized}`;
+    },
+
+    scoreClassLabel(value) {
+        const raw = String(value ?? '').trim();
+        if (!raw) return '';
+        const withoutPrefix = raw.replace(/^lớp\s*/i, '').trim();
+        const numeric = Number(withoutPrefix);
+        if (Number.isInteger(numeric) && numeric >= 1 && numeric <= 12) return `Lớp ${numeric}`;
+        return /^lớp\s*/i.test(raw) ? `Lớp ${withoutPrefix}` : raw;
+    },
+
+    getStudentScoreClassGroups(student) {
+        if (!student) return [];
+        const groups = new Map();
+        const grade = Number(student.gradeLevel);
+        if (Number.isInteger(grade) && grade >= 1 && grade <= 12) {
+            groups.set(`grade-${grade}`, `Lớp ${grade}`);
+        }
+        const classKey = this.scoreClassKey(student.class);
+        const classLabel = this.scoreClassLabel(student.class);
+        if (classKey && classLabel && !groups.has(classKey)) groups.set(classKey, classLabel);
+        return [...groups].map(([key, label]) => ({ key, label }));
+    },
     renderScoreFilterOptions() {
         const students = this.students || [];
         const optionsSignature = JSON.stringify([
@@ -57,20 +87,17 @@ Object.assign(PinkyClassApp.prototype, {
         const batchClassFilter = document.getElementById('batchScoreGrade');
         const previousClass = classFilter?.value || '';
         const previousBatchClass = batchClassFilter?.value || '';
-        const grades = [...new Set(students
-            .map(student => Number(student.gradeLevel))
-            .filter(Number.isFinite))].sort((a, b) => a - b);
-        const classes = [...new Set(students
-            .map(student => String(student.class || '').trim())
-            .filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'));
-
-        const classOptionHtml = classes
-            .map(className => `<option value="class:${encodeURIComponent(className)}">${this.escapeHtml(className)}</option>`)
+        const classGroups = new Map();
+        students.forEach(student => {
+            this.getStudentScoreClassGroups(student).forEach(group => {
+                if (!classGroups.has(group.key)) classGroups.set(group.key, group.label);
+            });
+        });
+        const classOptionHtml = [...classGroups]
+            .sort((left, right) => left[1].localeCompare(right[1], 'vi', { numeric: true }))
+            .map(([key, label]) => `<option value="group:${encodeURIComponent(key)}">${this.escapeHtml(label)}</option>`)
             .join('');
-        const optionHtml = [
-            ...grades.map(grade => `<option value="grade:${grade}">Lớp ${grade}</option>`),
-            ...classes.map(className => `<option value="class:${encodeURIComponent(className)}">${this.escapeHtml(className)}</option>`)
-        ].join('');
+        const optionHtml = classOptionHtml;
 
         if (classFilter) {
             classFilter.innerHTML = `<option value="">Tất cả lớp</option>${classOptionHtml}`;
@@ -94,6 +121,10 @@ Object.assign(PinkyClassApp.prototype, {
     scoreStudentMatchesClass(student, filterValue) {
         if (!filterValue) return true;
         if (!student) return false;
+        if (filterValue.startsWith('group:')) {
+            const selectedKey = decodeURIComponent(filterValue.slice(6));
+            return this.getStudentScoreClassGroups(student).some(group => group.key === selectedKey);
+        }
         if (filterValue.startsWith('grade:')) {
             return String(student.gradeLevel || '') === filterValue.slice(6);
         }
@@ -296,8 +327,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         tbody.innerHTML = students.length ? students.map(student => {
             const old = existing.get(String(student.id)) || { score: '', note: '' };
-            const classFilterValue = `class:${encodeURIComponent(String(student.class || '').trim())}`;
-            return `<tr class="batch-score-row" data-student-id="${this.escapeHtmlAttr(student.id)}" data-grade-filter="grade:${student.gradeLevel || ''}" data-class-filter="${this.escapeHtmlAttr(classFilterValue)}">
+            return `<tr class="batch-score-row" data-student-id="${this.escapeHtmlAttr(student.id)}">
                 <td><strong>${this.escapeHtml(student.name)}</strong></td>
                 <td>${this.escapeHtml(student.class || (student.gradeLevel ? `Lớp ${student.gradeLevel}` : '-'))}</td>
                 <td><input type="text" class="form-control batch-score-value" inputmode="decimal" placeholder="-" value="${this.escapeHtmlAttr(old.score)}" aria-label="Điểm của ${this.escapeHtmlAttr(student.name)}" ${expanded ? '' : 'disabled'}></td>
@@ -318,7 +348,8 @@ Object.assign(PinkyClassApp.prototype, {
     filterBatchScoreRows() {
         const filterValue = document.getElementById('batchScoreGrade')?.value || '';
         document.querySelectorAll('#batchScoreTableBody .batch-score-row').forEach(row => {
-            row.hidden = !!filterValue && row.dataset.gradeFilter !== filterValue && row.dataset.classFilter !== filterValue;
+            const student = (this.students || []).find(item => String(item.id) === row.dataset.studentId);
+            row.hidden = !this.scoreStudentMatchesClass(student, filterValue);
         });
     },
 

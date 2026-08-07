@@ -33,6 +33,7 @@
 require('dotenv').config();
 
 const express = require('express');
+const compression = require('compression');
 const { Pool, types } = require('pg');
 const path    = require('path');
 const fs      = require('fs');
@@ -78,11 +79,14 @@ const MAX_PASSWORD_LENGTH = 200;
 const MIN_PASSWORD_LENGTH = 8;
 const IS_PRODUCTION = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true' || /^https:\/\//i.test(String(process.env.RENDER_EXTERNAL_URL || ''));
 const SESSION_COOKIE_NAME = IS_PRODUCTION ? '__Host-ntt_session' : 'ntt_session';
-const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const DEVICE_COOKIE_NAME = IS_PRODUCTION ? '__Host-ntt_device' : 'ntt_device';
+const SESSION_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+const DEVICE_COOKIE_TTL_MS = 365 * 24 * 60 * 60 * 1000;
 const SESSION_CACHE_TTL_MS = 60 * 1000;
 const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
 const LOGIN_CHALLENGE_TTL_MS = 5 * 60 * 1000;
-const ALLOWED_IDLE_TIMEOUTS = new Set([15, 30, 60, 120, 240, 480]);
+const DEFAULT_IDLE_TIMEOUT_MINUTES = 14 * 24 * 60;
+const ALLOWED_IDLE_TIMEOUTS = new Set([DEFAULT_IDLE_TIMEOUT_MINUTES]);
 const SECURITY_ENCRYPTION_MATERIAL = process.env.ACCOUNT_SECURITY_KEY
     || process.env.DATABASE_URL
     || 'nttclass-local-security-key';
@@ -302,6 +306,7 @@ const aiRateLimit = createRateLimiter({
 });
 
 app.use(setSecurityHeaders);
+app.use(compression({ threshold: 1024 }));
 app.use('/api', (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Pragma', 'no-cache');
@@ -318,6 +323,24 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '512kb', strict: true }));
 
 app.use((req, res, next) => {
+    if (!req.path.startsWith('/api/')) return next();
+    const cookies = parseCookies(req);
+    let deviceId = String(cookies[DEVICE_COOKIE_NAME] || '');
+    if (!/^[A-Za-z0-9_-]{32,128}$/.test(deviceId)) {
+        deviceId = crypto.randomBytes(32).toString('base64url');
+        res.cookie(DEVICE_COOKIE_NAME, deviceId, {
+            httpOnly: true,
+            secure: IS_PRODUCTION,
+            sameSite: 'strict',
+            path: '/',
+            maxAge: DEVICE_COOKIE_TTL_MS
+        });
+    }
+    req.nttDeviceId = deviceId;
+    next();
+});
+
+app.use((req, res, next) => {
     let decodedPath;
     try {
         decodedPath = decodeURIComponent(req.path);
@@ -331,10 +354,7 @@ app.use((req, res, next) => {
 
 const PUBLIC_ROOT_FILES = new Set([
     'ai-chat.js', 'app-shell.js', 'calendar.js', 'classes.js', 'core.js', 'dashboard.js',
-    'invoice-export.js', 'landing-lithos-bundle.css', 'landing-lithos-copy.js',
-    'landing-lithos-dom.js', 'landing-lithos-heading.js', 'landing-lithos-loader.js',
-    'landing-lithos-login.js', 'landing-lithos-nav-menu.js', 'landing-lithos-nav.js',
-    'landing-lithos-spotlight.js', 'landing-orbis.js', 'lithos-app-bundle.css',
+    'invoice-export.js', 'landing-lithos-bundle.css', 'landing-orbis.js', 'lithos-app-bundle.css',
     'lithos-botanical-vine.svg', 'lithos-botanical.svg', 'lithos-button-vine-back.svg',
     'lithos-button-vine-front.svg', 'lithos-corner-bloom.svg',
     'lithos-falling-blossom.svg', 'lithos-log-header-branch.svg', 'lithos-name-vine.svg',
@@ -343,7 +363,83 @@ const PUBLIC_ROOT_FILES = new Set([
     'security-settings.js', 'settings-modern.js', 'student-import.js', 'student-journal.js', 'student-logs.js', 'students.js', 'style.css',
     'tuition-export.js', 'ui-text-normalization.js', 'users.js'
 ]);
-const staticOptions = { dotfiles: 'deny', index: false, redirect: false, maxAge: '1h' };
+const APP_BUNDLE_FILES = [
+    'landing-orbis.js', 'ui-text-normalization.js', 'core.js', 'lithos-petals.js',
+    'app-shell.js', 'users.js', 'dashboard.js', 'student-logs.js', 'student-journal.js',
+    'scores.js', 'calendar.js', 'tuition-export.js', 'students.js', 'classes.js',
+    'student-import.js', 'ai-chat.js', 'requests.js', 'requests-edit.js',
+    'security-settings.js', 'settings-modern.js', 'invoice-export.js', 'main.js'
+];
+const VERSIONED_INDEX_FILES = new Set([
+    'style.css', 'landing-lithos-bundle.css', 'lithos-app-bundle.css',
+    'pink-minimal-theme.css', 'app-bundle.js'
+]);
+const VERSIONED_ASSET_MAX_AGE = '1y';
+let appBundleRecordCache = null;
+const fileVersionCache = new Map();
+
+function contentVersion(content) {
+    return crypto.createHash('sha256').update(content).digest('hex').slice(0, 16);
+}
+
+function buildAppBundleRecord() {
+    const content = APP_BUNDLE_FILES.map(file => (
+        ';\n/* source: ' + file + ' */\n' + fs.readFileSync(path.join(__dirname, file), 'utf8')
+    )).join('\n');
+    return { content, version: contentVersion(content) };
+}
+
+function getAppBundleRecord() {
+    if (!IS_PRODUCTION) return buildAppBundleRecord();
+    if (!appBundleRecordCache) appBundleRecordCache = buildAppBundleRecord();
+    return appBundleRecordCache;
+}
+
+function getFileVersion(filePath) {
+    if (IS_PRODUCTION && fileVersionCache.has(filePath)) return fileVersionCache.get(filePath);
+    const version = contentVersion(fs.readFileSync(filePath));
+    if (IS_PRODUCTION) fileVersionCache.set(filePath, version);
+    return version;
+}
+
+function getPublicAssetVersion(file) {
+    if (file === 'app-bundle.js') return getAppBundleRecord().version;
+    return getFileVersion(path.join(__dirname, file));
+}
+
+function hasCurrentAssetVersion(req, version) {
+    return typeof req.query.v === 'string' && req.query.v === version;
+}
+
+function versionedSendFileOptions(req, version, fallbackMaxAge) {
+    return hasCurrentAssetVersion(req, version)
+        ? { maxAge: VERSIONED_ASSET_MAX_AGE, immutable: true }
+        : { maxAge: fallbackMaxAge };
+}
+
+function renderIndexHtml() {
+    let html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+    html = html.replace(/\b(href|src)=(['"])([^'"?#]+)(?:\?v=[^'"]*)?\2/g, (match, attribute, quote, file) => {
+        if (!VERSIONED_INDEX_FILES.has(file)) return match;
+        return attribute + '=' + quote + file + '?v=' + getPublicAssetVersion(file) + quote;
+    });
+    return html;
+}
+
+const staticOptions = {
+    dotfiles: 'deny',
+    index: false,
+    redirect: false,
+    maxAge: '1h'
+};
+
+app.get('/app-bundle.js', (req, res) => {
+    const bundle = getAppBundleRecord();
+    res.setHeader('Cache-Control', hasCurrentAssetVersion(req, bundle.version)
+        ? 'public, max-age=31536000, immutable'
+        : 'no-cache');
+    res.type('application/javascript').send(bundle.content);
+});
 app.use('/assets', express.static(path.join(__dirname, 'assets'), staticOptions));
 const PUBLIC_VENDOR_FILES = new Map([
     ['pdfmake.min.js', path.join(__dirname, 'node_modules', 'pdfmake', 'build', 'pdfmake.min.js')],
@@ -354,15 +450,16 @@ const PUBLIC_VENDOR_FILES = new Map([
 app.get('/vendor/:file', (req, res, next) => {
     const vendorFile = PUBLIC_VENDOR_FILES.get(req.params.file);
     if (!vendorFile) return next();
-    res.sendFile(vendorFile, { maxAge: '7d', immutable: true });
+    res.sendFile(vendorFile, versionedSendFileOptions(req, getFileVersion(vendorFile), '7d'));
 });
 app.get('/:file', (req, res, next) => {
     if (!PUBLIC_ROOT_FILES.has(req.params.file)) return next();
-    res.sendFile(path.join(__dirname, req.params.file), { maxAge: '1h' });
+    const filePath = path.join(__dirname, req.params.file);
+    res.sendFile(filePath, versionedSendFileOptions(req, getPublicAssetVersion(req.params.file), '1h'));
 });
 app.get('/', (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.type('html').send(renderIndexHtml());
 });
 
 // ==========================================
@@ -525,6 +622,7 @@ let poolPromise = pgPool.query('SELECT 1')
             await pgPool.query('CREATE INDEX IF NOT EXISTS idx_sessiondetails_session ON SessionDetails (SessionId)');
             await pgPool.query('CREATE INDEX IF NOT EXISTS idx_sessiondetails_student ON SessionDetails (StudentId)');
             await pgPool.query('CREATE INDEX IF NOT EXISTS idx_students_teacher ON Students (TeacherId)');
+            await pgPool.query('CREATE INDEX IF NOT EXISTS idx_students_teacher_grade_name ON Students (TeacherId, GradeLevel, Name)');
             console.log('Đã kiểm tra/đảm bảo các index tối ưu tốc độ tồn tại.');
         } catch (migErr) {
             console.error('Lỗi khi tự động tạo index:', migErr.message);
@@ -572,6 +670,7 @@ let poolPromise = pgPool.query('SELECT 1')
             )`);
             await pgPool.query('CREATE INDEX IF NOT EXISTS idx_scores_student ON Scores (StudentId)');
             await pgPool.query('CREATE INDEX IF NOT EXISTS idx_scores_teacher ON Scores (TeacherId)');
+            await pgPool.query('CREATE INDEX IF NOT EXISTS idx_scores_teacher_date ON Scores (TeacherId, ScoreDate DESC)');
             await pgPool.query('ALTER TABLE Scores ALTER COLUMN Note TYPE TEXT');
             await pgPool.query('ALTER TABLE Scores ALTER COLUMN ScoreType TYPE VARCHAR(100)');
             await pgPool.query('ALTER TABLE Scores ALTER COLUMN ScoreValue TYPE DECIMAL(8,2)');
@@ -659,6 +758,7 @@ let poolPromise = pgPool.query('SELECT 1')
                 CreatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             )`);
             await pgPool.query('CREATE INDEX IF NOT EXISTS idx_tuitionpayments_student_month ON TuitionPayments (StudentId, PeriodMonth)');
+            await pgPool.query('CREATE INDEX IF NOT EXISTS idx_tuitionpayments_teacher_date ON TuitionPayments (TeacherId, PaymentDate DESC, CreatedAt DESC)');
         } catch (migErr) {
             console.error('Tuition migration error:', migErr.message);
         }
@@ -943,7 +1043,7 @@ async function createSession(res, authUser, req = null, options = {}) {
     const security = await getAccountSecurityRecord(authUser.accountType, authUser.userId);
     const idleTimeoutMinutes = ALLOWED_IDLE_TIMEOUTS.has(Number(security.idleTimeoutMinutes))
         ? Number(security.idleTimeoutMinutes)
-        : 60;
+        : DEFAULT_IDLE_TIMEOUT_MINUTES;
     await pgPool.query(`INSERT INTO AuthSessions
         (SessionHash, SessionId, UserId, AccountType, Role, AssignedTeacherId, ActorUserId,
          DeviceHash, DeviceType, Browser, Platform, IpPrefix, UserAgent, IdleTimeoutMinutes,
@@ -1010,6 +1110,89 @@ async function revokeSessionsForAccount(accountType, userId, exceptSessionHash =
     }
 }
 
+async function deleteUserDataGraph(userId) {
+    const client = await pgPool.connect();
+    try {
+        await client.query('BEGIN');
+        const userRows = await client.query('SELECT Id FROM Users WHERE Id = $1 OR AssignedTeacherId = $1', [userId]);
+        if (!userRows.rowCount) {
+            await client.query('ROLLBACK');
+            return false;
+        }
+        const userIds = [...new Set(userRows.rows.map(row => row.id))];
+        const studentRows = await client.query('SELECT Id FROM Students WHERE TeacherId = ANY($1::text[])', [userIds]);
+        const studentIds = studentRows.rows.map(row => row.id);
+        const sessionRows = await client.query('SELECT Id FROM Sessions WHERE TeacherId = ANY($1::text[])', [userIds]);
+        const sessionIds = sessionRows.rows.map(row => row.id);
+        const accountIds = [...new Set([...userIds, ...studentIds])];
+
+        await client.query("DELETE FROM AuthSessions WHERE (AccountType = 'user' AND UserId = ANY($1::text[])) OR (AccountType = 'student' AND UserId = ANY($2::text[])) OR ActorUserId = ANY($1::text[]) OR AssignedTeacherId = ANY($1::text[])", [userIds, studentIds]);
+        await client.query("DELETE FROM SecurityEvents WHERE (AccountType = 'user' AND UserId = ANY($1::text[])) OR (AccountType = 'student' AND UserId = ANY($2::text[]))", [userIds, studentIds]);
+        await client.query("DELETE FROM TrustedDevices WHERE (AccountType = 'user' AND UserId = ANY($1::text[])) OR (AccountType = 'student' AND UserId = ANY($2::text[]))", [userIds, studentIds]);
+        await client.query("DELETE FROM AccountSecurity WHERE (AccountType = 'user' AND UserId = ANY($1::text[])) OR (AccountType = 'student' AND UserId = ANY($2::text[]))", [userIds, studentIds]);
+        await client.query('DELETE FROM AiConversations WHERE OwnerId = ANY($1::text[])', [accountIds]);
+        await client.query('DELETE FROM InvoiceAccountSettings WHERE OwnerId = ANY($1::text[])', [accountIds]);
+        await client.query('DELETE FROM InvoiceTemplates WHERE OwnerId = ANY($1::text[]) OR StudentId = ANY($2::text[])', [accountIds, studentIds]);
+        await client.query('DELETE FROM TaskRequests WHERE OwnerId = ANY($1::text[])', [accountIds]);
+        await client.query('DELETE FROM Scores WHERE TeacherId = ANY($1::text[]) OR StudentId = ANY($2::text[]) OR SessionId = ANY($3::text[])', [userIds, studentIds, sessionIds]);
+        await client.query('DELETE FROM TuitionPayments WHERE TeacherId = ANY($1::text[]) OR StudentId = ANY($2::text[])', [userIds, studentIds]);
+        await client.query('DELETE FROM SessionDetails WHERE SessionId = ANY($1::text[]) OR StudentId = ANY($2::text[])', [sessionIds, studentIds]);
+        await client.query('DELETE FROM Sessions WHERE Id = ANY($1::text[]) OR TeacherId = ANY($2::text[])', [sessionIds, userIds]);
+        await client.query('DELETE FROM Students WHERE Id = ANY($1::text[]) OR TeacherId = ANY($2::text[])', [studentIds, userIds]);
+        await client.query('DELETE FROM Users WHERE Id = ANY($1::text[])', [userIds]);
+        await client.query('COMMIT');
+
+        const accountIdSet = new Set(accountIds);
+        const userIdSet = new Set(userIds);
+        for (const [sessionHash, session] of sessionCache) {
+            if (accountIdSet.has(session.userId) || userIdSet.has(session.actorUserId) || userIdSet.has(session.assignedTeacherId)) {
+                sessionCache.delete(sessionHash);
+            }
+        }
+        return true;
+    } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
+async function deleteStudentDataGraph(studentId) {
+    const client = await pgPool.connect();
+    try {
+        await client.query('BEGIN');
+        const existing = await client.query('SELECT Id FROM Students WHERE Id = $1 FOR UPDATE', [studentId]);
+        if (!existing.rowCount) {
+            await client.query('ROLLBACK');
+            return false;
+        }
+        const studentIds = [studentId];
+        await client.query("DELETE FROM AuthSessions WHERE AccountType = 'student' AND UserId = $1", [studentId]);
+        await client.query("DELETE FROM SecurityEvents WHERE AccountType = 'student' AND UserId = $1", [studentId]);
+        await client.query("DELETE FROM TrustedDevices WHERE AccountType = 'student' AND UserId = $1", [studentId]);
+        await client.query("DELETE FROM AccountSecurity WHERE AccountType = 'student' AND UserId = $1", [studentId]);
+        await client.query('DELETE FROM AiConversations WHERE OwnerId = $1', [studentId]);
+        await client.query('DELETE FROM InvoiceAccountSettings WHERE OwnerId = $1', [studentId]);
+        await client.query('DELETE FROM InvoiceTemplates WHERE OwnerId = $1 OR StudentId = $1', [studentId]);
+        await client.query('DELETE FROM TaskRequests WHERE OwnerId = $1', [studentId]);
+        await client.query('DELETE FROM Scores WHERE StudentId = $1', [studentId]);
+        await client.query('DELETE FROM TuitionPayments WHERE StudentId = $1', [studentId]);
+        await client.query('DELETE FROM SessionDetails WHERE StudentId = $1', [studentId]);
+        await client.query('DELETE FROM Students WHERE Id = $1', [studentId]);
+        await client.query('COMMIT');
+        for (const [sessionHash, session] of sessionCache) {
+            if (studentIds.includes(session.userId)) sessionCache.delete(sessionHash);
+        }
+        return true;
+    } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
 async function parseToken(req) {
     const rawToken = parseCookies(req)[SESSION_COOKIE_NAME];
     if (!rawToken || rawToken.length < 32 || rawToken.length > 100) return null;
@@ -1034,7 +1217,7 @@ async function parseToken(req) {
                     LEFT JOIN Students st ON s.AccountType = 'student' AND s.UserId = st.Id
                     LEFT JOIN Users actor ON s.ActorUserId = actor.Id
                     WHERE s.SessionHash = $1 AND s.ExpiresAt > CURRENT_TIMESTAMP
-                      AND s.LastSeenAt > CURRENT_TIMESTAMP - (COALESCE(s.IdleTimeoutMinutes, 60) * INTERVAL '1 minute')
+                      AND s.LastSeenAt > CURRENT_TIMESTAMP - (COALESCE(s.IdleTimeoutMinutes, ${DEFAULT_IDLE_TIMEOUT_MINUTES}) * INTERVAL '1 minute')
                       AND ((s.AccountType = 'user' AND u.Id IS NOT NULL AND u.Active = 1)
                         OR (s.AccountType = 'student' AND st.Id IS NOT NULL AND COALESCE(st.AccountActive, TRUE) = TRUE))
                       AND (s.ActorUserId IS NULL OR (s.ActorUserId = $2 AND actor.Active = 1))`, [sessionHash, PROTECTED_OWNER_USER_ID]);
@@ -1048,7 +1231,7 @@ async function parseToken(req) {
                     role: row.role,
                     assignedTeacherId: row.assignedTeacherId || null,
                     actorUserId: row.actorUserId || null,
-                    idleTimeoutMinutes: Number(row.idleTimeoutMinutes) || 60,
+                    idleTimeoutMinutes: Number(row.idleTimeoutMinutes) || DEFAULT_IDLE_TIMEOUT_MINUTES,
                     expiresAt: new Date(row.expiresAt).getTime(),
                     lastTouchedAt: new Date(row.lastSeenAt).getTime(),
                     validatedAt: now
@@ -1070,14 +1253,18 @@ async function parseToken(req) {
         sessionCache.set(sessionHash, session);
     }
 
-    if (now - session.lastTouchedAt > (Number(session.idleTimeoutMinutes) || 60) * 60 * 1000) {
+    if (now - session.lastTouchedAt > (Number(session.idleTimeoutMinutes) || DEFAULT_IDLE_TIMEOUT_MINUTES) * 60 * 1000) {
         await deleteSessionByHash(sessionHash);
         return null;
     }
 
     if (now - session.lastTouchedAt >= SESSION_TOUCH_INTERVAL_MS) {
+        const refreshedExpiresAt = new Date(now + SESSION_TTL_MS);
         session.lastTouchedAt = now;
-        pgPool.query('UPDATE AuthSessions SET LastSeenAt = CURRENT_TIMESTAMP WHERE SessionHash = $1', [sessionHash])
+        session.expiresAt = refreshedExpiresAt.getTime();
+        req.refreshSessionCookie = true;
+        req.rawSessionToken = rawToken;
+        pgPool.query('UPDATE AuthSessions SET LastSeenAt = CURRENT_TIMESTAMP, ExpiresAt = $2 WHERE SessionHash = $1', [sessionHash, refreshedExpiresAt])
             .catch(error => console.error('[SESSION TOUCH]', error.message));
     }
     req.authSessionHash = sessionHash;
@@ -1088,8 +1275,14 @@ async function parseToken(req) {
         role: session.role,
         assignedTeacherId: session.assignedTeacherId,
         actorUserId: session.actorUserId || null,
-        idleTimeoutMinutes: Number(session.idleTimeoutMinutes) || 60
+        idleTimeoutMinutes: Number(session.idleTimeoutMinutes) || DEFAULT_IDLE_TIMEOUT_MINUTES
     };
+}
+
+function refreshSessionCookie(req, res) {
+    if (req.refreshSessionCookie && req.rawSessionToken) {
+        res.cookie(SESSION_COOKIE_NAME, req.rawSessionToken, sessionCookieOptions());
+    }
 }
 
 async function requireAuth(req, res, next) {
@@ -1100,6 +1293,7 @@ async function requireAuth(req, res, next) {
             return res.status(401).json({ error: 'Chưa đăng nhập hoặc phiên làm việc hết hạn.' });
         }
         req.authUser = authUser;
+        refreshSessionCookie(req, res);
         next();
     } catch (error) {
         console.error('[AUTH]', error);
@@ -1119,6 +1313,7 @@ function requireRole(...roles) {
                 return res.status(403).json({ error: 'Bạn không có quyền thực hiện hành động này.' });
             }
             req.authUser = authUser;
+            refreshSessionCookie(req, res);
             next();
         } catch (error) {
             console.error('[AUTH ROLE]', error);
@@ -1178,7 +1373,7 @@ async function publicUserFromAuth(authUser) {
                 COALESCE(NULLIF(sec.DisplayName, ''), st.Name) AS "name", st.Name AS "accountName",
                 st.AccountActive AS "active", st.TeacherId AS "assignedTeacherId",
                 teacher.Name AS "assignedTeacherName", sec.AvatarDataUrl AS "avatarDataUrl",
-                COALESCE(sec.IdleTimeoutMinutes, 60) AS "idleTimeoutMinutes"
+                COALESCE(sec.IdleTimeoutMinutes, ${DEFAULT_IDLE_TIMEOUT_MINUTES}) AS "idleTimeoutMinutes"
             FROM Students st
             LEFT JOIN Users teacher ON teacher.Id = st.TeacherId
             LEFT JOIN AccountSecurity sec ON sec.AccountType = 'student' AND sec.UserId = st.Id
@@ -1191,7 +1386,7 @@ async function publicUserFromAuth(authUser) {
             COALESCE(NULLIF(sec.DisplayName, ''), userAccount.Name) AS "name", userAccount.Name AS "accountName",
             userAccount.Role AS "role", userAccount.Active AS "active",
             userAccount.AssignedTeacherId AS "assignedTeacherId", teacher.Name AS "assignedTeacherName",
-            sec.AvatarDataUrl AS "avatarDataUrl", COALESCE(sec.IdleTimeoutMinutes, 60) AS "idleTimeoutMinutes"
+            sec.AvatarDataUrl AS "avatarDataUrl", COALESCE(sec.IdleTimeoutMinutes, ${DEFAULT_IDLE_TIMEOUT_MINUTES}) AS "idleTimeoutMinutes"
         FROM Users userAccount
         LEFT JOIN Users teacher ON teacher.Id = userAccount.AssignedTeacherId
         LEFT JOIN AccountSecurity sec ON sec.AccountType = 'user' AND sec.UserId = userAccount.Id
@@ -1621,7 +1816,7 @@ app.get('/api/account/security', requireAuth, async (req, res) => {
             twoFactorEnabled: !!security.totpEnabled,
             recoveryCodesRemaining: recoveryCodeHashes.length,
             loginAlertEnabled: security.loginAlertEnabled !== false,
-            idleTimeoutMinutes: Number(security.idleTimeoutMinutes) || 60,
+            idleTimeoutMinutes: Number(security.idleTimeoutMinutes) || DEFAULT_IDLE_TIMEOUT_MINUTES,
             deleteRequestedAt: security.deleteRequestedAt || null,
             deleteRequestStatus: security.deleteRequestStatus || null
         });
@@ -1925,7 +2120,7 @@ app.get('/api/account/data-export', requireAuth, async (req, res) => {
             security: {
                 twoFactorEnabled: !!security.totpEnabled,
                 loginAlertEnabled: security.loginAlertEnabled !== false,
-                idleTimeoutMinutes: Number(security.idleTimeoutMinutes) || 60,
+                idleTimeoutMinutes: Number(security.idleTimeoutMinutes) || DEFAULT_IDLE_TIMEOUT_MINUTES,
                 deleteRequestedAt: security.deleteRequestedAt || null,
                 deleteRequestStatus: security.deleteRequestStatus || null,
                 history: events.rows
@@ -2405,12 +2600,9 @@ app.delete('/api/users/:id', requireAdminAccess, async (req, res) => {
         return res.status(403).json({ error: 'Tài khoản Nguyễn Thanh Thúy được bảo vệ và không thể xóa.' });
     }
     try {
-        const pool = await poolPromise;
-        const deleteResult = await pool.request()
-            .input('id', sql.VarChar, id)
-            .query('DELETE FROM Users WHERE Id = @id');
-        if (deleteResult.rowCount !== 1) return res.status(404).json({ error: 'Không tìm thấy tài khoản cần xóa.' });
-        await revokeSessionsForAccount('user', id);
+        await poolPromise;
+        const deleted = await deleteUserDataGraph(id);
+        if (!deleted) return res.status(404).json({ error: 'Không tìm thấy tài khoản cần xóa.' });
         res.json({ message: 'Đã xóa tài khoản.' });
     } catch (err) {
         console.error('[DELETE /api/users/:id]', err);
@@ -2425,8 +2617,6 @@ app.delete('/api/users/:id', requireAdminAccess, async (req, res) => {
 app.get('/api/students', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     try {
         const { grade } = req.query; // ví dụ ?grade=8 -> lọc theo khối lớp 8
-        console.log('[GET /api/students] teacherId =', req.effectiveTeacherId, 'grade =', grade || '(tất cả)');
-
         const pool    = await poolPromise;
         const request = pool.request().input('teacherId', sql.VarChar, req.effectiveTeacherId);
 
@@ -2445,7 +2635,6 @@ app.get('/api/students', requireRole('teacher', 'assistant'), requireTeacherCont
         query += ' ORDER BY GradeLevel NULLS LAST, Name';
 
         const result = await request.query(query);
-        console.log('[GET /api/students] trả về', result.recordset.length, 'học sinh');
         res.json(result.recordset);
     } catch (err) {
         console.error('[GET /api/students]', err);
@@ -2534,8 +2723,6 @@ function normalizeBulkStudent(rawStudent, index) {
 
 app.post('/api/students', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     let { id, name, class: sClass, subject, basePrice, gradeLevel, dateOfBirth } = req.body || {};
-    console.log('[POST /api/students] body nhận được:', req.body);
-
     // Trim chuỗi để tránh lưu khoảng trắng thừa đầu/cuối (dễ gây ra 2 học
     // sinh trông "trùng tên" nhưng thực chất khác nhau ở khoảng trắng).
     name = (name || '').trim();
@@ -2799,9 +2986,8 @@ app.delete('/api/students/:id', requireRole('teacher'), requireTeacherContext, a
         if (owner.recordset[0].TeacherId !== req.effectiveTeacherId) {
             return res.status(403).json({ error: 'Bạn không có quyền xóa học sinh của giáo viên khác.' });
         }
-        await pool.request()
-            .input('id', sql.VarChar, id)
-            .query('DELETE FROM Students WHERE Id = @id');
+        const deleted = await deleteStudentDataGraph(id);
+        if (!deleted) return res.status(404).json({ error: 'Không tìm thấy học sinh.' });
         res.json({ message: 'Đã xóa học sinh thành công.' });
     } catch (err) {
         console.error('[DELETE /api/students/:id]', err);
@@ -3334,7 +3520,6 @@ app.post('/api/sessions', requireRole('teacher', 'assistant'), requireTeacherCon
         }
 
         await transaction.commit();
-        console.log('[POST /api/sessions] INSERT thành công, sessionId =', id, '| số học sinh:', studentIds.length);
         res.status(201).json({ message: 'Ghi buổi học mới thành công!' });
     } catch (err) {
         if (transaction) { try { await transaction.rollback(); } catch (_) {} }

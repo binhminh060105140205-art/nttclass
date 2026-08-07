@@ -160,8 +160,12 @@ function getClientSecurityContext(req) {
     const language = String(req?.get?.('accept-language') || req?.headers?.['accept-language'] || '').slice(0, 120);
     const parsed = parseUserAgent(userAgent);
     const ipPrefix = maskIp(req?.ip || req?.socket?.remoteAddress || '');
+    const deviceId = String(req?.nttDeviceId || '').slice(0, 128);
+    const fingerprint = deviceId
+        ? `v2\n${deviceId}\n${userAgent}\n${language}`
+        : `v1\n${userAgent}\n${language}`;
     const deviceHash = crypto.createHash('sha256')
-        .update(`${userAgent}\n${language}`)
+        .update(fingerprint)
         .digest('hex');
     return { ...parsed, ipPrefix, userAgent, language, deviceHash };
 }

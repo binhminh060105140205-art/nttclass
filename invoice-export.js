@@ -518,8 +518,8 @@ Object.assign(PinkyClassApp.prototype, {
     // khiến nút xuất PDF hỏng khi mạng yếu hoặc trình duyệt chặn tài nguyên ngoài.
     async ensurePdfMake() {
         const configureFonts = (pdfMake) => {
-            const regularFontUrl = new URL('/assets/fonts/BeVietnamPro-Regular.ttf', window.location.href).href;
-            const boldFontUrl = new URL('/assets/fonts/BeVietnamPro-Bold.ttf', window.location.href).href;
+            const regularFontUrl = new URL('/assets/fonts/BeVietnamPro-Regular.ttf?v=20260806', window.location.href).href;
+            const boldFontUrl = new URL('/assets/fonts/BeVietnamPro-Bold.ttf?v=20260806', window.location.href).href;
             pdfMake.fonts = {
                 ...(pdfMake.fonts || {}),
                 BeVietnamPro: {
@@ -576,11 +576,11 @@ Object.assign(PinkyClassApp.prototype, {
 
             this._pdfMakeLoadingPromise = (async () => {
                 await loadWithFallback([
-                    '/vendor/pdfmake.min.js',
+            '/vendor/pdfmake.min.js?v=0.2.12',
                     'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.12/pdfmake.min.js'
                 ]);
                 await loadWithFallback([
-                    '/vendor/vfs_fonts.js',
+            '/vendor/vfs_fonts.js?v=0.2.12',
                     'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.12/vfs_fonts.js'
                 ]);
                 if (!window.pdfMake?.vfs) throw new Error('Bộ font PDF chưa tải hoàn chỉnh');

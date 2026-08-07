@@ -183,6 +183,7 @@ class PinkyClassApp {
         localStorage.removeItem('nttclass_invoice_qr');
 
         this.registerEvents();
+        this.initializeModalAccessibility();
         this.bindAppThemeLifecycle();
         const sessionPromise = fetch(`${API_BASE_URL}/api/session`, {
             cache: 'no-store',
@@ -637,12 +638,57 @@ class PinkyClassApp {
 // UTILS.JS — Modal, định dạng ngày tháng kiểu VN, toast thông báo...
 // ================================================================
 Object.assign(PinkyClassApp.prototype, {
+    syncModalAccessibility(modal, isOpen = modal?.classList.contains('show')) {
+        if (!modal) return;
+        const open = !!isOpen;
+        modal.setAttribute('aria-hidden', String(!open));
+        modal.inert = !open;
+        if (open) modal.removeAttribute('inert');
+        else modal.setAttribute('inert', '');
+        const dialog = modal.querySelector('.modal-container');
+        if (dialog) {
+            dialog.setAttribute('role', 'dialog');
+            if (open) dialog.setAttribute('aria-modal', 'true');
+            else dialog.removeAttribute('aria-modal');
+            if (!dialog.hasAttribute('tabindex')) dialog.setAttribute('tabindex', '-1');
+        }
+    },
+
+    initializeModalAccessibility() {
+        const modals = [...document.querySelectorAll('.modal-backdrop')];
+        modals.forEach(modal => this.syncModalAccessibility(modal));
+        this._modalAccessibilityObserver?.disconnect();
+        this._modalAccessibilityObserver = new MutationObserver(mutations => {
+            mutations.forEach(({ target }) => this.syncModalAccessibility(target));
+        });
+        modals.forEach(modal => this._modalAccessibilityObserver.observe(modal, {
+            attributes: true,
+            attributeFilter: ['class']
+        }));
+    },
+
     openModal(modalId) {
-        document.getElementById(modalId).classList.add('show');
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        this._modalReturnFocusById ||= new Map();
+        this._modalReturnFocusById.set(modalId, document.activeElement);
+        modal.classList.add('show');
+        this.syncModalAccessibility(modal, true);
+        window.requestAnimationFrame(() => {
+            const focusTarget = modal.querySelector('[autofocus], input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])')
+                || modal.querySelector('.modal-container');
+            focusTarget?.focus({ preventScroll: true });
+        });
     },
 
     closeModal(modalId) {
-        document.getElementById(modalId).classList.remove('show');
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        modal.classList.remove('show');
+        this.syncModalAccessibility(modal, false);
+        const returnTarget = this._modalReturnFocusById?.get(modalId);
+        this._modalReturnFocusById?.delete(modalId);
+        if (returnTarget?.isConnected) returnTarget.focus({ preventScroll: true });
     },
 
     // Date formatter helper (e.g. 23/05/2026 -> Thứ 7 - 23/05)

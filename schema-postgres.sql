@@ -1,35 +1,8 @@
 -- schema-postgres.sql
--- BẢN GỘP DUY NHẤT — thay thế toàn bộ các file schema cũ + migration cũ.
--- Chạy 1 LẦN DUY NHẤT trên Aiven (PostgreSQL). File này sẽ XÓA SẠCH các bảng
--- cũ (nếu có) rồi tạo lại từ đầu — vì vậy TOÀN BỘ dữ liệu cũ (kể cả các buổi
--- học/lịch dạy trước đây) sẽ MẤT. Chỉ chạy khi bạn chắc chắn muốn làm lại từ đầu.
---
--- Đã bao gồm sẵn:
---   - Cột SessionDetails.Paid (học phí tính riêng theo từng học sinh, không
---     còn dùng chung theo buổi học nữa) -> KHÔNG cần chạy thêm file migration
---     nào khác.
---   - Danh sách học sinh đúng như trong ảnh Hồ sơ học sinh hiện tại.
---
--- CÁCH CHẠY: mở Aiven Console -> chọn service database -> tab "Query editor"
--- (hoặc dùng PG Studio / pgAdmin kết nối qua Connection String), dán TOÀN BỘ
--- nội dung file này vào, chọn hết (Ctrl+A) rồi Run.
-
--- 1. XÓA BẢNG CŨ NẾU ĐÃ TỒN TẠI
-DROP TABLE IF EXISTS AuthSessions CASCADE;
-DROP TABLE IF EXISTS SecurityEvents CASCADE;
-DROP TABLE IF EXISTS TrustedDevices CASCADE;
-DROP TABLE IF EXISTS AccountSecurity CASCADE;
-DROP TABLE IF EXISTS InvoiceAccountSettings CASCADE;
-DROP TABLE IF EXISTS InvoiceTemplates CASCADE;
-DROP TABLE IF EXISTS TaskRequests CASCADE;
-DROP TABLE IF EXISTS Scores CASCADE;
-DROP TABLE IF EXISTS SessionDetails CASCADE;
-DROP TABLE IF EXISTS Sessions CASCADE;
-DROP TABLE IF EXISTS Students CASCADE;
-DROP TABLE IF EXISTS Users CASCADE;
-
+-- Khởi tạo cấu trúc PostgreSQL theo cách an toàn và có thể chạy lại.
+-- File không xóa bảng, không xóa dữ liệu và không tạo tài khoản hoặc dữ liệu mẫu.
 -- 2. BẢNG NGƯỜI DÙNG / QUYỀN TRUY CẬP (Users)
-CREATE TABLE Users (
+CREATE TABLE IF NOT EXISTS Users (
     Id VARCHAR(50) PRIMARY KEY,
     Username VARCHAR(50) NOT NULL,
     Password TEXT NOT NULL,
@@ -41,7 +14,7 @@ CREATE TABLE Users (
     CONSTRAINT FK_Users_AssignedTeacher FOREIGN KEY (AssignedTeacherId) REFERENCES Users(Id)
 );
 
-CREATE TABLE AuthSessions (
+CREATE TABLE IF NOT EXISTS AuthSessions (
     SessionHash CHAR(64) PRIMARY KEY,
     SessionId VARCHAR(50) UNIQUE,
     UserId VARCHAR(120) NOT NULL,
@@ -55,16 +28,16 @@ CREATE TABLE AuthSessions (
     Platform VARCHAR(100) NULL,
     IpPrefix VARCHAR(80) NULL,
     UserAgent VARCHAR(500) NULL,
-    IdleTimeoutMinutes INTEGER NOT NULL DEFAULT 60,
+    IdleTimeoutMinutes INTEGER NOT NULL DEFAULT 20160,
     CreatedAt TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     LastSeenAt TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ExpiresAt TIMESTAMPTZ NOT NULL
 );
-CREATE INDEX idx_authsessions_user ON AuthSessions (AccountType, UserId);
-CREATE INDEX idx_authsessions_actor ON AuthSessions (ActorUserId);
-CREATE INDEX idx_authsessions_expiry ON AuthSessions (ExpiresAt);
+CREATE INDEX IF NOT EXISTS idx_authsessions_user ON AuthSessions (AccountType, UserId);
+CREATE INDEX IF NOT EXISTS idx_authsessions_actor ON AuthSessions (ActorUserId);
+CREATE INDEX IF NOT EXISTS idx_authsessions_expiry ON AuthSessions (ExpiresAt);
 
-CREATE TABLE AccountSecurity (
+CREATE TABLE IF NOT EXISTS AccountSecurity (
     AccountType VARCHAR(20) NOT NULL,
     UserId VARCHAR(120) NOT NULL,
     DisplayName VARCHAR(160) NULL,
@@ -76,7 +49,7 @@ CREATE TABLE AccountSecurity (
     RecoveryCodeHashes JSONB NOT NULL DEFAULT '[]'::jsonb,
     RecoveryCodeSalt VARCHAR(80) NULL,
     LoginAlertEnabled BOOLEAN NOT NULL DEFAULT TRUE,
-    IdleTimeoutMinutes INTEGER NOT NULL DEFAULT 60,
+    IdleTimeoutMinutes INTEGER NOT NULL DEFAULT 20160,
     DeleteRequestedAt TIMESTAMPTZ NULL,
     DeleteRequestStatus VARCHAR(30) NULL,
     CreatedAt TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -84,7 +57,7 @@ CREATE TABLE AccountSecurity (
     PRIMARY KEY (AccountType, UserId)
 );
 
-CREATE TABLE TrustedDevices (
+CREATE TABLE IF NOT EXISTS TrustedDevices (
     AccountType VARCHAR(20) NOT NULL,
     UserId VARCHAR(120) NOT NULL,
     DeviceHash CHAR(64) NOT NULL,
@@ -97,7 +70,7 @@ CREATE TABLE TrustedDevices (
     PRIMARY KEY (AccountType, UserId, DeviceHash)
 );
 
-CREATE TABLE SecurityEvents (
+CREATE TABLE IF NOT EXISTS SecurityEvents (
     Id BIGSERIAL PRIMARY KEY,
     AccountType VARCHAR(20) NOT NULL,
     UserId VARCHAR(120) NOT NULL,
@@ -108,11 +81,11 @@ CREATE TABLE SecurityEvents (
     DeviceLabel VARCHAR(220) NULL,
     CreatedAt TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_securityevents_account_created
+CREATE INDEX IF NOT EXISTS idx_securityevents_account_created
     ON SecurityEvents (AccountType, UserId, CreatedAt DESC);
 
 -- 3. BẢNG HỌC SINH (Students)
-CREATE TABLE Students (
+CREATE TABLE IF NOT EXISTS Students (
     Id VARCHAR(50) PRIMARY KEY,
     Name TEXT NOT NULL,
     Class TEXT NOT NULL,
@@ -124,7 +97,7 @@ CREATE TABLE Students (
 );
 
 -- 4. BẢNG BUỔI HỌC/LỊCH DẠY (Sessions)
-CREATE TABLE Sessions (
+CREATE TABLE IF NOT EXISTS Sessions (
     Id VARCHAR(50) PRIMARY KEY,
     SessionDate DATE NOT NULL,
     StartTime VARCHAR(10) NOT NULL,
@@ -146,7 +119,7 @@ CREATE TABLE Sessions (
 -- 5. BẢNG CHI TIẾT BUỔI HỌC CỦA TỪNG HỌC SINH (SessionDetails)
 --    Cột Paid ở đây là học phí riêng theo TỪNG học sinh trong buổi học
 --    (kể cả buổi "chung" nhiều học sinh vẫn tính độc lập từng em).
-CREATE TABLE SessionDetails (
+CREATE TABLE IF NOT EXISTS SessionDetails (
     SessionId VARCHAR(50) NOT NULL,
     StudentId VARCHAR(50) NOT NULL,
     Homework TEXT NOT NULL DEFAULT '',
@@ -166,7 +139,7 @@ CREATE TABLE SessionDetails (
 -- TestName/MaxScore được lặp lại theo từng học sinh để giữ bảng đơn giản.
 -- Luồng lưu buổi học thay toàn bộ các dòng cùng SessionId trong một transaction;
 -- unique (SessionId, StudentId) ngăn một học sinh bị ghi hai lần trong cùng bài.
-CREATE TABLE Scores (
+CREATE TABLE IF NOT EXISTS Scores (
     Id VARCHAR(50) PRIMARY KEY,
     StudentId VARCHAR(50) NOT NULL,
     TeacherId VARCHAR(50) NOT NULL,
@@ -182,15 +155,15 @@ CREATE TABLE Scores (
     CONSTRAINT FK_Scores_Teacher FOREIGN KEY (TeacherId) REFERENCES Users(Id),
     CONSTRAINT FK_Scores_Session FOREIGN KEY (SessionId) REFERENCES Sessions(Id) ON DELETE CASCADE
 );
-CREATE INDEX idx_scores_student ON Scores (StudentId);
-CREATE INDEX idx_scores_teacher ON Scores (TeacherId);
-CREATE INDEX idx_scores_teacher_test_group ON Scores (TeacherId, TestGroupId);
-CREATE UNIQUE INDEX idx_scores_session_student ON Scores (SessionId, StudentId, TestGroupId) WHERE SessionId IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_scores_student ON Scores (StudentId);
+CREATE INDEX IF NOT EXISTS idx_scores_teacher ON Scores (TeacherId);
+CREATE INDEX IF NOT EXISTS idx_scores_teacher_test_group ON Scores (TeacherId, TestGroupId);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_scores_session_student ON Scores (SessionId, StudentId, TestGroupId) WHERE SessionId IS NOT NULL;
 
 -- 5B. LỊCH SỬ THU HỌC PHÍ THEO THÁNG
 -- Mỗi lần xác nhận đã thu tạo một dòng đối soát độc lập: ngày thu, số tiền,
 -- phương thức và ghi chú. Không dùng bảng này để tính lại số tiền buổi học.
-CREATE TABLE TuitionPayments (
+CREATE TABLE IF NOT EXISTS TuitionPayments (
     Id VARCHAR(60) PRIMARY KEY,
     TeacherId VARCHAR(50) NOT NULL,
     StudentId VARCHAR(50) NOT NULL,
@@ -205,7 +178,7 @@ CREATE TABLE TuitionPayments (
 );
 
 -- 6. YÊU CẦU / CÔNG VIỆC CÁ NHÂN
-CREATE TABLE TaskRequests (
+CREATE TABLE IF NOT EXISTS TaskRequests (
     Id VARCHAR(60) PRIMARY KEY,
     OwnerId VARCHAR(50) NOT NULL,
     OwnerRole VARCHAR(20) NOT NULL,
@@ -219,13 +192,13 @@ CREATE TABLE TaskRequests (
     UpdatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CompletedAt TIMESTAMP NULL
 );
-CREATE INDEX idx_taskrequests_owner_status
+CREATE INDEX IF NOT EXISTS idx_taskrequests_owner_status
     ON TaskRequests (OwnerId, OwnerRole, Completed, CreatedAt DESC);
-CREATE INDEX idx_taskrequests_owner_priority
+CREATE INDEX IF NOT EXISTS idx_taskrequests_owner_priority
     ON TaskRequests (OwnerId, OwnerRole, Priority, CreatedAt DESC);
 
 -- 6A. HỘI THOẠI TRỢ LÝ AI ĐÃ LƯU THEO TỪNG TÀI KHOẢN
-CREATE TABLE AiConversations (
+CREATE TABLE IF NOT EXISTS AiConversations (
     OwnerId VARCHAR(50) NOT NULL,
     OwnerRole VARCHAR(20) NOT NULL,
     MessagesData JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -234,7 +207,7 @@ CREATE TABLE AiConversations (
 );
 
 -- 6B. MẪU NỘI DUNG PHIẾU HỌC PHÍ THEO TỪNG HỌC SINH
-CREATE TABLE InvoiceTemplates (
+CREATE TABLE IF NOT EXISTS InvoiceTemplates (
     OwnerId VARCHAR(50) NOT NULL,
     OwnerRole VARCHAR(20) NOT NULL,
     StudentId VARCHAR(50) NOT NULL,
@@ -242,10 +215,10 @@ CREATE TABLE InvoiceTemplates (
     UpdatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (OwnerId, OwnerRole, StudentId)
 );
-CREATE INDEX idx_invoicetemplates_student ON InvoiceTemplates (StudentId);
+CREATE INDEX IF NOT EXISTS idx_invoicetemplates_student ON InvoiceTemplates (StudentId);
 
 -- 6C. SETUP PHIẾU HỌC PHÍ DÙNG CHUNG CHO MỖI TÀI KHOẢN
-CREATE TABLE InvoiceAccountSettings (
+CREATE TABLE IF NOT EXISTS InvoiceAccountSettings (
     OwnerId VARCHAR(50) NOT NULL,
     OwnerRole VARCHAR(20) NOT NULL,
     TeacherName TEXT NOT NULL DEFAULT '',
@@ -257,25 +230,7 @@ CREATE TABLE InvoiceAccountSettings (
     PRIMARY KEY (OwnerId, OwnerRole)
 );
 
--- 7. TÀI KHOẢN NGƯỜI DÙNG
--- Mật khẩu lưu dạng văn bản thuần (plain text) — đồ án sinh viên quy mô nhỏ.
--- ĐỔI username/password bên dưới thành tài khoản thật của bạn trước khi chạy.
-INSERT INTO Users (Id, Username, Password, Name, Role, Active, AssignedTeacherId) VALUES
-('u_admin', 'admin', 'admin123', 'Nguyễn Bình Minh', 'admin', 1, NULL),
-('u_teacher', 'teacher', 'teacher123', 'Nguyễn Thanh Thúy', 'teacher', 1, NULL),
-('u_assistant', 'trogiang', 'trogiang123', 'Trần Gia Bảo', 'assistant', 1, 'u_teacher');
+-- 7. TÀI KHOẢN KHỞI TẠO
+-- Tài khoản quản trị đầu tiên được tạo qua run-schema.js bằng biến môi trường BOOTSTRAP_ADMIN_*.
 
--- 8. DANH SÁCH HỌC SINH (đúng theo ảnh Hồ sơ học sinh hiện tại)
-INSERT INTO Students (Id, Name, Class, GradeLevel, Subject, BasePrice, TeacherId) VALUES
-('hs_1', 'Khánh Hà',    'Lớp 8',  8,  'Toán', 200000, 'u_teacher'),
-('hs_2', 'Quỳnh Anh',   'Lớp 8',  8,  'Toán', 250000, 'u_teacher'),
-('hs_3', 'Duy Anh',     'Lớp 9',  9,  'Toán', 120000, 'u_teacher'),
-('hs_4', 'Tiến Thanh',  'Lớp 9',  9,  'Toán', 120000, 'u_teacher'),
-('hs_5', 'Trà My',      'Lớp 9',  9,  'Toán', 120000, 'u_teacher'),
-('hs_6', 'Minh Anh',    'Lớp 10', 10, 'Toán', 180000, 'u_teacher'),
-('hs_7', 'Nam Phong',   'Lớp 10', 10, 'Toán', 180000, 'u_teacher');
-
--- Chưa chèn dữ liệu Sessions / SessionDetails mẫu — bảng "Lịch dạy & Chấm công"
--- sẽ trống, bạn nhập buổi học thật trực tiếp trên ứng dụng.
-
-SELECT '=== KHOI TAO DATABASE NTTCLASS (POSTGRESQL) THANH CONG! ===' AS status;
+SELECT '=== DA KIEM TRA KHOI TAO DATABASE NTTCLASS AN TOAN ===' AS status;

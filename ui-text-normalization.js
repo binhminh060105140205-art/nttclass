@@ -2,6 +2,8 @@
     const dashPattern = /[\u2011\u2013\u2014\u2212]/g;
     const attributes = ['aria-label', 'alt', 'placeholder', 'title'];
     const normalize = value => String(value || '').replace(dashPattern, '-');
+    const pendingRoots = new Set();
+    let flushScheduled = false;
 
     function fixText(node) {
         const parent = node.parentElement;
@@ -32,12 +34,36 @@
         }
     }
 
+    function flushPendingTrees() {
+        flushScheduled = false;
+        const roots = Array.from(pendingRoots).filter(node => node.isConnected);
+        pendingRoots.clear();
+        roots.forEach((root, index) => {
+            const coveredByParent = roots.some((candidate, candidateIndex) => (
+                candidateIndex !== index
+                && candidate instanceof Element
+                && candidate.contains(root)
+            ));
+            if (!coveredByParent) fixTree(root);
+        });
+    }
+
+    function queueTree(root) {
+        if (!root) return;
+        pendingRoots.add(root);
+        if (flushScheduled) return;
+        flushScheduled = true;
+        window.requestAnimationFrame(flushPendingTrees);
+    }
+
     function start() {
-        fixTree(document.body);
+        queueTree(document.body);
         new MutationObserver(mutations => mutations.forEach(mutation => {
-            if (mutation.type === 'characterData') return fixText(mutation.target);
-            if (mutation.type === 'attributes') return fixElement(mutation.target);
-            mutation.addedNodes.forEach(fixTree);
+            if (mutation.type === 'characterData' || mutation.type === 'attributes') {
+                queueTree(mutation.target);
+                return;
+            }
+            mutation.addedNodes.forEach(queueTree);
         })).observe(document.body, {
             subtree: true,
             childList: true,

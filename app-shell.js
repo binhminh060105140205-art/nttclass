@@ -602,7 +602,7 @@ Object.assign(PinkyClassApp.prototype, {
         this.syncImpersonationUI(user);
         this.switchRole(user.role);
         this.switchView(user.role === 'admin' ? 'view-users' : user.role === 'student' ? 'view-logs' : 'view-dashboard');
-        this.startIdleLogoutMonitor?.(user.idleTimeoutMinutes || 60);
+        this.startIdleLogoutMonitor?.(user.idleTimeoutMinutes || (14 * 24 * 60));
         this.showToast(`Đăng nhập thành công với vai trò: ${roleLabel}`, 'success');
     },
 

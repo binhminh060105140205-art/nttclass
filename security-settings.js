@@ -107,18 +107,6 @@ Object.assign(PinkyClassApp.prototype, {
 
 
         this.switchSettingsTab?.(options.focusInvoiceSetup ? 'invoice' : (options.tab || 'account'));
-        void this.loadSecuritySessions?.();
-        void this.loadSecurityHistory?.();
-
-        if (canSetupInvoice && typeof this.loadInvoiceSetup === 'function') {
-            try {
-                const setup = await this.loadInvoiceSetup({ force: true });
-                this.applyInvoiceSetupToSettings(setup);
-            } catch (error) {
-                this.showToast(error.message || 'Không thể tải Setup phiếu học phí.', 'error');
-            }
-        }
-
         if (options.focusInvoiceSetup && invoiceSetupSection) {
             requestAnimationFrame(() => {
                 invoiceSetupSection.scrollIntoView({ behavior: 'smooth', block: 'start' });

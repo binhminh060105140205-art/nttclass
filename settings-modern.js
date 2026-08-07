@@ -53,7 +53,7 @@ Object.assign(PinkyClassApp.prototype, {
                     <div class="settings-card settings-preferences-card">
                         <div class="settings-card-heading"><div><h4>Cảnh báo và thời gian phiên</h4><p>Email cảnh báo chỉ gửi tới địa chỉ đã xác minh.</p></div></div>
                         <label class="settings-toggle-row"><span><strong>Cảnh báo email khi đăng nhập mới</strong><small>Gửi thông tin thiết bị, trình duyệt và IP tương đối.</small></span><input type="checkbox" id="settingsLoginAlertEnabled"><i></i></label>
-                        <label class="settings-select-row" for="settingsIdleTimeout"><span><strong>Tự động đăng xuất khi không hoạt động</strong><small>Áp dụng cho tất cả thiết bị của tài khoản.</small></span><select id="settingsIdleTimeout" class="form-control"><option value="15">15 phút</option><option value="30">30 phút</option><option value="60">1 giờ</option><option value="120">2 giờ</option><option value="240">4 giờ</option><option value="480">8 giờ</option></select></label>
+                        <label class="settings-select-row" for="settingsIdleTimeout"><span><strong>Tự động đăng xuất khi không hoạt động</strong><small>Áp dụng cho tất cả thiết bị của tài khoản.</small></span><select id="settingsIdleTimeout" class="form-control"><option value="20160">2 tuần</option></select></label>
                         <button type="button" class="btn btn-primary btn-sm" onclick="app.saveSecurityPreferences()">Lưu cài đặt bảo mật</button>
                     </div>
                     <div class="settings-card settings-history-card" id="settingsHistoryCard"><div class="settings-card-heading"><div><h4>Lịch sử bảo mật</h4><p>Đăng nhập, đổi mật khẩu, nhập sai và khóa tài khoản.</p></div><button type="button" class="btn btn-secondary btn-sm" onclick="app.loadSecurityHistory()">Làm mới</button></div><div id="settingsSecurityHistory" class="settings-history-list"><div class="settings-loading">Đang tải lịch sử...</div></div></div>
@@ -101,6 +101,11 @@ Object.assign(PinkyClassApp.prototype, {
         document.querySelector('.account-settings-body')?.scrollTo({ top: 0, behavior: 'auto' });
         if (tab === 'devices') void this.loadSecuritySessions();
         if (tab === 'security') void this.loadSecurityHistory();
+        if (tab === 'invoice' && ['teacher', 'assistant'].includes(this.currentRole)) {
+            void this.loadInvoiceSetup?.().catch(error => {
+                this.showToast(error.message || 'Không thể tải Setup phiếu học phí.', 'error');
+            });
+        }
     }
 });
 
@@ -221,7 +226,7 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     startIdleLogoutMonitor(timeoutMinutes) {
-        const minutes = Number(timeoutMinutes) || 60;
+        const minutes = Number(timeoutMinutes) || (14 * 24 * 60);
         this._idleTimeoutMs = minutes * 60 * 1000;
         this._idleLastActivityAt = Date.now();
         if (!this._idleActivityHandler) {
@@ -270,7 +275,7 @@ Object.assign(PinkyClassApp.prototype, {
 
     async saveSecurityPreferences() {
         const loginAlertEnabled = !!document.getElementById('settingsLoginAlertEnabled')?.checked;
-        const idleTimeoutMinutes = Number(document.getElementById('settingsIdleTimeout')?.value || 60);
+        const idleTimeoutMinutes = Number(document.getElementById('settingsIdleTimeout')?.value || (14 * 24 * 60));
         try {
             const response = await this.authFetch(`${API_BASE_URL}/api/account/security/preferences`, {
                 method: 'PUT',
@@ -469,7 +474,7 @@ Object.assign(PinkyClassApp.prototype, {
         const loginAlert = document.getElementById('settingsLoginAlertEnabled');
         if (loginAlert) loginAlert.checked = data.loginAlertEnabled !== false;
         const idleTimeout = document.getElementById('settingsIdleTimeout');
-        if (idleTimeout) idleTimeout.value = String(data.idleTimeoutMinutes || 60);
+        if (idleTimeout) idleTimeout.value = String(data.idleTimeoutMinutes || (14 * 24 * 60));
         this.renderDeletionStatus(data.deleteRequestedAt, data.deleteRequestStatus);
     },
 

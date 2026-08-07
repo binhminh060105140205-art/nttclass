@@ -167,7 +167,7 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     async parseStudentImportSpreadsheet(arrayBuffer, extension) {
-        const XLSX = await this.loadStudentImportLibrary('/vendor/xlsx.full.min.js', 'XLSX');
+        const XLSX = await this.loadStudentImportLibrary('/vendor/xlsx.full.min.js?v=0.20.3', 'XLSX');
         const workbook = XLSX.read(arrayBuffer, {
             type: 'array',
             cellDates: true,
@@ -185,7 +185,7 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     async parseStudentImportDocx(arrayBuffer) {
-        const mammoth = await this.loadStudentImportLibrary('/vendor/mammoth.browser.min.js', 'mammoth');
+        const mammoth = await this.loadStudentImportLibrary('/vendor/mammoth.browser.min.js?v=1.12.0', 'mammoth');
         const result = await mammoth.convertToHtml({ arrayBuffer });
         const documentNode = new DOMParser().parseFromString(result.value || '', 'text/html');
         const tables = Array.from(documentNode.querySelectorAll('table'));
@@ -525,7 +525,7 @@ Object.assign(PinkyClassApp.prototype, {
         const button = document.getElementById('studentImportTemplateBtn');
         if (button) button.disabled = true;
         try {
-            const XLSX = await this.loadStudentImportLibrary('/vendor/xlsx.full.min.js', 'XLSX');
+            const XLSX = await this.loadStudentImportLibrary('/vendor/xlsx.full.min.js?v=0.20.3', 'XLSX');
             const rows = [
                 ['Họ và tên học sinh', 'Lớp', 'Ngày sinh', 'Môn học', 'Học phí/buổi'],
                 ['Nguyễn Văn An', 'Lớp 6', '04/08/2012', 'Toán', 250000],
