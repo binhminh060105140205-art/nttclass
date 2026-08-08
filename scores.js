@@ -25,6 +25,7 @@ Object.assign(PinkyClassApp.prototype, {
         results.innerHTML = this.scoreViewMode === 'students'
             ? this.renderScoresByStudents(filteredScores)
             : this.renderScoresByTests(filteredScores);
+        this.activateScoreInlineEditing();
     },
 
     setScoreViewMode(mode) {
@@ -186,6 +187,87 @@ Object.assign(PinkyClassApp.prototype, {
 
     getScoreTestTitle(score) {
         return String(score.testName || '').trim() || this.scoreTypeLabel(score.scoreType) || 'Bài kiểm tra';
+    },
+
+    fitScoreInlineTextarea(textarea) {
+        if (!textarea) return;
+        textarea.style.height = 'auto';
+        textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 36), 140)}px`;
+    },
+
+    mountScoreValueEditor(cell, score) {
+        if (!cell || !score) return;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.inputMode = 'decimal';
+        input.className = 'score-inline-editor score-inline-score-value';
+        input.dataset.scoreInline = 'score-value';
+        input.dataset.scoreId = score.id;
+        input.dataset.originalValue = String(score.scoreValue);
+        input.value = String(score.scoreValue);
+        input.setAttribute('aria-label', 'Điểm số');
+        const scale = document.createElement('span');
+        const wrapper = document.createElement('label');
+        scale.textContent = `/ ${Number(score.maxScore) > 0 ? score.maxScore : 10}`;
+        wrapper.className = 'score-inline-score-wrap';
+        wrapper.append(input, scale);
+        cell.replaceChildren(wrapper);
+    },
+
+    mountScoreNoteEditor(cell, score) {
+        if (!cell || !score) return;
+        const textarea = document.createElement('textarea');
+        textarea.className = 'score-inline-editor score-inline-note';
+        textarea.rows = 1;
+        textarea.maxLength = 500;
+        textarea.dataset.scoreInline = 'note';
+        textarea.dataset.scoreId = score.id;
+        textarea.dataset.originalValue = score.note || '';
+        textarea.value = score.note || '';
+        textarea.setAttribute('aria-label', 'Ghi chú điểm');
+        textarea.placeholder = '-';
+        cell.replaceChildren(textarea);
+        this.fitScoreInlineTextarea(textarea);
+    },
+
+    mountScoreTestNameEditor(container, score, compact = false) {
+        if (!container || !score) return;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = `score-inline-editor score-inline-test-name${compact ? ' is-compact' : ''}`;
+        input.maxLength = 150;
+        input.dataset.scoreInline = 'test-name';
+        input.dataset.testGroupId = this.getScoreTestGroupId(score);
+        input.dataset.originalValue = this.getScoreTestTitle(score);
+        input.value = this.getScoreTestTitle(score);
+        input.setAttribute('aria-label', 'Tên bài kiểm tra');
+        container.replaceChildren(input);
+    },
+
+    activateScoreInlineEditing() {
+        if (!['teacher', 'assistant'].includes(this.currentRole)) return;
+        const results = document.getElementById('scoreResults');
+        if (!results) return;
+        results.querySelectorAll('[data-score-action=edit]').forEach(button => {
+            const score = (this.scores || []).find(item => item.id === button.dataset.scoreId);
+            const row = button.closest('tr');
+            if (!score || !row) return;
+            const scoreCell = row.querySelector('.score-value-cell');
+            const noteCell = scoreCell?.nextElementSibling;
+            this.mountScoreValueEditor(scoreCell, score);
+            this.mountScoreNoteEditor(noteCell, score);
+            if (this.scoreViewMode === 'students') {
+                this.mountScoreTestNameEditor(row.querySelector('.score-row-meta'), score, true);
+            }
+            button.remove();
+        });
+        results.querySelectorAll('.score-test-card').forEach(card => {
+            const action = card.querySelector('[data-score-action=delete-test]');
+            const groupId = action?.dataset.testGroupId;
+            const score = (this.scores || []).find(item => this.getScoreTestGroupId(item) === groupId);
+            if (!score) return;
+            this.mountScoreTestNameEditor(card.querySelector('.score-test-title h3'), score);
+        });
     },
 
     renderScoresByTests(scores) {
@@ -452,6 +534,77 @@ Object.assign(PinkyClassApp.prototype, {
             if (control) control.disabled = locked;
         });
         this.syncCustomScoreTypeInput(document.getElementById('scoreType'), document.getElementById('scoreCustomType'));
+    },
+
+    async saveScoreInlineEditor(editor) {
+        if (!editor || editor.disabled) return;
+        const score = (this.scores || []).find(item => item.id === editor.dataset.scoreId);
+        const field = editor.dataset.scoreInline;
+        if (!score || !['score-value', 'note'].includes(field)) return;
+        let scoreValue = Number(score.scoreValue);
+        let note = String(score.note || '');
+        if (field === 'score-value') {
+            const rawValue = String(editor.value || '').trim().replace(',', '.');
+            const nextValue = Number(rawValue);
+            const maxScore = Number(score.maxScore) > 0 ? Number(score.maxScore) : 10;
+            if (!rawValue || !Number.isFinite(nextValue) || nextValue < 0 || nextValue > maxScore) {
+                this.showToast(`Điểm số phải nằm trong khoảng từ 0 đến ${maxScore}.`, 'error');
+                this.renderScores();
+                return;
+            }
+            scoreValue = nextValue;
+        } else {
+            note = String(editor.value || '').trim();
+        }
+        if (scoreValue === Number(score.scoreValue) && note === String(score.note || '')) return;
+        editor.disabled = true;
+        editor.classList.add('is-saving');
+        try {
+            const response = await this.authFetch(`${API_BASE_URL}/api/scores/${score.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scoreValue, note })
+            });
+            await this.requireApiSuccess(response, 'Không thể lưu thay đổi điểm số.');
+            score.scoreValue = scoreValue;
+            score.note = note;
+            this.renderScores();
+            this.showToast('Đã tự động lưu điểm và ghi chú.', 'success');
+        } catch (error) {
+            this.renderScores();
+            this.showToast(error.message || 'Không thể lưu thay đổi điểm số.', 'error');
+        }
+    },
+
+    async saveScoreInlineTestName(editor) {
+        if (!editor || editor.disabled) return;
+        const testGroupId = String(editor.dataset.testGroupId || '').trim();
+        const testName = String(editor.value || '').trim();
+        const originalValue = String(editor.dataset.originalValue || '').trim();
+        if (!testGroupId || testName === originalValue) return;
+        if (!testName || testName.length > 150) {
+            this.showToast('Tên bài kiểm tra phải có từ 1 đến 150 ký tự.', 'error');
+            this.renderScores();
+            return;
+        }
+        editor.disabled = true;
+        editor.classList.add('is-saving');
+        try {
+            const response = await this.authFetch(`${API_BASE_URL}/api/score-tests/${encodeURIComponent(testGroupId)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ testName })
+            });
+            await this.requireApiSuccess(response, 'Không thể đổi tên bài kiểm tra.');
+            (this.scores || []).forEach(score => {
+                if (this.getScoreTestGroupId(score) === testGroupId) score.testName = testName;
+            });
+            this.renderScores();
+            this.showToast('Đã tự động lưu tên bài kiểm tra.', 'success');
+        } catch (error) {
+            this.renderScores();
+            this.showToast(error.message || 'Không thể đổi tên bài kiểm tra.', 'error');
+        }
     },
 
     openEditScoreModal(scoreId) {

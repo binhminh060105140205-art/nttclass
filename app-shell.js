@@ -167,6 +167,27 @@ Object.assign(PinkyClassApp.prototype, {
             if (action.dataset.scoreAction === 'delete-test') this.deleteScoreTest(action.dataset.testGroupId);
             if (action.dataset.scoreAction === 'open-session') this.openEditSessionModal(action.dataset.sessionId);
         });
+        const scoreInlineResults = document.getElementById('scoreResults');
+        scoreInlineResults?.addEventListener('focusout', (event) => {
+            const editor = event.target.closest('[data-score-inline]');
+            if (!editor) return;
+            if (editor.dataset.scoreInline === 'test-name') this.saveScoreInlineTestName(editor);
+            else this.saveScoreInlineEditor(editor);
+        });
+        scoreInlineResults?.addEventListener('input', (event) => {
+            if (event.target.classList.contains('score-inline-note')) this.fitScoreInlineTextarea(event.target);
+        });
+        scoreInlineResults?.addEventListener('keydown', (event) => {
+            const editor = event.target.closest('[data-score-inline]');
+            if (!editor) return;
+            if (event.key === 'Escape') {
+                editor.value = editor.dataset.originalValue || '';
+                editor.blur();
+            } else if (event.key === 'Enter' && editor.tagName !== 'TEXTAREA') {
+                event.preventDefault();
+                editor.blur();
+            }
+        });
 
         const batchScoreForm = document.getElementById('batchScoreForm');
         if (batchScoreForm) {

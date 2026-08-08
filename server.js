@@ -4662,6 +4662,32 @@ app.delete('/api/scores/:id', requireRole('teacher', 'assistant'), requireTeache
 });
 
 // Xóa toàn bộ các dòng điểm thuộc cùng một bài kiểm tra, không xóa buổi học.
+app.put('/api/score-tests/:testGroupId', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
+    const testGroupId = String(req.params.testGroupId || '').trim();
+    const testName = String(req.body?.testName || '').trim();
+    if (!testGroupId || testGroupId.length > 100) {
+        return res.status(400).json({ error: 'Mã bài kiểm tra không hợp lệ.' });
+    }
+    if (!testName || testName.length > 150) {
+        return res.status(400).json({ error: 'Tên bài kiểm tra phải có từ 1 đến 150 ký tự.' });
+    }
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('teacherId', sql.VarChar, req.effectiveTeacherId)
+            .input('testGroupId', sql.VarChar, testGroupId)
+            .input('testName', sql.NVarChar, testName)
+            .query('UPDATE Scores SET TestName = @testName WHERE TeacherId = @teacherId AND TestGroupId = @testGroupId');
+        if (!result.rowCount) {
+            return res.status(404).json({ error: 'Không tìm thấy bài kiểm tra cần đổi tên.' });
+        }
+        res.json({ message: 'Đã cập nhật tên bài kiểm tra.', count: result.rowCount });
+    } catch (err) {
+        console.error('[PUT /api/score-tests/:testGroupId]', err);
+        res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
+    }
+});
+
 app.delete('/api/score-tests/:testGroupId', requireRole('teacher', 'assistant'), requireTeacherContext, async (req, res) => {
     const testGroupId = String(req.params.testGroupId || '').trim();
     if (!testGroupId || testGroupId.length > 100) {

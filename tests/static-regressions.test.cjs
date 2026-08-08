@@ -148,3 +148,17 @@ test('impersonated login tracking is suppressed', () => {
     assert.ok(settings.includes('devicesTab.hidden = hideDelegatedSessions'));
     assert.ok(securitySchema.includes('DELETE FROM AuthSessions WHERE ActorUserId IS NOT NULL'));
 });
+
+test('score cards support inline autosave for values notes and test names', () => {
+    const scores = read('scores.js');
+    const shell = read('app-shell.js');
+    const server = read('server.js');
+    const style = read('style.css');
+    assert.match(scores, /activateScoreInlineEditing/);
+    assert.match(scores, /saveScoreInlineEditor/);
+    assert.match(scores, /saveScoreInlineTestName/);
+    assert.match(shell, /\[data-score-inline\]/);
+    assert.match(server, /app\.put\('\/api\/score-tests\/:testGroupId'/);
+    assert.match(server, /UPDATE Scores SET TestName = @testName/);
+    assert.match(style, /\.score-inline-editor/);
+});
