@@ -3,9 +3,48 @@
    Design tokens (colors, shadows, transitions) + one consistent 16px root
    typography scale on mobile, tablet and desktop.
    ========================================================================== */
+@font-face {
+    font-family: 'Comfortaa';
+    src: url('/assets/fonts/Comfortaa-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Comfortaa';
+    src: url('/assets/fonts/Comfortaa-Medium.ttf') format('truetype');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Comfortaa';
+    src: url('/assets/fonts/Comfortaa-SemiBold.ttf') format('truetype');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Comfortaa';
+    src: url('/assets/fonts/Comfortaa-Bold.ttf') format('truetype');
+    font-weight: 700 900;
+    font-style: normal;
+    font-display: swap;
+}
+
 html { font-size: 100%; }
 
 body, button, input, select, textarea { font-family: 'Comfortaa', sans-serif; }
+
+.lithos-page,
+.lithos-page *,
+html[data-app-theme=lithos] body,
+html[data-app-theme=lithos] body * {
+    font-family: 'Comfortaa', sans-serif !important;
+}
 
 /* ========================================================================
    8. PROFESSIONAL PRODUCT UI — cohesive visual layer
@@ -215,12 +254,12 @@ body {
     max-height: 92vh;
     display: flex;
     flex-direction: column;
-    font-family: 'Be Vietnam Pro', sans-serif;
+    font-family: 'Comfortaa', sans-serif;
 }
 #invoiceModal .invoice-modal-container button,
 #invoiceModal .invoice-modal-container input,
 #invoiceModal .invoice-modal-container textarea {
-    font-family: 'Be Vietnam Pro', sans-serif;
+    font-family: 'Comfortaa', sans-serif;
 }
 #invoiceModal .modal-header {
     padding: 15px 20px;

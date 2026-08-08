@@ -310,7 +310,7 @@ Object.assign(PinkyClassApp.prototype, {
                         </div>
                         <div class="score-test-average"><small>Điểm TB /10</small><strong>${average === null ? '-' : average.toFixed(1)}</strong></div>
                         ${canManage ? `<div class="score-test-actions">
-                            ${sessionId ? `<button type="button" class="btn btn-secondary btn-sm" data-score-action="open-session" data-session-id="${this.escapeHtmlAttr(sessionId)}">Mở buổi học</button>` : ''}
+                            ${sessionId ? `<button type="button" class="btn btn-secondary btn-sm" data-score-action="open-session" data-session-id="${this.escapeHtmlAttr(sessionId)}">Cập nhật buổi học</button>` : ''}
                             <button type="button" class="btn btn-danger btn-sm" data-score-action="delete-test" data-test-group-id="${this.escapeHtmlAttr(groupId)}">Xóa bài</button>
                         </div>` : ''}
                     </header>

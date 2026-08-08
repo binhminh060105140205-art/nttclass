@@ -524,15 +524,15 @@ Object.assign(PinkyClassApp.prototype, {
         return sessions;
     },
 
-    // Nạp pdfMake và font Be Vietnam Pro từ chính máy chủ trước, tránh phụ thuộc CDN
+    // Nạp pdfMake và font Comfortaa từ chính máy chủ trước, tránh phụ thuộc CDN
     // khiến nút xuất PDF hỏng khi mạng yếu hoặc trình duyệt chặn tài nguyên ngoài.
     async ensurePdfMake() {
         const configureFonts = (pdfMake) => {
-            const regularFontUrl = new URL('/assets/fonts/BeVietnamPro-Regular.ttf?v=20260806', window.location.href).href;
-            const boldFontUrl = new URL('/assets/fonts/BeVietnamPro-Bold.ttf?v=20260806', window.location.href).href;
+            const regularFontUrl = new URL('/assets/fonts/Comfortaa-Regular.ttf', window.location.href).href;
+            const boldFontUrl = new URL('/assets/fonts/Comfortaa-Bold.ttf', window.location.href).href;
             pdfMake.fonts = {
                 ...(pdfMake.fonts || {}),
-                BeVietnamPro: {
+                Comfortaa: {
                     normal: regularFontUrl,
                     bold: boldFontUrl,
                     italics: regularFontUrl,
@@ -920,7 +920,7 @@ Object.assign(PinkyClassApp.prototype, {
                 ]
             }),
             content,
-            defaultStyle: { font: 'BeVietnamPro', fontSize: 10, color: colors.text, lineHeight: 1.25 },
+            defaultStyle: { font: 'Comfortaa', fontSize: 10, color: colors.text, lineHeight: 1.25 },
             styles: {
                 brand: { fontSize: 14, color: colors.primary, bold: true },
                 eyebrow: { fontSize: 8.5, color: colors.muted, bold: true, characterSpacing: 1.2 },
@@ -1159,7 +1159,7 @@ Object.assign(PinkyClassApp.prototype, {
 
         /* ============ I. ROOT ============ */
         #invoiceExportSheet {
-            font-family: 'Be Vietnam Pro', Arial, sans-serif;
+            font-family: 'Comfortaa', sans-serif;
             background: ${colors.canvasBackground};
             width: 600px;
             max-width: 600px;

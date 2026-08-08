@@ -160,7 +160,24 @@ test('score cards support inline autosave for values notes and test names', () =
     assert.match(scores, /saveScoreInlineEditor/);
     assert.match(scores, /saveScoreInlineTestName/);
     assert.match(shell, /\[data-score-inline\]/);
+    assert.match(shell, /open-session'\) this\.openEditSessionModal/);
+    assert.match(scores, /Cập nhật buổi học/);
     assert.match(server, /app\.put\('\/api\/score-tests\/:testGroupId'/);
     assert.match(server, /UPDATE Scores SET TestName = @testName/);
     assert.match(style, /\.score-inline-editor/);
+});
+
+test('all app surfaces and tuition invoices use Comfortaa', () => {
+    const html = read('index.html');
+    const style = read('style.css');
+    const invoice = read('invoice-export.js');
+    assert.doesNotMatch(html, /fonts\.googleapis\.com|Be\+Vietnam\+Pro|family=Inter|Playfair\+Display/);
+    assert.match(style, /Comfortaa-Regular\.ttf/);
+    assert.match(style, /Comfortaa-Medium\.ttf/);
+    assert.match(style, /Comfortaa-SemiBold\.ttf/);
+    assert.match(style, /Comfortaa-Bold\.ttf/);
+    assert.match(style, /html\[data-app-theme=(?:"lithos"|lithos)\] body \*/);
+    assert.match(invoice, /defaultStyle: \{ font: 'Comfortaa'/);
+    assert.match(invoice, /font-family: 'Comfortaa'/);
+    assert.doesNotMatch(invoice, /BeVietnamPro|Be Vietnam Pro/);
 });
