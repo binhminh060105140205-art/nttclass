@@ -21,7 +21,7 @@ body{color:var(--text-main);background:radial-gradient(circle at 82% 8%,rgba(232
 #view-dashboard>.stats-grid>.glass-card,#view-scheduler .stats-grid>.glass-card,#view-classes .class-profile-summary>.glass-card,#view-tuition .grid-form>.glass-card.stat-card{background-image:linear-gradient(145deg,rgba(38,40,36,.96),rgba(18,20,18,.96))!important}.stat-card{border-top:2px solid rgba(232,42,127,.72)}.stats-grid .stat-card:nth-child(2){border-top-color:#cf4684}.stats-grid .stat-card:nth-child(3){border-top-color:#918a73}.stats-grid .stat-card:nth-child(4){border-top-color:#e4679f}.stat-value{color:#fff}.stat-label{color:#9ea39e}.stat-card::before{background:linear-gradient(90deg,#e82a7f,transparent)!important}.stats-grid{gap:16px}
 
 /* lithos-app-cards.css */
-.glass-card{background:linear-gradient(145deg,rgba(33,35,32,.94),rgba(18,20,18,.94));border:1px solid rgba(255,255,255,.1);box-shadow:0 14px 36px rgba(0,0,0,.22)}.glass-card:hover{border-color:rgba(232,42,127,.28);box-shadow:0 18px 44px rgba(0,0,0,.3);transform:translateY(-2px)}.glass-card h2,.glass-card h3,.evaluation-header h2,.score-page-header h2{color:#f7f4ed}.glass-card p{color:var(--text-muted)}.ai-chat-card,.requests-card{background:rgba(20,22,20,.95)}
+.glass-card{background:linear-gradient(145deg,rgba(33,35,32,.94),rgba(18,20,18,.94));border:1px solid rgba(255,255,255,.1);box-shadow:0 14px 36px rgba(0,0,0,.22)}.glass-card:hover{border-color:rgba(232,42,127,.28);box-shadow:0 18px 44px rgba(0,0,0,.3);transform:translateY(-2px)}.glass-card h2,.glass-card h3,.evaluation-header h2,.score-page-header h2{color:#f7f4ed}.glass-card p{color:var(--text-muted)}.requests-card{background:rgba(20,22,20,.95)}
 
 /* lithos-app-forms.css */
 .main-content input:not([type=checkbox]):not([type=radio]):not([type=range]),.main-content select,.main-content textarea,.modal-container input:not([type=checkbox]):not([type=radio]),.modal-container select,.modal-container textarea{color:#f5f2eb!important;background:#121412!important;border-color:rgba(255,255,255,.13)!important;caret-color:#e82a7f}.main-content input::placeholder,.main-content textarea::placeholder,.modal-container input::placeholder,.modal-container textarea::placeholder{color:#747a74!important}.main-content input:focus,.main-content select:focus,.main-content textarea:focus,.modal-container input:focus,.modal-container select:focus,.modal-container textarea:focus{border-color:#e82a7f!important;box-shadow:0 0 0 4px rgba(232,42,127,.12)!important}
@@ -45,7 +45,7 @@ body{color:var(--text-main);background:radial-gradient(circle at 82% 8%,rgba(232
 .login-screen{background:radial-gradient(circle at 75% 15%,rgba(232,42,127,.16),transparent 24rem),#080908}.login-wrapper{background:#111311;border:1px solid rgba(255,255,255,.1);box-shadow:0 30px 90px rgba(0,0,0,.55)}.login-card{background:#151715;color:#fff}.login-card-icon{color:#fff;background:linear-gradient(145deg,#e82a7f,#b91961)}.login-welcome,.login-input-group label{color:#fff}.login-welcome-sub,.login-remember,.login-footer-note{color:#969b96}.login-forgot-link{color:#f260a2}.login-back-button{color:#c8cbc7;background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1)}
 
 /* lithos-app-special.css */
-.score-filter-panel,.score-batch-panel,.quick-entry-score-panel,.repeat-dates-panel,.otp-verification-panel,.qr-upload-box,.invoice-summary-item,.channel-option-card,.session-item,.request-item,.qe-score-row,.qe-student-card,.remarks-editor-box{color:var(--text-main);background:#121412!important;border-color:rgba(255,255,255,.1)!important}.channel-option-card:hover,.session-item:hover,.request-item:hover{background:#1b1e1b!important;border-color:rgba(232,42,127,.28)!important}.ai-chat-bubble{color:#e8eae6;background:#171917!important;border-color:rgba(255,255,255,.1)!important}.ai-chat-msg-user .ai-chat-bubble{background:linear-gradient(135deg,#d52474,#a61757)!important;color:#fff}.settings-section-title{color:#f25a9e}.settings-section-desc,.request-item-meta{color:#929792}
+.score-filter-panel,.score-batch-panel,.quick-entry-score-panel,.repeat-dates-panel,.otp-verification-panel,.qr-upload-box,.invoice-summary-item,.channel-option-card,.session-item,.request-item,.qe-score-row,.qe-student-card,.remarks-editor-box{color:var(--text-main);background:#121412!important;border-color:rgba(255,255,255,.1)!important}.channel-option-card:hover,.session-item:hover,.request-item:hover{background:#1b1e1b!important;border-color:rgba(232,42,127,.28)!important}.settings-section-title{color:#f25a9e}.settings-section-desc,.request-item-meta{color:#929792}
 
 /* lithos-app-responsive.css */
 @media(max-width:767px){body{background:#090a09}.sidebar{background:#080908}.main-content{background:#0d0f0d}.top-header{background:rgba(18,20,18,.96);border-radius:16px}.glass-card{border-radius:16px}.login-card{background:#141614}.header-actions .btn,.header-actions .student-context-picker{width:100%}.modal-container{border-radius:18px}}@media(prefers-reduced-motion:reduce){.glass-card,.btn,.menu-item{transition:none!important;transform:none!important}}
@@ -855,7 +855,6 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .student-context-picker {
 }
 
 html[data-app-theme="lithos"][data-theme-mode="light"] .glass-card,
-html[data-app-theme="lithos"][data-theme-mode="light"] .ai-chat-card,
 html[data-app-theme="lithos"][data-theme-mode="light"] .requests-card {
     color: #3f2923;
     background: linear-gradient(145deg, rgba(255, 253, 249, .98), rgba(250,231,240,.94));
@@ -1071,16 +1070,7 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .request-item:hover {
     border-color: rgba(168,45,100,.32) !important;
 }
 
-html[data-app-theme="lithos"][data-theme-mode="light"] .ai-chat-bubble {
-    color: #5d4034;
-    background: #f9e6ef !important;
-    border-color: rgba(122, 67, 48, .14) !important;
-}
 
-html[data-app-theme="lithos"][data-theme-mode="light"] .ai-chat-msg-user .ai-chat-bubble {
-    color: #fff;
-    background: linear-gradient(135deg, #a82d64, #cf4080) !important;
-}
 
 html[data-app-theme="lithos"][data-theme-mode="light"] .settings-section-title,
 html[data-app-theme="lithos"][data-theme-mode="light"] .request-priority-label {
@@ -1898,7 +1888,7 @@ html[data-app-theme="lithos"] #sidebarUserName:hover {
     filter: saturate(1.18) drop-shadow(0 5px 8px rgba(232,42,127,.2));
 }
 
-html[data-app-theme="lithos"] :is(#btnExportInvoice, #aiChatSendBtn, #saveSessionBtn)::after {
+html[data-app-theme="lithos"] :is(#btnExportInvoice, #saveSessionBtn)::after {
     content: '' !important;
     display: block !important;
     position: absolute;
@@ -1916,8 +1906,8 @@ html[data-app-theme="lithos"] :is(#btnExportInvoice, #aiChatSendBtn, #saveSessio
     transition: opacity .25s ease, transform .35s ease;
 }
 
-html[data-app-theme="lithos"] :is(#btnExportInvoice, #aiChatSendBtn, #saveSessionBtn):hover::after,
-html[data-app-theme="lithos"] :is(#btnExportInvoice, #aiChatSendBtn, #saveSessionBtn):focus-visible::after {
+html[data-app-theme="lithos"] :is(#btnExportInvoice, #saveSessionBtn):hover::after,
+html[data-app-theme="lithos"] :is(#btnExportInvoice, #saveSessionBtn):focus-visible::after {
     opacity: 1;
     transform: rotate(0deg) scale(1.08);
 }
@@ -1926,14 +1916,14 @@ html[data-app-theme="lithos"][data-theme-mode="light"] #sidebarUserName {
     filter: saturate(1.12) drop-shadow(0 4px 7px rgba(113,27,66,.16));
 }
 
-html[data-app-theme="lithos"][data-theme-mode="light"] :is(#btnExportInvoice, #aiChatSendBtn, #saveSessionBtn)::after {
+html[data-app-theme="lithos"][data-theme-mode="light"] :is(#btnExportInvoice, #saveSessionBtn)::after {
     mix-blend-mode: multiply;
     filter: saturate(1.28) drop-shadow(0 4px 7px rgba(113,27,66,.16));
 }
 
 @media (max-width: 767px) {
     html[data-app-theme="lithos"] #sidebarUserName { background-size: 100% 48px; padding-inline: 6px 14px; }
-    html[data-app-theme="lithos"] :is(#btnExportInvoice, #aiChatSendBtn, #saveSessionBtn)::after { width: 48px; height: 38px; top: auto; right: -12px; bottom: -10px; }
+    html[data-app-theme="lithos"] :is(#btnExportInvoice, #saveSessionBtn)::after { width: 48px; height: 38px; top: auto; right: -12px; bottom: -10px; }
 }
 
 

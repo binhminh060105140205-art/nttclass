@@ -197,15 +197,6 @@ CREATE INDEX IF NOT EXISTS idx_taskrequests_owner_status
 CREATE INDEX IF NOT EXISTS idx_taskrequests_owner_priority
     ON TaskRequests (OwnerId, OwnerRole, Priority, CreatedAt DESC);
 
--- 6A. HỘI THOẠI TRỢ LÝ AI ĐÃ LƯU THEO TỪNG TÀI KHOẢN
-CREATE TABLE IF NOT EXISTS AiConversations (
-    OwnerId VARCHAR(50) NOT NULL,
-    OwnerRole VARCHAR(20) NOT NULL,
-    MessagesData JSONB NOT NULL DEFAULT '[]'::jsonb,
-    UpdatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (OwnerId, OwnerRole)
-);
-
 -- 6B. MẪU NỘI DUNG PHIẾU HỌC PHÍ THEO TỪNG HỌC SINH
 CREATE TABLE IF NOT EXISTS InvoiceTemplates (
     OwnerId VARCHAR(50) NOT NULL,

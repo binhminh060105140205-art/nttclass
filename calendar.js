@@ -826,9 +826,6 @@ Object.assign(PinkyClassApp.prototype, {
         }
     },
 
-    // Thêm 1 bong bóng chat vào khung Trợ lý AI, trả về element vừa tạo (để
-    // có thể sửa nội dung sau, ví dụ thay bong bóng "Đang trả lời..." bằng
-    // câu trả lời thật khi API phản hồi xong).
 });
 
 // ================================================================

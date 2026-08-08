@@ -62,7 +62,7 @@ html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] .sideba
     box-shadow: 12px 0 32px rgba(8, 3, 5, .22) !important;
 }
 
-html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] :is(.user-box, .top-header, .glass-card, .ai-chat-card, .requests-card, .score-filter-panel, .score-batch-panel, .quick-entry-score-panel, .repeat-dates-panel, .modal-container) {
+html[data-app-theme=lithos][data-app-variant=pink][data-theme-mode=dark] :is(.user-box, .top-header, .glass-card, .requests-card, .score-filter-panel, .score-batch-panel, .quick-entry-score-panel, .repeat-dates-panel, .modal-container) {
     color: #f8eaf0;
     background: #2a1b22 !important;
     background-image: none !important;
@@ -130,7 +130,7 @@ html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"] 
 }
 
 html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"] .top-header,
-html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"] :is(.glass-card, .ai-chat-card, .requests-card, .score-filter-panel, .score-batch-panel, .quick-entry-score-panel, .repeat-dates-panel, .invoice-form-section, .invoice-summary-item),
+html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"] :is(.glass-card, .requests-card, .score-filter-panel, .score-batch-panel, .quick-entry-score-panel, .repeat-dates-panel, .invoice-form-section, .invoice-summary-item),
 html[data-app-theme="lithos"][data-app-variant="pink"][data-theme-mode="light"] .modal-container {
     color: #5d3546;
     background: rgba(255, 252, 253, .98) !important;

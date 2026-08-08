@@ -392,20 +392,6 @@ Object.assign(PinkyClassApp.prototype, {
         });
 
 
-        // Form Submit: Trợ lý AI — gửi câu hỏi
-        document.getElementById('aiChatForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.sendAiChatMessage();
-        });
-
-        document.getElementById('btnSaveAiChat').addEventListener('click', () => {
-            this.saveAiChat();
-        });
-
-        // Nút xoá hội thoại Trợ lý AI
-        document.getElementById('btnClearAiChat').addEventListener('click', () => {
-            this.clearAiChat();
-        });
 
         try {
             this.initRequestsFeature();
@@ -808,14 +794,12 @@ Object.assign(PinkyClassApp.prototype, {
         const navStudents = document.getElementById('nav-students');
         const navClasses = document.getElementById('nav-classes');
         const navUsers = document.getElementById('nav-users');
-        const navAiChat = document.getElementById('nav-ai-chat');
         const navRequests = document.getElementById('nav-requests');
         const canManageUsers = this.canManageUsers();
 
         if (role === 'admin') {
             // Admin: chỉ được quản lý tài khoản người dùng, không truy cập
             // các chức năng dạy học khác. Admin cũng không có dữ liệu lịch
-            // dạy/điểm số nên không cần Trợ lý AI.
             navDashboard.style.display = 'none';
             navLogs.style.display = 'none';
             navScores.style.display = 'none';
@@ -824,7 +808,6 @@ Object.assign(PinkyClassApp.prototype, {
             navStudents.style.display = 'none';
             navClasses.style.display = 'none';
             navUsers.style.display = 'flex';
-            navAiChat.style.display = 'none';
             navRequests.style.display = 'none';
         } else if (role === 'assistant') {
             navDashboard.style.display = 'flex';
@@ -862,10 +845,6 @@ Object.assign(PinkyClassApp.prototype, {
             navRequests.style.display = 'flex';
         }
 
-        const canUseAiAssistant = this.canUseAiAssistant();
-        navAiChat.style.display = canUseAiAssistant ? 'flex' : 'none';
-        const aiView = document.getElementById('view-ai-chat');
-        if (aiView) aiView.hidden = !canUseAiAssistant;
 
         this.applyPermissions();
         const roleLabel = role === 'admin' ? 'Quản trị viên' : role === 'teacher' ? 'Giáo viên' : role === 'assistant' ? 'Trợ giảng' : 'Học sinh';
@@ -884,9 +863,6 @@ Object.assign(PinkyClassApp.prototype, {
             || String(this.currentUser?.id || '') === 'u_teacher';
     },
 
-    canUseAiAssistant() {
-        return String(this.currentUser?.id || '') === 'u_teacher';
-    },
 
     switchView(viewId) {
         if (viewId === 'view-classes' && !['teacher', 'assistant'].includes(this.currentRole)) {
@@ -895,17 +871,6 @@ Object.assign(PinkyClassApp.prototype, {
         if (viewId === 'view-users' && !this.canManageUsers()) {
             viewId = this.currentRole === 'student' ? 'view-logs' : 'view-dashboard';
         }
-        if (viewId === 'view-ai-chat' && !this.canUseAiAssistant()) {
-            viewId = this.currentRole === 'admin'
-                ? 'view-users'
-                : this.currentRole === 'student'
-                    ? 'view-logs'
-                    : 'view-dashboard';
-        }
-        if (viewId !== 'view-ai-chat' && document.getElementById(viewId)?.classList.contains('view-section')) {
-            this.lastVisitedFeatureViewId = viewId;
-        }
-
         // Toggle view classes
         document.querySelectorAll('.view-section').forEach(sec => {
             sec.classList.remove('active-view');
@@ -929,9 +894,6 @@ Object.assign(PinkyClassApp.prototype, {
         } else if (viewId === 'view-scores') {
             titleEl.innerText = "ĐIỂM SỐ";
             subtitleEl.innerText = "Tra cứu theo bài kiểm tra hoặc học sinh, lọc dữ liệu và tổng hợp kết quả học tập.";
-        } else if (viewId === 'view-ai-chat') {
-            titleEl.innerText = "TRỢ LÝ AI";
-            subtitleEl.innerText = "Hỏi về dữ liệu, giao diện, cách sử dụng hoặc nhờ tạo một mục Yêu cầu.";
         } else if (viewId === 'view-requests') {
             titleEl.innerText = "YÊU CẦU";
             subtitleEl.innerText = "Ghi lại yêu cầu cần thực hiện và theo dõi trạng thái hoàn thành.";
@@ -963,7 +925,6 @@ Object.assign(PinkyClassApp.prototype, {
 
         this.renderView(viewId);
         if (viewId === 'view-requests') this.loadRequests({ force: true });
-        if (viewId === 'view-ai-chat' && !this.aiChatSavedLoaded) this.loadSavedAiChat();
         this.applyPermissions(targetView || document);
     },
 

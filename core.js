@@ -35,9 +35,6 @@ class PinkyClassApp {
         this.calCreateDrag = null; // Trạng thái đang kéo-CHỌN 1 khung giờ trống để tạo ca học mới (null = không kéo)
         this.repeatExtraDates = []; // Các ngày sẽ tạo thêm từ form "Ghi Buổi Học Mới"
         this.editRepeatExtraDates = []; // Các ngày sẽ tạo thêm khi biến một buổi có sẵn thành lịch lặp
-        this.aiChatHistory = []; // Lịch sử hội thoại Trợ lý AI (chỉ lưu ở client, gửi kèm mỗi lần hỏi để AI nhớ ngữ cảnh)
-        this.aiChatSavedLoaded = false;
-        this.lastVisitedFeatureViewId = null;
         this.requests = [];
         this.requestFilter = 'pending';
         this.requestImageDraft = [];
@@ -247,8 +244,6 @@ class PinkyClassApp {
         this.requests = [];
         this.requestsLoaded = false;
         this.requestImageDraft = [];
-        this.aiChatHistory = [];
-        this.aiChatSavedLoaded = false;
         this._invoiceQrDataUrl = null;
         this._invoiceSetup = null;
         this._invoiceSetupLoaded = false;
@@ -600,7 +595,6 @@ class PinkyClassApp {
             'view-students': '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 21c.7-4 3-6 7-6s6.3 2 7 6"/></svg>',
             'view-users': '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="10" r="2"/><path d="M3 21c.6-4 2.6-6 6-6s5.4 2 6 6M15 15c3 0 4.8 1.7 5.4 4"/></svg>',
             'view-scores': '<svg viewBox="0 0 24 24"><path d="m4 15 5-5 4 3 7-8"/><path d="M16 5h4v4"/><path d="M4 20h16"/></svg>',
-            'view-ai-chat': '<svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3z"/><path d="M9 10h.01M12 10h.01M15 10h.01"/></svg>',
             'view-requests': '<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h5M8 16h4"/><path d="m15 16 1.5 1.5L20 14"/></svg>'
         };
 

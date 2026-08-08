@@ -4,7 +4,7 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "node --test tests/security-utils.test.cjs tests/score-filter.test.cjs tests/static-regressions.test.cjs",
+    "test": "node --test tests/security-utils.test.cjs tests/score-filter.test.cjs tests/static-regressions.test.cjs tests/ai-removal.test.cjs",
     "start": "node server.js",
     "lint": "node scripts/check-js.cjs",
     "check": "npm run lint && npm test"
