@@ -4240,8 +4240,6 @@ textarea.form-control {
     font-weight: 800;
 }
 
-.score-test-date small,
-.score-test-title p,
 .score-student-header p,
 .score-row-meta,
 .score-muted {
@@ -4256,7 +4254,6 @@ textarea.form-control {
     font-size: 0.96rem;
 }
 
-.score-test-title p,
 .score-student-header p {
     margin: 0;
 }
@@ -7619,16 +7616,6 @@ body.request-image-viewer-open { overflow: hidden; }
     border-bottom: 1px solid var(--border-color);
 }
 
-.class-profile-eyebrow {
-    display: block;
-    margin-bottom: 3px;
-    color: var(--text-muted);
-    font-size: 0.65rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-}
-
 .class-profile-card-header h3 {
     margin: 0;
     color: var(--text-main);
@@ -7652,7 +7639,6 @@ body.request-image-viewer-open { overflow: hidden; }
     font-weight: 800;
 }
 
-.class-profile-main-stats,
 .class-profile-finance {
     display: flex;
     flex-wrap: wrap;
@@ -7660,7 +7646,6 @@ body.request-image-viewer-open { overflow: hidden; }
     margin-top: 14px;
 }
 
-.class-profile-main-stats > div,
 .class-profile-finance > div {
     flex: 1 1 145px;
     min-width: 0;
@@ -7669,7 +7654,6 @@ body.request-image-viewer-open { overflow: hidden; }
     background: rgba(var(--primary-rgb), 0.055);
 }
 
-.class-profile-main-stats span,
 .class-profile-finance span {
     display: block;
     margin-bottom: 4px;
@@ -7678,7 +7662,6 @@ body.request-image-viewer-open { overflow: hidden; }
     font-weight: 700;
 }
 
-.class-profile-main-stats strong,
 .class-profile-finance strong {
     display: block;
     color: var(--text-main);

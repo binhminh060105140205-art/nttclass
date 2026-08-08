@@ -286,7 +286,6 @@ Object.assign(PinkyClassApp.prototype, {
                 const first = sortedScores[0];
                 const normalized = sortedScores.map(score => this.getScoreNormalizedToTen(score)).filter(Number.isFinite);
                 const average = normalized.length ? normalized.reduce((sum, value) => sum + value, 0) / normalized.length : null;
-                const classes = [...new Set(sortedScores.map(score => this.getStudentClass(score.studentId)).filter(Boolean))];
                 const sessionId = sortedScores.find(score => score.sessionId)?.sessionId || '';
                 const canManage = ['teacher', 'assistant'].includes(this.currentRole);
                 const rows = sortedScores.map(score => `
@@ -302,11 +301,10 @@ Object.assign(PinkyClassApp.prototype, {
 
                 return `<article class="score-test-card">
                     <header class="score-test-header">
-                        <div class="score-test-date"><span>${this.formatScoreDate(first.date)}</span><small>${first.sessionId ? 'Trong buổi học' : 'Ngoài buổi học'}</small></div>
+                        <div class="score-test-date"><span>${this.formatScoreDate(first.date)}</span></div>
                         <div class="score-test-title">
                             <span class="score-type-badge ${this.scoreTypeBadgeClass(first.scoreType)}">${this.scoreTypeLabel(first.scoreType)}</span>
                             <h3>${this.escapeHtml(this.getScoreTestTitle(first))}</h3>
-                            <p>${classes.length ? this.escapeHtml(classes.join(', ')) : 'Chưa xác định lớp'} · ${sortedScores.length} học sinh</p>
                         </div>
                         <div class="score-test-average"><small>Điểm TB /10</small><strong>${average === null ? '-' : average.toFixed(1)}</strong></div>
                         ${canManage ? `<div class="score-test-actions">

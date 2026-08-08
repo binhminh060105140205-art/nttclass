@@ -169,6 +169,15 @@ test('score cards support inline autosave for values notes and test names', () =
     assert.match(style, /\.score-inline-editor/);
 });
 
+test('class and score cards omit duplicated display metadata', () => {
+    const classes = read('classes.js');
+    const scores = read('scores.js');
+    assert.doesNotMatch(classes, /class-profile-eyebrow|class-profile-main-stats/);
+    assert.doesNotMatch(classes, />Sĩ số<|>Môn học</);
+    assert.doesNotMatch(scores, /Trong buổi học|Ngoài buổi học/);
+    assert.doesNotMatch(scores, /sortedScores\.length} học sinh/);
+});
+
 test('all app surfaces and tuition invoices use Comfortaa', () => {
     const html = read('index.html');
     const style = read('style.css');

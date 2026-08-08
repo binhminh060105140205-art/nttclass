@@ -100,15 +100,10 @@ Object.assign(PinkyClassApp.prototype, {
             card.innerHTML = `
                 <div class="class-profile-card-header">
                     <div>
-                        <span class="class-profile-eyebrow">Hồ sơ lớp học</span>
                         <h3>${this.escapeHtml(profile.className)}</h3>
                         <p>${this.escapeHtml(subjectLabel)}</p>
                     </div>
                     <span class="class-profile-count">${profile.students.length} học sinh</span>
-                </div>
-                <div class="class-profile-main-stats">
-                    <div><span>Sĩ số</span><strong>${profile.students.length}</strong></div>
-                    <div><span>Môn học</span><strong>${this.escapeHtml(subjectLabel)}</strong></div>
                 </div>
                 <div class="class-profile-finance role-restricted admin-only">
                     <div><span>Học phí/HS/buổi</span><strong>${feeLabel}</strong></div>
