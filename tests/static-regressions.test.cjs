@@ -92,7 +92,9 @@ test('báo cáo học phí có biểu đồ biến động sáu tháng không d�
     assert.match(tuition, /renderTuitionTrendArea\(chart, trendData, maximumTotal\)/);
     assert.match(tuition, /if \(month\.total <= 0\) return/);
     assert.match(tuition, /value\.textContent = month\.total > 0/);
-    assert.match(tuition, /appendPath\(unpaidAreaPath, 'is-unpaid'\)/);
+    assert.match(tuition, /appendPath\(totalAreaPath, 'is-total-area'\)/);
+    assert.match(tuition, /tuitionTrendTotalGradient/);
+    assert.doesNotMatch(tuition, /tuition-trend-plot|tuition-trend-column/);
     assert.match(tuition, /this\.renderTuitionTrend\(\)/);
     assert.match(style, /\.tuition-trend-area-layout/);
     assert.match(style, /\.tuition-trend-area-shape\.is-total-line/);

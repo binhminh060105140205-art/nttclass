@@ -88,30 +88,27 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     renderTuitionTrendArea(chart, trendData, maximumTotal) {
-        const baseline = 88;
-        const top = 14;
-        const startX = 3;
-        const endX = 97;
+        const baseline = 84;
+        const top = 12;
+        const startX = 4;
+        const endX = 96;
         const pointCount = Math.max(1, trendData.length - 1);
         const scaleStep = 10 ** Math.max(0, Math.floor(Math.log10(maximumTotal)) - 1);
         const scaleMaximum = Math.ceil((maximumTotal * 1.1) / scaleStep) * scaleStep;
         const toY = value => baseline - ((Math.max(0, Number(value) || 0) / scaleMaximum) * (baseline - top));
-        const pointsFor = key => trendData.map((month, index) => ({
+        const totalPoints = trendData.map((month, index) => ({
             x: startX + ((index / pointCount) * (endX - startX)),
-            y: toY(month[key])
+            y: toY(month.total)
         }));
-        const paidPoints = pointsFor('paid');
-        const totalPoints = pointsFor('total');
         const curveSegments = points => points.slice(1).map((point, index) => {
             const previous = points[index];
-            const curveWidth = (point.x - previous.x) * 0.28;
+            const curveWidth = (point.x - previous.x) * 0.32;
             return 'C ' + (previous.x + curveWidth).toFixed(2) + ' ' + previous.y.toFixed(2) + ', ' + (point.x - curveWidth).toFixed(2) + ' ' + point.y.toFixed(2) + ', ' + point.x.toFixed(2) + ' ' + point.y.toFixed(2);
         }).join(' ');
         const linePath = points => 'M ' + points[0].x.toFixed(2) + ' ' + points[0].y.toFixed(2) + ' ' + curveSegments(points);
-        const lastPaid = paidPoints[paidPoints.length - 1];
-        const reversePaidPoints = [...paidPoints].reverse();
-        const paidAreaPath = 'M ' + paidPoints[0].x.toFixed(2) + ' ' + baseline + ' L ' + paidPoints[0].x.toFixed(2) + ' ' + paidPoints[0].y.toFixed(2) + ' ' + curveSegments(paidPoints) + ' L ' + lastPaid.x.toFixed(2) + ' ' + baseline + ' Z';
-        const unpaidAreaPath = linePath(totalPoints) + ' L ' + lastPaid.x.toFixed(2) + ' ' + lastPaid.y.toFixed(2) + ' ' + curveSegments(reversePaidPoints) + ' Z';
+        const lastPoint = totalPoints[totalPoints.length - 1];
+        const totalAreaPath = 'M ' + totalPoints[0].x.toFixed(2) + ' ' + baseline + ' L ' + totalPoints[0].x.toFixed(2) + ' ' + totalPoints[0].y.toFixed(2) + ' ' + curveSegments(totalPoints) + ' L ' + lastPoint.x.toFixed(2) + ' ' + baseline + ' Z';
+
         const layout = document.createElement('div');
         layout.className = 'tuition-trend-area-layout';
         const scale = document.createElement('div');
@@ -121,6 +118,7 @@ Object.assign(PinkyClassApp.prototype, {
             label.textContent = this.formatTuitionTrendValue(value);
             scale.appendChild(label);
         });
+
         const canvas = document.createElement('div');
         canvas.className = 'tuition-trend-area-canvas';
         const svgNamespace = 'http://www.w3.org/2000/svg';
@@ -129,6 +127,24 @@ Object.assign(PinkyClassApp.prototype, {
         svg.setAttribute('viewBox', '0 0 100 100');
         svg.setAttribute('preserveAspectRatio', 'none');
         svg.setAttribute('aria-hidden', 'true');
+
+        const defs = document.createElementNS(svgNamespace, 'defs');
+        const gradient = document.createElementNS(svgNamespace, 'linearGradient');
+        gradient.setAttribute('id', 'tuitionTrendTotalGradient');
+        gradient.setAttribute('x1', '0');
+        gradient.setAttribute('y1', '0');
+        gradient.setAttribute('x2', '0');
+        gradient.setAttribute('y2', '1');
+        const gradientStart = document.createElementNS(svgNamespace, 'stop');
+        gradientStart.setAttribute('offset', '0%');
+        gradientStart.classList.add('tuition-trend-gradient-start');
+        const gradientEnd = document.createElementNS(svgNamespace, 'stop');
+        gradientEnd.setAttribute('offset', '100%');
+        gradientEnd.classList.add('tuition-trend-gradient-end');
+        gradient.append(gradientStart, gradientEnd);
+        defs.appendChild(gradient);
+        svg.appendChild(defs);
+
         [top, (top + baseline) / 2, baseline].forEach(y => {
             const gridLine = document.createElementNS(svgNamespace, 'line');
             gridLine.setAttribute('x1', '0');
@@ -138,20 +154,31 @@ Object.assign(PinkyClassApp.prototype, {
             gridLine.classList.add('tuition-trend-area-grid-line');
             svg.appendChild(gridLine);
         });
+        totalPoints.forEach(point => {
+            const guideLine = document.createElementNS(svgNamespace, 'line');
+            guideLine.setAttribute('x1', point.x.toFixed(2));
+            guideLine.setAttribute('x2', point.x.toFixed(2));
+            guideLine.setAttribute('y1', String(top));
+            guideLine.setAttribute('y2', String(baseline));
+            guideLine.classList.add('tuition-trend-area-guide-line');
+            svg.appendChild(guideLine);
+        });
+
         const appendPath = (pathData, className) => {
-            const path = document.createElementNS(svgNamespace, 'path');
-            path.setAttribute('d', pathData);
-            path.classList.add('tuition-trend-area-shape', className);
-            svg.appendChild(path);
+            const pathElement = document.createElementNS(svgNamespace, 'path');
+            pathElement.setAttribute('d', pathData);
+            pathElement.classList.add('tuition-trend-area-shape', className);
+            svg.appendChild(pathElement);
         };
-        appendPath(paidAreaPath, 'is-paid');
-        appendPath(unpaidAreaPath, 'is-unpaid');
+        appendPath(totalAreaPath, 'is-total-area');
         appendPath(linePath(totalPoints), 'is-total-line');
+
         const monthAxis = document.createElement('div');
         monthAxis.className = 'tuition-trend-area-months';
         trendData.forEach((month, index) => {
             const item = document.createElement('div');
             item.className = 'tuition-trend-area-month' + (index === trendData.length - 1 ? ' is-anchor' : '');
+            item.title = month.fullLabel + ': ' + this.formatVND(month.total) + ' · Đã thu ' + this.formatVND(month.paid) + ' · Chưa thu ' + this.formatVND(month.unpaid);
             const value = document.createElement('strong');
             value.textContent = month.total > 0 ? this.formatTuitionTrendValue(month.total) : '';
             const label = document.createElement('span');
@@ -159,6 +186,7 @@ Object.assign(PinkyClassApp.prototype, {
             item.append(value, label);
             monthAxis.appendChild(item);
         });
+
         const markerLayer = document.createElement('div');
         markerLayer.className = 'tuition-trend-area-markers';
         trendData.forEach((month, index) => {
@@ -167,9 +195,10 @@ Object.assign(PinkyClassApp.prototype, {
             marker.className = 'tuition-trend-area-marker' + (index === trendData.length - 1 ? ' is-anchor' : '');
             marker.style.left = totalPoints[index].x + '%';
             marker.style.top = totalPoints[index].y + '%';
-            marker.title = month.fullLabel + ': ' + this.formatVND(month.total);
+            marker.title = month.fullLabel + ': ' + this.formatVND(month.total) + ' · Đã thu ' + this.formatVND(month.paid) + ' · Chưa thu ' + this.formatVND(month.unpaid);
             markerLayer.appendChild(marker);
         });
+
         const axisSpacer = document.createElement('div');
         canvas.append(svg, markerLayer);
         layout.append(scale, canvas, axisSpacer, monthAxis);
@@ -214,36 +243,6 @@ Object.assign(PinkyClassApp.prototype, {
         }
 
         this.renderTuitionTrendArea(chart, trendData, maximumTotal);
-        return;
-
-        const plot = document.createElement('div');
-        plot.className = 'tuition-trend-plot';
-        trendData.forEach((month, index) => {
-            const paidHeight = month.paid > 0 ? (month.paid / maximumTotal) * 100 : 0;
-            const unpaidHeight = month.unpaid > 0 ? (month.unpaid / maximumTotal) * 100 : 0;
-            const column = document.createElement('div');
-            column.className = `tuition-trend-column${index === trendData.length - 1 ? ' is-anchor' : ''}`;
-            column.title = `${month.fullLabel}: ${this.formatVND(month.total)} · Đã thu ${this.formatVND(month.paid)} · Chưa thu ${this.formatVND(month.unpaid)}`;
-
-            const value = document.createElement('span');
-            value.className = 'tuition-trend-value';
-            value.textContent = this.formatTuitionTrendValue(month.total);
-
-            const barStack = document.createElement('div');
-            barStack.className = 'tuition-trend-bar-stack';
-            barStack.setAttribute('aria-hidden', 'true');
-
-            const paidSegment = document.createElement('span');
-            paidSegment.className = 'tuition-trend-segment is-paid';
-            paidSegment.style.height = `${paidHeight.toFixed(2)}%`;
-
-            const unpaidSegment = document.createElement('span');
-            unpaidSegment.className = 'tuition-trend-segment is-unpaid';
-            unpaidSegment.style.height = `${unpaidHeight.toFixed(2)}%`;
-            unpaidSegment.style.bottom = `${paidHeight.toFixed(2)}%`;
-
-        });
-        chart.replaceChildren(plot);
     },
 
     renderTuitionOverview() {
