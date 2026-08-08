@@ -88,12 +88,14 @@ Object.assign(PinkyClassApp.prototype, {
     },
 
     renderTuitionTrendArea(chart, trendData, maximumTotal) {
-        const baseline = 92;
-        const top = 10;
-        const startX = 2;
-        const endX = 98;
+        const baseline = 88;
+        const top = 14;
+        const startX = 3;
+        const endX = 97;
         const pointCount = Math.max(1, trendData.length - 1);
-        const toY = value => baseline - ((Math.max(0, Number(value) || 0) / maximumTotal) * (baseline - top));
+        const scaleStep = 10 ** Math.max(0, Math.floor(Math.log10(maximumTotal)) - 1);
+        const scaleMaximum = Math.ceil((maximumTotal * 1.1) / scaleStep) * scaleStep;
+        const toY = value => baseline - ((Math.max(0, Number(value) || 0) / scaleMaximum) * (baseline - top));
         const pointsFor = key => trendData.map((month, index) => ({
             x: startX + ((index / pointCount) * (endX - startX)),
             y: toY(month[key])
@@ -102,8 +104,8 @@ Object.assign(PinkyClassApp.prototype, {
         const totalPoints = pointsFor('total');
         const curveSegments = points => points.slice(1).map((point, index) => {
             const previous = points[index];
-            const middleX = (previous.x + point.x) / 2;
-            return 'C ' + middleX.toFixed(2) + ' ' + previous.y.toFixed(2) + ', ' + middleX.toFixed(2) + ' ' + point.y.toFixed(2) + ', ' + point.x.toFixed(2) + ' ' + point.y.toFixed(2);
+            const curveWidth = (point.x - previous.x) * 0.28;
+            return 'C ' + (previous.x + curveWidth).toFixed(2) + ' ' + previous.y.toFixed(2) + ', ' + (point.x - curveWidth).toFixed(2) + ' ' + point.y.toFixed(2) + ', ' + point.x.toFixed(2) + ' ' + point.y.toFixed(2);
         }).join(' ');
         const linePath = points => 'M ' + points[0].x.toFixed(2) + ' ' + points[0].y.toFixed(2) + ' ' + curveSegments(points);
         const lastPaid = paidPoints[paidPoints.length - 1];
@@ -114,7 +116,7 @@ Object.assign(PinkyClassApp.prototype, {
         layout.className = 'tuition-trend-area-layout';
         const scale = document.createElement('div');
         scale.className = 'tuition-trend-area-scale';
-        [maximumTotal, maximumTotal / 2, 0].forEach(value => {
+        [scaleMaximum, scaleMaximum / 2, 0].forEach(value => {
             const label = document.createElement('span');
             label.textContent = this.formatTuitionTrendValue(value);
             scale.appendChild(label);
@@ -151,7 +153,7 @@ Object.assign(PinkyClassApp.prototype, {
             const item = document.createElement('div');
             item.className = 'tuition-trend-area-month' + (index === trendData.length - 1 ? ' is-anchor' : '');
             const value = document.createElement('strong');
-            value.textContent = this.formatTuitionTrendValue(month.total);
+            value.textContent = month.total > 0 ? this.formatTuitionTrendValue(month.total) : '';
             const label = document.createElement('span');
             label.textContent = month.shortLabel;
             item.append(value, label);
@@ -160,6 +162,7 @@ Object.assign(PinkyClassApp.prototype, {
         const markerLayer = document.createElement('div');
         markerLayer.className = 'tuition-trend-area-markers';
         trendData.forEach((month, index) => {
+            if (month.total <= 0) return;
             const marker = document.createElement('span');
             marker.className = 'tuition-trend-area-marker' + (index === trendData.length - 1 ? ' is-anchor' : '');
             marker.style.left = totalPoints[index].x + '%';

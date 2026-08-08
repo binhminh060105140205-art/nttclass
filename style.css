@@ -8701,7 +8701,7 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .session-time-range-contr
 
 .tuition-trend-card {
     margin-bottom: 18px;
-    padding: 18px 20px;
+    padding: 16px 18px 14px;
     border-radius: 16px;
     overflow: hidden;
 }
@@ -8715,7 +8715,7 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .session-time-range-contr
     align-items: flex-start;
     justify-content: space-between;
     gap: 18px;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
 }
 
 .tuition-trend-header h2 {
@@ -8757,8 +8757,8 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .session-time-range-contr
 }
 
 .tuition-trend-dot {
-    width: 9px;
-    height: 9px;
+    width: 8px;
+    height: 8px;
     border-radius: 999px;
 }
 
@@ -8811,9 +8811,9 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .session-time-range-contr
 
 .tuition-trend-area-layout {
     display: grid;
-    grid-template-columns: 48px minmax(0, 1fr);
-    grid-template-rows: 190px auto;
-    gap: 8px 10px;
+    grid-template-columns: 52px minmax(0, 1fr);
+    grid-template-rows: 156px auto;
+    gap: 7px 10px;
     width: 100%;
 }
 
@@ -8822,7 +8822,8 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .session-time-range-contr
     justify-content: space-between;
     flex-direction: column;
     color: var(--text-muted);
-    font-size: .64rem;
+    padding: 7px 0 3px;
+    font-size: .62rem;
     font-weight: 700;
     text-align: right;
 }
@@ -8830,11 +8831,11 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .session-time-range-contr
 .tuition-trend-area-canvas {
     position: relative;
     min-width: 0;
-    height: 190px;
+    height: 156px;
     overflow: hidden;
     border: 1px solid rgba(var(--primary-rgb), .12);
-    border-radius: 14px;
-    background: rgba(var(--primary-rgb), .025);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(var(--primary-rgb), .035), rgba(var(--primary-rgb), .012));
 }
 
 .tuition-trend-area-svg,
@@ -8846,31 +8847,33 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .session-time-range-contr
 }
 
 .tuition-trend-area-grid-line {
-    stroke: rgba(var(--primary-rgb), .12);
-    stroke-width: .65;
+    stroke: rgba(var(--primary-rgb), .1);
+    stroke-width: .6;
     vector-effect: non-scaling-stroke;
 }
 
 .tuition-trend-area-shape {
     vector-effect: non-scaling-stroke;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .tuition-trend-area-shape.is-paid {
-    fill: rgba(34, 197, 94, .38);
-    stroke: #16a34a;
-    stroke-width: 1.6;
+    fill: rgba(34, 197, 94, .24);
+    stroke: #22c55e;
+    stroke-width: 1.35;
 }
 
 .tuition-trend-area-shape.is-unpaid {
-    fill: rgba(239, 68, 68, .28);
-    stroke: #dc2626;
-    stroke-width: 1.6;
+    fill: rgba(239, 68, 68, .18);
+    stroke: #ef4444;
+    stroke-width: 1.35;
 }
 
 .tuition-trend-area-shape.is-total-line {
     fill: none;
     stroke: var(--primary);
-    stroke-width: 2.4;
+    stroke-width: 2.15;
 }
 
 .tuition-trend-area-markers {
@@ -8884,20 +8887,20 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .session-time-range-contr
     border: 2px solid var(--surface);
     border-radius: 50%;
     background: var(--primary);
-    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), .2);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), .14);
     transform: translate(-50%, -50%);
 }
 
 .tuition-trend-area-marker.is-anchor {
-    width: 12px;
-    height: 12px;
-    box-shadow: 0 0 0 4px rgba(var(--primary-rgb), .18);
+    width: 11px;
+    height: 11px;
+    box-shadow: 0 0 0 4px rgba(var(--primary-rgb), .14);
 }
 
 .tuition-trend-area-months {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 4px;
+    gap: 6px;
 }
 
 .tuition-trend-area-month {
@@ -8906,8 +8909,10 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .session-time-range-contr
     flex-direction: column;
     min-width: 0;
     color: var(--text-muted);
-    font-size: .66rem;
-    line-height: 1.25;
+    gap: 2px;
+    padding: 3px 2px 2px;
+    font-size: .64rem;
+    line-height: 1.2;
     text-align: center;
 }
 
@@ -8915,7 +8920,8 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .session-time-range-contr
     overflow: hidden;
     width: 100%;
     color: var(--text-main);
-    font-size: .68rem;
+    min-height: .8rem;
+    font-size: .67rem;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -8924,6 +8930,11 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .session-time-range-contr
 .tuition-trend-area-month.is-anchor strong {
     color: var(--primary);
     font-weight: 850;
+}
+
+.tuition-trend-area-month.is-anchor {
+    border-radius: 8px;
+    background: rgba(var(--primary-rgb), .07);
 }
 
 .tuition-trend-plot {
@@ -9099,13 +9110,13 @@ html[data-app-theme="lithos"][data-theme-mode="light"] .session-time-range-contr
     }
 
     .tuition-trend-area-layout {
-        grid-template-columns: 38px minmax(0, 1fr);
-        grid-template-rows: 176px auto;
+        grid-template-columns: 42px minmax(0, 1fr);
+        grid-template-rows: 148px auto;
         gap: 6px;
     }
 
     .tuition-trend-area-canvas {
-        height: 176px;
+        height: 148px;
     }
 
     .tuition-trend-area-scale,
